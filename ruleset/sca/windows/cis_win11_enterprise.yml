@@ -5724,17 +5724,17 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   - id: 26374
-    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Disabled'"
-    description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log."
-    rationale: "There are potential risks of capturing passwords in the PowerShell logs. This setting should only be needed for debugging purposes, and not in normal operation, it is important to ensure this is set to Disabled."
+    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
+    description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log. The recommended state for this setting is: Enabled."
+    rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
     compliance:
       - cis: ["18.9.100.1"]
-      - cis_csc: ["16.4"]
+      - cis_csc: ["8.8"]
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   - id: 26376
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
@@ -5842,8 +5842,8 @@ checks:
 
   - id: 26382
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port."
-    rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
+    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow unencrypted traffic"
     compliance:
       - cis: ["18.9.102.2.3"]
