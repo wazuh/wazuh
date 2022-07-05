@@ -3,6 +3,7 @@ decoders:
   - syslog
   - auth
   - nginx-access
+  - nginx-error
 
 outputs:
   - file_output
