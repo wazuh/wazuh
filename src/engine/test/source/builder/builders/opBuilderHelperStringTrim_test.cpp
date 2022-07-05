@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -7,329 +7,198 @@
  * Foundation.
  */
 
+#include <any>
 #include <gtest/gtest.h>
-
 #include <vector>
 
 #include <baseTypes.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperMap.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
-// Build ok
 TEST(opBuilderHelperStringTrim, Builds)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/both/t"
-                }
-            }
-        ]
-    })"};
-    ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr));
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"s_trim"}, std::vector<std::string> {"begin", "t"});
+
+    ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(tuple));
 }
 
-// Build incorrect number of arguments
-TEST(opBuilderHelperStringTrim, Builds_incorrect_number_of_arguments)
+TEST(opBuilderHelperStringTrim, Builds_bad_parameters)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/both/t/t"
-                }
-            }
-        ]
-    })"};
-    ASSERT_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr), std::runtime_error);
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"begin"});
+
+    ASSERT_THROW(bld::opBuilderHelperStringTrim(tuple), std::runtime_error);
 }
 
-// Test ok: both trim
-TEST(opBuilderHelperStringTrim, BothOk)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/both/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"begin", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "---hi---"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "hi---"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "---hi"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "hi"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "--test"})");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringTrim, Start_ok)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/begin/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"begin", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "---hi---"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "hi---"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "---hi"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "hi"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test"})");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "hi---");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf").GetString(), "hi---");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/field2check").value());
 }
 
-// Test ok: dynamic values (string)
-TEST(opBuilderHelperStringTrim, End_ok)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/end/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"end", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "---hi---"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "hi---"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "---hi"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "hi"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "test--"})");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "---hi");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf").GetString(), "---hi");
-    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperStringTrim, Multilevel_src)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf.a.b": "+s_trim/end/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"both", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "---hi---"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "hi---"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "---hi"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "hi"}}}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test--"})");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperStringTrim, Not_exist_src)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/end/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"begin", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"not_ext": "---hi---"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": "--test",
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_FALSE(expected[0]->getEvent()->exists("/fieldToTranf"));
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringTrim, Src_not_string)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_trim/end/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"begin", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": 15}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "--test",
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->getEvent()->exists("/fieldToTranf"));
-    ASSERT_EQ(expected[0]->getEvent()->get("/fieldToTranf").GetInt(), 15);
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/parentObjt_1/field2check").value());
 }
 
-TEST(opBuilderHelperStringTrim, Multilevel)
+TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf.a.b": "+s_trim/end/-"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"end", "-"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "---hi---"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "hi---"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "---hi"}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": {"a": {"b": "hi"}}}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "test--",
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperStringTrim, Exec_string_trim_both_multilevel_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_trim"},
+                                 std::vector<std::string> {"both", "-"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "--test--",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/parentObjt_1/field2check").value());
 }
