@@ -318,7 +318,7 @@ checks:
   - id: 15020
     title: "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'"
     description: "This policy setting determines whether a domain member should attempt to negotiate encryption for all secure channel traffic that it initiates. The recommended state for this setting is: Enabled."
-    rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller"
+    rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)"
     compliance:
       - cis: ["2.3.6.2"]
@@ -472,7 +472,7 @@ checks:
   - id: 15029
     title: "Configure 'Interactive logon: Message text for users attempting to log on'"
     description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited."
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited. Note: Any warning that you display should first be approved by your organization's legal and human resources representatives."
     remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message text for users attempting to log on"
     compliance:
       - cis: ["2.3.7.5"]
@@ -1209,7 +1209,7 @@ checks:
   - id: 15070
     title: "Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'"
     description: "This policy setting controls the behavior of application installation detection for the computer. The recommended state for this setting is: Enabled."
-    rationale: "Some malicious software will attempt to install itself after being given permission to run. For example, malicious software with a trusted application shell. The user may have given permission for the program to run because the program is trusted, but if they are then prompted for installation of an unknown component this provides another way of trapping the software before it can do damage."
+    rationale: "Some malicious software will attempt to install itself after being given permission to run. For example, malicious software with a trusted application shell. The user may have given permission for the program to run because the program is trusted, but if they are then prompted for installation of an unknown component this provides another way of trapping the software before it can do damage"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Detect application installations and prompt for elevation"
     compliance:
       - cis: ["2.3.17.4"]
@@ -2193,7 +2193,7 @@ checks:
   - id: 15135
     title: "Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'"
     description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
-    rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service"
+    rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to On (recommended): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Firewall state"
     compliance:
       - cis: ["9.3.1"]
@@ -2413,7 +2413,7 @@ checks:
   - id: 15147
     title: "Ensure 'Audit Security Group Management' is set to include 'Success'"
     description: "This subcategory reports each event of security group management, such as when a security group is created, changed, or deleted or when a member is added to or removed from a security group. If you enable this Audit policy setting, administrators can track events to detect malicious, accidental, and authorized creation of security group accounts. Events for this subcategory include: - 4727: A security-enabled global group was created. - 4728: A member was added to a security-enabled global group. - 4729: A member was removed from a security-enabled global group. - 4730: A security-enabled global group was deleted. - 4731: A security-enabled local group was created. - 4732: A member was added to a security-enabled local group. - 4733: A member was removed from a security-enabled local group. - 4734: A security-enabled local group was deleted. - 4735: A security-enabled local group was changed. - 4737: A security-enabled global group was changed. - 4754: A security-enabled universal group was created. - 4755: A security-enabled universal group was changed. - 4756: A member was added to a security-enabled universal group. - 4757: A member was removed from a security-enabled universal group. - 4758: A security-enabled universal group was deleted. - 4764: A group's type was changed. The recommended state for this setting is to include: Success."
-    rationale: "Auditing events in this category may be useful when investigating an incident."
+    rationale: "Auditing these events may be useful when investigating a security incident."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Security Group Management"
     compliance:
       - cis: ["17.2.2"]
@@ -2533,7 +2533,7 @@ checks:
   - id: 15157
     title: "Ensure 'Audit Detailed File Share' is set to include 'Failure'"
     description: "This subcategory allows you to audit attempts to access files and folders on a shared folder. Events for this subcategory include: - 5145: network share object was checked to see whether client can be granted desired access. The recommended state for this setting is to include: Failure."
-    rationale: "Auditing these events may be useful when investigating a security incident."
+    rationale: "Auditing the Failures will log which unauthorized users attempted (and failed) to get access to a file or folder on a network share on this computer, which could possibly be an indication of malicious intent."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Detailed File Share"
     compliance:
       - cis: ["17.6.1"]
@@ -2882,7 +2882,7 @@ checks:
   - id: 15183
     title: "Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver'"
     description: "This setting configures the start type for the Server Message Block version 1 (SMBv1) client driver service (MRxSmb10), which is recommended to be disabled. The recommended state for this setting is: Enabled: Disable driver. Note: Do not, under any circumstances, configure this overall setting as Disabled, as doing so will delete the underlying registry entry altogether, which will cause serious problems."
-    rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3."
+    rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3. More information on this can be found at the following links: Stop using SMB1 | Storage at Microsoft Disable SMB v1 in Managed Environments with Group Policy-'Stay Safe' Cyber Security Blog Disabling SMBv1 through Group Policy - Microsoft Security Guidance blog"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable driver (recommended): Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 client driver. Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     compliance:
       - cis: ["18.3.2"]
@@ -2896,7 +2896,7 @@ checks:
   - id: 15184
     title: "Ensure 'Configure SMB v1 server' is set to 'Disabled'"
     description: "This setting configures the server-side processing of the Server Message Block version 1 (SMBv1) protocol. The recommended state for this setting is: Disabled."
-    rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3."
+    rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3. More information on this can be found at the following links: Stop using SMB1 | Storage at Microsoft Disable SMB v1 in Managed Environments with Group Policy-'Stay Safe' Cyber Security Blog Disabling SMBv1 through Group Policy - Microsoft Security Guidance blog"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 server. Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     compliance:
       - cis: ["18.3.3"]
@@ -2928,7 +2928,7 @@ checks:
   - id: 15186
     title: "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'"
     description: "This policy setting controls whether users that aren't Administrators can install print drivers on the system."
-    rationale: "Restricting the installation of print drives to Administrators can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks"
+    rationale: "Restricting the installation of print drives to Administrators can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Limits print driver installation to Administrators. Note: This Group Policy path does not exist by default. An additional Group Policy template SecGuide.admx/adml is required - it is available from Microsoft at this link."
     compliance:
       - cis: ["18.3.5"]
@@ -2984,7 +2984,7 @@ checks:
   - id: 15190
     title: "Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'"
     description: "IP source routing is a mechanism that allows the sender to determine the IP route that a datagram should follow through the network. The recommended state for this setting is: Enabled: Highest protection, source routing is completely disabled."
-    rationale: "An attacker could use source routed packets to obscure their identity and location. Source routing allows a computer that sends a packet to specify the route that the packet takes"
+    rationale: "An attacker could use source routed packets to obscure their identity and location. Source routing allows a computer that sends a packet to specify the route that the packet takes."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Highest protection, source routing is completely disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing). Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog"
     compliance:
       - cis: ["18.4.2"]
@@ -3195,7 +3195,7 @@ checks:
   - id: 15202
     title: "Ensure 'Configure DNS over HTTPS (DoH) name resolution' is set to 'Enabled: Allow DoH' or higher"
     description: "This setting determines if DNS over HTTPS (DoH) is used by the system. DNS over HTTPS (DoH) is a protocol for performing remote Domain Name System (DNS) resolution over the Hypertext Transfer Protocol Secure (HTTPS). For additional information on DNS over HTTPS (DoH), visit: Secure DNS Client over HTTPS (DoH) on Windows Server 2022 | Microsoft Docs."
-    rationale: "DNS over HTTPS (DoH) helps protect against DNS spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. It can also help prevent man-in-the-middle (MitM) attacks because the session in-between is encrypted"
+    rationale: "DNS over HTTPS (DoH) helps protect against DNS spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. It can also help prevent man-in-the-middle (MitM) attacks because the session in-between is encrypted."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow DoH (configuring to Enabled: Require DoH also conforms to the benchmark): Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure DNS over HTTPS (DoH) name resolution. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.5.4.1"]
@@ -3208,7 +3208,7 @@ checks:
   - id: 15203
     title: "Ensure 'Turn off multicast name resolution' is set to 'Enabled'"
     description: "LLMNR is a secondary name resolution protocol. With LLMNR, queries are sent using multicast over a local network link on a single subnet from a client computer to another client computer on the same subnet that also has LLMNR enabled. LLMNR does not require a DNS server or DNS client configuration, and provides name resolution in scenarios in which conventional DNS name resolution is not possible. The recommended state for this setting is: Enabled."
-    rationale: "An attacker can listen on a network for these LLMNR (UDP/5355) or NBT-NS (UDP/137) broadcasts and respond to them, tricking the host into thinking that it knows the location of the requested system."
+    rationale: "An attacker can listen on a network for these LLMNR (UDP/5355) or NBT-NS (UDP/137) broadcasts and respond to them, tricking the host into thinking that it knows the location of the requested system. Note: To completely mitigate local name resolution poisoning, in addition to this setting, the properties of each installed NIC should also be set to Disable NetBIOS over TCP/IP (on the WINS tab in the NIC properties). Unfortunately, there is no global setting to achieve this that automatically applies to all NICs - it is a per-NIC setting that varies with different NIC hardware installations."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Turn off multicast name resolution. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.5.4.2"]
@@ -3349,7 +3349,7 @@ checks:
   - id: 15212
     title: "Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\" and \"Require Integrity\" set for all NETLOGON and SYSVOL shares"
     description: 'This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with Require Mutual Authentication and Require Integrity set for all NETLOGON and SYSVOL shares. Note: If the environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the "Privacy" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing.'
-    rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths."
+    rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\\\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\\\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths. Additional guidance on the deployment of this security setting is available from the Microsoft Premier Field Engineering (PFE) Platforms TechNet Blog here: Guidance on Deployment of MS15-011 and MS15-014."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with the following paths configured, at a minimum: \\\\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\\\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Provider\\Hardened UNC Paths. Note: This Group Policy path does not exist by default. An additional Group Policy template (NetworkProvider.admx/adml) is required - it is included with the MS15-011 / MSKB 3000483 security update or with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.5.14.1"]
@@ -3363,7 +3363,7 @@ checks:
   - id: 15213
     title: "Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')"
     description: "Internet Protocol version 6 (IPv6) is a set of protocols that computers use to exchange information over the Internet and over home and business networks. IPv6 allows for many more IP addresses to be assigned than IPv4 did. Older networking, hosts and operating systems may not support IPv6 natively. The recommended state for this setting is: DisabledComponents - 0xff (255)"
-    rationale: "Since the vast majority of private enterprise managed networks have no need to utilize IPv6 (because they have access to private IPv4 addressing), disabling IPv6 components reduces a possible attack surface that is also harder to monitor the traffic on. As a result, we recommend configuring IPv6 to a Disabled state when it is not needed."
+    rationale: "Since the vast majority of private enterprise managed networks have no need to utilize IPv6 (because they have access to private IPv4 addressing), disabling IPv6 components removes a possible attack surface that is also harder to monitor the traffic on. As a result, we recommend configuring IPv6 to a Disabled state when it is not needed."
     remediation: "To establish the recommended configuration, set the following Registry value to 0xff (255) (DWORD): HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\TCPIP6\\Parameters:DisabledComponents. Note: This change does not take effect until the computer has been restarted. Note #2: Although Microsoft does not provide an ADMX template to configure this registry value, a custom .ADM template (Disable-IPv6-Components-KB929852.adm) is provided in the CIS Benchmark Remediation Kit to facilitate its configuration. Be aware though that simply turning off the group policy setting in the .ADM template will not \"undo\" the change once applied. Instead, the opposite setting must be applied to change the registry value to the opposite state."
     compliance:
       - cis: ["18.5.19.2.1"]
@@ -3478,7 +3478,7 @@ checks:
   - id: 15220
     title: "Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'"
     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print."
-    rationale: "Enabling Windows User Account Control (UAC) for the installation of new print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
+    rationale: "Enabling Windows User Account Control (UAC) for the installation of new print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When installing drivers for a new connection. Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.6.2"]
@@ -3489,7 +3489,7 @@ checks:
   - id: 15221
     title: "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'"
     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print."
-    rationale: "Enabling Windows User Account Control (UAC) for updating existing print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
+    rationale: "Enabling Windows User Account Control (UAC) for updating existing print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When updating drivers for an existing connection. Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.6.3"]
@@ -3511,7 +3511,7 @@ checks:
   - id: 15223
     title: "Ensure 'Include command line in process creation events' is set to 'Enabled'"
     description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Disabled."
-    rationale: "When this policy setting is enabled, any user who has read access to the security events can read the command-line arguments for any successfully created process. Command-line arguments may contain sensitive or private information such as passwords or user data."
+    rationale: "Capturing process command line information in event logs can be very valuable when performing forensic investigations of attack incidents."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AuditSettings.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.3.1"]
@@ -3612,7 +3612,7 @@ checks:
   - id: 15231
     title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'"
     description: "Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware. The recommended state for this setting is: Enabled ."
-    rationale: "Restricted Admin Mode was designed to help protect administrator accounts by ensuring that reusable credentials are not stored in memory on remote devices that could potentially be compromised. Windows Defender Remote Credential Guard helps you protect your credentials over a Remote Desktop connection by redirecting Kerberos requests back to the device that is requesting the connection. Both features should be enabled and supported, as they reduce the chance of credential theft."
+    rationale: "Secure Launch changes the way Windows boots to use Intel Trusted Execution Technology (TXT) and Runtime BIOS Resilience features to prevent firmware exploits from being able to impact the security of the Windows Virtualization Based Security environment."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Secure Launch Configuration. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.5.6"]
@@ -3729,7 +3729,7 @@ checks:
   - id: 15239
     title: "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'"
     description: "This policy setting specifies whether to use the Store service for finding an application to open a file with an unhandled file type or protocol association. When a user opens a file type or protocol that is not associated with any applications on the computer, the user is given the choice to select a local application or use the Store service to find an application."
-    rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
+    rationale: "Users might download drivers that include malicious code."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off downloading of print drivers over HTTP. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.2"]
@@ -4128,7 +4128,7 @@ checks:
   - id: 15266
     title: "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'"
     description: "Dictates whether or not Windows is allowed to use standby states when sleeping the computer."
-    rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
+    rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Require a password when a computer wakes (on battery). Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.34.6.5"]
@@ -4575,7 +4575,7 @@ checks:
   - id: 15295
     title: "Ensure 'Disable OneSettings Downloads' is set to 'Enabled'"
     description: "This policy setting controls whether Windows attempts to connect with the OneSettings service to download configuration settings. The recommended state for this setting is: Enabled."
-    rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an asneeded basis."
+    rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as-needed basis."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Disable OneSettings Downloads. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.3"]
@@ -4614,7 +4614,7 @@ checks:
   - id: 15298
     title: "Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'"
     description: "This policy setting controls whether additional diagnostic logs are collected when more information is needed to troubleshoot a problem on the device. The recommended state for this setting is: Enabled. Note: Diagnostic logs are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended)or Enabled: Send required diagnostic data to send only basic information."
-    rationale: "Sending data to a 3rd-party vendor is a security concern and should only be done on an asneeded basis."
+    rationale: "Sending data to a 3rd-party vendor is a security concern and should only be done on an as-needed basis."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Diagnostic Log Collection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.6"]
@@ -4773,7 +4773,7 @@ checks:
   - id: 15307
     title: "Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
-    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Setup\\Specify the maximum log file size (KB). Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Maximum Log Size (KB), but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.3.2"]
@@ -4813,7 +4813,7 @@ checks:
   - id: 15309
     title: "Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
-    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\System\\Specify the maximum log file size (KB). Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Maximum Log Size (KB), but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.4.2"]
@@ -4945,7 +4945,7 @@ checks:
   - id: 15317
     title: "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'"
     description: 'This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft has now renamed to "Windows Defender Antivirus Cloud Protection Service". This setting can only be set by Group Policy.'
-    rationale: "The decision on whether or not to participate in Microsoft MAPS / Windows Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
+    rationale: "The decision on whether or not to participate in Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.4.1"]
@@ -4973,7 +4973,7 @@ checks:
   - id: 15319
     title: "Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'"
     description: "This policy setting controls the state for the Attack Surface Reduction (ASR) rules."
-    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
+    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Microsoft Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.5.1.1"]
@@ -4988,7 +4988,7 @@ checks:
   - id: 15320
     title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured"
     description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes)"
-    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
+    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
     remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d, d4f940ab-401b-4efc-aadc-ad5f3c50688a, and e6db77e5-3df2-4cf1-b95a-636979351e5b are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Microsoft Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.5.1.2"]
@@ -5124,7 +5124,7 @@ checks:
   - id: 15329
     title: "Ensure 'Turn on e-mail scanning' is set to 'Enabled'"
     description: "This policy setting allows you to configure e-mail scanning. When e-mail scanning is enabled, the engine will parse the mailbox and mail files, according to their specific format, in order to analyze the mail bodies and attachments. Several e-mail formats are currently supported, for example: pst (Outlook), dbx, mbx, mime (Outlook Express), binhex (Mac)."
-    rationale: "Incoming e-mails should be scanned by an antivirus solution such as Windows Defender Antivirus, as email attachments are a commonly used attack vector to infiltrate computers with malicious software."
+    rationale: "Incoming e-mails should be scanned by an antivirus solution such as Microsoft Defender Antivirus, as email attachments are a commonly used attack vector to infiltrate computers with malicious software."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Scan\\Turn on e-mail scanning. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.12.2"]
@@ -5178,7 +5178,7 @@ checks:
   - id: 15333
     title: "Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'"
     description: "This policy setting lets you prevent apps and features from working with files on OneDrive using the Next Generation Sync Client."
-    rationale: "Enabling this setting prevents users from accidentally uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client."
+    rationale: "Enabling this setting prevents users from accidentally (or intentionally) uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client. Note: This security concern applies to any cloud-based file storage application installed on a workstation, not just the one supplied with Windows."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\OneDrive\\Prevent the usage of OneDrive for file storage. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template SkyDrive.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). However, we strongly recommend you only use the version included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Older versions of the templates had conflicting settings in different template files for both OneDrive & SkyDrive, until it was cleaned up properly in the above version. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Prevent the usage of SkyDrive for file storage, but it was renamed starting with the Windows 10 RTM (Release 1507) Administrative Templates."
     compliance:
       - cis: ["18.9.58.1"]
@@ -5520,7 +5520,7 @@ checks:
   - id: 15356
     title: "Ensure 'Allow search and Cortana to use location' is set to 'Disabled'"
     description: "This policy setting specifies whether search and Cortana can provide location aware search and Cortana results."
-    rationale: "In an enterprise managed environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out"
+    rationale: "In an enterprise managed environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow search and Cortana to use location. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Search.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.67.6"]
@@ -5642,7 +5642,7 @@ checks:
   - id: 15364
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'"
     description: "This policy setting allows you to manage the behavior of Windows SmartScreen. Windows SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled."
-    rationale: "Windows SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
+    rationale: "Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Warn and prevent bypass: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Explorer\\Configure Windows Defender SmartScreen. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsExplorer.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Configure Windows SmartScreen, but it was renamed starting with the Windows 10 Release 1703 Administrative Templates."
     compliance:
       - cis: ["18.9.85.1.1"]
@@ -5678,7 +5678,7 @@ checks:
   - id: 15366
     title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'"
     description: "This setting lets you decide whether employees can override the SmartScreen Filter warnings about downloading unverified files."
-    rationale: "SmartScreen will warn an employee if a file is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
+    rationale: "SmartScreen will warn an employee if a website is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Microsoft Edge\\Prevent bypassing Windows Defender SmartScreen prompts for sites. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template MicrosoftEdge.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Microsoft Windows 10 Release 1511 Administrative Templates, this setting was initially named Don't allow SmartScreen Filter warning overrides. In the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was renamed to Prevent bypassing SmartScreen prompts for sites. Finally, it was given its current name of Prevent bypassing Windows Defender SmartScreen prompts for sites starting with the Windows 10 Release 1703 Administrative Templates."
     compliance:
       - cis: ["18.9.85.2.2"]
@@ -5696,7 +5696,7 @@ checks:
   - id: 15367
     title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'"
     description: "This setting enables or disables the Windows Game Recording and Broadcasting features."
-    rationale: "If this setting is allowed users could record and broadcast session info to external sites which is a privacy concern."
+    rationale: "If this setting is allowed, users could record and broadcast session info to external sites, which is both a risk of accidentally exposing sensitive company data (on-screen) outside the company as well as a privacy concern."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Game Recording and Broadcasting\\Enables or disables Windows Game Recording and Broadcasting. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template GameDVR.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.87.1"]
@@ -5799,7 +5799,7 @@ checks:
   - id: 15374
     title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
     description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log."
-    rationale: "There are potential risks of capturing passwords in the PowerShell logs. This setting should only be needed for debugging purposes, and not in normal operation, it is important to ensure this is set to Disabled."
+    rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.100.1"]
@@ -5917,7 +5917,7 @@ checks:
   - id: 15381
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port."
-    rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
+    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow unencrypted traffic. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.102.2.3"]
@@ -5936,7 +5936,7 @@ checks:
   - id: 15382
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network."
-    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
+    rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk of account compromise slightly. For example, if you forget to lock your desktop before leaving it unattended for a few minutes another person could access not only the desktop of your computer but also any hosts you manage via WinRM with cached RunAs credentials."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Disallow WinRM from storing RunAs credentials. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.102.2.4"]
@@ -6076,7 +6076,7 @@ checks:
   - id: 15392
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
     description: "This policy setting determines the level of Preview Build or Feature Updates to receive, and when. The Windows readiness level for each new Windows 10 Feature Update is classified in one of 5 categories, depending on your organizations level of comfort with receiving them: - Preview Build - Fast: Devices set to this level will be the first to receive new builds of Windows with features not yet available to the general public. Select Fast to participate in identifying and reporting issues to Microsoft, and provide suggestions on new functionality. - Preview Build - Slow: Devices set to this level receive new builds of Windows before they are available to the general public, but at a slower cadence than those set to Fast, and with changes and fixes identified in earlier builds. - Release Preview: Receive builds of Windows just before Microsoft releases them to the general public. - Semi-Annual Channel (Targeted): Receive feature updates when they are released to the general public. - Semi-Annual Channel: Feature updates will arrive when they are declared SemiAnnual Channel. This usually occurs about 4 months after Semi-Annual Channel (Targeted), indicating that Microsoft, Independent Software Vendors (ISVs), partners and customer believe that the release is ready for broad deployment."
-    rationale: "Forcing new features without prior testing in your environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
+    rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Select when Feature Updates are received, but it was renamed to Select when Preview Builds and Feature Updates are received starting with the Windows 10 Release 1709 Administrative Templates."
     compliance:
       - cis: ["18.9.108.4.2"]
