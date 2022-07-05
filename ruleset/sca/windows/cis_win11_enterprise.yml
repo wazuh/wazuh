@@ -4942,7 +4942,7 @@ checks:
       - cis: ["18.9.47.6.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine -> EnableFileHashComputation -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation -> 1'
 
 
   - id: 26323
@@ -4955,7 +4955,7 @@ checks:
       - cis_csc: ["8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableIOAVProtection -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
   - id: 26324
     title: "Ensure 'Turn off real-time protection' is set to 'Disabled'"
@@ -4967,7 +4967,7 @@ checks:
       - cis_csc: ["8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
   - id: 26325
     title: "Ensure 'Turn on behavior monitoring' is set to 'Enabled'"
@@ -4979,7 +4979,7 @@ checks:
       - cis_csc: ["10.7","8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
   - id: 26326
     title: "Ensure 'Turn on script scanning' is set to 'Enabled'"
@@ -4991,7 +4991,7 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableScriptScanning -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
   - id: 26327
     title: "Ensure 'Configure Watson events' is set to 'Disabled'"
