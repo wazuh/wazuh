@@ -65,6 +65,8 @@
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 
+#define SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE "legacy"
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,

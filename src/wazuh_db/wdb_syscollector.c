@@ -53,7 +53,9 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name) {
-        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETINFO, item_id);
+        if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
+            wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETINFO, item_id);
+        }
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_NETINFO_INSERT2 : WDB_STMT_NETINFO_INSERT) < 0) {
@@ -168,7 +170,9 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == iface) {
-        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETPROTO, item_id);
+        if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
+            wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETPROTO, item_id);
+        }
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROTO_INSERT2 : WDB_STMT_PROTO_INSERT) < 0) {
@@ -244,7 +248,9 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == iface || NULL == address) {
-        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETADDRESS, item_id);
+        if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
+            wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETADDRESS, item_id);
+        }
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_ADDR_INSERT2 : WDB_STMT_ADDR_INSERT) < 0) {
@@ -549,7 +555,9 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name || NULL == version || NULL == architecture) {
-        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PACKAGES, item_id);
+        if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
+            wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PACKAGES, item_id);
+        }
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROGRAM_INSERT2 : WDB_STMT_PROGRAM_INSERT) < 0) {
@@ -848,7 +856,9 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == protocol || NULL == local_ip || local_port < 0 || inode < 0) {
-        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PORTS, item_id);
+        if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
+            wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PORTS, item_id);
+        }
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PORT_INSERT2 : WDB_STMT_PORT_INSERT) < 0) {
