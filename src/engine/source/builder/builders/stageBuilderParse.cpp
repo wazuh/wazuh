@@ -50,11 +50,11 @@ base::Expression stageBuilderParse(const std::any& definition)
                        }
                        catch (const std::exception& e)
                        {
-                           throw std::runtime_error(
+                           std::throw_with_nested(std::runtime_error(
                                fmt::format("[builder::stageBuilderParse(json)] "
                                            "Error building parser [{}]: {}",
                                            parserName,
-                                           e.what()));
+                                           e.what())));
                        }
 
                        return parserExpression;
