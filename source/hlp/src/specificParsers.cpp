@@ -39,6 +39,7 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}},
         {"ISO8601", {"%Y-%d-%mT%T%z", "2018-08-14T14:30:02.203151+02:00"}},
         {"HTTPDATE", {"%d/%b/%Y:%T %z", "26/Dec/2016:16:22:14 +0000"}},
+        {"NGINX_ERROR", {"%Y/%m/%d %T", "2016/10/25 14:49:34"}},
 };
 
 bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args)
@@ -49,8 +50,11 @@ bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args
         parser.options.push_back(it->first.data());
         return true;
     }
-
-    return false;
+    else
+    {
+        throw std::runtime_error(fmt::format(
+            "[configureTsParser(parser, args)] Unknown timestamp format: {}", args[0]));
+    }
 }
 
 bool configureMapParser(Parser& parser, std::vector<std::string_view> const& args)
