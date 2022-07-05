@@ -46,9 +46,9 @@ public:
      * @brief Remote sync initializes the instance.
      *
      * @param threadPoolSize Size of the thread pool.
-     * @param maxQueueSize Maximum size of the queue, if the value is 0, it is unlimited.
+     * @param maxQueueSize Maximum size of the queue.
      */
-    RemoteSync(const unsigned int threadPoolSize = std::thread::hardware_concurrency(), const size_t maxQueueSize = 0);
+    RemoteSync(const unsigned int threadPoolSize = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
 
     /**
      * @brief RSync Constructor.
