@@ -39,7 +39,7 @@ int main(int argc, const char* argv[])
             };
             const std::chrono::milliseconds syncPeriod{100};
             const auto maxDbItems{100};
-            const size_t maxQueueSize{0};
+            const size_t maxQueueSize{UNLIMITED_QUEUE_SIZE};
             AgentEmulator agent{syncPeriod, maxDbItems, syncQueue, args.outputFolder(), maxQueueSize};
             ManagerEmulator manager{syncQueue};
 
@@ -68,7 +68,7 @@ int main(int argc, const char* argv[])
 
             const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
             const auto& jsonInputFile { nlohmann::json::parse(inputData) };
-            const size_t maxQueueSize{0};
+            const size_t maxQueueSize{UNLIMITED_QUEUE_SIZE};
             OneTimeSync otSync(jsonConfigFile,
                                jsonInputFile,
                                args.outputFolder(),

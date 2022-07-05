@@ -18,11 +18,7 @@
 #include <functional>
 #include <iostream>
 #include "threadSafeQueue.h"
-
-constexpr auto UNLIMITED_QUEUE_SIZE
-{
-    0
-};
+#include "commonDefs.h"
 
 namespace Utils
 {
@@ -188,7 +184,9 @@ namespace Utils
     class SyncDispatcher
     {
         public:
-            SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = std::thread::hardware_concurrency()*/, const size_t /*maxQueueSize = 0*/)
+            SyncDispatcher(Functor functor,
+                           const unsigned int /*numberOfThreads = std::thread::hardware_concurrency()*/,
+                           const size_t /*maxQueueSize = UNLIMITED_QUEUE_SIZE*/)
                 : m_functor{functor}
                 , m_running{true}
             {

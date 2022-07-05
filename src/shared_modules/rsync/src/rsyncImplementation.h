@@ -88,7 +88,7 @@ namespace RSync
             void releaseContext(const RSYNC_HANDLE handle);
 
             RSYNC_HANDLE create(const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
-                                const size_t maxQueueSize = 0);
+                                const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
 
             void startRSync(const RSYNC_HANDLE handle,
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
