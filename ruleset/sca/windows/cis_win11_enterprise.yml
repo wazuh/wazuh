@@ -4851,10 +4851,9 @@ checks:
     title: "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'"
     description: "This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft has now renamed to \"Windows Defender Antivirus Cloud Protection Service\". This setting can only be set by Group Policy."
     rationale: "The decision on whether or not to participate in Microsoft MAPS / Windows Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MAPS\\Configure local setting override  for reporting to Microsoft MAPS"
     compliance:
       - cis: ["18.9.47.4.1"]
-      - cis_csc: ["8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
