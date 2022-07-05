@@ -4533,7 +4533,7 @@ checks:
       - cis: ["18.9.17.7"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> :LimitDumpCollection -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection -> 1'
 
   - id: 26300
     title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'"
