@@ -55,7 +55,11 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         'port': 1516,
         'bind_addr': '0.0.0.0',
         'nodes': ['NODE_IP'],
-        'hidden': 'no'
+        'hidden': 'no',
+        'agent_reconnection': {
+            'disabled': 'yes',
+            'node_blacklist': set(),
+        }
     }
 
     try:
