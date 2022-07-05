@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include "../wrappers/wazuh/wazuh_db/wdb_state_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 #include "wazuh_db/wdb.h"
@@ -56,6 +57,56 @@ void test_wdbcom_dispatch_getstats(void ** state) {
 
     assert_non_null(response);
     assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{\"test1\":18,\"test2\":\"wazuhdb\"}}");
+}
+
+void test_wdbcom_dispatch_getconfig(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{\"section\":\"internal\"}}";
+    char response[OS_MAXSTR + 1];
+    *response = '\0';
+
+    cJSON* data_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data_json, "test1", 12);
+    cJSON_AddStringToObject(data_json, "test2", "wazuhdb");
+
+    will_return(__wrap_wdb_get_internal_config, data_json);
+
+    wdbcom_dispatch(request, response);
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{\"test1\":12,\"test2\":\"wazuhdb\"}}");
+}
+
+void test_wdbcom_dispatch_getconfig_unknown_section(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{\"section\":\"testtest\"}}";
+    char response[OS_MAXSTR + 1];
+    *response = '\0';
+
+    wdbcom_dispatch(request, response);
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":6,\"message\":\"Unrecognized or not configured section\",\"data\":{}}");
+}
+
+void test_wdbcom_dispatch_getconfig_empty_section(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{}}";
+    char response[OS_MAXSTR + 1];
+    *response = '\0';
+
+    wdbcom_dispatch(request, response);
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":5,\"message\":\"Empty section\",\"data\":{}}");
+}
+
+void test_wdbcom_dispatch_getconfig_empty_parameters(void ** state) {
+    char* request = "{\"command\":\"getconfig\"}";
+    char response[OS_MAXSTR + 1];
+    *response = '\0';
+
+    wdbcom_dispatch(request, response);
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":4,\"message\":\"Empty parameters\",\"data\":{}}");
 }
 
 void test_wdbcom_dispatch_unknown_command(void ** state) {
@@ -116,6 +167,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_wdbcom_output_builder, test_teardown),
         // Test wdbcom_dispatch
         cmocka_unit_test(test_wdbcom_dispatch_getstats),
+        cmocka_unit_test(test_wdbcom_dispatch_getconfig),
+        cmocka_unit_test(test_wdbcom_dispatch_getconfig_unknown_section),
+        cmocka_unit_test(test_wdbcom_dispatch_getconfig_empty_section),
+        cmocka_unit_test(test_wdbcom_dispatch_getconfig_empty_parameters),
         cmocka_unit_test(test_wdbcom_dispatch_unknown_command),
         cmocka_unit_test(test_wdbcom_dispatch_empty_command),
         cmocka_unit_test(test_wdbcom_dispatch_invalid_json),

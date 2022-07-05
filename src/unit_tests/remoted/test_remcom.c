@@ -22,6 +22,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/remoted/state_wrappers.h"
+#include "../wrappers/wazuh/remoted/config_wrappers.h"
 
 char* remcom_output_builder(int error_code, const char* message, cJSON* data_json);
 size_t remcom_dispatch(char * command, char ** output);
@@ -74,6 +75,64 @@ void test_remcom_dispatch_getstats(void ** state) {
 
     assert_non_null(response);
     assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{\"test1\":18,\"test2\":\"remoted\"}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_remcom_dispatch_getconfig(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{\"section\":\"remote\"}}";
+    char *response = NULL;
+
+    cJSON* data_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data_json, "test1", 15);
+    cJSON_AddStringToObject(data_json, "test2", "remoted");
+
+    will_return(__wrap_getRemoteConfig, data_json);
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{\"test1\":15,\"test2\":\"remoted\"}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_remcom_dispatch_getconfig_unknown_section(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{\"section\":\"testtest\"}}";
+    char *response = NULL;
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":6,\"message\":\"Unrecognized or not configured section\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_remcom_dispatch_getconfig_empty_section(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{}}";
+    char *response = NULL;
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":5,\"message\":\"Empty section\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_remcom_dispatch_getconfig_empty_parameters(void ** state) {
+    char* request = "{\"command\":\"getconfig\"}";
+    char *response = NULL;
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":4,\"message\":\"Empty parameters\",\"data\":{}}");
     assert_int_equal(size, strlen(response));
 }
 
@@ -431,6 +490,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_remcom_output_builder, test_teardown),
         // Test remcom_dispatch
         cmocka_unit_test_teardown(test_remcom_dispatch_getstats, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getconfig, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getconfig_unknown_section, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getconfig_empty_section, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getconfig_empty_parameters, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_unknown_command, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_empty_command, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_invalid_json, test_teardown),
