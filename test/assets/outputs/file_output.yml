@@ -1,0 +1,7 @@
+name: file_output
+check:
+  - event.original: +exists
+
+outputs:
+  - file:
+      path: /tmp/filepath.txt
