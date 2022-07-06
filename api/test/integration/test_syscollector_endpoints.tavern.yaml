@@ -57,6 +57,18 @@ stages:
       json:
         error: 1724
 
+  - name: Try to get 012 agent's syscollector OS data (never connected)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/012/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 2007
+
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
 

@@ -1120,6 +1120,10 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     """
 
     def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
+        if query_format == 'agent' and not path.exists(path.join(common.wdb_path, f"{agent_id}.db")):
+            raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
+                                                 "Please check if the agent has connected to the manager")
+
         self.agent_id = agent_id
         self.query_format = query_format
         self.max_size = max_size
