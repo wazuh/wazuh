@@ -1,0 +1,13 @@
+name: suricata-stats
+parents:
+  - suricata
+
+metadata:
+  description: suricata-stats
+
+check:
+  - _suricata.event_type: stats
+
+normalize:
+  - map:
+      event.kind: metric

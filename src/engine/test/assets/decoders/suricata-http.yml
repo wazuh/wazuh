@@ -1,0 +1,20 @@
+name: suricata-http
+parents:
+  - suricata
+
+metadata:
+  description: suricata-http
+
+check:
+  - _suricata.event_type: http
+
+normalize:
+  - check:
+      - _suricata.http.status: +i_lt/400
+    map:
+      event.outcome: success
+
+  - check:
+      - _suricata.http.status: +i_ge/400
+    map:
+      event.outcome: failure

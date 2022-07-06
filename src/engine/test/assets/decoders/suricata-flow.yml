@@ -1,0 +1,14 @@
+name: suricata-flow
+
+parents:
+  - suricata
+
+metadata:
+  description: suricata-flow
+
+check:
+  - _suricata.event_type: flow
+
+normalize:
+  - map:
+      event.type: +s_append/connection
