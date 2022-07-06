@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 
 #include "baseTypes.hpp"
+#include "baseHelper.hpp"
 #include "json.hpp"
 #include "syntax.hpp"
 #include <kvdb/kvdbManager.hpp>
@@ -14,6 +15,7 @@ namespace builder::internals::builders
 {
 
 using builder::internals::syntax::REFERENCE_ANCHOR;
+using namespace helper::base;
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
 base::Expression opBuilderKVDBExtract(const std::any& definition)
@@ -114,50 +116,32 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
 
 base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool checkExist)
 {
-    std::string target;
-    std::vector<std::string> parametersArr;
-    try
-    {
-        auto tuple =
-            std::any_cast<std::tuple<std::string, std::vector<std::string>>>(definition);
-        target = json::Json::formatJsonPath(std::get<0>(tuple));
-        parametersArr = std::get<1>(tuple);
-    }
-    catch (const std::exception& e)
-    {
-        std::throw_with_nested(std::runtime_error(
-            fmt::format("[builder::opBuilderKVDBExistanceCheck(<field, parameters>)] "
-                        "Received unexpected argument type")));
-    }
-    if (parametersArr.size() != 2)
-    {
-        throw std::runtime_error(
-            fmt::format("[builder::opBuilderKVDBExistanceCheck(<field, parameters>)] "
-                        "Expected 2 arguments, but got [{}]",
-                        parametersArr.size()));
-    }
 
-    auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
+    auto [targetField, name, arguments] = extractDefinition(definition);
+    auto parameters = processParameters(arguments);
+    checkParametersSize(parameters, 1);
+    checkParameterType(parameters[0], Parameter::Type::VALUE);
+    name = formatHelperFilterName(targetField, name, parameters);
+
+    auto kvdb = KVDBManager::get().getDB(parameters[0].m_value);
     if (!kvdb)
     {
-        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        auto msg = fmt::format("[{}] DB isn't available for usage", parameters[0].m_value);
         throw std::runtime_error(std::move(msg));
     }
 
-    auto name = fmt::format(
-        "{}: kvdb", target);
     std::string successTrace = fmt::format("[{}] -> Success", name);
     std::string failureTrace = fmt::format("[{}] -> Failure", name);
 
     return base::Term<base::EngineOp>::create(
         name,
-        [=, kvdb = std::move(kvdb)](base::Event event)
+        [=, kvdb = std::move(kvdb), targetField = std::move(targetField)](base::Event event)
         {
             bool found = false;
             try // TODO We are only using try for JSON::get. Is correct to
                 // wrap everything?
             {
-                auto value = event->getString(target);
+                auto value = event->getString(targetField);
                 if (value.has_value())
                 {
                     if (kvdb->hasKey(value.value()))
