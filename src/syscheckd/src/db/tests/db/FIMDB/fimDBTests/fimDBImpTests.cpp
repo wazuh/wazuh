@@ -30,6 +30,7 @@ void mockSyncMessage(const char* log, const char* tag)
 {
     mockSync->syncMsg(log, tag);
 }
+
 class FimDBWinFixture : public ::testing::Test
 {
     protected:
@@ -53,7 +54,7 @@ class FimDBWinFixture : public ::testing::Test
                 )"
             };
 
-            mockIntervalSync = 1000;
+            mockIntervalSync = 900;
             mockMaxRowsFile = 1000;
             mockMaxRowsReg = 1000;
             syncResponseTimeout = 30;
@@ -93,14 +94,14 @@ class FimDBWinFixture : public ::testing::Test
             mockSync = new MockSyncMsg();
 
             fimDBMock.init(mockIntervalSync,
+                           syncMaxInterval,
+                           syncResponseTimeout,
                            callbackSyncFileWrapper,
                            callbackSyncRegistryWrapper,
                            callbackLogWrapper,
                            dbsyncHandler,
                            rsyncHandler,
                            mockMaxRowsFile,
-                           syncResponseTimeout,
-                           syncMaxInterval,
                            mockMaxRowsReg,
                            syncRegistryEnabled);
         }
@@ -137,7 +138,7 @@ class FimDBFixture : public ::testing::Test
                 )"
             };
 
-            mockIntervalSync = 1000;
+            mockIntervalSync = 900;
             mockMaxRowsFile = 1000;
             mockMaxRowsReg = 1000;
             syncResponseTimeout = 30;
@@ -175,6 +176,7 @@ class FimDBFixture : public ::testing::Test
             mockRSync = (MockRSyncHandler*) rsyncHandler.get();
             mockLog = new MockLoggingCall();
             mockSync = new MockSyncMsg();
+
             EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
 
             #ifdef WIN32
@@ -183,14 +185,14 @@ class FimDBFixture : public ::testing::Test
             #endif
 
             fimDBMock.init(mockIntervalSync,
+                           syncMaxInterval,
+                           syncResponseTimeout,
                            callbackSyncFileWrapper,
                            callbackSyncRegistryWrapper,
                            callbackLogWrapper,
                            dbsyncHandler,
                            rsyncHandler,
                            mockMaxRowsFile,
-                           syncResponseTimeout,
-                           syncMaxInterval,
                            mockMaxRowsReg,
                            syncRegistryEnabled);
         }
@@ -270,6 +272,31 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     fimDBMock.runIntegrity();
 }
 
+TEST_F(FimDBFixture, syncAlgorithmLoop)
+{
+    EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(15)).WillOnce(testing::Return(30));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "FIM Sync check failed, sync interval increased. Next interval: 1800s"));
+
+    fimDBMock.setTimeLastSyncMsg();
+    fimDBMock.syncAlgorithm();
+
+    EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(15)).WillOnce(testing::Return(30));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "FIM Sync check failed, sync interval increased. Next interval: 2000s"));
+
+    fimDBMock.setTimeLastSyncMsg();
+    fimDBMock.syncAlgorithm();
+
+    EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(15)).WillOnce(testing::Return(60));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "FIM Sync check success, sync interval reset to original value: 900s"));
+
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync."));
+    EXPECT_CALL(*mockRSync, startSync(testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync."));
+
+    fimDBMock.setTimeLastSyncMsg();
+    fimDBMock.syncAlgorithm();
+}
+
 TEST_F(FimDBFixture, executeQuerySuccess)
 {
     nlohmann::json itemJson;
@@ -300,6 +327,7 @@ TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
     auto rawData{data};
     const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 
+    EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(100));
     EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()}));
 
     fimDBMock.pushMessage(data);
@@ -311,6 +339,7 @@ TEST_F(FimDBFixture, fimSyncPushMsgException)
     auto rawData{data};
     const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 
+    EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(100));
     EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()})).WillOnce(testing::Throw(std::exception()));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
 

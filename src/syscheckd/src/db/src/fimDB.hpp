@@ -250,8 +250,20 @@ class FIMDB
         */
         void setTimeLastSyncMsg()
         {
-            m_timeLastSyncMsg = std::time(nullptr);
+            m_timeLastSyncMsg = getCurrentTime();
         }
+
+        /**
+        * @brief Execute the sync algorithm to avoid overlaping differents syncs.
+        */
+        void syncAlgorithm();
+
+        /**
+        * @brief Get the current timestamp using std::time() function.
+        *
+        * @return time_t timestamp in seconds.
+        */
+        virtual time_t getCurrentTime() const;
 
     private:
 
@@ -270,6 +282,7 @@ class FIMDB
         bool                                                                    m_syncRegistryEnabled;
         uint32_t                                                                m_syncResponseTimeout;
         uint32_t                                                                m_syncMaxInterval;
+        uint32_t                                                                m_currentSyncInterval;
         bool                                                                    m_syncSuccessful;
         std::time_t                                                             m_timeLastSyncMsg;
 
@@ -281,7 +294,7 @@ class FIMDB
     protected:
         FIMDB() = default;
         // LCOV_EXCL_START
-        ~FIMDB() = default;
+        virtual ~FIMDB() = default;
         // LCOV_EXCL_STOP
         FIMDB(const FIMDB&) = delete;
 };

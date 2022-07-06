@@ -65,6 +65,18 @@ class MockFIMDB: public FIMDB
         {
             FIMDB::runIntegrity();
         }
+
+        void syncAlgorithm()
+        {
+            FIMDB::syncAlgorithm();
+        }
+
+        void setTimeLastSyncMsg()
+        {
+            FIMDB::setTimeLastSyncMsg();
+        }
+
+        MOCK_METHOD(time_t, getCurrentTime, (), (const override));
 };
 
 class MockLoggingCall

@@ -41,19 +41,19 @@ void expect_fim_db_get_path(const char* path, int ret_val);
 
 FIMDBErrorCode __wrap_fim_db_init(int storage,
                                   int sync_interval,
+                                  uint32_t sync_max_interval,
+                                  uint32_t sync_response_timeout,
                                   fim_sync_callback_t sync_callback,
                                   logging_callback_t log_callback,
                                   int file_limit,
-                                  uint32_t sync_response_timeout,
-                                  uint32_t sync_max_interval,
                                   int value_limit,
                                   int sync_registry_enable);
 
 void expect_wrapper_fim_db_init(int storage,
                                 int sync_interval,
-                                int file_limit,
-                                uint32_t sync_response_timeout,
                                 uint32_t sync_max_interval,
+                                uint32_t sync_response_timeout,
+                                int file_limit,
                                 int value_limit,
                                 int sync_registry_enable);
 

@@ -45,6 +45,42 @@ void FIMDB::sync()
     }
 }
 
+void FIMDB::syncAlgorithm()
+{
+    char debugmsg[1024];
+
+    if ((uint32_t)(getCurrentTime() - m_timeLastSyncMsg) > m_syncResponseTimeout)
+    {
+        if (m_syncSuccessful && m_currentSyncInterval > m_syncInterval)
+        {
+            m_currentSyncInterval = m_syncInterval;
+
+            snprintf(debugmsg, 1024, "FIM Sync check success, sync interval reset to original value: %ds", m_currentSyncInterval);
+            m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
+        }
+        m_syncSuccessful = true;
+
+        sync();
+    }
+    else
+    {
+        m_currentSyncInterval *= 2;
+
+        if (m_currentSyncInterval > m_syncMaxInterval)
+        {
+            m_currentSyncInterval = m_syncMaxInterval;
+        }
+
+        snprintf(debugmsg, 1024, "FIM Sync check failed, sync interval increased. Next interval: %ds", m_currentSyncInterval);
+        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
+    }
+}
+
+time_t FIMDB::getCurrentTime() const
+{
+    return std::time(nullptr);
+}
+
 void FIMDB::init(unsigned int syncInterval,
                  const uint32_t syncMaxInterval,
                  const uint32_t syncResponseTimeout,
@@ -70,6 +106,8 @@ void FIMDB::init(unsigned int syncInterval,
     m_syncRegistryEnabled = syncRegistryEnabled;
     m_syncResponseTimeout = syncResponseTimeout;
     m_syncMaxInterval = syncMaxInterval;
+    m_currentSyncInterval = m_syncInterval;
+    m_syncSuccessful = true;
 }
 
 void FIMDB::removeItem(const nlohmann::json& item)
@@ -108,50 +146,19 @@ void FIMDB::runIntegrity()
         auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
         m_integrityThread = std::thread([&]()
         {
-            uint32_t currentSyncInterval = m_syncInterval;
-            char debugmsg[1024];
-
             m_loggingFunction(LOG_INFO, "FIM sync module started.");
-            m_syncSuccessful = true;
             sync();
             promise->set_value();
             std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
 
-            while (!m_cv.wait_for(lockCv, std::chrono::seconds{currentSyncInterval}, [&]()
+            while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_currentSyncInterval}, [&]()
         {
             return m_stopping;
         }))
             {
-                if ((std::time(nullptr) - m_timeLastSyncMsg) > m_syncResponseTimeout)
-                {
-                    if (m_syncSuccessful && currentSyncInterval > m_syncInterval)
-                    {
-                        currentSyncInterval = m_syncInterval;
-
-                        snprintf(debugmsg, 1024, "Interval synchronization has been reset to its original configured value: %d", currentSyncInterval);
-                        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
-                    }
-                    m_syncSuccessful = true;
-
-                    // LCOV_EXCL_START
-                    sync();
-                    // LCOV_EXCL_STOP
-                }
-                else
-                {
-                    currentSyncInterval *= 2;
-
-                    if (currentSyncInterval > m_syncMaxInterval)
-                    {
-                        currentSyncInterval = m_syncMaxInterval;
-
-                        snprintf(debugmsg, 1024, "Synchronization has failed, sync interval will be doubled. Max interval reached, current interval: %d", currentSyncInterval);
-                        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
-                    } else {
-                        snprintf(debugmsg, 1024, "Synchronization has failed, sync interval will be doubled, current interval: %d", currentSyncInterval);
-                        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
-                    }
-                }
+                // LCOV_EXCL_START
+                syncAlgorithm();
+                // LCOV_EXCL_STOP
             }
         });
         promise->wait();

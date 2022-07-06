@@ -111,6 +111,11 @@ TEST_F(DBTestFixture, TestFimRunIntegrity)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
+#ifdef WIN32
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
+#endif
 
     EXPECT_NO_THROW(
     {
@@ -125,6 +130,11 @@ TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
+#ifdef WIN32
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
+#endif
 
     EXPECT_NO_THROW(
     {
