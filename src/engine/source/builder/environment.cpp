@@ -33,7 +33,11 @@ void Environment::buildGraph(
     const std::string& graphName,
     Asset::Type type)
 {
-    auto& graph = m_graphs[graphName];
+    auto graphPos = std::find_if(m_graphs.begin(),
+                                     m_graphs.end(),
+                                     [&graphName](const auto& graph)
+                                     { return std::get<0>(graph) == graphName; });
+    auto& graph = std::get<1>(*graphPos);
     for (auto& [name, json] : assetsDefinitons)
     {
         // Build Asset object and insert
@@ -65,7 +69,11 @@ void Environment::buildGraph(
 
 void Environment::addFilters(const std::string& graphName)
 {
-    auto& graph = m_graphs[graphName];
+    auto graphPos = std::find_if(m_graphs.begin(),
+                                 m_graphs.end(),
+                                 [&graphName](const auto& graph)
+                                 { return std::get<0>(graph) == graphName; });
+    auto& graph = std::get<1>(*graphPos);
     for (auto& [name, asset] : m_assets)
     {
         if (Asset::Type::FILTER == asset->m_type)

@@ -23,7 +23,6 @@ class Graph
 private:
     K m_root;
     std::unordered_map<K, T> m_nodes;
-    std::unordered_map<K, std::vector<K>> m_edges;
 
     void _addNode(K key, T&& value)
     {
@@ -79,6 +78,8 @@ private:
     }
 
 public:
+    // TODO: Change to private
+    std::unordered_map<K, std::vector<K>> m_edges;
     /**
      * @brief Construct a new Graph empty object
      *
