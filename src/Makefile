@@ -1157,17 +1157,7 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-ifeq (${uname_S},Darwin)
-        cpu_arch := ${uname_M}
-else
-        cpu_arch := ${uname_P}
-endif
-ifneq (,$(filter ${cpu_arch},unknown Unknown not))
-	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
-endif
-ifneq (,$(filter ${cpu_arch},unknown Unknown not))
-	cpu_arch := ${uname_M}
-endif
+cpu_arch := ${uname_M}
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 PRECOMPILED_ARCH := /amd64
 else
