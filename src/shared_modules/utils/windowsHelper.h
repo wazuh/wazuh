@@ -178,7 +178,7 @@ namespace Utils
 
         if (nullptr != rawData)
         {
-            std::unique_ptr<BYTE[]> tmpBuffer { std::make_unique<BYTE[]>(rawDataSize+1) };
+            std::unique_ptr<BYTE[]> tmpBuffer { std::make_unique<BYTE[]>(rawDataSize + 1) };
             memcpy(tmpBuffer.get(), rawData, rawDataSize);
 
             while (offset < rawDataSize && serialNumber.empty())
