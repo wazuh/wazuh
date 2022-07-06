@@ -7,272 +7,206 @@
  * Foundation.
  */
 
+#include <any>
 #include <gtest/gtest.h>
-#include <re2/re2.h>
-
 #include <vector>
 
 #include <baseTypes.hpp>
 
-
 #include "opBuilderHelperMap.hpp"
-#include "testUtils.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
-
 TEST(opBuilderHelperRegexExtract, Builds)
 {
-    Document doc{R"({
-        "map":
-            {"field": "+r_ext/_field/regexp/"}
-    })"};
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"r_ext"}, std::vector<std::string> {"$_field", "(regex)"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperRegexExtract(doc.get("/map"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperRegexExtract(tuple));
 }
 
-TEST(opBuilderHelperRegexExtract, Not_enough_arguments_error)
+TEST(opBuilderHelperRegexExtract, Builds_bad_parameters)
 {
-    Document doc{R"({
-        "map":
-            {"field": "+r_ext/_field/"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"test"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexExtract(doc.get("/map"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperRegexExtract(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperRegexExtract, Too_many_arguments_error)
+TEST(opBuilderHelperRegexExtract, Builds_incorrect_parameter_type)
 {
-    Document doc{R"({
-        "map":
-            {"field": "+r_ext/_field/regexp/arg/"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"test", "(regex)"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexExtract(doc.get("/map"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperRegexExtract(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperRegexExtract, String_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_field_not_exist)
 {
-    Document doc{R"~~({
-        "map":
-            {"field": "+r_ext/_field/(exp)/"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$fieldcheck", "(test)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"exp"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"expregex"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"this is a test exp"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "This is a test."})");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/_field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/_field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->getEvent()->get("/_field").GetString(), "exp"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_ref_field_not_exist)
 {
-    Document doc{R"~~({
-        "map":
-            {"field": "+r_ext/_field/(123)/"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$otherfield", "(test)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"123"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"123"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"123"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield2": "This is a test."})");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/_field").GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/_field").GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->getEvent()->get("/_field").GetString(), "123"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_fail)
 {
-    Document doc{R"~~({
-        "map":
-            {"field": "+r_ext/_field/(([^ @]+)@([^ @]+))"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$otherfield", "(regex)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"client@wazuh.com"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"engine@wazuh.com"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": "This is a test."})");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(
-        RE2::PartialMatch(expected[0]->getEvent()->get("/_field").GetString(), "client@wazuh.com"));
-    ASSERT_TRUE(
-        RE2::PartialMatch(expected[1]->getEvent()->get("/_field").GetString(), "engine@wazuh.com"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_success)
 {
-    Document doc{R"~~({
-        "map":
-            {"test/field": "+r_ext/_field/(exp)/"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$otherfield", "(test)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "exp"}
-            })~~"));
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "this is a test exp"}
-            })~~"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": "This is a test."})");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/_field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/_field").GetString(), "exp"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_field_not_exist)
 {
-    Document doc{R"~~({
-        "map":
-            {"field2": "+r_ext/_field/(exp)/"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$parentObjt_1/fieldcheck", "(test)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"exp"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"expregex"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"this is a test exp"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": "This is a test.",
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0]->getEvent()->exists("/_field"));
-    ASSERT_FALSE(expected[1]->getEvent()->exists("/_field"));
-    ASSERT_FALSE(expected[2]->getEvent()->exists("/_field"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/parentObjt_1/field2check").value());
 }
 
-TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_ref_field_not_exist)
 {
-    Document doc{R"~~({
-        "map":
-            {"test.field": "+r_ext/_field/(exp)/"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_2/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$parentObjt_1/field2check", "(test)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "exp"}
-            })~~"));
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "this is a test exp"}
-            })~~"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": 10,
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/_field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/_field").GetString(), "exp"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_fail)
 {
-    Document doc{R"~~({
-        "map":
-            {"test.field": "+r_ext/parent._field/(exp)/"}
-    })~~"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$parentObjt_2/field2check", "(regex)"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "exp"}
-            })~~"));
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "this is a test exp"}
-            })~~"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": "This is a test.",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperRegexExtract(doc.get("/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/parent/_field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/parent/_field").GetString(), "exp"));
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"r_ext"},
+                                 std::vector<std::string> {"$parentObjt_2/field2check", "(test)"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": "This is a test.",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("test", result.payload()->getString("/parentObjt_1/field2check").value());
 }
