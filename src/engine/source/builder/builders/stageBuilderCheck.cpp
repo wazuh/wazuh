@@ -100,8 +100,8 @@ base::Expression stageBuilderCheckExpression(const std::any& definition)
                 return term.size();
             }();
 
-            field = term.substr(pos1 + 1, pos2);
-            value = term.substr(0, pos1) + term.substr(pos2, term.size());
+            field = term.substr(pos1 + 1, pos2 - pos1 - 1);
+            value = term.substr(0, pos1) + term.substr(pos2);
         }
 
         json::Json valueJson;
