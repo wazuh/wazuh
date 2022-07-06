@@ -1,0 +1,21 @@
+name: suricata-alert
+
+parents:
+  - suricata
+
+metadata:
+  description: suricata-alert
+
+check:
+  - _suricata.event_type: alert
+
+normalize:
+  - map:
+      event.type: +s_append/$_suricata.alert.action
+      event.category: +s_append/intrusion_detection
+      event.kind: alert
+      event.severity: $_suricata.alert.severity
+      message: $_suricata.alert.category
+      rule.category: $_suricata.alert.category
+      rule.id: $_suricata.alert.signature_id
+      rule.name: $_suricata.alert.signature
