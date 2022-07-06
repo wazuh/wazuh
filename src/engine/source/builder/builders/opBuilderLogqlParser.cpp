@@ -40,11 +40,26 @@ static bool any2Json(std::any const& anyVal, std::string const& path, base::Even
         val.setDouble(std::any_cast<double>(anyVal));
         event->set(path, val);
     }
-    else if (type == typeid(std::string) || type == typeid(hlp::JsonString))
+    else if (type == typeid(std::string))
     {
         const auto& s = std::any_cast<std::string>(anyVal);
         json::Json val;
         val.setString(s);
+        event->set(path, val);
+    }
+    else if (type == typeid(hlp::JsonString))
+    {
+        const auto& s = std::any_cast<hlp::JsonString>(anyVal);
+        json::Json val;
+        try
+        {
+            val = json::Json(s.jsonString.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            return false;
+        }
+
         event->set(path, val);
     }
     else
