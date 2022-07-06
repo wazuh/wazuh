@@ -52,13 +52,18 @@ class Environment
 private:
     std::string m_name;
     std::unordered_map<std::string, std::shared_ptr<Asset>> m_assets;
-    std::map<std::string, Graph<std::string, std::shared_ptr<Asset>>> m_graphs;
+    std::vector<std::tuple<std::string, Graph<std::string, std::shared_ptr<Asset>>>>
+        m_graphs;
 
     void buildGraph(const std::unordered_map<std::string, json::Json>& assetsDefinitons,
                     const std::string& graphName,
                     Asset::Type type)
     {
-        auto& graph = m_graphs[graphName];
+        auto graphPos = std::find_if(m_graphs.begin(),
+                                     m_graphs.end(),
+                                     [&graphName](const auto& graph)
+                                     { return std::get<0>(graph) == graphName; });
+        auto& graph = std::get<1>(*graphPos);
         for (auto& [name, json] : assetsDefinitons)
         {
             // Build Asset object and insert
@@ -92,7 +97,11 @@ private:
 
     void addFilters(const std::string& graphName)
     {
-        auto& graph = m_graphs[graphName];
+        auto graphPos = std::find_if(m_graphs.begin(),
+                                     m_graphs.end(),
+                                     [&graphName](const auto& graph)
+                                     { return std::get<0>(graph) == graphName; });
+        auto& graph = std::get<1>(*graphPos);
         for (auto& [name, asset] : m_assets)
         {
             if (asset->m_type == Asset::Type::FILTER)
@@ -150,7 +159,7 @@ public:
         {
             auto assetNames = json.getArray().value();
 
-            m_graphs.insert(
+            m_graphs.push_back(
                 std::make_pair<std::string, Graph<std::string, std::shared_ptr<Asset>>>(
                     std::string {name},
                     {std::string(name + "Input"),
@@ -178,9 +187,13 @@ public:
             addFilters(name);
 
             // Check integrity
-            for (auto& [parent, children] : m_graphs[name].m_edges)
+            auto graphPos = std::find_if(m_graphs.begin(),
+                                         m_graphs.end(),
+                                         [&name](const auto& graph)
+                                         { return std::get<0>(graph) == name; });
+            for (auto& [parent, children] : std::get<1>(*graphPos).m_edges)
             {
-                if (!m_graphs[name].hasNode(parent))
+                if (!std::get<1>(*graphPos).hasNode(parent))
                 {
                     std::string childrenNames;
                     for (auto& child : children)
@@ -196,7 +209,7 @@ public:
                 }
                 for (auto& child : children)
                 {
-                    if (!m_graphs[name].hasNode(child))
+                    if (!std::get<1>(*graphPos).hasNode(child))
                     {
                         throw std::runtime_error(
                             fmt::format("Missing child asset: {}", child));

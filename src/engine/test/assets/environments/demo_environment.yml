@@ -5,5 +5,9 @@ decoders:
   - nginx-access
   - nginx-error
 
+rules:
+  - source_malicious_ip
+  - destination_malicious_ip
+
 outputs:
   - file_output
