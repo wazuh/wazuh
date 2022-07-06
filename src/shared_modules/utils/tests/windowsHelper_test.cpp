@@ -63,7 +63,16 @@ TEST_F(WindowsHelperTest, ipv6NetMask_INVALID)
     EXPECT_TRUE(netMask.empty());
 }
 
-TEST_F(WindowsHelperTest, parserRawSMBIOS_TEST)
+TEST_F(WindowsHelperTest, parserRawSMBIOSWithNullData_TEST)
+{
+    constexpr auto SERIAL_NUMBER_DATA { "" };
+    std::string serialNumber;
+
+    serialNumber = Utils::parseRawSmbios(nullptr, 0);
+    EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
+}
+
+TEST_F(WindowsHelperTest, parserRawSMBIOSRealData_TEST)
 {
     std::vector<unsigned char> rawData {0xda, 0xfb, 0x00, 0xda, 0xb2, 0x00, 0x37, 0x4f, 0x1e, 0x36, 0x00, 0x05, 0x00, 0x05, 0x00, 0x03, 0x00, 0x06, 0x00,
                                         0x06, 0x00, 0x05, 0x00, 0x0f, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x11, 0x00, 0x11, 0x00, 0x02, 0x00, 0x12, 0x00, 0x12, 0x00, 0x04, 0x00, 0x22, 0x00,
@@ -128,4 +137,51 @@ TEST_F(WindowsHelperTest, parserRawSMBIOS_TEST)
     serialNumber = Utils::parseRawSmbios(smbios->SMBIOSTableData, size);
     EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
 }
+
+TEST_F(WindowsHelperTest, parserRawSMBIOSCorruptedData1_TEST)
+{
+    std::vector<unsigned char> rawData {0x0, 0x0, 0x2, 0x2, 0x0, 0x0, 0x0, 0x0, 0xff, 0x27, 0xc7};
+    const auto size { rawData.size() };
+    constexpr auto SERIAL_NUMBER_DATA { "" };
+    std::string serialNumber;
+
+    serialNumber = Utils::parseRawSmbios(rawData.data(), size);
+    EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
+}
+
+
+TEST_F(WindowsHelperTest, parserRawSMBIOSCorruptedData2_TEST)
+{
+    std::vector<unsigned char> rawData {0x2, 0x0, 0xff, 0xff, 0xff, 0xff, 0x0, 0x5, 0xa};
+    const auto size { rawData.size() };
+    constexpr auto SERIAL_NUMBER_DATA { "" };
+    std::string serialNumber;
+
+    serialNumber = Utils::parseRawSmbios(rawData.data(), size);
+    EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
+}
+
+TEST_F(WindowsHelperTest, parserRawSMBIOSTablesNoEndDOubleNull_TEST)
+{
+    std::vector<unsigned char> rawData {0xda, 0xfb, 0x00, 0xda, 0xb2, 0x00, 0x37, 0x4f, 0x1e, 0x36, 0x00, 0x05, 0x00, 0x05, 0x00, 0x03, 0x00, 0x06, 0x00,
+                                        0x06, 0x00, 0x05, 0x00, 0x0f, 0x00, 0x0f, 0x00, 0x11, 0x00, 0x11, 0x00, 0x02, 0x00, 0x12, 0x00, 0x12, 0x00, 0x04, 0x00, 0x22};
+    const auto size { rawData.size() };
+    constexpr auto SERIAL_NUMBER_DATA { "" };
+    std::string serialNumber;
+
+    serialNumber = Utils::parseRawSmbios(rawData.data(), size);
+    EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
+}
+
+TEST_F(WindowsHelperTest, parserRawSMBIOSTables2NoEndDOubleNull_TEST)
+{
+    std::vector<unsigned char> rawData {0x2, 0x8, 0xff, 0x00, 0x1, 0x2, 0x3, 0x4, 0x5, 0x0, 0x6, 0x0, 0x7, 0x0, 'S', 'e', 'r', 'i', 'a', 'l', ' ', 't', 'e', 's', 't'};
+    const auto size { rawData.size() };
+    constexpr auto SERIAL_NUMBER_DATA { "Serial test" };
+    std::string serialNumber;
+
+    serialNumber = Utils::parseRawSmbios(rawData.data(), size);
+    EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
+}
+
 #endif

@@ -178,6 +178,9 @@ namespace Utils
 
         if (nullptr != rawData)
         {
+            auto* tmpBuffer { new BYTE[rawDataSize + 1]() };
+            memcpy(tmpBuffer, rawData, rawDataSize);
+
             while (offset < rawDataSize && serialNumber.empty())
             {
                 if (offset + sizeof(SMBIOSStructureHeader) >= rawDataSize)
@@ -186,7 +189,7 @@ namespace Utils
                 }
 
                 SMBIOSStructureHeader header{};
-                memcpy(&header, rawData + offset, sizeof(SMBIOSStructureHeader));
+                memcpy(&header, tmpBuffer + offset, sizeof(SMBIOSStructureHeader));
 
                 if (offset + header.FormattedAreaLength >= rawDataSize || offset + sizeof(SMBIOSBaseboardInfoStructure) >= rawDataSize)
                 {
@@ -196,17 +199,24 @@ namespace Utils
                 if (BASEBOARD_INFORMATION_TYPE == header.Type)
                 {
                     SMBIOSBaseboardInfoStructure info{};
-                    memcpy(&info, rawData + offset, sizeof(SMBIOSBaseboardInfoStructure));
+                    memcpy(&info, tmpBuffer + offset, sizeof(SMBIOSBaseboardInfoStructure));
                     offset += info.FormattedAreaLength;
 
                     for (BYTE i = 1; i < info.SerialNumber; ++i)
                     {
-                        const char* tmp{reinterpret_cast<const char*>(rawData + offset)};
-                        const auto len{ nullptr != tmp ? strlen(tmp) : 0 };
-                        offset += len + sizeof(char);
+                        const char* tmp{reinterpret_cast<const char*>(tmpBuffer + offset)};
+
+                        if (offset < rawDataSize)
+                        {
+                            const auto len{ nullptr != tmp ? strlen(tmp) : 0 };
+                            offset += len + sizeof(char);
+                        }
                     }
 
-                    serialNumber = reinterpret_cast<const char*>(rawData + offset);
+                    if (offset < rawDataSize)
+                    {
+                        serialNumber = reinterpret_cast<const char*>(tmpBuffer + offset);
+                    }
                 }
                 else
                 {
@@ -215,7 +225,7 @@ namespace Utils
                     // Search for the end of the unformatted structure (\0\0)
                     while (offset + 1 < rawDataSize)
                     {
-                        if (!(*(rawData + offset)) && !(*(rawData + offset + 1)))
+                        if (!(*(tmpBuffer + offset)) && !(*(tmpBuffer + offset + 1)))
                         {
                             offset += 2;
                             break;
@@ -225,6 +235,8 @@ namespace Utils
                     }
                 }
             }
+
+            delete[] tmpBuffer;
         }
 
         return serialNumber;
