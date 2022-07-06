@@ -2802,6 +2802,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled -> 1'
@@ -2818,6 +2819,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled -> 1'
@@ -2834,6 +2836,9 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity -> 4'
 
   - id: 15180
@@ -2848,6 +2853,9 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> n:^(\d+) compare >= 15'
 
   - id: 15181
@@ -2861,6 +2869,9 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> n:^(\d+) compare <= 30'
 
   - id: 15182
@@ -2875,8 +2886,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-35486-0"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> 0'
 
   - id: 15183
@@ -2889,8 +2902,10 @@ checks:
       - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start -> 4'
 
   - id: 15184
@@ -2905,6 +2920,8 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1 -> 0'
 
   - id: 15185
@@ -2923,6 +2940,8 @@ checks:
       - tsc: ["A1.2", "CC6.8"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel -> DisableExceptionChainValidation'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel -> DisableExceptionChainValidation -> 0'
 
   - id: 15186
@@ -2932,8 +2951,10 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Limits print driver installation to Administrators. Note: This Group Policy path does not exist by default. An additional Group Policy template SecGuide.admx/adml is required - it is available from Microsoft at this link."
     compliance:
       - cis: ["18.3.5"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsNT\Printers\PointAndPrint'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsNT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsNT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 1'
 
   - id: 15187
@@ -2947,6 +2968,8 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType -> 2'
 
   - id: 15188
@@ -2961,8 +2984,10 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-35815-0"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential -> 0'
 
   - id: 15189
@@ -2977,8 +3002,10 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-35438-1"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> AutoAdminLogon'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> AutoAdminLogon -> 0'
 
   - id: 15190
@@ -2998,6 +3025,8 @@ checks:
       - "CCE-33790-7"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters -> DisableIPSourceRouting'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters -> DisableIPSourceRouting -> 2'
 
   - id: 15191
@@ -3017,6 +3046,8 @@ checks:
       - "CCE-33816-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> DisableIPSourceRouting '
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> DisableIPSourceRouting -> 2'
 
   - id: 15192
@@ -3033,6 +3064,8 @@ checks:
       - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasMan\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasMan\Parameters -> DisableSavePassword'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasMan\Parameters -> DisableSavePassword -> 1'
 
   - id: 15193
@@ -3050,6 +3083,8 @@ checks:
       - "CCE-34597-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> EnableICMPRedirect'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> EnableICMPRedirect -> 0'
 
   - id: 15194
@@ -3068,6 +3103,8 @@ checks:
       - "CCE-35469-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> KeepAliveTime'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> KeepAliveTime -> 300000'
 
   - id: 15195
@@ -3085,8 +3122,10 @@ checks:
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
     references:
       - "CCE-35405-0"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NoNameReleaseOnDemand'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NoNameReleaseOnDemand -> 1'
 
   - id: 15196
@@ -3105,6 +3144,8 @@ checks:
       - "CCE-34614-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery -> 0'
 
   - id: 15197
@@ -3123,8 +3164,10 @@ checks:
       - tsc: ["CC5.2"]
     references:
       - "CCE-34022-4"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager -> SafeDllSearchMode'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager -> SafeDllSearchMode -> 1'
 
   - id: 15198
@@ -3139,8 +3182,10 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-34619-7"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> n:^(\d+) compare <= 5'
 
   - id: 15199
@@ -3158,6 +3203,8 @@ checks:
       - "CCE-34622-1"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> 3'
 
   - id: 15200
@@ -3176,6 +3223,8 @@ checks:
       - "CCE-34623-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions -> 3'
 
   - id: 15201
@@ -3188,8 +3237,10 @@ checks:
       - pci_dss: ["10.7"]
     references:
       - "CCE-35406-8"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> n:^(\d+) compare <= 90'
 
   - id: 15202
@@ -3219,6 +3270,8 @@ checks:
       - "CCE-34055-4"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast -> 0'
 
   - id: 15204
@@ -3233,6 +3286,8 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders -> 0'
 
   - id: 15205
@@ -3249,6 +3304,8 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth -> 0'
 
   - id: 15206
@@ -3262,12 +3319,11 @@ checks:
       - tsc: ["CC6.3"]
     references:
       - "CCE-34262-6"
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnDomain -> 0'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnPublicNet -> 0'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> 0'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitLLTDIOOnPrivateNet -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD'
 
   - id: 15207
     title: "Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'"
@@ -3279,12 +3335,11 @@ checks:
       - tsc: ["CC6.3"]
     references:
       - "CCE-34073-7"
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnDomain -> 0'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnPublicNet -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> 0'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitRspndrOnPrivateNet -> 0'
 
   - id: 15208
     title: "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'"
@@ -3300,6 +3355,8 @@ checks:
       - "CCE-33208-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> 1'
 
   - id: 15209
@@ -3315,6 +3372,8 @@ checks:
       - "CCE-33107-4"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA -> 0'
 
   - id: 15210
@@ -3328,6 +3387,8 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI -> 0'
 
   - id: 15211
@@ -3344,6 +3405,8 @@ checks:
       - "CCE-35554-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation -> 1'
 
   - id: 15212
@@ -3357,6 +3420,9 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
 
@@ -3373,6 +3439,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents -> 255'
 
   - id: 15214
@@ -3388,6 +3456,12 @@ checks:
       - "CCE-34326-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars -> 0'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar -> 0'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar -> 0'
@@ -3408,6 +3482,8 @@ checks:
       - "CCE-35606-3"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi -> 1'
 
   - id: 15216
@@ -3426,6 +3502,8 @@ checks:
       - "CCE-35242-7"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> 3'
 
   - id: 15217
@@ -3444,6 +3522,8 @@ checks:
       - "CCE-35375-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> 1'
 
   - id: 15218
@@ -3462,6 +3542,8 @@ checks:
       - "CCE-41378-1"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config -> AutoConnectAllowedOEM'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config -> AutoConnectAllowedOEM -> 0'
 
   - id: 15219
@@ -3473,6 +3555,8 @@ checks:
       - cis: ["18.6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\WindowsNT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\WindowsNT\Printers -> RegisterSpoolerRemoteRpcEndPoint'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\WindowsNT\Printers -> RegisterSpoolerRemoteRpcEndPoint -> 2'
 
   - id: 15220
