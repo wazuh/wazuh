@@ -4,10 +4,14 @@ decoders:
   - auth
   - nginx-access
   - nginx-error
+  - suricata
+  - suricata-alert
+  - suricata-flow
+  - suricata-http
+  - suricata-stats
 
 rules:
   - source_malicious_ip
   - destination_malicious_ip
-
 outputs:
   - file_output
