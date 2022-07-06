@@ -1,0 +1,12 @@
+name: destination_malicious_ip
+
+check:
+  - destination.ip: +exists
+  - destination.ip: +kvdb_match/malicious_ip
+
+normalize:
+  - map:
+      rule.id: "destination_malicious_ip"
+      rule.author: "Wazuh"
+      rule.description: "Detected malicious IP activity from destination"
+      _threat.indicator.ip: $destination.ip
