@@ -492,7 +492,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
                 }
 
                 std::string match;
-                if (RE2::FullMatch(
+                if (RE2::PartialMatch(
                         resolvedField.value(), *regex_ptr, &match))
                 {
                     event->setString(match, targetField);
