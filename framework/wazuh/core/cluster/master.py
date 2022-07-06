@@ -1181,9 +1181,13 @@ class Master(server.AbstractServer):
             f'before starting the agent-groups task, waiting for the workers connection.')
         await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_delay"])
 
-        blacklisted_nodes = set(self.configuration['agent_reconnection']['node_blacklist'].split(','))
+        try:
+            blacklisted_nodes = set(self.configuration['agent_reconnection']['node_blacklist'].split(','))
+        except AttributeError:
+            blacklisted_nodes = set()
         self.agents_reconnect = agents_reconnect.AgentsReconnect(
-            logger=logger, blacklisted_nodes=blacklisted_nodes, nodes=self.clients,
+            logger=logger, blacklisted_nodes=blacklisted_nodes,
+            nodes=self.clients, master_name=self.configuration['node_name'],
             nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_threshold"]
         )
 
