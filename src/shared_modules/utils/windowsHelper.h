@@ -178,8 +178,8 @@ namespace Utils
 
         if (nullptr != rawData)
         {
-            auto* tmpBuffer { new BYTE[rawDataSize + 1]() };
-            memcpy(tmpBuffer, rawData, rawDataSize);
+            const std::unique_ptr<BYTE[]> tmpBuffer { std::make_unique<BYTE[]>(rawDataSize+1) };
+            memcpy(tmpBuffer.get(), rawData, rawDataSize);
 
             while (offset < rawDataSize && serialNumber.empty())
             {
@@ -189,7 +189,7 @@ namespace Utils
                 }
 
                 SMBIOSStructureHeader header{};
-                memcpy(&header, tmpBuffer + offset, sizeof(SMBIOSStructureHeader));
+                memcpy(&header, tmpBuffer.get() + offset, sizeof(SMBIOSStructureHeader));
 
                 if (offset + header.FormattedAreaLength >= rawDataSize || offset + sizeof(SMBIOSBaseboardInfoStructure) >= rawDataSize)
                 {
@@ -199,12 +199,12 @@ namespace Utils
                 if (BASEBOARD_INFORMATION_TYPE == header.Type)
                 {
                     SMBIOSBaseboardInfoStructure info{};
-                    memcpy(&info, tmpBuffer + offset, sizeof(SMBIOSBaseboardInfoStructure));
+                    memcpy(&info, tmpBuffer.get() + offset, sizeof(SMBIOSBaseboardInfoStructure));
                     offset += info.FormattedAreaLength;
 
                     for (BYTE i = 1; i < info.SerialNumber; ++i)
                     {
-                        const char* tmp{reinterpret_cast<const char*>(tmpBuffer + offset)};
+                        const char* tmp{reinterpret_cast<const char*>(tmpBuffer.get() + offset)};
 
                         if (offset < rawDataSize)
                         {
@@ -215,7 +215,7 @@ namespace Utils
 
                     if (offset < rawDataSize)
                     {
-                        serialNumber = reinterpret_cast<const char*>(tmpBuffer + offset);
+                        serialNumber = reinterpret_cast<const char*>(tmpBuffer.get() + offset);
                     }
                 }
                 else
@@ -225,7 +225,7 @@ namespace Utils
                     // Search for the end of the unformatted structure (\0\0)
                     while (offset + 1 < rawDataSize)
                     {
-                        if (!(*(tmpBuffer + offset)) && !(*(tmpBuffer + offset + 1)))
+                        if (!(*(tmpBuffer.get() + offset)) && !(*(tmpBuffer.get() + offset + 1)))
                         {
                             offset += 2;
                             break;
@@ -235,8 +235,6 @@ namespace Utils
                     }
                 }
             }
-
-            delete[] tmpBuffer;
         }
 
         return serialNumber;
