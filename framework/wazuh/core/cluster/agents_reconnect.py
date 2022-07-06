@@ -24,7 +24,7 @@ class AgentsReconnectionPhases(str, Enum):
 class AgentsReconnect:
     """Class that encapsulates everything related to the agent reconnection algorithm."""
 
-    def __init__(self, logger, nodes, blacklisted_nodes, nodes_stability_threshold) -> None:
+    def __init__(self, logger, nodes, master_name, blacklisted_nodes, nodes_stability_threshold) -> None:
         """Class constructor.
 
         Parameters
@@ -33,6 +33,8 @@ class AgentsReconnect:
             Logger to use.
         nodes : list
             List of nodes in the environment.
+        master_name : str
+            Name of the master node.
         blacklisted_nodes : set
             Set of nodes that are not taken into account for the agents reconnection.
         nodes_stability_threshold : int
@@ -43,6 +45,7 @@ class AgentsReconnect:
 
         # Check nodes stability
         self.nodes = nodes
+        self.master_name = master_name
         self.blacklisted_nodes = blacklisted_nodes
         self.previous_nodes = set()
         self.nodes_stability_counter = 0
@@ -87,7 +90,7 @@ class AgentsReconnect:
             True if the environment is stable, False otherwise.
         """
         self.current_phase = AgentsReconnectionPhases.CHECK_NODES_STABILITY
-        node_list = set(self.nodes.keys()).union({"master-node"}) - self.blacklisted_nodes
+        node_list = set(self.nodes.keys()).union({self.master_name}) - self.blacklisted_nodes
 
         if len(node_list) <= 1:
             self.reset_counter()
@@ -303,7 +306,7 @@ class AgentsReconnect:
             'nodes_stability_counter': self.nodes_stability_counter,
             'nodes_stability_threshold': self.nodes_stability_threshold,
             'last_nodes_stability_check': self.last_nodes_stability_check,
-            'last_register_nodes': str(list(self.nodes.keys()) + ['master-node']),
+            'last_register_nodes': str(list(self.nodes.keys()) + [self.master_name]),
             'blacklisted_nodes': str(list(self.blacklisted_nodes)),
             'last_register_agents_nodes': str(list(self.previous_agents_nodes))
         }
