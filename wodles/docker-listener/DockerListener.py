@@ -30,17 +30,19 @@ class DockerListener:
         DockerListener constructor
 
         """
-        # socket variables
         if sys.platform == "win32":
             sys.stderr.write("This wodle does not work on Windows.\n")
             sys.exit(1)
-        else:
-            # Get Wazuh installation path, obtained relative to the path of this file
-            self.wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
+        # socket variables
+        self.wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
         self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = None
+        self.thread1 = None
+        self.thread2 = None
+
+    def start(self):
         self.send_msg(json.dumps({self.field_debug_name: "Started"}))
         self.thread1 = threading.Thread(target=self.listen)
         self.thread2 = threading.Thread(target=self.listen)
@@ -145,3 +147,4 @@ class DockerListener:
 
 if __name__ == "__main__":
     dl = DockerListener()
+    dl.start()
