@@ -1,0 +1,39 @@
+---
+name: apache_access
+parents:
+  - default_decoder
+
+metadata:
+  description: Parses Apache HTTPD access logs in its Common Log Format
+
+check:
+  #- queue: 1
+  - event.original: +exists
+
+parse:
+  logql:
+      # ::1 - - [26/Dec/2016:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209
+      - event.original: <source.ip> - - [<timestamp/HTTPDATE>] "<http.request.method> <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes>
+      # 192.168.33.1 - - [26/Dec/2016:16:22:00 +0000] \"GET / HTTP/1.1\" 200 484 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36\"
+      - event.original: <source.ip> - - [<timestamp/HTTPDATE>] "<http.request.method> <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes> "-" "<user_agent.original>"
+      # 127.0.0.1 - - [02/Feb/2019:05:38:45 +0100] \"-\" 408 152 \"-\" \"-\"
+      - event.original: <source.ip> - - [<timestamp/HTTPDATE>] "-" <http.response.status_code> <http.response.body.bytes> "-" "-"
+      # monitoring-server - - [29/May/2017:19:02:48 +0000] \"GET /status HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\"
+      - event.original: <source.address> - - [<timestamp/HTTPDATE>] "<http.request.method> <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes> "-" "<user_agent.original>"
+      # ::1 - - [26/Dec/2016:16:16:48 +0200] \"-\" 408 -
+      - event.original: <source.ip> - - [<timestamp/HTTPDATE>] "-" <http.response.status_code> -
+      - event.original: '[<timestamp/HTTPDATE>] <source.ip> TLSv<tls.version> <tls.cipher> "<http.request.method> <url.original> HTTP/<http.version>" <http.response.body.bytes>'
+      - event.original: '[<timestamp/HTTPDATE>] <source.ip> TLSv<tls.version> <tls.cipher> "<http.request.method> <url.original> HTTP/<http.version>" -'
+
+normalize:
+  - map:
+     event.kind: event
+     event.dataset: apache.access
+     event.category: +s_append/web
+     event.module: apache
+     service.type: apache
+     event.outcome: success
+  - check:
+      - http.response.status_code: +i_gt/399
+    map:
+      event.outcome: failure
