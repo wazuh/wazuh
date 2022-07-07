@@ -1,0 +1,11 @@
+name: json
+
+parents:
+  - default_decoder
+
+check:
+  - event.original: +exists
+
+parse:
+  logql:
+    - event.original: <_json/json>
