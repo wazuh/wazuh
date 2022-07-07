@@ -93,9 +93,10 @@ class WazuhException(Exception):
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml or '
-                              'using API endpoint https://documentation.wazuh.com/current/user-manual/api/'
+                              f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
                               'reference.html#operation/api.controllers.manager_controller.put_api_config or '
-                              'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/'
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/"
+                              'user-manual/api/reference.html#operation/'
                               'api.controllers.cluster_controller.put_api_config'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
@@ -103,7 +104,7 @@ class WazuhException(Exception):
         1124: {'message': 'Remote command detected',
                'remediation': f'To solve this issue, please enable the remote commands in the API settings or add an '
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
-                              f'configuration.html#remote-commands-configuration'},
+                              f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid ossec configuration',
                'remediation': 'Please, provide a valid ossec configuration'
                },

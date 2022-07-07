@@ -178,8 +178,8 @@ if __name__ == '__main__':
         sys.exit(0)
 
     import logging
-    from api import alogging, configuration
-    from wazuh.core import common, utils
+    from api.api_exception import APIError
+    from wazuh.core import common
 
     def set_logging(log_path=f'{API_LOG_PATH}.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -192,10 +192,17 @@ if __name__ == '__main__':
             os.chown(log_path, common.wazuh_uid(), common.wazuh_gid())
             os.chmod(log_path, 0o660)
 
-    if args.config_file is not None:
-        configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
-    api_conf = configuration.api_conf
-    security_conf = configuration.security_conf
+    try:
+        from wazuh.core import utils
+        from api import alogging, configuration
+
+        if args.config_file is not None:
+            configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
+        api_conf = configuration.api_conf
+        security_conf = configuration.security_conf
+    except APIError as e:
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
 
     # Set up logger
     plain_log = 'plain' in api_conf['logs']['format']
@@ -217,7 +224,6 @@ if __name__ == '__main__':
     from aiohttp_cache import setup_cache
     from api import __path__ as api_path
     # noinspection PyUnresolvedReferences
-    from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import security_middleware, response_postprocessing, request_logging, set_secure_headers
     from api.signals import modify_response_headers
