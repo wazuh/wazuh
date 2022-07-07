@@ -585,7 +585,7 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
         // LCOV_EXCL_START
         catch (DbSync::max_rows_error& max_row)
         {
-            FIMDB::instance().logFunction(LOG_WARNING, "Reached maximun files limit monitored, due to db_entry_limit configuration for files.");
+            FIMDB::instance().logFunction(LOG_WARNING, "Reached maximum files limit monitored, due to db_entry_limit configuration for files.");
         }
         catch (std::exception& err)
         {

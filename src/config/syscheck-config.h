@@ -405,7 +405,7 @@ typedef struct _config {
 
     uint32_t sync_interval;                            /* Synchronization interval (seconds) */
     uint32_t sync_response_timeout;                    /* Minimum interval for synchronization process */
-    uint32_t sync_max_interval;                        /* Maximun interval allowed for synchronization process */
+    uint32_t sync_max_interval;                        /* Maximum interval allowed for synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
 
