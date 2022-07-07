@@ -893,6 +893,17 @@ stages:
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
                 experimental_features: !anybool
+                upload_configuration:
+                  remote_commands:
+                    localfile:
+                      allow: !anybool
+                      exceptions: !anything
+                    wodle_command:
+                      allow: !anybool
+                      exceptions: !anything
+                  limits:
+                    eps:
+                      allow: !anybool
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config
