@@ -11,6 +11,8 @@ decoders:
   - suricata-stats
   - json
   - windows-security
+  - apache_error
+  - apache_access
 
 rules:
   - source_malicious_ip
