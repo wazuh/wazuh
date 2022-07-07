@@ -1,7 +1,7 @@
 name: suricata
 
 parents:
-  - default_decoder
+  - json
 
 metadata:
   description: This decoder is the parent decoder for the suricata decoders
@@ -12,52 +12,48 @@ metadata:
     - v4.0.4
 
 check:
-  - event.original: +exists
-
-parse:
-  logql:
-    - event.original: <_suricata/json>
+  - _json.flow_id: +exists
 
 normalize:
   - map:
       event.module: suricata
 
   - check:
-      - _suricata.event_type: +r_match/^(?:alert|dns|flow|ftp|ftp_data|http|http2|mqtt|smb|ssh|stats|tftp|tls|rdp|rfb)$
+      - _json.event_type: +r_match/^(?:alert|dns|flow|ftp|ftp_data|http|http2|mqtt|smb|ssh|stats|tftp|tls|rdp|rfb)$
     map:
       event.category: +s_append/network
-      event.end: $_suricata.flow.end
+      event.end: $_json.flow.end
       event.kind: event
-      event.start: $_suricata.flow.start
-      destination.address: $_suricata.dest_ip
-      destination.bytes: $_suricata.flow.bytes_toclient
-      destination.ip: $_suricata.dest_ip
-      destination.mac: $_suricata.ether.dest_mac
-      destination.packets: $_suricata.flow.pkts_toclient
-      destination.port: $_suricata.dest_port
-      file.path: $_suricata.fileinfo.filename
-      file.size: $_suricata.fileinfo.size
-      network.transport: $_suricata.proto
-      source.address: $_suricata.src_ip
-      source.bytes: $_suricata.flow.bytes_toserver
-      source.ip: $_suricata.src_ip
-      source.mac: $_suricata.ether.src_mac
-      source.packets: $_suricata.flow.pkts_toserver
-      source.port: $_suricata.src_port
-      timestamp: $_suricata.timestamp
-      network.protocol: $_suricata.app_proto
+      event.start: $_json.flow.start
+      destination.address: $_json.dest_ip
+      destination.bytes: $_json.flow.bytes_toclient
+      destination.ip: $_json.dest_ip
+      destination.mac: $_json.ether.dest_mac
+      destination.packets: $_json.flow.pkts_toclient
+      destination.port: $_json.dest_port
+      file.path: $_json.fileinfo.filename
+      file.size: $_json.fileinfo.size
+      network.transport: $_json.proto
+      source.address: $_json.src_ip
+      source.bytes: $_json.flow.bytes_toserver
+      source.ip: $_json.src_ip
+      source.mac: $_json.ether.src_mac
+      source.packets: $_json.flow.pkts_toserver
+      source.port: $_json.src_port
+      timestamp: $_json.timestamp
+      network.protocol: $_json.app_proto
 
   - check:
       - network.protocol: http
     map:
-      destination.domain: $_suricata.http.hostname
+      destination.domain: $_json.http.hostname
       event.category: +s_append/web
       event.type: +s_append/access/protocol
-      http.request.method: $_suricata.http.http_method
-      http.request.referrer: $_suricata.http.http_refer
-      http.response.body.bytes: $_suricata.http.length
-      http.response.status_code: $_suricata.http.status
-      user_agent.original: $_suricata.http.http_user_agent
-      url.domain: $_suricata.http.hostname
-      url.original: $_suricata.http.url
-      url.port: $_suricata.http.http_port
+      http.request.method: $_json.http.http_method
+      http.request.referrer: $_json.http.http_refer
+      http.response.body.bytes: $_json.http.length
+      http.response.status_code: $_json.http.status
+      user_agent.original: $_json.http.http_user_agent
+      url.domain: $_json.http.hostname
+      url.original: $_json.http.url
+      url.port: $_json.http.http_port

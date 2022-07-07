@@ -1,0 +1,105 @@
+name: windows-security
+
+parents:
+  - json
+
+metadata:
+  description: Windows Server 2019 is the operating system that bridges on-premises environments, ad
+    ding additional layers of security while helping you modernize your applications.
+  references:
+    - 'https://docs.microsoft.com/en-us/security/'
+  product.name: Microsoft Windows Security Auditing
+  product.versions:
+    - '2019'
+  formats:
+    - 'json'
+    - 'evtx'
+
+check:
+  - _json.win.system.channel: Security
+
+normalize:
+  - check:
+      - _json.win.eventdata.targetUserSid: +exists
+    map:
+      group.id: $_json.win.eventdata.targetUserSid
+
+  - check:
+      - _json.win.eventdata.targetSid: +exists
+    map:
+      group.id: $_json.win.eventdata.targetSid
+
+  - map:
+      event.code: $_json.win.system.eventID
+      event.provider: Microsoft-Windows-Security-Auditing
+      event.module: security
+      group.name: $_json.win.eventdata.targetUserName
+      group.domain: $_json.win.eventdata.targetDomainName
+      process.executable: $_json.win.eventdata.processName
+      process.pid: $_json.win.eventdata.processId
+      process.command_line: $_json.win.eventdata.commandLine
+      related.user: +s_append/$_json.win.userData.subjectUserName
+      source.domain: $_json.win.eventdata.workstationName
+      source.ip: $_json.win.eventdata.ipAddress
+      source.port: $_json.win.eventdata.ipPort
+      service.name: $_json.win.eventdata.serviceName
+      #service.type: $cdb_security.serviceTypes.$(_json.win.eventdata.ServiceType)
+      user.domain: $_json.win.eventdata.subjectDomainName
+      user.id: $_json.win.eventdata.subjectUserSid
+      user.name: $_json.win.eventdata.subjectUserName
+      user.target.group.id: $group.id
+      user.target.group.name: $group.name
+      user.target.group.domain: $group.domain
+
+  # - check:
+  #     - event.code: +exists
+  #   map:
+  #     # event.category: [ "$cdb_security.eventActionTypes.$(event.code)[0]" ]
+  #     # event.type: [ "$cdb_security.eventActionTypes.$(event.code)[1]" ]
+  #     event.action: +db_map/windows-security/eventActionTypes.<$event.code>[2]
+
+  - check:
+      - user.id: +exists
+    map:
+      user.target.id: $_json.win.eventdata.targetUserSid
+
+  - check:
+      - user.id: +not_exists
+    map:
+      user.id: $_json.win.eventdata.targetUserSid
+
+  - check:
+      - user.domain: +exists
+    map:
+      user.target.domain: $_json.win.eventdata.targetDomainName
+
+  - check:
+      - user.domain: +not_exists
+    map:
+      user.domain: $_json.win.eventdata.targetDomainName
+
+  # - check:
+  #     - process.name: +not_exists
+  #   map:
+  #     process.name: +base_name/$process.executable
+
+  # - check:
+  #     - process.parent.name: +not_exists
+  #   map:
+  #     process.parent.name: +base_name/$process.parent.executable
+
+  # - check:
+  #     - user.name: +exists
+  #   capture:
+  #     _json.win.eventdata.targetUserName: '+check/(.*)@'
+  #   map:
+  #     user.target.name: $1
+  #     related.user: [$user.target.name ]
+
+  # - check:
+  #     - user.name: +not_exists
+  #   capture:
+  #     _json.win.eventdata.targetUserName: '+check/(.*)@'
+  #   map:
+  #     user.name: $1
+  #     related.user: [$user.target.name ]
