@@ -15,6 +15,13 @@
 #include <pthread.h>
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 remoted_state_t remoted_state;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -28,12 +35,12 @@ extern OSHash *remoted_agents_state;
  * @param agent_id Id of the agent that corresponds to the node
  * @return remoted_agent_state_t node
  */
-static remoted_agent_state_t * get_node(const char *agent_id);
+STATIC remoted_agent_state_t * get_node(const char *agent_id);
 
 /**
  * @brief Clean non active agents from agents state.
  */
-static void w_remoted_clean_agents_state();
+STATIC void w_remoted_clean_agents_state();
 
 /**
  * @brief Increment received event messages counter for agents
@@ -208,7 +215,7 @@ int rem_write_state() {
     return 0;
 }
 
-static remoted_agent_state_t * get_node(const char *agent_id) {
+STATIC remoted_agent_state_t * get_node(const char *agent_id) {
     remoted_agent_state_t * agent_state = (remoted_agent_state_t *) OSHash_Get_ex(remoted_agents_state, agent_id);
 
     if(agent_state != NULL) {
@@ -220,7 +227,7 @@ static remoted_agent_state_t * get_node(const char *agent_id) {
     }
 }
 
-static void w_remoted_clean_agents_state() {
+STATIC void w_remoted_clean_agents_state() {
     char *node_name = NULL;
     int *active_agents = NULL;
     int sock = -1;
@@ -538,7 +545,6 @@ cJSON* rem_create_state_json() {
     cJSON *_control = NULL;
     cJSON *_sent = NULL;
     cJSON *_queue = NULL;
-    cJSON *_agents_connected = NULL;
 
     w_mutex_lock(&state_mutex);
     memcpy(&state_cpy, &remoted_state, sizeof(remoted_state_t));
@@ -610,8 +616,7 @@ cJSON* rem_create_state_json() {
         cJSON * _messages_sent_breakdown = NULL;
         cJSON * _control_breakdown = NULL;
 
-        _agents_connected = cJSON_CreateObject();
-        _array = cJSON_AddArrayToObject(_agents_connected, "agents_connected");
+        _array = cJSON_CreateArray();
 
         while (hash_node != NULL) {
             data = hash_node->data;
@@ -654,6 +659,9 @@ cJSON* rem_create_state_json() {
         cJSON_AddItemToObject(rem_state_json, "agents_connected", _array);
     }
     w_mutex_unlock(&agents_state_mutex);
+    // if (_agents_connected != NULL) {
+    //     cJSON_Delete(_agents_connected);
+    // }
 
     return rem_state_json;
 }
