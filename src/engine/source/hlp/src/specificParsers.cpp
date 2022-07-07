@@ -40,6 +40,8 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         {"ISO8601", {"%Y-%d-%mT%T%z", "2018-08-14T14:30:02.203151+02:00"}},
         {"HTTPDATE", {"%d/%b/%Y:%T %z", "26/Dec/2016:16:22:14 +0000"}},
         {"NGINX_ERROR", {"%Y/%m/%d %T", "2016/10/25 14:49:34"}},
+        {"APACHE_ERROR", {"%a %b %d %T %Y", "Mon Dec 26 16:15:55.103786 2016"}},
+        {"APACHE_ERROR2", {"%a %b %d %T %Y", "Mon Dec 26 16:15:55 2016"}},
 };
 
 bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args)
