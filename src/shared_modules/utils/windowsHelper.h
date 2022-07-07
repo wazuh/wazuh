@@ -27,7 +27,7 @@
 #include "mem_op.h"
 #include "stringHelper.h"
 #include "encodingWindowsHelper.h"
-#include "sharedDefs.h"
+#include "../../data_provider/src/sharedDefs.h"
 #include "timeHelper.h"
 
 #pragma GCC diagnostic push
@@ -199,15 +199,16 @@ namespace Utils
             }
 
             std::string date2_trimmed = timestamp2.substr(0, pos);
-            std::string time2_trimmed = timestamp2.substr(pos+1);
+            std::string time2_trimmed = timestamp2.substr(pos + 1);
             date2_trimmed.erase(remove(date2_trimmed.begin(), date2_trimmed.end(), '/'), date2_trimmed.end());
             time2_trimmed.erase(remove(time2_trimmed.begin(), time2_trimmed.end(), ':'), time2_trimmed.end());
 
-            if (date2_trimmed.size() != 8 || time2_trimmed.size() != 6) {
+            if (date2_trimmed.size() != 8 || time2_trimmed.size() != 6)
+            {
                 return UNKNOWN_VALUE;
             }
 
-            tm *local_time_s = new tm();
+            tm* local_time_s = new tm();
             size_t reference_year = 1900;
 
             if (date2_trimmed.compare(timestamp1) == 0)
@@ -216,9 +217,9 @@ namespace Utils
             }
             else
             {
-                local_time_s->tm_year = stoi(timestamp1.substr(0,4)) - reference_year;
-                local_time_s->tm_mon = stoi(timestamp1.substr(4,2)) - 1;
-                local_time_s->tm_mday = stoi(timestamp1.substr(6,2));
+                local_time_s->tm_year = stoi(timestamp1.substr(0, 4)) - reference_year;
+                local_time_s->tm_mon = stoi(timestamp1.substr(4, 2)) - 1;
+                local_time_s->tm_mday = stoi(timestamp1.substr(6, 2));
                 local_time_s->tm_hour = 0;
                 local_time_s->tm_min = 0;
                 local_time_s->tm_sec = 0;
