@@ -15,3 +15,10 @@ setup.ilm.enabled: false
 output.elasticsearch.hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
 
 logging.metrics.enabled: false
+
+seccomp:
+  default_action: allow
+  syscalls:
+  - action: allow
+    names:
+    - rseq
