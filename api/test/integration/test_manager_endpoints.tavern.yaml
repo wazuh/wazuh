@@ -794,6 +794,17 @@ stages:
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
                 experimental_features: !anybool
+                upload_configuration:
+                  remote_commands:
+                    localfile:
+                      allow: !anybool
+                      exceptions: !anything
+                    wodle_command:
+                      allow: !anybool
+                      exceptions: !anything
+                  limits:
+                    eps:
+                      allow: !anybool
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []

@@ -101,7 +101,7 @@ class WazuhException(Exception):
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
-               'remediation': f'To solve this issue please enable the remote commands in the API settings or add an '
+               'remediation': f'To solve this issue, please enable the remote commands in the API settings or add an '
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-configuration'},
         1125: {'message': 'Invalid ossec configuration',
@@ -110,6 +110,9 @@ class WazuhException(Exception):
         1126: {'message': 'Error updating ossec configuration',
                'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
                },
+        1127: {'message': 'Forbidden section detected',
+               'remediation': 'To solve this issue, please enable the section in the API settings: '
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',

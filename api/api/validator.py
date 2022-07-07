@@ -138,27 +138,42 @@ api_config_schema = {
                 "max_request_per_minute": {"type": "integer"},
             },
         },
-        "remote_commands": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "localfile": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exceptions": {"type": "array", "items": {"type": "string"}},
+        "upload_configuration": {
+            "remote_commands": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "localfile": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "allow": {"type": "boolean"},
+                            "exceptions": {"type": "array", "items": {"type": "string"}},
+                        },
                     },
-                },
-                "wodle_command": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exceptions": {"type": "array", "items": {"type": "string"}},
+                    "wodle_command": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "allow": {"type": "boolean"},
+                            "exceptions": {"type": "array", "items": {"type": "string"}},
+                        },
                     },
                 },
             },
+            "limits": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "eps": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "allow": {"type": "boolean"}
+                        }
+                    }
+                }
+            }
         },
     },
 }

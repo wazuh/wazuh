@@ -64,14 +64,21 @@ default_api_configuration = {
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "remote_commands": {
-        "localfile": {
-            "enabled": True,
-            "exceptions": []
+    "upload_configuration": {
+        "remote_commands": {
+            "localfile": {
+                "allow": True,
+                "exceptions": []
+            },
+            "wodle_command": {
+                "allow": True,
+                "exceptions": []
+            }
         },
-        "wodle_command": {
-            "enabled": True,
-            "exceptions": []
+        "limits": {
+            "eps": {
+                "allow": True
+            }
         }
     }
 }
