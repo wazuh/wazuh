@@ -27,6 +27,8 @@
 #include "mem_op.h"
 #include "stringHelper.h"
 #include "encodingWindowsHelper.h"
+#include "sharedDefs.h"
+#include "timeHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -142,16 +144,76 @@ namespace Utils
         return ret;
     }
 
+    static std::string normalizeTimestamp(std::string timestamp1, std::string timestamp2) 
+    {
+        if (timestamp1.size() == 8) 
+        {
+            std::string::iterator it;
+            
+            for (it = timestamp1.begin(); it != timestamp1.end(); ++it) 
+            {
+                if (!isdigit(*it)) 
+                {
+                    return UNKNOWN_VALUE;
+                }
+            }
+            
+            size_t pos = timestamp2.find(" ");
+            
+            if (pos == std::string::npos) 
+            {
+                return UNKNOWN_VALUE;
+            }
+            
+            std::string date2_trimmed = timestamp2.substr(0, pos);
+            std::string time2_trimmed = timestamp2.substr(pos+1);
+            date2_trimmed.erase(remove(date2_trimmed.begin(), date2_trimmed.end(), '/'), date2_trimmed.end());
+            time2_trimmed.erase(remove(time2_trimmed.begin(), time2_trimmed.end(), ':'), time2_trimmed.end());
+            
+            if (date2_trimmed.size() != 8 || time2_trimmed.size() != 6) {
+                return UNKNOWN_VALUE;
+            }
+            
+            tm *local_time_s = new tm();
+            size_t reference_year = 1900;
+            
+            if (date2_trimmed.compare(timestamp1) == 0)  
+            {
+                return timestamp2;
+            } 
+            else 
+            {
+                local_time_s->tm_year = stoi(timestamp1.substr(0,4)) - reference_year;
+                local_time_s->tm_mon = stoi(timestamp1.substr(4,2)) - 1;
+                local_time_s->tm_mday = stoi(timestamp1.substr(6,2));
+                local_time_s->tm_hour = 0;
+                local_time_s->tm_min = 0;
+                local_time_s->tm_sec = 0;
+            }
+
+            time_t local_time = mktime(local_time_s);
+
+            return Utils::getTimestamp(local_time, false);
+        } 
+        else 
+        {
+            return UNKNOWN_VALUE;
+        }
+    }
+
     static std::string buildTimestamp(const ULONGLONG time)
     {
 
         // Format of value is 18-digit LDAP/FILETIME timestamps.
         // 18-digit LDAP/FILETIME timestamps -> Epoch/Unix time
         // (value/10000000ULL) - 11644473600ULL
-        const time_t epochTIme { static_cast<long int> ((time / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS) };
+        const time_t epochTime { static_cast<long int> ((time / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS) };
         char formatString[20] = {0};
 
-        std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTIme));
+        tm utc_time;
+        gmtime_s(&utc_time, &epochTime);
+
+        std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", &utc_time);
         return formatString;
     }
 
