@@ -9,9 +9,12 @@ decoders:
   - suricata-flow
   - suricata-http
   - suricata-stats
+  - json
+  - windows-security
 
 rules:
   - source_malicious_ip
   - destination_malicious_ip
+
 outputs:
   - file_output
