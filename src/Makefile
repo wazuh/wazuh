@@ -1170,7 +1170,7 @@ else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
 PRECOMPILED_ARCH := /arm32
 else
-PRECOMPILED_ARCH := /${cpu_arch}
+PRECOMPILED_ARCH := /${uname_P}
 endif
 endif
 endif
