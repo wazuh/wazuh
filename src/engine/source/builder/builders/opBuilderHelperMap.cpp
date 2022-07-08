@@ -480,10 +480,10 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
                     auto param = json::formatJsonPath(parameter.substr(1));
                     try
                     {
-                        auto value = &e->getEventValue(param);
-                        if (value && value->IsString())
+                        const auto &value = e->getEvent()->get(param);
+                        if (value.IsString())
                         {
-                            result.append(value->GetString());
+                            result.append(value.GetString());
                         }
                         else
                         {
