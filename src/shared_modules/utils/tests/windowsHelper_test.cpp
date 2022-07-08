@@ -129,4 +129,26 @@ TEST_F(WindowsHelperTest, normalizeTimestampEqual2)
     EXPECT_EQ(expected, result);
 }
 
+TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp1)
+{
+    std::string value = "a0220215";
+    std::string timestamp = "2022/02/15 23:59:59";
+    std::string expected = UNKNOWN_VALUE;
+
+    std::string result = Utils::normalizeTimestamp(value, timestamp);
+
+    EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp2)
+{
+    std::string value = "20220215";
+    std::string timestamp = "a022/02/15 23:59:59";
+    std::string expected = UNKNOWN_VALUE;
+
+    std::string result = Utils::normalizeTimestamp(value, timestamp);
+
+    EXPECT_EQ(expected, result);
+}
+
 #endif

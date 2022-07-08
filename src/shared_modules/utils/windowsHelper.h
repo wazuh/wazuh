@@ -49,6 +49,23 @@ constexpr auto WINDOWS_UNIX_EPOCH_DIFF_SECONDS
     11644473600ULL
 };
 
+constexpr auto REFERENCE_YEAR
+{
+    1900
+};
+
+//140512 represents 14:05:12.
+constexpr auto HOURMINSEC_VALUE_SIZE
+{
+    6
+};
+
+constexpr auto INSTALLDATE_REGISTRY_VALUE_SIZE
+{
+    8
+};
+
+
 namespace Utils
 {
     struct IPAddressSmartDeleter
@@ -144,62 +161,62 @@ namespace Utils
         return ret;
     }
 
-    static std::string normalizeTimestamp(std::string timestamp1, std::string timestamp2)
+    static std::string normalizeTimestamp(const std::string& timestamp1, const std::string& timestamp2)
     {
-        if (timestamp1.size() == 8)
-        {
-            std::string::iterator it;
+        std::string ret = UNKNOWN_VALUE;
+        bool is_digit = true;
 
-            for (it = timestamp1.begin(); it != timestamp1.end(); ++it)
+        if (timestamp1.size() == INSTALLDATE_REGISTRY_VALUE_SIZE)
+        {
+            for (auto it = timestamp1.begin(); it != timestamp1.end(); ++it)
             {
                 if (!isdigit(*it))
                 {
-                    return UNKNOWN_VALUE;
+                    is_digit = false;
                 }
             }
 
-            size_t pos = timestamp2.find(" ");
-
-            if (pos == std::string::npos)
+            if (is_digit)
             {
-                return UNKNOWN_VALUE;
+                size_t pos = timestamp2.find(" ");
+
+                if (pos != std::string::npos)
+                {
+                    std::string date2_trimmed = timestamp2.substr(0, pos);
+                    std::string time2_trimmed = timestamp2.substr(pos + 1);
+                    date2_trimmed.erase(remove(date2_trimmed.begin(), date2_trimmed.end(), '/'), date2_trimmed.end());
+                    time2_trimmed.erase(remove(time2_trimmed.begin(), time2_trimmed.end(), ':'), time2_trimmed.end());
+
+                    if (date2_trimmed.size() == INSTALLDATE_REGISTRY_VALUE_SIZE
+                            || time2_trimmed.size() == HOURMINSEC_VALUE_SIZE)
+                    {
+                        if (date2_trimmed.compare(timestamp1) == 0)
+                        {
+                            ret = timestamp2;
+                        }
+                        else
+                        {
+                            tm* local_time_s = new tm();
+
+                            local_time_s->tm_year = std::stoi(timestamp1.substr(0, 4)) - REFERENCE_YEAR;
+                            local_time_s->tm_mon = std::stoi(timestamp1.substr(4, 2)) - 1;
+                            local_time_s->tm_mday = std::stoi(timestamp1.substr(6, 2));
+                            local_time_s->tm_hour = 0;
+                            local_time_s->tm_min = 0;
+                            local_time_s->tm_sec = 0;
+
+                            time_t local_time = mktime(local_time_s);
+
+                            delete (local_time_s);
+
+                            ret = Utils::getTimestamp(local_time, false);
+                        }
+                    }
+                }
             }
-
-            std::string date2_trimmed = timestamp2.substr(0, pos);
-            std::string time2_trimmed = timestamp2.substr(pos + 1);
-            date2_trimmed.erase(remove(date2_trimmed.begin(), date2_trimmed.end(), '/'), date2_trimmed.end());
-            time2_trimmed.erase(remove(time2_trimmed.begin(), time2_trimmed.end(), ':'), time2_trimmed.end());
-
-            if (date2_trimmed.size() != 8 || time2_trimmed.size() != 6)
-            {
-                return UNKNOWN_VALUE;
-            }
-
-            tm* local_time_s = new tm();
-            size_t reference_year = 1900;
-
-            if (date2_trimmed.compare(timestamp1) == 0)
-            {
-                return timestamp2;
-            }
-            else
-            {
-                local_time_s->tm_year = stoi(timestamp1.substr(0, 4)) - reference_year;
-                local_time_s->tm_mon = stoi(timestamp1.substr(4, 2)) - 1;
-                local_time_s->tm_mday = stoi(timestamp1.substr(6, 2));
-                local_time_s->tm_hour = 0;
-                local_time_s->tm_min = 0;
-                local_time_s->tm_sec = 0;
-            }
-
-            time_t local_time = mktime(local_time_s);
-
-            return Utils::getTimestamp(local_time, false);
         }
-        else
-        {
-            return UNKNOWN_VALUE;
-        }
+
+        return ret;
     }
 
     static std::string buildTimestamp(const ULONGLONG time)
