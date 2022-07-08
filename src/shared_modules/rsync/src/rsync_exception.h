@@ -14,45 +14,46 @@
 #include <stdexcept>
 #include <string>
 
-constexpr auto INVALID_HANDLE
-{
-    std::make_pair(1, "Invalid handle value.")
-};
-constexpr auto FACTORY_INSTANTATION
-{
-    std::make_pair(2, "Unspecified type during factory instantiation")
-};
-constexpr auto INVALID_HEADER
-{
-    std::make_pair(3, "Invalid message header.")
-};
-constexpr auto INVALID_OPERATION
-{
-    std::make_pair(4, "Invalid message operation.")
-};
-constexpr auto UNEXPECTED_SIZE
-{
-    std::make_pair(5, "Unexpected size value during sync process.")
-};
-constexpr auto ERROR_IN_SELECT_DATA
-{
-    std::make_pair(6, "Error during the select of data." )
-};
-constexpr auto NOT_SPECIALIZED_FUNCTION
-{
-    std::make_pair(7, "Function not specialized." )
-};
-constexpr auto INPUT_JSON_INCOMPLETE
-{
-    std::make_pair(8, "Incomplete json provided." )
-};
-constexpr auto COMPONENT_ALREADY_REGISTERED
-{
-    std::make_pair(9, "Component already registered." )
-};
 
 namespace RSync
 {
+    constexpr auto INVALID_HANDLE
+    {
+        std::make_pair(1, "Invalid handle value.")
+    };
+    constexpr auto FACTORY_INSTANTATION
+    {
+        std::make_pair(2, "Unspecified type during factory instantiation")
+    };
+    constexpr auto INVALID_HEADER
+    {
+        std::make_pair(3, "Invalid message header.")
+    };
+    constexpr auto INVALID_OPERATION
+    {
+        std::make_pair(4, "Invalid message operation.")
+    };
+    constexpr auto UNEXPECTED_SIZE
+    {
+        std::make_pair(5, "Unexpected size value during sync process.")
+    };
+    constexpr auto ERROR_IN_SELECT_DATA
+    {
+        std::make_pair(6, "Error during the select of data." )
+    };
+    constexpr auto NOT_SPECIALIZED_FUNCTION
+    {
+        std::make_pair(7, "Function not specialized." )
+    };
+    constexpr auto INPUT_JSON_INCOMPLETE
+    {
+        std::make_pair(8, "Incomplete json provided." )
+    };
+    constexpr auto COMPONENT_ALREADY_REGISTERED
+    {
+        std::make_pair(9, "Component already registered." )
+    };
+
     /**
      *   This class should be used by concrete types to report errors.
     */

@@ -12,25 +12,22 @@
 #ifndef _DBSYNC_WRAPPER_H
 #define _DBSYNC_WRAPPER_H
 
-#include "dbsync.h"
-#include "rsync_exception.h"
+#include "dbsync.hpp"
+#include "json.hpp"
 
 namespace RSync
 {
     class DBSyncWrapper
     {
-            DBSYNC_HANDLE m_dbsync_handle;
+            DBSYNC_HANDLE m_dbsyncHandle;
         public:
 
-            explicit DBSyncWrapper(DBSYNC_HANDLE dbsync_handle)
-                : m_dbsync_handle(dbsync_handle) { }
-            virtual void select(const cJSON*    s_data_input,
-                                callback_data_t callback_data)
+            explicit DBSyncWrapper(DBSYNC_HANDLE dbsyncHandle)
+                : m_dbsyncHandle(dbsyncHandle) { }
+            virtual void select(nlohmann::json& data,
+                                ResultCallbackData callbackData)
             {
-                if (0 != dbsync_select_rows(m_dbsync_handle, s_data_input, callback_data))
-                {
-                    throw rsync_error { ERROR_IN_SELECT_DATA };
-                }
+                DBSync(m_dbsyncHandle).selectRows(data, callbackData);
             }
             // LCOV_EXCL_START
             virtual ~DBSyncWrapper() = default;
