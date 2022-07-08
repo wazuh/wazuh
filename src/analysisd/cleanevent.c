@@ -64,8 +64,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         src_msg = msg + IPV6_LAST_DIGIT;
     }
 
-    pieces = strchr(src_msg ? src_msg : msg, ':');
-    if (!pieces) {
+    if (pieces = strchr(src_msg != NULL ? src_msg : msg, ':'), pieces == NULL) {
         merror(FORMAT_ERROR);
         return (-1);
     }
