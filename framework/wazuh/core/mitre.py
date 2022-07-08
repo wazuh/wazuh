@@ -347,11 +347,13 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             mitigations = mitre_relational_query.run()
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'software'},
-                                         dict_key='target_id', limit=None) as mitre_relational_query:
+                                         dict_key='target_id', select=['source_id', 'target_id'],
+                                         limit=None) as mitre_relational_query:
             software = mitre_relational_query.run()
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'group'},
-                                         dict_key='target_id', limit=None) as mitre_relational_query:
+                                         dict_key='target_id', select=['source_id', 'target_id'],
+                                         limit=None) as mitre_relational_query:
             groups = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
@@ -413,11 +415,13 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             group_ids.add(group['id'])
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'software', 'source_type': 'group'},
-                                         dict_key='source_id', limit=None) as mitre_relational_query:
+                                         dict_key='source_id', select=['source_id', 'target_id'],
+                                         limit=None) as mitre_relational_query:
             software = mitre_relational_query.run()
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'group'},
-                                         dict_key='source_id', limit=None) as mitre_relational_query:
+                                         dict_key='source_id', select=['source_id', 'target_id'],
+                                         limit=None) as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
@@ -476,11 +480,13 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             software_ids.add(group['id'])
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'software', 'source_type': 'group'},
-                                         dict_key='target_id', limit=None) as mitre_relational_query:
+                                         dict_key='target_id', select=['source_id', 'target_id'],
+                                         limit=None) as mitre_relational_query:
             groups = mitre_relational_query.run()
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'software'},
-                                         dict_key='source_id', limit=None) as mitre_relational_query:
+                                         dict_key='source_id', select=['source_id', 'target_id'],
+                                         limit=None) as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'},
