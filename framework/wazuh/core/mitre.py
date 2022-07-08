@@ -31,8 +31,8 @@ EXTRA_FIELDS = {'url', 'source', 'external_id'}
 
 # Table name and keys
 DEFAULT_PK = 'id'
-MAIN_TABLES_PKS = {table: 'id' for table in {'technique', 'mitigation', 'tactic', 'group', 'software', 'reference'}} \
-                  | {'metadata': 'key'}
+MAIN_TABLES_PKS = {table: DEFAULT_PK for table in
+                   {'technique', 'mitigation', 'tactic', 'group', 'software', 'reference'}} | {'metadata': 'key'}
 
 
 class WazuhDBQueryMitre(WazuhDBQuery):
