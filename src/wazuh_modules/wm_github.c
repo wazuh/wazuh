@@ -361,8 +361,10 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             new_scan_time_str, current->org_name, event_types[event_types_it], github_config->interval);
                     }
 
-                    org_fail = wm_github_get_fail_by_org_and_type(github_config->fails, current->org_name, event_types[event_types_it]);
-                    if (org_fail != NULL) {
+                    if (org_fail = wm_github_get_fail_by_org_and_type(github_config->fails,
+                        current->org_name, event_types[event_types_it]), org_fail && org_fail->fails) {
+                        mtinfo(WM_GITHUB_LOGTAG, "Github organization '%s' and event type '%s', connected successfully.",
+                            current->org_name, event_types[event_types_it]);
                         org_fail->fails = 0;
                     }
                 }
@@ -428,7 +430,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
         org_fail->fails = 1;
     } else {
-        org_fail->fails = org_fail->fails + 1;
+        org_fail->fails++;
 
         if (org_fail->fails == RETRIES_TO_SEND_ERROR) {
             // Send fail message
