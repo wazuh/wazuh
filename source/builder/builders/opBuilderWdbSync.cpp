@@ -17,7 +17,6 @@
 #include <wdb/wdb.hpp>
 
 using builder::internals::syntax::REFERENCE_ANCHOR;
-using std::string;
 
 namespace builder::internals::builders
 {
@@ -27,7 +26,7 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
                                                         bool doReturnPayload)
 {
     // Get wdb_result of the extraction
-    string wdb_result {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string wdb_result {json::formatJsonPath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -51,17 +50,17 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
     }
 
     // Assigned to parameter in order to avoid handling array with 1 value
-    const string parameter = parametersArr.at(1);
+    const std::string parameter = parametersArr.at(1);
 
     base::Document doc {def};
-    string successTrace = fmt::format("{} wdb_update Success", doc.str());
-    string failureTrace = fmt::format("{} wdb_update Failure", doc.str());
+    std::string successTrace = fmt::format("{} wdb_update Success", doc.str());
+    std::string failureTrace = fmt::format("{} wdb_update Failure", doc.str());
 
     // Return Lifter
     return [=, tr = std::move(tr)](base::Observable o) {
         // Append rxcpp operation
         return o.map([=, tr = std::move(tr)](base::Event e) {
-            string completeQuery {};
+            std::string completeQuery {};
 
             // Get reference key value
             if (parameter[0] == REFERENCE_ANCHOR)
@@ -69,10 +68,10 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
                 auto key = json::formatJsonPath(parameter.substr(1));
                 try
                 {
-                    auto value = &e->getEventValue(key);
-                    if (value && value->IsString())
+                    const auto& value = e->getEvent()->get(key);
+                    if (value.IsString())
                     {
-                        string auxVal {value->GetString()};
+                        std::string auxVal {value.GetString()};
                         if (auxVal.empty())
                         {
                             tr(failureTrace);
@@ -105,7 +104,7 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
             auto returnTuple = wdb.tryQueryAndParseResult(completeQuery);
 
             // Handle response
-            string queryResponse;
+            std::string queryResponse;
             auto resultCode = std::get<0>(returnTuple);
 
             // Store value on json
