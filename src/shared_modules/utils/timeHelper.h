@@ -22,7 +22,7 @@
 
 namespace Utils
 {
-    static std::string getTimestamp(std::time_t time, bool utc = true)
+    static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
         // gmtime: result expressed as a UTC time

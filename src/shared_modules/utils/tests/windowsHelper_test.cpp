@@ -184,7 +184,7 @@ TEST_F(WindowsHelperTest, getSerialNumberFromSMBIOSTables2NoEndDoubleNull_TEST)
     EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampSortValue)
+TEST_F(WindowsHelperTest, normalizeTimestampShortValue)
 {
     std::string value = "202202";
     std::string timestamp = "2022/02/15 14:04:50";
@@ -228,22 +228,33 @@ TEST_F(WindowsHelperTest, normalizeTimestampNotEqual)
     EXPECT_EQ(expected, result);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampEqual1)
+TEST_F(WindowsHelperTest, normalizeTimestampEqual)
 {
     std::string value = "20220215";
     std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected = "2022/02/15 17:04:50";
+    std::string expected = "2022/02/15 14:04:50";
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 
     EXPECT_EQ(expected, result);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampEqual2)
+TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp1)
+{
+    std::string value = "a0220215";
+    std::string timestamp = "2022/02/15 23:59:59";
+    std::string expected = UNKNOWN_VALUE;
+
+    std::string result = Utils::normalizeTimestamp(value, timestamp);
+
+    EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp2)
 {
     std::string value = "20220215";
-    std::string timestamp = "2022/02/15 23:59:59";
-    std::string expected = "2022/02/16 02:59:59";
+    std::string timestamp = "a022/02/15 23:59:59";
+    std::string expected = "2022/02/15 00:00:00";
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 
