@@ -168,7 +168,7 @@ def test_DockerListener_send_msg(mock_socket):
     dl = docker_listener.DockerListener()
     dl.send_msg(msg)
 
-    mock_socket.assert_called_once()
+    mock_socket.assert_called_with(socket.AF_UNIX, socket.SOCK_DGRAM)
     m.connect.assert_called_with(dl.wazuh_queue)
     formatted_msg = json.dumps(dl.format_msg(msg))
     m.send.assert_called_with(f"{dl.msg_header}{formatted_msg}".encode())

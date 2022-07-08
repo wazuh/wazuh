@@ -34,8 +34,8 @@ class DockerListener:
             sys.stderr.write("This wodle does not work on Windows.\n")
             sys.exit(1)
         # socket variables
-        self.wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
-        self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
+        self.wazuh_path = os.path.abspath(os.path.join(__file__, "..", "..", ".."))
+        self.wazuh_queue = os.path.join(self.wazuh_path, "queue", "sockets", "queue")
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = None
