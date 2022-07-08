@@ -18,25 +18,25 @@ EVP_PKEY* generate_key(int bits) {
     RSA* rsa = RSA_new(); // This structure is free'd after EVP_PKEY_assign_RSA.
 
     if(key == NULL) {
-        merror("Cannot create EVP_PKEY structure.\n"); // LCOV_EXCL_LINE
+        merror("Cannot create EVP_PKEY structure."); // LCOV_EXCL_LINE
         goto error; // LCOV_EXCL_LINE
     }
 
     if (bn == NULL) {
-        merror("Cannot create BN structure.\n"); // LCOV_EXCL_LINE
+        merror("Cannot create BN structure."); // LCOV_EXCL_LINE
         goto error; // LCOV_EXCL_LINE
     }
 
     if (rsa == NULL) {
-        merror("Cannot create RSA structure.\n"); // LCOV_EXCL_LINE
-        goto error; // LCOV_EXCL_LINE
+        merror("Cannot create RSA structure.");
+        goto error;
     }
 
     BN_set_word(bn, RSA_F4);
     RSA_generate_key_ex(rsa, bits, bn, NULL);
 
     if(!EVP_PKEY_assign_RSA(key, rsa)) {
-        merror("Cannot generate RSA key.\n"); // LCOV_EXCL_LINE
+        merror("Cannot generate RSA key."); // LCOV_EXCL_LINE
         goto error; // LCOV_EXCL_LINE
     }
 

@@ -30,7 +30,7 @@ static int teardown_group(void **state) {
 static void test_generate_cert_success(void **state) {
     FILE key_file = {0};
     FILE cert_file = {0};
-
+    will_return(__wrap_RSA_new, 1);
     will_return(__wrap_RSA_generate_key_ex, 0);
     will_return(__wrap_X509_sign, 1);
 
@@ -59,6 +59,8 @@ static void test_generate_cert_success(void **state) {
 static void test_generate_cert_success_typo(void **state) {
     FILE key_file = {0};
     FILE cert_file = {0};
+
+    will_return(__wrap_RSA_new, 1);
 
     will_return(__wrap_RSA_generate_key_ex, 0);
     will_return(__wrap_X509_sign, 1);
@@ -89,6 +91,7 @@ static void test_save_key_fail(void **state) {
     FILE key_file = {0};
     FILE cert_file = {0};
 
+    will_return(__wrap_RSA_new, 1);
     will_return(__wrap_RSA_generate_key_ex, 0);
     will_return(__wrap_X509_sign, 1);
 
@@ -110,6 +113,7 @@ static void test_save_key_fail(void **state) {
 static void test_save_key_fail_fopen(void **state) {
     FILE key_file = {0};
 
+    will_return(__wrap_RSA_new, 1);
     will_return(__wrap_RSA_generate_key_ex, 0);
     will_return(__wrap_X509_sign, 1);
 
@@ -128,6 +132,7 @@ static void test_save_cert_fail(void **state) {
     FILE key_file = {0};
     FILE cert_file = {0};
 
+    will_return(__wrap_RSA_new, 1);
     will_return(__wrap_RSA_generate_key_ex, 0);
     will_return(__wrap_X509_sign, 1);
 
@@ -157,6 +162,7 @@ static void test_save_cert_fail_fopen(void **state) {
     FILE key_file = {0};
     FILE cert_file = {0};
 
+    will_return(__wrap_RSA_new, 1);
     will_return(__wrap_RSA_generate_key_ex, 0);
     will_return(__wrap_X509_sign, 1);
 
@@ -179,6 +185,20 @@ static void test_save_cert_fail_fopen(void **state) {
     assert_int_equal(ret_value, 1);
 }
 
+static void test_generate_cert_key_null(void **state) {
+    FILE key_file = {0};
+    FILE cert_file = {0};
+
+    will_return(__wrap_RSA_new, 0);
+    will_return(__wrap_RSA_new, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Cannot create RSA structure.");
+    expect_string(__wrap__merror, formatted_msg, "Cannot generate key to sign the certificate.");
+
+    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    assert_int_equal(ret_value, 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_generate_cert_success),
@@ -187,6 +207,7 @@ int main(void) {
         cmocka_unit_test(test_save_key_fail_fopen),
         cmocka_unit_test(test_save_cert_fail),
         cmocka_unit_test(test_save_cert_fail_fopen),
+        cmocka_unit_test(test_generate_cert_key_null),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
