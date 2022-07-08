@@ -84,24 +84,40 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherQueue)
 {
     constexpr auto NUMBER_OF_THREADS { 1ul };
     constexpr auto MAX_QUEUE_SIZE { 5ull };
-    constexpr auto NUMBER_OF_ITEMS { 10 };
+    constexpr auto NUMBER_OF_ITEMS { 1000 };
+    std::mutex mutex;
+    std::unique_lock<std::mutex> lock(mutex);
+    std::condition_variable condition;
+    std::atomic<bool> firstCall { true };
 
     AsyncDispatcher<int, std::function<void(int)>> dispatcher
     {
-        [](const int value)
+        [&mutex, &condition, &firstCall](int)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(value));
+            std::unique_lock<std::mutex> lock(mutex);
+            condition.notify_one();
+
+            if (firstCall)
+            {
+                firstCall = false;
+                condition.wait(lock);
+            }
         }
         , NUMBER_OF_THREADS
         , MAX_QUEUE_SIZE
     };
 
-    for (int i = 0; i < NUMBER_OF_ITEMS; ++i)
+    dispatcher.push(0);
+    condition.wait(lock);
+
+    for (int i = 0; i < NUMBER_OF_ITEMS - 1; ++i)
     {
-        dispatcher.push(1000);
+        dispatcher.push(0);
     }
 
-    EXPECT_EQ(MAX_QUEUE_SIZE - NUMBER_OF_THREADS, dispatcher.size() - NUMBER_OF_THREADS);
-    dispatcher.cancel();
+    EXPECT_EQ(MAX_QUEUE_SIZE, dispatcher.size());
+    condition.notify_one();
+    lock.unlock();
+    dispatcher.rundown();
 }
 
