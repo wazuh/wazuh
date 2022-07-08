@@ -1157,22 +1157,30 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-cpu_arch := ${uname_M}
-ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-PRECOMPILED_ARCH := /amd64
+ifneq (,$(filter ${uname_S}, Linux Darwin))
+	cpu_arch := ${uname_M}
+	ifneq (,$(filter ${cpu_arch},x86_64 amd64))
+		PRECOMPILED_ARCH := /amd64
+	else
+	ifneq (,$(filter ${cpu_arch},i386 i686))
+		PRECOMPILED_ARCH := /i386
+	else
+	ifneq (,$(filter ${cpu_arch},aarch64 arm64))
+		PRECOMPILED_ARCH := /aarch64
+	else
+	ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
+		PRECOMPILED_ARCH := /arm32
+	else
+		PRECOMPILED_ARCH := /${uname_P}
+	endif
+	endif
+	endif
+	endif
 else
-ifneq (,$(filter ${cpu_arch},i386 i686))
-PRECOMPILED_ARCH := /i386
+ifneq (,$(filter ${uname_S},HP-UX SunOS AIX))
+	PRECOMPILED_ARCH := /${uname_P}
 else
-ifneq (,$(filter ${cpu_arch},aarch64 arm64))
-PRECOMPILED_ARCH := /aarch64
-else
-ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
-PRECOMPILED_ARCH := /arm32
-else
-PRECOMPILED_ARCH := /${uname_P}
-endif
-endif
+	PRECOMPILED_ARCH := /${uname_P}
 endif
 endif
 endif
