@@ -659,9 +659,6 @@ cJSON* rem_create_state_json() {
         cJSON_AddItemToObject(rem_state_json, "agents_connected", _array);
     }
     w_mutex_unlock(&agents_state_mutex);
-    // if (_agents_connected != NULL) {
-    //     cJSON_Delete(_agents_connected);
-    // }
 
     return rem_state_json;
 }
