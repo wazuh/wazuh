@@ -25,10 +25,14 @@
 #include "../wrappers/wazuh/shared/cluster_utils_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 
+typedef struct test_struct {
+    remoted_agent_state_t *agent_state;
+    OSHashNode *hash_node;
+    cJSON * state_json;
+} test_struct_t;
+
 extern remoted_state_t remoted_state;
-remoted_agent_state_t *agent_state;
 extern OSHash *remoted_agents_state;
-OSHashNode *hash_node;
 
 remoted_agent_state_t * get_node(const char *agent_id);
 void w_remoted_clean_agents_state();
@@ -36,6 +40,11 @@ void w_remoted_clean_agents_state();
 /* setup/teardown */
 
 static int test_setup(void ** state) {
+    test_struct_t *test_data = NULL;
+    os_calloc(1, sizeof(test_struct_t),test_data);
+    os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
+    os_calloc(1, sizeof(OSHashNode), test_data->hash_node);
+
     remoted_state.tcp_sessions = 5;
     remoted_state.recv_bytes = 123456;
     remoted_state.sent_bytes = 234567;
@@ -62,63 +71,71 @@ static int test_setup(void ** state) {
     will_return(__wrap_time, 123456789);
     remoted_agents_state = __wrap_OSHash_Create();
 
-    os_calloc(1, sizeof(remoted_agent_state_t), agent_state);
+    test_data->agent_state->recv_evt_count = 12568;
+    test_data->agent_state->recv_ctrl_count = 2568;
+    test_data->agent_state->ctrl_breakdown.keepalive_count = 1234;
+    test_data->agent_state->ctrl_breakdown.startup_count = 2345;
+    test_data->agent_state->ctrl_breakdown.shutdown_count = 234;
+    test_data->agent_state->ctrl_breakdown.request_count = 127;
+    test_data->agent_state->sent_breakdown.ack_count = 2346;
+    test_data->agent_state->sent_breakdown.shared_count = 235;
+    test_data->agent_state->sent_breakdown.ar_count = 514;
+    test_data->agent_state->sent_breakdown.cfga_count = 134;
+    test_data->agent_state->sent_breakdown.request_count = 153;
+    test_data->agent_state->sent_breakdown.discarded_count = 235;
 
-    agent_state->recv_evt_count = 12568;
-    agent_state->recv_ctrl_count = 2568;
-    agent_state->ctrl_breakdown.keepalive_count = 1234;
-    agent_state->ctrl_breakdown.startup_count = 2345;
-    agent_state->ctrl_breakdown.shutdown_count = 234;
-    agent_state->ctrl_breakdown.request_count = 127;
-    agent_state->sent_breakdown.ack_count = 2346;
-    agent_state->sent_breakdown.shared_count = 235;
-    agent_state->sent_breakdown.ar_count = 514;
-    agent_state->sent_breakdown.cfga_count = 134;
-    agent_state->sent_breakdown.request_count = 153;
-    agent_state->sent_breakdown.discarded_count = 235;
-
-    OSHash_Add_ex(remoted_agents_state, "001", agent_state);
+    OSHash_Add_ex(remoted_agents_state, "001", test_data->agent_state);
     test_mode = 1;
 
-    os_calloc(1, sizeof(OSHashNode), hash_node);
-    hash_node->key = "001";
-    hash_node->data = agent_state;
+    test_data->hash_node->key = "001";
+    test_data->hash_node->data = test_data->agent_state;
+
+    *state = test_data;
 
     return 0;
 }
 
 static int test_teardown(void ** state) {
-    cJSON* json = *state;
-    cJSON_Delete(json);
+    test_struct_t *test_data  = (test_struct_t *)*state;
+
+    cJSON_Delete(test_data->state_json);
 
     if (remoted_agents_state) {
         OSHash_Free(remoted_agents_state);
         remoted_agents_state = NULL;
     }
 
-    os_free(hash_node);
+    os_free(test_data->hash_node);
+    os_free(test_data);
 
     return 0;
 }
 
-static int test_setup_empty_hash_table() {
+static int test_setup_empty_hash_table(void ** state) {
+    test_struct_t *test_data = NULL;
+    os_calloc(1, sizeof(test_struct_t),test_data);
+    os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
+
     test_mode = 0;
     will_return(__wrap_time, 123456789);
     remoted_agents_state = __wrap_OSHash_Create();
     test_mode = 1;
 
-    os_calloc(1, sizeof(remoted_agent_state_t), agent_state);
+    *state = test_data;
 
     return 0;
 }
 
-static int test_teardown_empty_hash_table() {
+static int test_teardown_empty_hash_table(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
+
     if (remoted_agents_state) {
         OSHash_Free(remoted_agents_state);
         remoted_agents_state = NULL;
     }
 
-    os_free(agent_state);
+    os_free(test_data->agent_state);
+    os_free(test_data);
 
     return 0;
 }
@@ -126,25 +143,24 @@ static int test_teardown_empty_hash_table() {
 /* Tests */
 
 void test_rem_create_state_json(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
 
     will_return(__wrap_time, 123456789);
     will_return(__wrap_rem_get_qsize, 789);
     will_return(__wrap_rem_get_tsize, 100000);
 
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, hash_node);
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
     expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
     will_return(__wrap_OSHash_Next, NULL);
 
-    cJSON* state_json = rem_create_state_json();
+    test_data->state_json = rem_create_state_json();
 
-    *state = (void *)state_json;
+    assert_non_null(test_data->state_json);
 
-    assert_non_null(state_json);
-
-    assert_non_null(cJSON_GetObjectItem(state_json, "statistics"));
-    cJSON* statistics = cJSON_GetObjectItem(state_json, "statistics");
+    assert_non_null(cJSON_GetObjectItem(test_data->state_json, "statistics"));
+    cJSON* statistics = cJSON_GetObjectItem(test_data->state_json, "statistics");
 
     assert_non_null(cJSON_GetObjectItem(statistics, "tcp_sessions"));
     assert_int_equal(cJSON_GetObjectItem(statistics, "tcp_sessions")->valueint, 5);
@@ -209,8 +225,8 @@ void test_rem_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(queue, "receive_queue_size"));
     assert_int_equal(cJSON_GetObjectItem(queue, "receive_queue_size")->valueint, 100000);
 
-    assert_non_null(cJSON_GetObjectItem(state_json, "agents_connected"));
-    cJSON* agents_connected = cJSON_GetObjectItem(state_json, "agents_connected");
+    assert_non_null(cJSON_GetObjectItem(test_data->state_json, "agents_connected"));
+    cJSON* agents_connected = cJSON_GetObjectItem(test_data->state_json, "agents_connected");
 
     assert_non_null(cJSON_GetArrayItem(agents_connected, 0));
     cJSON* agent_connected = cJSON_GetArrayItem(agents_connected, 0);
@@ -243,10 +259,11 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request_messages")->valueint, 153);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded_messages")->valueint, 235);
 
-    os_free(agent_state);
+    os_free(test_data->agent_state);
 }
 
-void test_rem_get_node_new_node() {
+void test_rem_get_node_new_node(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
     const char *agent_id = "001";
 
     expect_value(__wrap_OSHash_Get_ex, self, remoted_agents_state);
@@ -255,7 +272,7 @@ void test_rem_get_node_new_node() {
 
     expect_value(__wrap_OSHash_Add_ex, self, remoted_agents_state);
     expect_string(__wrap_OSHash_Add_ex, key, agent_id);
-    expect_memory(__wrap_OSHash_Add_ex, data, agent_state, sizeof(agent_state));
+    expect_memory(__wrap_OSHash_Add_ex, data, test_data->agent_state, sizeof(test_data->agent_state));
     will_return(__wrap_OSHash_Add_ex, 2);
 
     remoted_agent_state_t *agent_state_returned = get_node(agent_id);
@@ -265,30 +282,33 @@ void test_rem_get_node_new_node() {
     os_free(agent_state_returned);
 }
 
-void test_rem_get_node_existing_node() {
+void test_rem_get_node_existing_node(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
     const char *agent_id = "001";
 
     expect_value(__wrap_OSHash_Get_ex, self, remoted_agents_state);
     expect_string(__wrap_OSHash_Get_ex, key, agent_id);
-    will_return(__wrap_OSHash_Get_ex, agent_state);
+    will_return(__wrap_OSHash_Get_ex, test_data->agent_state);
 
     remoted_agent_state_t *agent_state_returned = get_node(agent_id);
 
     assert_non_null(agent_state_returned);
 
-    os_free(agent_state);
+    os_free(test_data->agent_state);
 }
 
-void test_w_remoted_clean_agents_state_empty_table() {
+void test_w_remoted_clean_agents_state_empty_table(void ** state) {
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin, NULL);
 
     w_remoted_clean_agents_state();
 }
 
-void test_w_remoted_clean_agents_state_completed() {
+void test_w_remoted_clean_agents_state_completed(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
+
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, hash_node);
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
     char *cluster_node_name = NULL;
     cluster_node_name = strdup("node01");
@@ -307,16 +327,18 @@ void test_w_remoted_clean_agents_state_completed() {
 
     expect_value(__wrap_OSHash_Delete_ex, self, remoted_agents_state);
     expect_value(__wrap_OSHash_Delete_ex, key, "001");
-    will_return(__wrap_OSHash_Delete_ex, agent_state);
+    will_return(__wrap_OSHash_Delete_ex, test_data->agent_state);
 
     w_remoted_clean_agents_state();
 
     os_free(connected_agents);
 }
 
-void test_w_remoted_clean_agents_state_completed_without_delete() {
+void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
+
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, hash_node);
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
     char *cluster_node_name = NULL;
     cluster_node_name = strdup("node01");
@@ -336,12 +358,14 @@ void test_w_remoted_clean_agents_state_completed_without_delete() {
     w_remoted_clean_agents_state();
 
     os_free(connected_agents);
-    os_free(agent_state);
+    os_free(test_data->agent_state);
 }
 
-void test_w_remoted_clean_agents_state_query_fail() {
+void test_w_remoted_clean_agents_state_query_fail(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
+
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, hash_node);
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
     char *cluster_node_name = NULL;
     cluster_node_name = strdup("node01");
@@ -357,7 +381,7 @@ void test_w_remoted_clean_agents_state_query_fail() {
 
     w_remoted_clean_agents_state();
 
-    os_free(agent_state);
+    os_free(test_data->agent_state);
 }
 
 int main(void) {

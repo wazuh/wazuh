@@ -17,6 +17,13 @@
 #include "state.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 analysisd_state_t analysisd_state;
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -44,12 +51,12 @@ static void w_get_initial_queues_size();
  * @param agent_id Id of the agent that corresponds to the node
  * @return analysisd_agent_state_t node
  */
-static analysisd_agent_state_t * get_node(const char *agent_id);
+STATIC analysisd_agent_state_t * get_node(const char *agent_id);
 
 /**
  * @brief Clean non active agents from agents state.
  */
-static void w_analysisd_clean_agents_state();
+STATIC void w_analysisd_clean_agents_state();
 
 /**
  * @brief Increment agent decoded events counter for agents
@@ -509,7 +516,7 @@ void w_get_initial_queues_size() {
     queue_status.stats_queue_size = writer_queue_log_statistical->size;
 }
 
-static analysisd_agent_state_t * get_node(const char *agent_id) {
+STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
     analysisd_agent_state_t * agent_state = (analysisd_agent_state_t *) OSHash_Get_ex(analysisd_agents_state, agent_id);
 
     if(agent_state != NULL) {
@@ -521,7 +528,7 @@ static analysisd_agent_state_t * get_node(const char *agent_id) {
     }
 }
 
-static void w_analysisd_clean_agents_state() {
+STATIC void w_analysisd_clean_agents_state() {
     char *node_name = NULL;
     int *active_agents = NULL;
     int sock = -1;
@@ -1381,7 +1388,6 @@ cJSON* asys_create_state_json() {
     cJSON *_dropped_modules = NULL;
     cJSON *_dropped_modules_logcollector = NULL;
     cJSON *_queue = NULL;
-    cJSON *_agents_connected = NULL;
 
     w_mutex_lock(&queue_mutex);
     w_get_queues_size();
@@ -1552,8 +1558,7 @@ cJSON* asys_create_state_json() {
         cJSON * _modules_decoded_breakdown = NULL;
         cJSON * _logcollector_decoded_breakdown = NULL;
 
-        _agents_connected = cJSON_CreateObject();
-        _array = cJSON_AddArrayToObject(_agents_connected, "agents_connected");
+        _array = cJSON_CreateArray();
 
         while (hash_node != NULL) {
             data = hash_node->data;
