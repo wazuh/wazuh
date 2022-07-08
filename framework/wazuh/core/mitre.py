@@ -11,6 +11,9 @@ from wazuh.core import common
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 from wazuh.core.utils import process_array
 
+# Default request_slice value
+DEFAULT_REQUEST_SLICE = 500
+
 # Optimal request_slice values for each WazuhDBQuery
 # TACTICS_REQUEST_SLICE = 500  # Default WazuhDBQueryMitre request_slice value
 MITIGATIONS_REQUEST_SLICE = 64
@@ -26,13 +29,18 @@ SELECT_FIELDS_REFERENCES = ['url', 'description', 'source', 'external_id']
 # Extra fields from references
 EXTRA_FIELDS = {'url', 'source', 'external_id'}
 
+# Table name and keys
+DEFAULT_PK = 'id'
+MAIN_TABLES_PKS = {table: 'id' for table in {'technique', 'mitigation', 'tactic', 'group', 'software', 'reference'}} \
+                  | {'metadata': 'key'}
+
 
 class WazuhDBQueryMitre(WazuhDBQuery):
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, table: str = '', sort: dict = None, default_sort_field: str = 'id',
+                 count: bool = True, table: str = '', sort: dict = None, default_sort_field: str = DEFAULT_PK,
                  default_sort_order='ASC', fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, request_slice=500):
+                 min_select_fields=None, filters=None, request_slice=DEFAULT_REQUEST_SLICE):
         """Create an instance of WazuhDBQueryMitre query."""
 
         if filters is None:
@@ -79,6 +87,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
 
 class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
+    TABLE_NAME = 'metadata'
 
     def __init__(self):
         """Create an instance of WazuhDBQueryMitreMetadata query."""
@@ -86,14 +95,28 @@ class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
         min_select_fields = {'key', 'value'}
         fields = {'key': 'key', 'value': 'value'}
 
-        WazuhDBQueryMitre.__init__(self, table='metadata', min_select_fields=min_select_fields, fields=fields,
-                                   default_sort_field='key')
+        WazuhDBQueryMitre.__init__(self, table=self.TABLE_NAME, min_select_fields=min_select_fields, fields=fields,
+                                   default_sort_field=MAIN_TABLES_PKS[self.TABLE_NAME])
 
     def _filter_status(self, status_filter):
         pass
 
 
 class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
+    TABLE_FIELDS = {
+        'phase': {'min_select_fields': {'tactic_id', 'tech_id'},
+                  'default_sort_field': 'tactic_id',
+                  'fields': {'tactic_id': 'tactic_id', 'tech_id': 'tech_id'}},
+        # source_id refers to mitigation_id, group_id or software_id
+        # target_id always refers to technique_id
+        'mitigate': {'min_select_fields': {'source_id', 'target_id'},
+                     'default_sort_field': 'source_id',
+                     'fields': {'source_id': 'source_id', 'target_id': 'target_id'}},
+        'use': {'min_select_fields': {'source_id', 'target_id'},
+                'default_sort_field': 'source_id',
+                'fields': {'source_id': 'source_id', 'source_type': 'source_type',
+                           'target_id': 'target_id', 'target_type': 'target_type'}},
+    }
 
     def __init__(self, table: str = None, offset: int = 0, limit: Union[int, None] = common.database_limit,
                  query: str = '', count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
@@ -110,28 +133,11 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
             The value of the output dictionary will be the value of the remaining key.
         """
 
-        if filters is None:
-            filters = {}
-        if min_select_fields is None:
-            if table == 'phase':
-                self.min_select_fields = {'tactic_id', 'tech_id'}
-                default_sort_field = 'tactic_id'
-            elif table == 'mitigate' or table == 'use':
-                # source_id refers to mitigation_id, group_id or software_id
-                # target_id always refers to technique_id
-                self.min_select_fields = {'source_id', 'target_id'}
-                default_sort_field = 'source_id'
-        else:
-            self.min_select_fields = min_select_fields
-        if fields is None:
-            if table == 'phase':
-                fields = {'tactic_id': 'tactic_id', 'tech_id': 'tech_id'}
-            elif table == 'mitigate':
-                fields = {'source_id': 'source_id', 'target_id': 'target_id'}
-            elif table == 'use':
-                fields = {'source_id': 'source_id', 'source_type': 'source_type',
-                          'target_id': 'target_id', 'target_type': 'target_type'}
-        self.dict_key = dict_key if dict_key else next(iter(self.min_select_fields))
+        self.min_select_fields = min_select_fields or self.TABLE_FIELDS[table]['min_select_fields']
+        self.dict_key = dict_key or next(iter(self.min_select_fields))
+        default_sort_field = default_sort_field or self.TABLE_FIELDS[table]['default_sort_field']
+        fields = fields or self.TABLE_FIELDS[table]['fields']
+        filters = filters or {}
 
         WazuhDBQueryMitre.__init__(self, table=table, min_select_fields=self.min_select_fields, fields=fields,
                                    filters=filters, offset=offset, limit=limit, query=query, count=count,
@@ -163,26 +169,23 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
+    TABLE_NAME = 'mitigation'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreMitigations query."""
 
-        if select is None:
-            select = set()
-        if filters is None:
-            filters = dict()
-        self.min_select_fields = min_select_fields
-        if min_select_fields is None:
-            self.min_select_fields = {'id'}
-        self.fields = fields
-        if fields is None:
-            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
-                           'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
-                           'revoked_by': 'revoked_by', 'deprecated': 'deprecated'}
+        default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
+        select = select or set()
+        filters = filters or dict()
+        self.min_select_fields = min_select_fields or {MAIN_TABLES_PKS[self.TABLE_NAME]}
+        self.fields = fields or {'id': 'id', 'name': 'name', 'description': 'description',
+                                 'created_time': 'created_time',
+                                 'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
+                                 'revoked_by': 'revoked_by', 'deprecated': 'deprecated'}
 
-        WazuhDBQueryMitre.__init__(self, table='mitigation', min_select_fields=self.min_select_fields,
+        WazuhDBQueryMitre.__init__(self, table=self.TABLE_NAME, min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
@@ -200,12 +203,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
         """
         super()._execute_data_query()
 
-        mitigation_ids = set()
-        for mitigation in self._data:
-            mitigation_ids.add(mitigation['id'])
-
-        with WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
-                                         dict_key='source_id', limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='mitigate', dict_key='source_id', limit=None) as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'mitigation'},
@@ -225,25 +223,21 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
+    TABLE_NAME = 'reference'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreReferences query."""
 
-        if select is None:
-            select = set()
-        if filters is None:
-            filters = dict()
-        self.min_select_fields = min_select_fields
-        if min_select_fields is None:
-            self.min_select_fields = {'id'}
-        self.fields = fields
-        if fields is None:
-            self.fields = {'id': 'id', 'source': 'source', 'external_id': 'external_id', 'url': 'url',
-                           'description': 'description', 'type': 'type'}
+        default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
+        select = select or set()
+        filters = filters or dict()
+        self.min_select_fields = min_select_fields or {MAIN_TABLES_PKS[self.TABLE_NAME]}
+        self.fields = fields or {'id': 'id', 'source': 'source', 'external_id': 'external_id', 'url': 'url',
+                                 'description': 'description', 'type': 'type'}
 
-        WazuhDBQueryMitre.__init__(self, table='reference', min_select_fields=self.min_select_fields,
+        WazuhDBQueryMitre.__init__(self, table=self.TABLE_NAME, min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
@@ -255,25 +249,21 @@ class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
+    TABLE_NAME = 'tactic'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreTactics query."""
 
-        if select is None:
-            select = set()
-        if filters is None:
-            filters = dict()
-        self.min_select_fields = min_select_fields
-        if min_select_fields is None:
-            self.min_select_fields = {'id'}
-        self.fields = fields
-        if fields is None:
-            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'short_name': 'short_name',
-                           'created_time': 'created_time', 'modified_time': 'modified_time'}
+        default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
+        select = select or set()
+        filters = filters or dict()
+        self.min_select_fields = min_select_fields or {MAIN_TABLES_PKS[self.TABLE_NAME]}
+        self.fields = fields or {'id': 'id', 'name': 'name', 'description': 'description', 'short_name': 'short_name',
+                                 'created_time': 'created_time', 'modified_time': 'modified_time'}
 
-        WazuhDBQueryMitre.__init__(self, table='tactic', min_select_fields=self.min_select_fields,
+        WazuhDBQueryMitre.__init__(self, table=self.TABLE_NAME, min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
@@ -289,12 +279,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
         """This function will add to the result the techniques related to each tactic."""
         super()._execute_data_query()
 
-        tactic_ids = set()
-        for tactic in self._data:
-            tactic_ids.add(tactic['id'])
-
-        with WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
-                                         dict_key='tactic_id', limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='phase', dict_key='tactic_id', limit=None) as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'tactic'},
@@ -314,28 +299,25 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
+    TABLE_NAME = 'technique'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreTechniques query."""
 
-        if select is None:
-            select = set()
-        if filters is None:
-            filters = dict()
-        self.min_select_fields = min_select_fields
-        if min_select_fields is None:
-            self.min_select_fields = {'id'}
-        self.fields = fields
-        if fields is None:
-            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
-                           'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
-                           'mitre_detection': 'mitre_detection', 'network_requirements': 'network_requirements',
-                           'remote_support': 'remote_support', 'revoked_by': 'revoked_by', 'deprecated': 'deprecated',
-                           'subtechnique_of': 'subtechnique_of'}
+        default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
+        select = select or set()
+        filters = filters or dict()
+        self.min_select_fields = min_select_fields or {MAIN_TABLES_PKS[self.TABLE_NAME]}
+        self.fields = fields or {'id': 'id', 'name': 'name', 'description': 'description',
+                                 'created_time': 'created_time', 'modified_time': 'modified_time',
+                                 'mitre_version': 'mitre_version', 'mitre_detection': 'mitre_detection',
+                                 'network_requirements': 'network_requirements', 'remote_support': 'remote_support',
+                                 'revoked_by': 'revoked_by', 'deprecated': 'deprecated',
+                                 'subtechnique_of': 'subtechnique_of'}
 
-        WazuhDBQueryMitre.__init__(self, table='technique', min_select_fields=self.min_select_fields,
+        WazuhDBQueryMitre.__init__(self, table=self.TABLE_NAME, min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
@@ -358,26 +340,18 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
         for technique in self._data:
             technique_ids.add(technique['id'])
 
-        with WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
-                                         dict_key='tech_id', limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='phase', dict_key='tech_id', limit=None) as mitre_relational_query:
             tactics = mitre_relational_query.run()
 
-        with WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
-                                         dict_key='target_id', limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='mitigate', dict_key='target_id', limit=None) as mitre_relational_query:
             mitigations = mitre_relational_query.run()
 
-        with WazuhDBQueryMitreRelational(table='use',
-                                         filters={'target_id': list(technique_ids),
-                                                  'target_type': 'technique', 'source_type': 'software'},
-                                         dict_key='target_id',
-                                         limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'software'},
+                                         dict_key='target_id', limit=None) as mitre_relational_query:
             software = mitre_relational_query.run()
 
-        with WazuhDBQueryMitreRelational(table='use',
-                                         filters={'target_id': list(technique_ids),
-                                                  'target_type': 'technique', 'source_type': 'group'},
-                                         dict_key='target_id',
-                                         limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'group'},
+                                         dict_key='target_id', limit=None) as mitre_relational_query:
             groups = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
@@ -400,26 +374,24 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
+    TABLE_NAME = 'group'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreGroups query."""
 
-        if select is None:
-            select = set()
-        if filters is None:
-            filters = dict()
-        self.min_select_fields = min_select_fields
-        if min_select_fields is None:
-            self.min_select_fields = {'id'}
-        self.fields = fields
-        if fields is None:
-            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
-                           'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
-                           'revoked_by': 'revoked_by', 'deprecated': 'deprecated'}
+        default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
+        select = select or set()
+        filters = filters or dict()
+        self.min_select_fields = min_select_fields or {MAIN_TABLES_PKS[self.TABLE_NAME]}
+        self.fields = fields or {'id': 'id', 'name': 'name', 'description': 'description',
+                                 'created_time': 'created_time', 'modified_time': 'modified_time',
+                                 'mitre_version': 'mitre_version', 'revoked_by': 'revoked_by',
+                                 'deprecated': 'deprecated'}
 
-        WazuhDBQueryMitre.__init__(self, table='`group`', min_select_fields=self.min_select_fields,
+        # The 'group' table needs to be quoted to avoid an SQL syntax error ('group' is a reserved word)
+        WazuhDBQueryMitre.__init__(self, table=f"`{self.TABLE_NAME}`", min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
@@ -440,18 +412,12 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
         for group in self._data:
             group_ids.add(group['id'])
 
-        with WazuhDBQueryMitreRelational(table='use',
-                                         filters={'source_id': list(group_ids),
-                                                  'target_type': 'software', 'source_type': 'group'},
-                                         dict_key='source_id',
-                                         limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'software', 'source_type': 'group'},
+                                         dict_key='source_id', limit=None) as mitre_relational_query:
             software = mitre_relational_query.run()
 
-        with WazuhDBQueryMitreRelational(table='use',
-                                         filters={'source_id': list(group_ids),
-                                                  'target_type': 'technique', 'source_type': 'group'},
-                                         dict_key='source_id',
-                                         limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'group'},
+                                         dict_key='source_id', limit=None) as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
@@ -472,26 +438,23 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
+    TABLE_NAME = 'software'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreSoftware query."""
 
-        if select is None:
-            select = set()
-        if filters is None:
-            filters = dict()
-        self.min_select_fields = min_select_fields
-        if min_select_fields is None:
-            self.min_select_fields = {'id'}
-        self.fields = fields
-        if fields is None:
-            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
-                           'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
-                           'revoked_by': 'revoked_by', 'deprecated': 'deprecated'}
+        default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
+        select = select or set()
+        filters = filters or dict()
+        self.min_select_fields = min_select_fields or {MAIN_TABLES_PKS[self.TABLE_NAME]}
+        self.fields = fields or {'id': 'id', 'name': 'name', 'description': 'description',
+                                 'created_time': 'created_time', 'modified_time': 'modified_time',
+                                 'mitre_version': 'mitre_version', 'revoked_by': 'revoked_by',
+                                 'deprecated': 'deprecated'}
 
-        WazuhDBQueryMitre.__init__(self, table='software', min_select_fields=self.min_select_fields,
+        WazuhDBQueryMitre.__init__(self, table=self.TABLE_NAME, min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
@@ -512,20 +475,12 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
         for group in self._data:
             software_ids.add(group['id'])
 
-        with WazuhDBQueryMitreRelational(table='use',
-                                         filters={'target_id': list(software_ids),
-                                                  'target_type': 'software',
-                                                  'source_type': 'group'},
-                                         dict_key='target_id',
-                                         limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'software', 'source_type': 'group'},
+                                         dict_key='target_id', limit=None) as mitre_relational_query:
             groups = mitre_relational_query.run()
 
-        with WazuhDBQueryMitreRelational(table='use',
-                                         filters={'source_id': list(software_ids),
-                                                  'target_type': 'technique',
-                                                  'source_type': 'software'},
-                                         dict_key='source_id',
-                                         limit=None) as mitre_relational_query:
+        with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'software'},
+                                         dict_key='source_id', limit=None) as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'},
