@@ -78,7 +78,7 @@ tabulate==0.8.9
 typing-extensions==3.10.0.2
 typing-inspect==0.7.1
 urllib3==1.26.5
-uvloop==0.15.2
+uvloop==0.16.0
 websocket-client==0.57.0
 Werkzeug==2.0.2
 xmltodict==0.12.0
