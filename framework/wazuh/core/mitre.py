@@ -516,7 +516,7 @@ def get_mitre_items(mitre_class: callable):
     dict
         Dictionary with information about the fields of the MITRE objects and the items obtained.
     """
-    info = {'min_select_fields': None, 'allowed_fields': None}
+    info = dict()
     db_query = mitre_class(limit=None)
     info['allowed_fields'] = \
         set(db_query.fields.keys()).union(set(db_query.relation_fields)).union(db_query.extra_fields)
