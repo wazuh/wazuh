@@ -53,7 +53,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Avoid ipv6 ':', msg that include "[" have an "->" after the ip */
     if (*msg == '[') {
-        if (!(src_msg = strstr(msg, "->"))) {
+        if (src_msg = strstr(msg, "->"), src_msg == NULL) {
             merror(FORMAT_ERROR);
             return (-1);
         }
