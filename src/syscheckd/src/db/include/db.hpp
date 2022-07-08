@@ -75,8 +75,8 @@ class EXPORTED DB final
         *
         * @param storage Storage type.
         * @param syncInterval Sync sync interval.
-        * @param sync_max_interval Maximum interval allowed for synchronization process.
-        * @param sync_response_timeout Minimum interval for synchronization process.
+        * @param sync_max_interval Maximum interval allowed for the synchronization process.
+        * @param sync_response_timeout Minimum interval for the synchronization process.
         * @param callbackSyncFileWrapper Callback sync file values.
         * @param callbackSyncRegistryWrapper Callback sync registry values.
         * @param callbackLogWrapper Callback to log lines.

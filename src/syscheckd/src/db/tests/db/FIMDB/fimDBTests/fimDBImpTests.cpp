@@ -275,19 +275,19 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
 TEST_F(FimDBFixture, syncAlgorithmLoop)
 {
     EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(15)).WillOnce(testing::Return(30));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "FIM Sync check failed, sync interval increased. Next interval: 1800s"));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "Sync still in progress. Skipped next sync and increased interval to '1800s'"));
 
     fimDBMock.setTimeLastSyncMsg();
     fimDBMock.syncAlgorithm();
 
     EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(15)).WillOnce(testing::Return(30));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "FIM Sync check failed, sync interval increased. Next interval: 2000s"));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "Sync still in progress. Skipped next sync and increased interval to '2000s'"));
 
     fimDBMock.setTimeLastSyncMsg();
     fimDBMock.syncAlgorithm();
 
     EXPECT_CALL(fimDBMock, getCurrentTime()).WillOnce(testing::Return(15)).WillOnce(testing::Return(60));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "FIM Sync check success, sync interval reset to original value: 900s"));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "Previous sync was successful. Sync interval is reset to: '900s'"));
 
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync."));
     EXPECT_CALL(*mockRSync, startSync(testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));

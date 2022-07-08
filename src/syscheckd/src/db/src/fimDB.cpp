@@ -55,7 +55,7 @@ void FIMDB::syncAlgorithm()
         {
             m_currentSyncInterval = m_syncInterval;
 
-            snprintf(debugmsg, 1024, "FIM Sync check success, sync interval reset to original value: %ds", m_currentSyncInterval);
+            snprintf(debugmsg, 1024, "Previous sync was successful. Sync interval is reset to: '%ds'", m_currentSyncInterval);
             m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
         }
         m_syncSuccessful = true;
@@ -71,7 +71,7 @@ void FIMDB::syncAlgorithm()
             m_currentSyncInterval = m_syncMaxInterval;
         }
 
-        snprintf(debugmsg, 1024, "FIM Sync check failed, sync interval increased. Next interval: %ds", m_currentSyncInterval);
+        snprintf(debugmsg, 1024, "Sync still in progress. Skipped next sync and increased interval to '%ds'", m_currentSyncInterval);
         m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
     }
 }

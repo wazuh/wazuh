@@ -33,8 +33,8 @@ extern "C" {
  * It will be dbsync the responsible of managing the DB.
  * @param storage storage 1 Store database in memory, disk otherwise.
  * @param sync_interval Interval when the synchronization will be performed.
- * @param sync_max_interval Maximum interval allowed for synchronization process.
- * @param sync_response_timeout Minimum interval for synchronization process.
+ * @param sync_max_interval Maximum interval allowed for the synchronization process.
+ * @param sync_response_timeout Minimum interval for the synchronization process.
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  * @param file_limit Maximum number of files to be monitored.

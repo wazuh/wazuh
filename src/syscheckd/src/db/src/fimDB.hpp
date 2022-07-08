@@ -115,8 +115,8 @@ class FIMDB
          * @brief Initialize the FIMDB singleton class, setting the attributes needed.
          *
          * @param syncInterval Interval in second, to determine frequency of the synchronization
-         * @param syncMaxInterval Maximum interval allowed for synchronization process.
-         * @param syncResponseTimeout Minimum interval for synchronization process.
+         * @param syncMaxInterval Maximum interval allowed for the synchronization process.
+         * @param syncResponseTimeout Minimum interval for the synchronization process.
          * @param callbackSyncFileWrapper callback used to send sync messages
          * @param callbackSyncRegistryWrapper callback used to send sync messages
          * @param callbackLogWrapper callback used to send log messages

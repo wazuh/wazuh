@@ -1207,12 +1207,12 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->sync_max_interval = (uint32_t) max_interval;
             }
         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
-            long interval = w_parse_time(node[i]->content);
+            long response_timeout = w_parse_time(node[i]->content);
 
-            if (interval < 0) {
+            if (response_timeout < 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscheck->sync_response_timeout = (uint32_t) interval;
+                syscheck->sync_response_timeout = (uint32_t) response_timeout;
             }
         } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
             mdebug1("'%s' has been deprecated. This setting is skipped.", xml_sync_queue_size);
@@ -1243,7 +1243,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     if (syscheck->sync_max_interval < syscheck->sync_interval) {
         syscheck->sync_max_interval = syscheck->sync_interval;
 
-        mwarn("Sync max_interval value cannot be less than interval. Setting max_interval to interval value: %d.", syscheck->sync_interval);
+        mwarn("'max_interval' cannot be less than 'interval'. New 'max_interval' value: '%d'", syscheck->sync_interval);
     }
 }
 
