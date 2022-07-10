@@ -28,6 +28,7 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Oracle && r:release 8'
     - 'f:/etc/redhat-release -> r:^Better && r:release 8'
     - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 8'
+    - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 8'
 
 
 
