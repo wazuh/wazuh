@@ -111,7 +111,7 @@ checks:
       - cis_csc: ["16"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout duration (minutes):\s+(\d+) compare >= 15'
+      - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 15'
 
   - id: 26007
     title: "Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'"
