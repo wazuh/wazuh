@@ -63,7 +63,7 @@ TEST_F(WindowsHelperTest, ipv6NetMask_INVALID)
     EXPECT_TRUE(netMask.empty());
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampSortValue)
+TEST_F(WindowsHelperTest, normalizeTimestampShortValue)
 {
     std::string value = "202202";
     std::string timestamp = "2022/02/15 14:04:50";
@@ -107,22 +107,11 @@ TEST_F(WindowsHelperTest, normalizeTimestampNotEqual)
     EXPECT_EQ(expected, result);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampEqual1)
+TEST_F(WindowsHelperTest, normalizeTimestampEqual)
 {
     std::string value = "20220215";
     std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected = "2022/02/15 17:04:50";
-
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
-
-    EXPECT_EQ(expected, result);
-}
-
-TEST_F(WindowsHelperTest, normalizeTimestampEqual2)
-{
-    std::string value = "20220215";
-    std::string timestamp = "2022/02/15 23:59:59";
-    std::string expected = "2022/02/16 02:59:59";
+    std::string expected = "2022/02/15 14:04:50";
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 
@@ -144,7 +133,7 @@ TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp2)
 {
     std::string value = "20220215";
     std::string timestamp = "a022/02/15 23:59:59";
-    std::string expected = UNKNOWN_VALUE;
+    std::string expected = "2022/02/15 00:00:00";
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 

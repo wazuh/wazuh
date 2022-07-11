@@ -164,19 +164,10 @@ namespace Utils
     static std::string normalizeTimestamp(const std::string& timestamp1, const std::string& timestamp2)
     {
         std::string ret = UNKNOWN_VALUE;
-        bool is_digit = true;
 
         if (timestamp1.size() == INSTALLDATE_REGISTRY_VALUE_SIZE)
         {
-            for (auto it = timestamp1.begin(); it != timestamp1.end(); ++it)
-            {
-                if (!isdigit(*it))
-                {
-                    is_digit = false;
-                }
-            }
-
-            if (is_digit)
+            if (isNumber(timestamp1))
             {
                 size_t pos = timestamp2.find(" ");
 
@@ -184,8 +175,9 @@ namespace Utils
                 {
                     std::string date2_trimmed = timestamp2.substr(0, pos);
                     std::string time2_trimmed = timestamp2.substr(pos + 1);
-                    date2_trimmed.erase(remove(date2_trimmed.begin(), date2_trimmed.end(), '/'), date2_trimmed.end());
-                    time2_trimmed.erase(remove(time2_trimmed.begin(), time2_trimmed.end(), ':'), time2_trimmed.end());
+
+                    Utils::replaceAll(date2_trimmed, "/", "");
+                    Utils::replaceAll(time2_trimmed, ":", "");
 
                     if (date2_trimmed.size() == INSTALLDATE_REGISTRY_VALUE_SIZE
                             || time2_trimmed.size() == HOURMINSEC_VALUE_SIZE)
