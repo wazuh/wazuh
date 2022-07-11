@@ -4020,7 +4020,7 @@ checks:
   - id: 26266
     title: "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'"
     description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
-    rationale: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
+    rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power  Management\\Sleep Settings\\Require a password when a computer wakes (on  battery)"
     compliance:
       - cis: ["18.8.34.6.5"]
