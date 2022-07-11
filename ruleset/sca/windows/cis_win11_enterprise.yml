@@ -258,7 +258,7 @@ checks:
 
   - id: 26017
     title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators and Interactive Users' "
-    description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators."
+    description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: and Interactive Users."
     rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media."
     compliance:
