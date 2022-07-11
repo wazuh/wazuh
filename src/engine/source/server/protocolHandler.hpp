@@ -19,7 +19,7 @@ namespace engineserver
 
 constexpr char EVENT_AGENT_ID[] {"/agent/id"};
 constexpr char EVENT_AGENT_NAME[] {"/agent/name"};
-constexpr char EVENT_LOG[] {"/original/message"};
+constexpr char EVENT_LOG[] {"/event/original"};
 constexpr char EVENT_QUEUE_ID[] {"/original/queue"};
 constexpr char EVENT_REGISTERED_IP[] {"/agent/registeredIP"};
 constexpr char EVENT_ROUTE[] {"/original/route"};
