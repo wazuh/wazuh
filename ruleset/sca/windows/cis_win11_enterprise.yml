@@ -1244,7 +1244,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
 
   - id: 26075
-    title: "(L2) Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set  to 'Disabled'"
+    title: "Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set  to 'Disabled'"
     description: "Service supporting the audio gateway role of the Bluetooth Handsfree Profile."
     rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment,  it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Audio Gateway Service"
@@ -1256,7 +1256,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BTAGService -> Start -> 4'
 
   - id: 26076
-    title: "(L2) Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled' "
+    title: "Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled' "
     description: "The Bluetooth service supports discovery and association of remote Bluetooth devices"
     rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment,  it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Support Service"
@@ -1268,7 +1268,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bthserv -> Start -> 4'
 
   - id: 26077
-    title: "(L2) Ensure 'Downloaded Maps Manager (MapsBroker)' is set to  'Disabled'"
+    title: "Ensure 'Downloaded Maps Manager (MapsBroker)' is set to  'Disabled'"
     description: "Windows service for application access to downloaded maps. This service is started on-demand by application accessing downloaded maps."
     rationale: "Mapping technologies can unwillingly reveal your location to attackers and other software  that picks up the information. In addition, automatic downloads of data from 3rd-party  sources should be minimized when not needed. Therefore this service should not be  needed in high security environments."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Downloaded Maps Manager"
@@ -1280,7 +1280,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start -> 4'
 
   - id: 26078
-    title: "(L2) Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'"
+    title: "Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'"
     description: "This service monitors the current location of the system and manages geofences (a  geographical location with associated events)."
     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a  security perspective, it’s not a good idea to reveal your location to software in most cases,  but there are legitimate uses, such as mapping software. However, they should not be used  in high security environments."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Geolocation Service "
@@ -1330,7 +1330,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start -> 4'
 
   - id: 26082
-    title: "(L2) Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to  'Disabled'"
+    title: "Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to  'Disabled'"
     description: "Creates a Network Map, consisting of PC and device topology (connectivity) information,  and metadata describing each PC and device."
     rationale: "The feature that this service enables could potentially be used for unauthorized discovery  and connection to network devices. Disabling the service helps to prevent responses to  requests for network topology discovery in high security environments."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Link-Layer Topology Discovery Mapper "
@@ -1368,7 +1368,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
 
   - id: 26085
-    title: "(L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to  'Disabled'"
+    title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to  'Disabled'"
     description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices."
     rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However,  iSCSI itself uses a very weak authentication protocol (CHAP), which means that the  passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated  and/or encrypted using another technology like IPsec. This service is generally more  appropriate for servers in a controlled environment then on workstations requiring high  security."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft iSCSI Initiator Service"
@@ -1394,7 +1394,7 @@ checks:
 
 
   - id: 26087
-    title: "(L2) Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'"
+    title: "Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'"
     description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution  Protocol (PNRP). The recommended state for this setting is: Disabled. "
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Name Resolution Protocol "
@@ -1406,7 +1406,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> 4'
 
   - id: 26088
-    title: "(L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'"
+    title: "Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'"
     description: "Enables multi-party communication using Peer-to-Peer Grouping. The recommended state for this setting is: Disabled. "
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Grouping "
@@ -1418,7 +1418,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
   - id: 26089
-    title: "(L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to'Disabled' "
+    title: "Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to'Disabled' "
     description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer  Grouping services. The recommended state for this setting is: Disabled. "
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Identity Manager "
@@ -1430,7 +1430,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
   - id: 26090
-    title: "(L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
+    title: "Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
     description: "This service publishes a machine name using the Peer Name Resolution Protocol.  Configuration is managed via the netsh context ‘p2p pnrp peer’. The recommended state for this setting is: Disabled. "
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\PNRP Machine Name Publication Service "
@@ -1454,7 +1454,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   - id: 26092
-    title: "(L2) Ensure 'Problem Reports and Solutions Control Panel Support(wercplsupport)' is set to 'Disabled' "
+    title: "Ensure 'Problem Reports and Solutions Control Panel Support(wercplsupport)' is set to 'Disabled' "
     description: "This service provides support for viewing, sending and deletion of system-level problem  reports for the Problem Reports and Solutions control panel. The recommended state for this setting is: Disabled. "
     rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from  Microsoft. In a high security environment, preventing this information from being sent can  help reduce privacy concerns for sensitive corporate information. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Problem Reports and Solutions Control Panel Support "
@@ -1466,7 +1466,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start -> 4'
 
   - id: 26093
-    title: "(L2) Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to'Disabled'"
+    title: "Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to'Disabled'"
     description: "Creates a connection to a remote network whenever a program references a remote DNS or  NetBIOS name or address. The recommended state for this setting is: Disabled. "
     rationale: "The function of this service is to provide a demand dial type of functionality. In a high  security environment, it is preferred that any remote dial connections (whether they be  legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Access Auto Connection Manager "
@@ -1478,7 +1478,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start -> 4'
 
   - id: 26094
-    title: "(L2) Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'"
+    title: "Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'"
     description: "Remote Desktop Configuration service (RDCS) is responsible for all Remote Desktop  related configuration and session maintenance activities that require SYSTEM context.  These include per-session temporary folders, RD themes, and RD certificates. The recommended state for this setting is: Disabled. "
     rationale: "In a high security environment, Remote Desktop access is an increased security risk. For  these environments, only local console access should be permitted. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Configuration "
@@ -1490,7 +1490,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start -> 4'
 
   - id: 26095
-    title: "(L2) Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'"
+    title: "Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'"
     description: "Allows users to connect interactively to a remote computer. Remote Desktop and Remote  Desktop Session Host Server depend on this service. The recommended state for this setting is: Disabled. "
     rationale: "In a high security environment, Remote Desktop access is an increased security risk. For  these environments, only local console access should be permitted. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Services "
