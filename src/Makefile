@@ -1171,11 +1171,14 @@ ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
 	ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
 		PRECOMPILED_ARCH := /arm32
     else
+	ifeq (${cpu_arch},ppc64le)
+		PRECOMPILED_ARCH := /ppc64le
+	else
     ifneq (,$(filter ${cpu_arch},ia64 9000/712))
-#   NOTE: this should be 'ia64', instead of 'not'. Keeping 'not' to match the remote folder.
-		PRECOMPILED_ARCH := /not
+		PRECOMPILED_ARCH := /ia64
 	else
 		PRECOMPILED_ARCH := /${uname_P}
+	endif
 	endif
 	endif
 	endif
