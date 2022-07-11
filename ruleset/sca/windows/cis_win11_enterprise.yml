@@ -5727,7 +5727,7 @@ checks:
     title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
     description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log. The recommended state for this setting is: Enabled."
     rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
     compliance:
       - cis: ["18.9.100.1"]
       - cis_csc: ["8.8"]
