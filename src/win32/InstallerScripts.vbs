@@ -63,8 +63,8 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFile.Close
 
     If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-        If WAZUH_MANAGER <> "" and InStr(WAZUH_MANAGER,",") > 0 Then 'list of address
-            ip_list=Split(WAZUH_MANAGER,",")
+        If WAZUH_MANAGER <> "" and InStr(WAZUH_MANAGER,";") > 0 Then 'list of address
+            ip_list=Split(WAZUH_MANAGER,";")
             formatted_list ="    </server>" & vbCrLf
             not_replaced = True
             for each ip in ip_list
