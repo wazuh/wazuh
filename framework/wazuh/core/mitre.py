@@ -21,7 +21,8 @@ REFERENCES_REQUEST_SLICE = 128
 GROUPS_REQUEST_SLICE = 64
 SOFTWARE_REQUEST_SLICE = 64
 TECHNIQUES_REQUEST_SLICE = 32
-RELATIONAL_REQUEST_SLICE = 256
+# All the relational queries will have the default request slice BUT the technique-groups one as its optimal RS is 485
+RELATIONAL_REQUEST_SLICE_TECHNIQUE_GROUPS = 485
 
 # Select used for each item's references
 SELECT_FIELDS_REFERENCES = ['url', 'description', 'source', 'external_id']
@@ -121,7 +122,7 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
     def __init__(self, table: str = None, offset: int = 0, limit: Union[int, None] = common.database_limit,
                  query: str = '', count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
                  default_sort_field: str = None, fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, dict_key: str = None, request_slice=RELATIONAL_REQUEST_SLICE):
+                 min_select_fields=None, filters=None, dict_key: str = None, request_slice=DEFAULT_REQUEST_SLICE):
         """WazuhDBQueryMitreRelational constructor
         This class will always generate dictionaries with two keys, this is because it handles relational tables,
         where the relationship of two objects is specified.
@@ -352,8 +353,9 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             software = mitre_relational_query.run()
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'group'},
-                                         dict_key='target_id', select=['source_id', 'target_id'],
-                                         limit=None) as mitre_relational_query:
+                                         dict_key='target_id', select=['source_id', 'target_id'], limit=None,
+                                         request_slice=RELATIONAL_REQUEST_SLICE_TECHNIQUE_GROUPS) \
+                as mitre_relational_query:
             groups = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
@@ -420,8 +422,9 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             software = mitre_relational_query.run()
 
         with WazuhDBQueryMitreRelational(table='use', filters={'target_type': 'technique', 'source_type': 'group'},
-                                         dict_key='source_id', select=['source_id', 'target_id'],
-                                         limit=None) as mitre_relational_query:
+                                         dict_key='source_id', select=['source_id', 'target_id'], limit=None,
+                                         request_slice=RELATIONAL_REQUEST_SLICE_TECHNIQUE_GROUPS) \
+                as mitre_relational_query:
             techniques = mitre_relational_query.run()
 
         with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
