@@ -45,7 +45,8 @@ FIMDBErrorCode __wrap_fim_db_init(int storage,
                                   uint32_t min_sync_interval,
                                   int value_limit,
                                   int sync_registry_enable,
-                                  int sync_thread_pool) {
+                                  int sync_thread_pool,
+                                  int sync_queue_size) {
     check_expected(storage);
     check_expected(sync_interval);
     check_expected(file_limit);
@@ -53,6 +54,7 @@ FIMDBErrorCode __wrap_fim_db_init(int storage,
     check_expected(value_limit);
     check_expected(sync_registry_enable);
     check_expected(sync_thread_pool);
+    check_expected(sync_queue_size);
 
     return mock_type(int);
 }
@@ -63,7 +65,8 @@ void expect_wrapper_fim_db_init(int storage,
                                 uint32_t min_sync_interval,
                                 int value_limit,
                                 int sync_registry_enable,
-                                int sync_thread_pool) {
+                                int sync_thread_pool,
+                                int sync_queue_size) {
     expect_value(__wrap_fim_db_init, storage, storage);
     expect_value(__wrap_fim_db_init, sync_interval, sync_interval);
     expect_value(__wrap_fim_db_init, file_limit, file_limit);
@@ -71,6 +74,7 @@ void expect_wrapper_fim_db_init(int storage,
     expect_value(__wrap_fim_db_init, value_limit, value_limit);
     expect_value(__wrap_fim_db_init, sync_registry_enable, sync_registry_enable);
     expect_value(__wrap_fim_db_init, sync_thread_pool, sync_thread_pool);
+    expect_value(__wrap_fim_db_init, sync_queue_size, sync_queue_size);
 
     will_return(__wrap_fim_db_init, FIMDB_OK);
 }

@@ -88,11 +88,8 @@ class DBTestFixture : public testing::Test {
                         10,
                         100000,
                         true,
-<<<<<<< HEAD
-                        1);
-=======
+                        1,
                         0);
->>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 
             evt_data = {};
             evt_data.report_event = true;

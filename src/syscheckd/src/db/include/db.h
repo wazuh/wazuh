@@ -51,11 +51,8 @@ FIMDBErrorCode fim_db_init(int storage,
                            uint32_t min_sync_interval_time,
                            int value_limit,
                            bool sync_registry_enabled,
-<<<<<<< HEAD
-                           int sync_thread_pool);
-=======
+                           int sync_thread_pool,
                            int sync_queue_size);
->>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 
 /**
  * @brief Get entry data using path.
