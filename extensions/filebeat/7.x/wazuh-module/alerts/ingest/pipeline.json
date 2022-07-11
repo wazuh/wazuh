@@ -50,7 +50,7 @@
     { 
       "grok": {
         "field": "data.win.system.message",
-	      "patterns": ["A %{WORD:win.system.groupeType}-%{WORD:win.system.groupeStatus} %{WORD:win.system.GroupScope} .*"]
+	      "patterns": ["A %{WORD:win.system.groupeType}-%{WORD:win.system.groupeStatus} %{WORD:win.system.groupScope} .*"]
       }
     },
     {
