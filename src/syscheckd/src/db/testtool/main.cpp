@@ -53,6 +53,7 @@ int main(int argc, const char* argv[])
             const auto syncResponseTimeout{ jsonConfigFile.at("sync_response_timeout").get<const uint32_t>() };
             const auto syncMaxInterval{ jsonConfigFile.at("sync_max_interval").get<const uint32_t>() };
             const auto syncThreadPool{ jsonConfigFile.at("thread_pool").get<const uint32_t>() };
+            const auto syncQueueSize{ jsonConfigFile.at("queue_size").get<const uint32_t>() };
 
             std::function<void(const std::string&)> callbackSyncFileWrapper
             {
@@ -90,11 +91,8 @@ int main(int argc, const char* argv[])
                                     fileLimit,
                                     registryLimit,
                                     syncRegistryEnabled,
-<<<<<<< HEAD
-                                    syncThreadPool);
-=======
-                                    0);
->>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
+                                    syncThreadPool,
+                                    syncQueueSize);
 
                 std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
                 testContext->outputPath = cmdLineArgs.outputFolder();

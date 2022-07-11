@@ -48,7 +48,8 @@ FIMDBErrorCode __wrap_fim_db_init(int storage,
                                   int file_limit,
                                   int value_limit,
                                   int sync_registry_enable,
-                                  int sync_thread_pool);
+                                  int sync_thread_pool,
+                                  int sync_queue_size);
 
 void expect_wrapper_fim_db_init(int storage,
                                 int sync_interval,
@@ -57,7 +58,8 @@ void expect_wrapper_fim_db_init(int storage,
                                 int file_limit,
                                 int value_limit,
                                 int sync_registry_enable,
-                                int sync_thread_pool);
+                                int sync_thread_pool,
+                                int sync_queue_size);
 
 FIMDBErrorCode __wrap_fim_db_remove_path(const char *path);
 

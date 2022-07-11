@@ -236,6 +236,7 @@ TEST(DBTest, TestInvalidFimLimit)
                     -1,
                     -1,
                     true,
+                    0,
                     0)
     };
     ASSERT_EQ(result, FIMDB_ERR);
@@ -260,6 +261,7 @@ TEST(DBTest, TestValidFimLimit)
                     100,
                     100000,
                     true,
+                    0,
                     0)
     };
     ASSERT_EQ(result, FIMDB_OK);
