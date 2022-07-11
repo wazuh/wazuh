@@ -138,7 +138,7 @@ checks:
       - cis_csc: ["4.10"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout observation window (minutes):\s+(\d+) compare >= 15'
+      - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
 
   - id: 15009
     title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'"
