@@ -216,7 +216,7 @@ target_link_libraries(opBuilderHelperMapTest
 )
 gtest_discover_tests(opBuilderHelperMapTest)
 
-# TODO: Updated KVDB and definitions tests
+# TODO: Updated KVDB tests
 # add_executable(opBuilderKVDBTest
 #   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
 #   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
