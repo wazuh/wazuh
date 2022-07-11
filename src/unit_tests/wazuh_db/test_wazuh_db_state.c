@@ -21,11 +21,8 @@ extern wdb_state_t wdb_state;
 static int test_setup(void ** state) {
     wdb_state.queries_total = 856;
     wdb_state.queries_breakdown.wazuhdb_queries = 212;
-    wdb_state.queries_breakdown.wazuhdb_breakdown.get_config_queries = 210;
-    wdb_state.queries_breakdown.wazuhdb_breakdown.remove_queries = 2;
+    wdb_state.queries_breakdown.wazuhdb_breakdown.remove_queries = 212;
     wdb_state.queries_breakdown.wazuhdb_breakdown.unknown_queries = 0;
-    wdb_state.queries_breakdown.wazuhdb_breakdown.get_config_time.tv_sec = 0;
-    wdb_state.queries_breakdown.wazuhdb_breakdown.get_config_time.tv_usec = 232321;
     wdb_state.queries_breakdown.wazuhdb_breakdown.remove_time.tv_sec = 0;
     wdb_state.queries_breakdown.wazuhdb_breakdown.remove_time.tv_usec = 132156;
     wdb_state.queries_breakdown.agent_queries = 365;
@@ -285,10 +282,8 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "wazuhdb_queries")->valueint, 212);
 
     cJSON* wazuhdb_queries_breakdown = cJSON_GetObjectItem(queries_breakdown, "wazuhdb_queries_breakdown");
-    assert_non_null(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "getconfig_queries"));
-    assert_int_equal(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "getconfig_queries")->valueint, 210);
     assert_non_null(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "remove_queries"));
-    assert_int_equal(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "remove_queries")->valueint, 2);
+    assert_int_equal(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "remove_queries")->valueint, 212);
     assert_non_null(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "unknown_queries"));
     assert_int_equal(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "unknown_queries")->valueint, 0);
 
@@ -493,16 +488,14 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "unknown_queries")->valueint, 5);
 
     assert_non_null(cJSON_GetObjectItem(statistics, "queries_time_total"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "queries_time_total")->valueint, 26862);
+    assert_int_equal(cJSON_GetObjectItem(statistics, "queries_time_total")->valueint, 26630);
 
     cJSON* queries_time_breakdown = cJSON_GetObjectItem(statistics, "queries_time_breakdown");
 
     assert_non_null(cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time")->valueint, 364);
+    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time")->valueint, 132);
 
     cJSON* wazuhdb_time_breakdown = cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time_breakdown");
-    assert_non_null(cJSON_GetObjectItem(wazuhdb_time_breakdown, "getconfig_time"));
-    assert_int_equal(cJSON_GetObjectItem(wazuhdb_time_breakdown, "getconfig_time")->valueint, 232);
     assert_non_null(cJSON_GetObjectItem(wazuhdb_time_breakdown, "remove_time"));
     assert_int_equal(cJSON_GetObjectItem(wazuhdb_time_breakdown, "remove_time")->valueint, 132);
 

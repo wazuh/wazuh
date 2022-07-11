@@ -88,7 +88,8 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,r
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
-                           -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
+                           -Wl,--wrap,getRemoteConfig")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")

@@ -114,8 +114,8 @@ void HandleSecure()
     /* Create Security configuration assessment forwarder thread */
     w_create_thread(SCFGA_Forward, NULL);
 
-    // Create Request listener thread
-    w_create_thread(req_main, NULL);
+    // Initialize request module
+    req_init();
 
     // Create com request thread
     w_create_thread(remcom_main, NULL);

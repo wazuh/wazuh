@@ -667,22 +667,7 @@ int wdb_parse(char * input, char * output, int peer) {
         }
         *next++ = '\0';
 
-        if (strcmp(query, "getconfig") == 0) {
-            w_inc_wazuhdb_get_config();
-            gettimeofday(&begin, 0);
-            data = wdb_parse_get_config(next);
-            gettimeofday(&end, 0);
-            timersub(&end, &begin, &diff);
-            w_inc_wazuhdb_get_config_time(diff);
-            out = cJSON_PrintUnformatted(data);
-            if (out) {
-                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-                os_free(out);
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "err Failed reading wazuh-db config");
-            }
-            cJSON_Delete(data);
-        } else if (strcmp(query, "remove") == 0) {
+        if (strcmp(query, "remove") == 0) {
             w_inc_wazuhdb_remove();
             gettimeofday(&begin, 0);
             data = wdb_remove_multiple_agents(next);
@@ -6658,22 +6643,4 @@ int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output) {
         snprintf(output, OS_MAXSTR + 1, "ok");
     }
     return ret;
-}
-
-cJSON* wdb_parse_get_config(char* config_source) {
-    if (config_source == 0) {
-        return NULL;
-    }
-
-    cJSON* j_wdb_config = NULL;
-
-    if (strcmp(config_source, "internal") == 0) {
-        j_wdb_config = wdb_get_internal_config();
-    } else if (strcmp(config_source, "wdb") == 0) {
-        j_wdb_config = wdb_get_config();
-    } else {
-        mdebug1("Invalid configuration source for wazuh-db");
-    }
-
-    return j_wdb_config;
 }

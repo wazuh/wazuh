@@ -206,10 +206,8 @@ typedef struct _mitre_breakdown_t {
 } mitre_breakdown_t;
 
 typedef struct _wazuhdb_breakdown_t {
-    uint64_t get_config_queries;
     uint64_t remove_queries;
     uint64_t unknown_queries;
-    struct timeval get_config_time;
     struct timeval remove_time;
 } wazuhdb_breakdown_t;
 
@@ -245,18 +243,6 @@ void w_inc_queries_total();
  *
  */
 void w_inc_wazuhdb();
-
-/**
- * @brief Increment get-config wazuhdb queries counter
- *
- */
-void w_inc_wazuhdb_get_config();
-
-/**
- * @brief Increment get-config wazuhdb time counter
- *
- */
-void w_inc_wazuhdb_get_config_time(struct timeval time);
 
 /**
  * @brief Increment remove wazuhdb queries counter

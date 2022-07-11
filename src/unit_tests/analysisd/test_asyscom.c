@@ -22,6 +22,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/analysisd/state_wrappers.h"
+#include "../wrappers/wazuh/analysisd/config_wrappers.h"
 
 char* asyscom_output_builder(int error_code, const char* message, cJSON* data_json);
 size_t asyscom_dispatch(char * command, char ** output);
