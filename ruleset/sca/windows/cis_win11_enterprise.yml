@@ -3369,7 +3369,7 @@ checks:
     title: "Ensure 'Include command line in process creation events' is set to 'Enabled'"
     description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Enabled."
     rationale: "Capturing process command line information in event logs can be very valuable when performing forensic investigations of attack incidents."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
     compliance:
       - cis: ["18.8.3.1"]
       - cis_csc: ["16.14"]
