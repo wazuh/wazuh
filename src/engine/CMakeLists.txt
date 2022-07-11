@@ -58,7 +58,7 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
 # CPM DOWNLOAD
 ####################################################################################################
 
-set(CPM_DOWNLOAD_VERSION 0.34.0)
+set(CPM_DOWNLOAD_VERSION 0.34.1)
 
 if(CPM_SOURCE_CACHE)
   set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")

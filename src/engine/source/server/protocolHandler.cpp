@@ -22,7 +22,7 @@ using std::vector;
 namespace engineserver
 {
 
-enum IPVersion
+enum class IPVersion
 {
     UNDEFINED,
     IPV4,
