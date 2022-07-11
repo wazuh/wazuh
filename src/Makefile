@@ -1157,7 +1157,7 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-ifneq (,$(filter ${uname_S}, Linux Darwin))
+ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
 	cpu_arch := ${uname_M}
 	ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 		PRECOMPILED_ARCH := /amd64
@@ -1170,17 +1170,39 @@ ifneq (,$(filter ${uname_S}, Linux Darwin))
 	else
 	ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
 		PRECOMPILED_ARCH := /arm32
+    else
+    ifneq (,$(filter ${cpu_arch},ia64 9000/712))
+#   NOTE: this should be 'ia64', instead of 'not'. Keeping 'not' to match the remote folder.
+		PRECOMPILED_ARCH := /not
 	else
 		PRECOMPILED_ARCH := /${uname_P}
 	endif
 	endif
 	endif
 	endif
+	endif
 else
-ifneq (,$(filter ${uname_S},HP-UX SunOS AIX))
-	PRECOMPILED_ARCH := /${uname_P}
+ifneq (,$(filter ${uname_S},SunOS AIX))
+	cpu_arch := ${uname_P}
+    ifeq (${cpu_arch},powerpc)  
+		PRECOMPILED_ARCH := /powerpc
+	else
+	ifneq (,$(filter ${cpu_arch},sparc sun4u))
+		PRECOMPILED_ARCH := /sparc
+	else
+	ifneq (,$(filter ${cpu_arch},i386 i86pc))
+		PRECOMPILED_ARCH := /i386
+	else
+		PRECOMPILED_ARCH := /${uname_M}
+	endif
+	endif
+	endif
 else
-	PRECOMPILED_ARCH := /${uname_P}
+    cpu_arch := ${uname_M}
+    ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+		cpu_arch := ${uname_P}
+    endif
+    PRECOMPILED_ARCH := /${cpu_arch}
 endif
 endif
 endif
