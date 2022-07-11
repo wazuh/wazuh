@@ -8,9 +8,7 @@
  */
 
 
-#include <openssl/x509.h>
+#include <openssl/evp.h>
 
-int __wrap_X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md);
-
-X509 *__wrap_X509_new(void);
-extern X509 *__real_X509_new(void);
+EVP_PKEY * __wrap_EVP_PKEY_new(void);
+extern EVP_PKEY * __real_EVP_PKEY_new(void);

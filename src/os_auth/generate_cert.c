@@ -18,8 +18,8 @@ EVP_PKEY* generate_key(int bits) {
     RSA* rsa = RSA_new(); // This structure is free'd after EVP_PKEY_assign_RSA.
 
     if(key == NULL) {
-        merror("Cannot create EVP_PKEY structure."); // LCOV_EXCL_LINE
-        goto error; // LCOV_EXCL_LINE
+        merror("Cannot create EVP_PKEY structure.");
+        goto error;
     }
 
     if (bn == NULL) {
@@ -76,8 +76,8 @@ int generate_cert(unsigned long days,
     }
 
     if(cert == NULL) {
-        merror("Cannot generate certificate."); // LCOV_EXCL_LINE
-        goto error; // LCOV_EXCL_LINE
+        merror("Cannot generate certificate.");
+        goto error;
     }
 
     if (serial_number == NULL) {
@@ -121,8 +121,8 @@ int generate_cert(unsigned long days,
     add_x509_ext(cert, &ctx, NID_basic_constraints, "critical,CA:TRUE");
 
     if(!X509_sign(cert, key, EVP_sha256())) {
-        merror("Error signing certificate."); // LCOV_EXCL_LINE
-        goto error; // LCOV_EXCL_LINE
+        merror("Error signing certificate.");
+        goto error;
     }
 
     if (dump_key_cert(key, cert, key_path, cert_path)) {
