@@ -29,20 +29,13 @@ public:
         m_nodes.insert(std::make_pair(id, node));
         if (m_edges.find(id) == m_edges.end())
         {
-            m_edges.insert(std::make_pair(id, std::vector<K>()));
+            m_edges.insert(std::make_pair(id, std::vector<K>{}));
         }
     }
 
     void addEdge(K from, K to)
     {
-        if (m_edges.find(from) == m_edges.end())
-        {
-            m_edges.insert(std::make_pair(from, std::vector {{to}}));
-        }
-        else
-        {
-            m_edges[from].push_back(to);
-        }
+        m_edges[from].push_back(to);
     }
 
     void injectNode(K id, T node, K parent)
@@ -74,7 +67,7 @@ public:
     // visit pre-order
     void visit(const std::function<void(const K&, const T&)>& visitor)
     {
-        std::stack<std::string> stack;
+        std::stack<K> stack;
         stack.push(m_root);
 
         while (!stack.empty())
@@ -93,7 +86,7 @@ public:
 
     void visitLeafs(const std::function<void(const K&, const T&)>& visitor)
     {
-        std::stack<std::string> stack;
+        std::stack<K> stack;
         stack.push(m_root);
 
         while (!stack.empty())

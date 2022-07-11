@@ -36,6 +36,8 @@ public:
     {
     }
 
+    ~Result() = default;
+
     Result& operator=(const Result& other)
     {
         m_payload = other.m_payload;
@@ -43,7 +45,7 @@ public:
         m_success = other.m_success;
         return *this;
     }
-/*
+
     Result& operator=(Result&& other)
     {
         m_payload = std::move(other.m_payload);
@@ -51,7 +53,7 @@ public:
         m_success = other.m_success;
         return *this;
     }
-*/
+
     operator bool() const
     {
         return m_success;

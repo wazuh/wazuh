@@ -1,8 +1,8 @@
 #ifndef _H_BASE_TYPES
 #define _H_BASE_TYPES
 
-#include "result.hpp"
 #include "json.hpp"
+#include "result.hpp"
 
 namespace base
 {
