@@ -1517,7 +1517,7 @@ cJSON *win_perm_to_json(char *perms) {
         char *username = perm_node;
         perm_node = strchr(perm_node, '(');
         if (!perm_node) {
-            mdebug2("Uncontrolled condition when parsing a Windows permission from '%s'. Skip permission", username);
+            mdebug1("Uncontrolled condition when parsing the username from '%s'. Skipping permission.", username);
             continue;
         }
         *(perm_node++) = '\0';
@@ -1532,7 +1532,7 @@ cJSON *win_perm_to_json(char *perms) {
         char *perm_type = perm_node;
         perm_node = strchr(perm_node, ')');
         if (!perm_node) {
-            mdebug2("Uncontrolled condition when parsing a Windows permission from '%s'. Skip permission", perm_type);
+            mdebug1("Uncontrolled condition when parsing the permission type from '%s'. Skipping permission.", perm_type);
             continue;
         }
         *(perm_node++) = '\0';

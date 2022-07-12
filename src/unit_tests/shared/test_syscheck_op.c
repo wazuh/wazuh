@@ -3234,8 +3234,8 @@ static void test_win_perm_to_json_malformed_permission_1(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'fourth '. Skip permission");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing the username from 'fourth '. Skipping permission.");
     output = win_perm_to_json(input);
 
     *state = output;
@@ -3330,8 +3330,8 @@ static void test_win_perm_to_json_malformed_permission_2(void **state) {
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'error'. Skip permission");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing the permission type from 'error'. Skipping permission.");
     output = win_perm_to_json(input);
 
     *state = output;
@@ -3478,8 +3478,8 @@ static void test_win_perm_to_json_incorrect_permission_format(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'This format is incorrect'. Skip permission");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing the username from 'This format is incorrect'. Skipping permission.");
 
     output = win_perm_to_json(input);
 
@@ -3491,8 +3491,8 @@ static void test_win_perm_to_json_incorrect_permission_format_2(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'too'. Skip permission");
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "Uncontrolled condition when parsing the permission type from 'too'. Skipping permission.");
 
     output = win_perm_to_json(input);
 
