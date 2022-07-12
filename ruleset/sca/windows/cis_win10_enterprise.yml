@@ -3682,7 +3682,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 3'
 
   - id: 15228
     title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'"
@@ -3754,9 +3754,9 @@ checks:
       - cis: ["18.8.7.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceMetadata'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceMetadata -> PreventDeviceMetadataFromNetwork'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceMetadata -> PreventDeviceMetadataFromNetwork -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata -> PreventDeviceMetadataFromNetwork'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata -> PreventDeviceMetadataFromNetwork -> 1'
 
   - id: 15233
     title: "Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'"
@@ -4881,8 +4881,8 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> :LimitDumpCollection'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> :LimitDumpCollection -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection -> 1'
 
   - id: 15300
     title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'"
@@ -5340,9 +5340,9 @@ checks:
       - cis_csc: ["10.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine -> EnableFileHashComputation'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine -> EnableFileHashComputation -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation -> 1'
 
   - id: 15323
     title: "Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'"
@@ -5353,9 +5353,9 @@ checks:
       - cis: ["18.9.47.9.1"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableIOAVProtection'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableIOAVProtection -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
   - id: 15324
     title: "Ensure 'Turn off real-time protection' is set to 'Disabled'"
@@ -5366,9 +5366,9 @@ checks:
       - cis: ["18.9.47.9.2"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableRealtimeMonitoring'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
   - id: 15325
     title: "Ensure 'Turn on behavior monitoring' is set to 'Enabled'"
@@ -5380,9 +5380,9 @@ checks:
       - cis_csc: ["10.7"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableBehaviorMonitoring'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
   - id: 15326
     title: "Ensure 'Turn on script scanning' is set to 'Enabled'"
@@ -5394,9 +5394,9 @@ checks:
       - cis_csc: ["10.7"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableScriptScanning'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableScriptScanning -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
   - id: 15327
     title: "Ensure 'Configure Watson events' is set to 'Disabled'"
@@ -5482,9 +5482,9 @@ checks:
       - cis_csc: ["10.6"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender -> DisableAntiSpyware'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender -> DisableAntiSpyware -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware -> 0'
 
   - id: 15332
     title: "Ensure 'Enable news and interests on the taskbar' is set to 'Disabled'"
@@ -5576,9 +5576,9 @@ checks:
       - cis: ["18.9.65.3.3.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\TerminalServices'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\TerminalServices -> EnableUiaRedirection'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\TerminalServices -> EnableUiaRedirection -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
   - id: 15338
     title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
@@ -5710,7 +5710,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   - id: 15346
     title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
@@ -5822,11 +5822,11 @@ checks:
       - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    condition: any
+    condition: all
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
 
   - id: 15353
     title: "Ensure 'Allow Cortana' is set to 'Disabled'"
@@ -6082,8 +6082,8 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverrideAppRepUnknown'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverrideAppRepUnknown -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride -> 1'
 
   - id: 15367
     title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'"
@@ -6492,9 +6492,9 @@ checks:
       - cis_csc: ["7.3"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> SetDisablePauseUXAccess'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> SetDisablePauseUXAccess -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess -> 1'
 
   - id: 15391
     title: "Ensure 'Manage preview builds' is set to 'Disabled'"
@@ -6513,7 +6513,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
   - id: 15392
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
