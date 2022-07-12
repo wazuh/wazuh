@@ -795,7 +795,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
 
   - id: 26048
-    title: "Ensure 'Network access: Remotely accessible registry paths'"
+    title: "Ensure 'Network access: Remotely accessible registry paths' is configured"
     description: "This policy setting determines which registry paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: This setting does not exist in Windows XP. There was a setting with that name in Windows XP, but it is called Network access: Remotely accessible registry paths and subpaths in Windows Server 2003, Windows Vista, and Windows Server 2008 (non-R2)."
     rationale: "The registry is a database that contains computer configuration information, and much of the information is sensitive. An attacker could use this information to facilitate unauthorized activities. To reduce the risk of such an attack, suitable ACLs are assigned throughout the registry to help protect it from access by unauthorized users."
     remediation: >
