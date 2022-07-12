@@ -190,6 +190,8 @@ async def print_health(config, more, filter_node):
                         f"{node_info['status']['agents_reconnect']['nodes_stability']['nodes_stability_counter']}.\n"
                 msg2 += f"                Worker stability threshold: " \
                         f"{node_info['status']['agents_reconnect']['nodes_stability']['nodes_stability_threshold']}.\n"
+                msg2 += f"                Agents that need to be reconnected: " \
+                        f"{node_info['status']['agents_reconnect']['nodes_stability']['last_register_agents_nodes']}.\n"
 
     print(msg1)
     more and print(msg2)
