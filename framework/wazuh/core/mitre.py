@@ -873,7 +873,7 @@ def get_mitre_items(mitre_class: callable) -> tuple:
     Returns
     -------
     tuple
-        Dictionary with information about the fields of the MITRE objects and the items obtained.
+        Tuple containing a dictionary with fields information, and a dictionary with the items obtained.
     """
     info = {}
     db_query = mitre_class(limit=None)
