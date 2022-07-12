@@ -127,7 +127,7 @@ FIMDBErrorCode fim_db_init(int storage,
                            int value_limit,
                            bool sync_registry_enabled,
                            int sync_thread_pool,
-                           int sync_queue_size)
+                           unsigned int sync_queue_size)
 {
     auto retVal { FIMDBErrorCode::FIMDB_ERR };
 

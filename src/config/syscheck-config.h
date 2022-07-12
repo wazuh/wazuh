@@ -409,7 +409,7 @@ typedef struct _config {
     int sync_thread_pool;                              /* Number of threads used by RSync */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
-    long sync_queue_size;                              /* Data synchronization message queue size */
+    unsigned int sync_queue_size;                      /* Data synchronization message queue size */
 
     /* Windows only registry checking */
 #ifdef WIN32
