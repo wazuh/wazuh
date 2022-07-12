@@ -1085,6 +1085,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         super().connection_lost(exc)
         self.logger.info("Cancelling pending tasks.")
 
+        # Reset agents reconnect counters
+        if self.server.agents_reconnect is not None:
+            self.server.agents_reconnect.reset_counters()
+
         # Cancel agent-groups task
         try:
             self.agent_group_task.cancel()

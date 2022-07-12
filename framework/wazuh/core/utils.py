@@ -1431,7 +1431,8 @@ class WazuhDBQuery(object):
             self.query += ' AND '.join(
                 ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
 
-    def _get_total_items(self):
+    def _get_total_items(self, add_filters=False):
+        add_filters and self._add_filters_to_query()
         query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
                                                                   self.select | self.min_select_fields)))
         self.total_items = self.backend.execute(self._default_count_query().format(query_with_select_fields),
