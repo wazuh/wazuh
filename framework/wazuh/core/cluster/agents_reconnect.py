@@ -5,7 +5,7 @@ from enum import Enum
 from math import ceil
 
 from wazuh.core import utils
-from wazuh.core.agent import Agent
+from wazuh.core.agent import Agent, WazuhDBQueryAgents
 from wazuh.core.cluster import utils as cluster_utils
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 
@@ -55,9 +55,8 @@ class AgentsReconnect:
         self.last_nodes_stability_check = 0
 
         # Check previous balance
-        self.previous_agents_nodes = {}
+        self.env_status = {}
         self.lost_agents_percent = 0.1  # 10%
-        self.same_agents_node_percent = 0.5  # 50%
 
         # Check agents balance -> Provisional
         self.balance_counter = 0
@@ -73,7 +72,7 @@ class AgentsReconnect:
         self.posbalance_sleep = 60
         self.agents_connection_delay = 30
 
-    async def reset_counter(self) -> None:
+    def reset_counters(self) -> None:
         """Reset all counters of the reconnection procedure."""
         self.balance_counter = 0
         self.nodes_stability_counter = 0
@@ -93,7 +92,7 @@ class AgentsReconnect:
         node_list = set(self.nodes.keys()).union({self.master_name}) - self.blacklisted_nodes
 
         if len(node_list) <= 1:
-            self.reset_counter()
+            self.reset_counters()
             self.previous_nodes = set()
             self.current_phase = AgentsReconnectionPhases.NOT_ENOUGH_NODES
 
@@ -109,7 +108,7 @@ class AgentsReconnect:
         else:
             self.logger.info("Nodes changed, restarting nodes stability phase.")
             self.previous_nodes = node_list.copy()
-            await self.reset_counter()
+            self.reset_counters()
 
         self.last_nodes_stability_check = utils.get_utc_now()
         if self.nodes_stability_counter >= self.nodes_stability_threshold:
@@ -122,19 +121,24 @@ class AgentsReconnect:
                          f"Counter: {self.nodes_stability_counter}/{self.nodes_stability_threshold}.")
         return False
 
-    async def get_agents_in_nodes(self) -> dict:
-        """Get all agents in the system flagged as active and connected to nodes to watch.
+    async def get_reconnected_agents(self, agents_list) -> dict:
+        """Check that the specified agents reconnected correctly after the request.
+
+        Parameters
+        ----------
+        agents_list : list
+            Agents to check.
 
         Returns
         -------
         dict
-            Dictionary with agents information.
+            Dictionary with IDs that satisfy the lastKeepAlive verification.
         """
-        return await cluster_utils.forward_function(
-            func=Agent.get_agents_overview,
-            f_kwargs={"filters": {"status": "active"},
-                      "select": ["id", "node_name", "lastKeepAlive"],
-                      "q": ",".join([f"node_name={node}" for node in self.previous_nodes])})
+        agent_query = WazuhDBQueryAgents(
+            count=False, filters={"id": agents_list}, select={"id"},
+            query=f"lastKeepAlive>{self.reconnection_timestamp + timedelta(seconds=self.agents_connection_delay)}")
+
+        return agent_query.run()
 
     async def check_previous_reconnections(self) -> bool:
         """Check the agents status after the previous reconnection.
@@ -145,54 +149,29 @@ class AgentsReconnect:
             True if the agents are connected and the tolerance criteria are met or no agent has been reconnected,
             False otherwise.
         """
-        def check_lastkeepalive(lastkeepalive):
-            """Check that the agent's last_keepalive is greater than the time saved in the previous reconnection.
-
-            Parameters
-            ----------
-            lastkeepalive : datetime
-                Agent's last keep alive.
-
-            Returns
-            -------
-            bool
-                True if the criteria for determining that an agent is connected are met. False otherwise.
-            """
-            try:
-                return lastkeepalive > self.reconnection_timestamp + timedelta(seconds=self.agents_connection_delay)
-            except TypeError:
-                return False
-
         self.current_phase = AgentsReconnectionPhases.CHECK_PREVIOUS_RECONNECTIONS
         # If no agent has been balanced in the previous iteration return True
-        if all(agents == [] for agents in self.previous_agents_nodes.values()):
+        if self.env_status == {}:
             return True
 
-        lost_agents_threshold = sum(len(lst) for lst in self.previous_agents_nodes.values()) * self.lost_agents_percent
-        same_agents_node_threshold = sum(
-            len(lst) for lst in self.previous_agents_nodes.values()) * self.same_agents_node_percent
+        lost_agents_threshold = sum(len(info['agents']) for info in self.env_status.values()) * self.lost_agents_percent
 
-        current_agents = await self.get_agents_in_nodes()
-        lost_agents = []
-        agents_still_previous_node = []
+        # Provisional until the balance_agents function is implemented
+        list_of_reconnected_agents = []
+        for d in self.env_status.values():
+            list_of_reconnected_agents.extend(d['agents'])
 
-        for agent_info in current_agents['items']:
-            if not check_lastkeepalive(agent_info['lastKeepAlive']):
-                lost_agents.append(agent_info['id'])
-                if len(lost_agents) >= lost_agents_threshold:
-                    self.logger.info(f'Too many lost agents. Halting reconnection procedure.')
-                    self.logger.debug(f'Lost agents: {lost_agents}.')
-                    self.current_phase = AgentsReconnectionPhases.HALT
-                    return False
-
-            if agent_info['node_name'] not in self.blacklisted_nodes and \
-                    agent_info['id'] in self.previous_agents_nodes[agent_info['node_name']]:
-                agents_still_previous_node.append(agent_info['id'])
-                if len(agents_still_previous_node) >= same_agents_node_threshold:
-                    self.logger.info(f'Too many agents still in the previous node. Halting reconnection procedure.')
-                    self.logger.debug(f'Agents still in the previous node: {agents_still_previous_node}.')
-                    self.current_phase = AgentsReconnectionPhases.HALT
-                    return False
+        connected_agents = await self.get_reconnected_agents(list_of_reconnected_agents)
+        connected_agents = connected_agents['items']
+        if len(list_of_reconnected_agents) != len(connected_agents):
+            lost_agents = []
+            connected_agents = [d['id'] for d in connected_agents]
+            lost_agents.extend(agent for agent in list_of_reconnected_agents if agent not in connected_agents)
+            if len(lost_agents) >= lost_agents_threshold:
+                self.logger.info('Too many lost agents. Halting reconnection procedure.')
+                self.logger.debug(f'Lost agents: {lost_agents}.')
+                self.current_phase = AgentsReconnectionPhases.HALT
+                return False
 
         return True
 
@@ -205,83 +184,91 @@ class AgentsReconnect:
             Dictionary with the agents that are not balanced.
             The keys of the dictionary are the names of the nodes and the values are the agents.
         """
-        def check_lastkeepalive(lastkeepalive) -> bool:
-            """Check whether an agent is connected or not, by checking the
-            last_keepalive of the agent vs. an established threshold.
-
-            Parameters
-            ----------
-            lastkeepalive : datetime
-                Agent last_keepalive.
-
-            Returns
-            -------
-            bool
-                True if the agent is connected, False otherwise.
-            """
-            try:
-                # Detect agent 000
-                datetime_upper_limit = utils.get_utc_now() + timedelta(seconds=self.agents_connection_delay)
-                lka_threshold = utils.get_utc_now() - timedelta(seconds=self.agents_connection_delay)
-                return lastkeepalive >= lka_threshold and lastkeepalive < datetime_upper_limit
-            except TypeError:
-                return False
-
-        def difference_calculator(nodes_agents) -> dict:
-            """Calculate the average number of agents per worker and get
-            the difference between the number of agents each worker has.
-
-            Parameters
-            ----------
-            nodes_agents : dict
-                Dictionary whose keys are the names of the nodes and whose values are the agents connected to them.
+        async def need_balance() -> dict:
+            """Get the number of active agents per node and the number of
+            agents that exceed the average number of agents per node.
 
             Returns
             -------
             dict
-                Dictionary whose keys are the names of the nodes and the values of the agents that need reconnection.
+                Dictionary with the agents that exceed the average number of
+                agents per node and the total number of active agents of each node.
             """
+            agents_count = {}
+            total = 0
+            for node in self.previous_nodes:
+                agent_query = WazuhDBQueryAgents(count=True, filters={"status": "active", "node_name": node},
+                                                 select={"id"})
+                agent_query._get_total_items(add_filters=True)
+                agents_count[node] = agent_query.total_items
+                total += agent_query.total_items
+
             try:
-                mean = ceil(sum(len(lst) for lst in nodes_agents.values()) / len(nodes_agents.keys()))
+                mean = ceil(total / len(self.previous_nodes))
             except ZeroDivisionError:
                 return {}
 
-            agents_nodes_exceeded = {}
-            for node, agents in nodes_agents.items():
-                with contextlib.suppress(IndexError):
-                    agents_nodes_exceeded[node] = agents[int(mean):]
+            unbalanced_agents = {}
+            for node, agents in agents_count.items():
+                difference = agents - mean
+                if node not in unbalanced_agents.keys():
+                    unbalanced_agents[node] = {}
+                unbalanced_agents[node]['agents'] = 0
+                unbalanced_agents[node]['total'] = agents
+                if difference > 0:
+                    unbalanced_agents[node]['agents'] = difference
 
-            return agents_nodes_exceeded
+            return unbalanced_agents
+
+        async def get_agents(current_balance) -> dict:
+            """Get the last X IDs of the agents that exceed the average number of agents per node.
+            Modify the original dictionary by replacing the number of agents by their IDs.
+
+            Parameters
+            ----------
+            current_balance : dict
+                Dictionary with the number of active agents per node and
+                the agents that exceed the average number of agents per node.
+
+            Returns
+            -------
+            dict
+                Dictionary with the IDs to reconnect and the number of active agents per node.
+            """
+            for node, info in current_balance.items():
+                if info['agents'] > 0:
+                    agent_query = WazuhDBQueryAgents(
+                        count=False, filters={"status": "active", "node_name": node},
+                        limit=info['agents'], sort={"fields": ["id"], "order": "desc"}, select=["id"])
+                    current_balance[node]['agents'] = [info["id"] for info in agent_query.run()["items"]]
+                else:
+                    current_balance[node]['agents'] = []
+
+            return current_balance
 
         self.current_phase = AgentsReconnectionPhases.CHECK_AGENTS_BALANCE
-        current_connected_agents = await self.get_agents_in_nodes()
+        need_balance = await need_balance()
+        if need_balance == {}:
+            return {}
 
-        nodes_agents_dikt = {}
-        for node in self.previous_nodes:
-            nodes_agents_dikt[node] = []
-
-        for agent_registry in filter(lambda aregistry: check_lastkeepalive(aregistry['lastKeepAlive']),
-                                     current_connected_agents['items']):
-            if agent_registry['node_name'] not in self.blacklisted_nodes:
-                nodes_agents_dikt[agent_registry['node_name']].append(agent_registry['id'])
-
-        nodes_agents_dikt = difference_calculator(nodes_agents_dikt)
-        if all(agents == [] for agents in nodes_agents_dikt.values()):
+        current_unbalanced_agents = await get_agents(need_balance)
+        if all(info['agents'] == [] for info in current_unbalanced_agents.values()):
             self.logger.info('The agents connected to the cluster are balanced.')
-            nodes_agents_dikt.clear()
+            current_unbalanced_agents.clear()
         else:
             self.logger.info('The agents connected to the cluster are not balanced.')
         self.reconnection_timestamp = utils.get_utc_now()
 
-        return nodes_agents_dikt
+        return current_unbalanced_agents
 
     async def balance_previous_conditions(self) -> None:
         """Controller function for the pre-reconnection phase of agents.
         This function encapsulates the entire phase prior to agent balancing.
         """
         if await self.check_previous_reconnections():
-            self.previous_agents_nodes = await self.get_agents_balance()
-            self.logger.debug(f'Agents to reconnect: {self.previous_agents_nodes}')
+            self.env_status = await self.get_agents_balance()
+            self.logger.debug("Agents that need to be reconnected: "
+                              f"{str({node: info['agents'] for node, info in self.env_status.items()})}.")
 
     def get_current_phase(self) -> AgentsReconnectionPhases:
         """Return the current phase of the algorithm.
@@ -308,7 +295,7 @@ class AgentsReconnect:
             'last_nodes_stability_check': self.last_nodes_stability_check,
             'last_register_nodes': str(list(self.nodes.keys()) + [self.master_name]),
             'blacklisted_nodes': str(list(self.blacklisted_nodes)),
-            'last_register_agents_nodes': str(list(self.previous_agents_nodes))
+            'last_register_agents_nodes': str({node: info['agents'] for node, info in self.env_status.items()})
         }
 
     def to_dict(self) -> dict:
