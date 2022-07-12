@@ -2,6 +2,7 @@
 #define _JSON_H
 
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>

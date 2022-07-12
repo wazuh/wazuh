@@ -64,6 +64,12 @@ public:
         return m_nodes.find(id) != m_nodes.end();
     }
 
+    bool hasChildren(K id) const
+    {
+        auto it = m_edges.find(id);
+        return it != m_edges.end() && !it->second.empty();
+    }
+
     // visit pre-order
     void visit(const std::function<void(const K&, const T&)>& visitor)
     {
