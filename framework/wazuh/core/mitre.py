@@ -41,9 +41,41 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
                  count: bool = True, table: str = '', sort: dict = None, default_sort_field: str = DEFAULT_PK,
-                 default_sort_order='ASC', fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, request_slice=DEFAULT_REQUEST_SLICE):
-        """Create an instance of WazuhDBQueryMitre query."""
+                 default_sort_order: str = 'ASC', fields: dict = None, search: dict = None, select: list = None,
+                 min_select_fields: set = None, filters: dict = None, request_slice: int = DEFAULT_REQUEST_SLICE):
+        """Create an instance of the WazuhDBQueryMitre class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        table : str
+            Name of the table to where the query is going to be applied.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        request_slice : int
+            Max limit used in the WazuhDBBacked backend object.
+        """
 
         if filters is None:
             filters = {}
@@ -80,8 +112,14 @@ class WazuhDBQueryMitre(WazuhDBQuery):
             mitre_resource['references'].remove(reference_external_id)
         mitre_resource.update(reference_external_id)
 
-    def _format_data_into_dictionary(self):
-        """Standardization of dates to the ISO 8601 format."""
+    def _format_data_into_dictionary(self) -> dict:
+        """Standardization of dates to the ISO 8601 format.
+
+        Returns
+        -------
+        dict
+            Dictionary with the formatted data.
+        """
         [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.decimals_date_format))
                   for k, v in t.items() if k in self.date_fields) for t in self._data]
 
@@ -89,10 +127,12 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
 
 class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
+    """Class that handles the MITRE metadata."""
+
     TABLE_NAME = 'metadata'
 
     def __init__(self):
-        """Create an instance of WazuhDBQueryMitreMetadata query."""
+        """Create an instance of the WazuhDBQueryMitreMetadata class."""
 
         min_select_fields = {'key', 'value'}
         fields = {'key': 'key', 'value': 'value'}
@@ -105,6 +145,9 @@ class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreRelational(WazuhDBQueryMitre, ABC):
+    """Abstract class used to overload the _format_data_into_dictionary method of WazuhDBQueryMitre.
+    Its child classes handle the relationships between the different MITRE items.
+    """
 
     def _filter_status(self, status_filter):
         pass
@@ -130,21 +173,46 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre, ABC):
 
 
 class WazuhDBQueryMitreRelationalPhase(WazuhDBQueryMitreRelational):
+    """Class that handles the relationships between MITRE techniques and tactics."""
+
     TABLE_NAME = 'phase'
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = None,
-                 query: str = '', count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
-                 default_sort_field: str = 'tactic_id', fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, dict_key: str = None, request_slice=DEFAULT_REQUEST_SLICE):
-        """WazuhDBQueryMitreRelational constructor
-        This class will always generate dictionaries with two keys, this is because it handles relational tables,
-        where the relationship of two objects is specified.
+    def __init__(self, offset: int = 0, limit: Union[int, None] = None, query: str = '', count: bool = True,
+                 sort: dict = None, default_sort_order: str = 'ASC', default_sort_field: str = 'tactic_id',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None, dict_key: str = None, request_slice: int = DEFAULT_REQUEST_SLICE):
+        """Create an instance of the WazuhDBQueryMitreRelationalPhase class.
 
         Parameters
         ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
         dict_key : str
-            The value of this key will be the key of the output dictionary.
-            The value of the output dictionary will be the value of the remaining key.
+            Key of the dictionary to be returned in the _format_data_into_dictionary method.
+        request_slice : int
+            Max limit used in the WazuhDBBacked backend object.
         """
 
         self.dict_key = dict_key or default_sort_field
@@ -160,15 +228,46 @@ class WazuhDBQueryMitreRelationalPhase(WazuhDBQueryMitreRelational):
 
 
 class WazuhDBQueryMitreRelationalMitigate(WazuhDBQueryMitreRelational):
+    """Class that handles the relationships between MITRE techniques and mitigations."""
+
     TABLE_NAME = 'mitigate'
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = None,
-                 query: str = '', count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
-                 default_sort_field: str = 'source_id', fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, dict_key: str = None, request_slice=DEFAULT_REQUEST_SLICE):
-        """WazuhDBQueryMitreRelational constructor
-        This class will always generate dictionaries with two keys, this is because it handles relational tables,
-        where the relationship of two objects is specified.
+    def __init__(self, offset: int = 0, limit: Union[int, None] = None, query: str = '', count: bool = True,
+                 sort: dict = None, default_sort_order: str = 'ASC', default_sort_field: str = 'source_id',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None, dict_key: str = None, request_slice: int = DEFAULT_REQUEST_SLICE):
+        """Create an instance of the WazuhDBQueryMitreRelationalMitigate class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        dict_key : str
+            Key of the dictionary to be returned in the _format_data_into_dictionary method.
+        request_slice : int
+            Max limit used in the WazuhDBBacked backend object.
         """
 
         self.dict_key = dict_key or default_sort_field
@@ -184,15 +283,46 @@ class WazuhDBQueryMitreRelationalMitigate(WazuhDBQueryMitreRelational):
 
 
 class WazuhDBQueryMitreRelationalUse(WazuhDBQueryMitreRelational):
+    """Class that handles the relationships between MITRE techniques, groups and software."""
+
     TABLE_NAME = 'use'
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = None,
-                 query: str = '', count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
-                 default_sort_field: str = 'source_id', fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, dict_key: str = None, request_slice=DEFAULT_REQUEST_SLICE):
-        """WazuhDBQueryMitreRelational constructor
-        This class will always generate dictionaries with two keys, this is because it handles relational tables,
-        where the relationship of two objects is specified.
+    def __init__(self, offset: int = 0, limit: Union[int, None] = None, query: str = '', count: bool = True,
+                 sort: dict = None, default_sort_order: str = 'ASC', default_sort_field: str = 'source_id',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None, dict_key: str = None, request_slice: int = DEFAULT_REQUEST_SLICE):
+        """Create an instance of the WazuhDBQueryMitreRelationalMitigate class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        dict_key : str
+            Key of the dictionary to be returned in the _format_data_into_dictionary method.
+        request_slice : int
+            Max limit used in the WazuhDBBacked backend object.
         """
 
         self.dict_key = dict_key or default_sort_field
@@ -209,12 +339,43 @@ class WazuhDBQueryMitreRelationalUse(WazuhDBQueryMitreRelational):
 
 
 class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
+    """Class that handles the MITRE mitigations."""
+
     TABLE_NAME = 'mitigation'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
-        """Create an instance of WazuhDBQueryMitreMitigations query."""
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None):
+        """Create an instance of the WazuhDBQueryMitreMitigations class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
         select = select or set()
@@ -239,8 +400,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the techniques related to each mitigation.
-        """
+        """Add the techniques and references related to each mitigation."""
         super()._execute_data_query()
 
         with WazuhDBQueryMitreRelationalMitigate() as mitre_relational_query:
@@ -263,12 +423,43 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
+    """Class that handles the MITRE references."""
+
     TABLE_NAME = 'reference'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
-        """Create an instance of WazuhDBQueryMitreReferences query."""
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None):
+        """Create an instance of the WazuhDBQueryMitreReferences class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
         select = select or set()
@@ -289,12 +480,43 @@ class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
+    """Class that handles the MITRE tactics."""
+
     TABLE_NAME = 'tactic'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
-        """Create an instance of WazuhDBQueryMitreTactics query."""
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None):
+        """Create an instance of the WazuhDBQueryMitreTactics class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
         select = select or set()
@@ -316,7 +538,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the techniques related to each tactic."""
+        """Add the techniques and references related to each tactic."""
         super()._execute_data_query()
 
         with WazuhDBQueryMitreRelationalPhase() as mitre_relational_query:
@@ -339,12 +561,43 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
+    """Class that handles the MITRE techniques."""
+
     TABLE_NAME = 'technique'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
-        """Create an instance of WazuhDBQueryMitreTechniques query."""
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None):
+        """Create an instance of the WazuhDBQueryMitreTechniques class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
         select = select or set()
@@ -371,9 +624,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the mitigations, groups, software and tactics
-        related to each technique.
-        """
+        """Add the tactics, mitigations, software, groups and references related to each technique."""
         super()._execute_data_query()
 
         technique_ids = set()
@@ -417,12 +668,43 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
+    """Class that handles the MITRE groups."""
+
     TABLE_NAME = 'group'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
-        """Create an instance of WazuhDBQueryMitreGroups query."""
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None):
+        """Create an instance of the WazuhDBQueryMitreGroups class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
         select = select or set()
@@ -448,7 +730,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the software and tactics related to each group."""
+        """Add the software, techniques and references related to each group."""
         super()._execute_data_query()
 
         group_ids = set()
@@ -483,12 +765,43 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
 
 
 class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
+    """Class that handles the MITRE software."""
+
     TABLE_NAME = 'software'
 
     def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
-                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
-        """Create an instance of WazuhDBQueryMitreSoftware query."""
+                 count: bool = True, sort: dict = None, default_sort_field: str = '', default_sort_order: str = 'ASC',
+                 fields: dict = None, search: dict = None, select: list = None, min_select_fields: set = None,
+                 filters: dict = None):
+        """Create an instance of the WazuhDBQueryMitreGroups class.
+
+        Parameters
+        ----------
+        offset : int
+            First element to return in the collection.
+        limit : int
+            Maximum number of elements to return.
+        query : str
+            Query to filter results by.
+        count : bool
+            Whether to compute totalItems or not.
+        sort : dict
+            Sort the collection by a field or fields.
+        default_sort_field : str
+            Default field to sort by.
+        default_sort_order : str
+            Default order when sorting.
+        fields : dict
+            All available fields.
+        search : dict
+            Look for elements with the specified string.
+        select : list
+            Fields to return.
+        min_select_fields : set
+            Fields that must always be selected because they're necessary to compute other fields.
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        """
 
         default_sort_field = default_sort_field or MAIN_TABLES_PKS[self.TABLE_NAME]
         select = select or set()
@@ -513,7 +826,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the groups and techniques related to each software."""
+        """Add the groups, techniques and references related to each software."""
         super()._execute_data_query()
 
         software_ids = set()
@@ -547,7 +860,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
 
 
 @lru_cache(maxsize=None)
-def get_mitre_items(mitre_class: callable):
+def get_mitre_items(mitre_class: callable) -> tuple:
     """This function loads the MITRE data in order to speed up the use of the Framework function.
     It also provides information about the min_select_fields for the select parameter and the
     allowed_fields for the sort parameter.
@@ -559,10 +872,10 @@ def get_mitre_items(mitre_class: callable):
 
     Returns
     -------
-    dict
+    tuple
         Dictionary with information about the fields of the MITRE objects and the items obtained.
     """
-    info = dict()
+    info = {}
     db_query = mitre_class(limit=None)
     info['allowed_fields'] = \
         set(db_query.fields.keys()).union(set(db_query.relation_fields)).union(db_query.extra_fields)
