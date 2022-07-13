@@ -14,7 +14,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -347,12 +347,27 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's analysisd stats.
+@deprecate_endpoint()
+async def get_stats_analysisd_node(request, node_id: str, pretty: bool = False,
+                                   wait_for_complete: bool = False) -> web.Response:
+    """Get a specified node's analysisd statistics.
 
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
+
+    Returns
+    -------
+    web.Response
     """
     f_kwargs = {'node_id': node_id,
                 'filename': common.ANALYSISD_STATS}
@@ -372,12 +387,27 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's remoted stats.
+@deprecate_endpoint()
+async def get_stats_remoted_node(request, node_id: str, pretty: bool = False,
+                                 wait_for_complete: bool = False) -> web.Response:
+    """Get a specified node's remoted statistics.
 
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
+
+    Returns
+    -------
+    web.Response
     """
     f_kwargs = {'node_id': node_id,
                 'filename': common.REMOTED_STATS}
@@ -569,7 +599,7 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_configuration(request, node_id, body,  pretty=False, wait_for_complete=False):
+async def update_configuration(request, node_id, body, pretty=False, wait_for_complete=False):
     """Update Wazuh configuration (ossec.conf) in node node_id.
 
     Parameters

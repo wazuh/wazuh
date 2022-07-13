@@ -12,7 +12,7 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -185,11 +185,24 @@ async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
-    """Get manager's or local_node's analysisd stats.
+@deprecate_endpoint()
+async def get_stats_analysisd(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
+    """Get manager's or local_node's analysisd statistics.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
+
+    Returns
+    -------
+    web.Response
     """
     f_kwargs = {'filename': common.ANALYSISD_STATS}
 
@@ -206,11 +219,24 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
-    """Get manager's or local_node's remoted stats.
+@deprecate_endpoint()
+async def get_stats_remoted(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
+    """Get manager's or local_node's remoted statistics.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
+
+    Returns
+    -------
+    web.Response
     """
     f_kwargs = {'filename': common.REMOTED_STATS}
 
