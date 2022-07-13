@@ -152,9 +152,22 @@ gtest_discover_tests(opBuilderFileOutput_test)
 # Asset test
 add_executable(asset_test
   ${BUILDER_TEST_SOURCE_DIR}/asset_test.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/definitions.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderParse.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/baseHelper.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
 )
 target_link_libraries(asset_test
-  gtest_main base
+  gtest_main base re2 logicExpression kvdb hlp
 )
 gtest_discover_tests(asset_test)
 
