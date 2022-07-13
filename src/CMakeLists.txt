@@ -7,6 +7,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
+include_directories(${SRC_FOLDER}/external/curl/include/curl/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
@@ -39,6 +40,9 @@ string (REGEX MATCH "\\.el[1-9]" os_version_suffix ${CMAKE_SYSTEM})
 if(os_version_suffix STREQUAL ".el5")
     set(CENTOS5 TRUE)
 endif(os_version_suffix STREQUAL ".el5")
+
+
+add_subdirectory("shared_modules/urlRequest")
 
 if(${TARGET} STREQUAL "agent")
     message("Agent")
