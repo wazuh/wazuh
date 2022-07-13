@@ -107,7 +107,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -> r:^1$"
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -> r:^1$"
 
-  # 1.6 Ensure Install of macOS Updates Is Enabled
+  # 1.6 Ensure Install of macOS Updates Is Enabled (Automated)
   - id: 29005
     title: "Ensure Install of macOS Updates Is Enabled."
     description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable, repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
@@ -134,7 +134,7 @@ checks:
     title: "Ensure Bluetooth Is Disabled If No Devices Are Paired."
     description: "Bluetooth devices use a wireless communications system that replaces the cables used by other peripherals to connect to a system. It is by design a peer-to-peer network technology and typically lacks centralized administration and security enforcement infrastructure."
     rationale: "Bluetooth is particularly susceptible to a diverse set of security vulnerabilities involving identity detection, location tracking, denial of service, unintended control and access of data and voice channels, and unauthorized device control and data access."
-    remediation: "Open a terminal session and enter the following command to disable bluetooth: sudo defaults write /Library/Preferences/com.apple.Bluetooth ControllerPowerState -int 0 && sudo killall -HUP blued"
+    remediation: "Open a terminal session and enter the following command to disable bluetooth: sudo defaults write /Library/Preferences/com.apple.Bluetooth ControllerPowerState -int 0 && sudo killall -HUP bluetoohd"
     compliance:
       - cis: ["2.1.1"]
       - cis_level: ["1"]
@@ -299,8 +299,8 @@ checks:
   # 2.4.6 Ensure DVD or CD Sharing Is Disabled (Automated)
   - id: 29017
     title: "Ensure DVD or CD Sharing Is Disabled."
-    description: "DVD or CD Sharing allows users to remotely access the system's optical drive."
-    rationale: "DVD or CD Sharing allows users to remotely access the system's optical drive. While Apple does not ship Macs with built-in optical drives any longer, external optical drives are still recognized when they are connected. In testing the sharing of an external optical drive persists when a drive is reconnected."
+    description: "DVD or CD Sharing allows users to remotely access the system's optical drive. While Apple does not ship Macs with built-in optical drives any longer, external optical drives are still recognized when they are connected. In testing the sharing of an external optical drive persists when a drive is reconnected."
+    rationale: "Disabling DVD or CD Sharing minimizes the risk of an attacker using the optical drive as a vector for attack and exposure of sensitive data."
     remediation: "Run the following command to disable DVD or CD sharing: sudo launchctl disable system/com.apple.ODSAgent "
     compliance:
       - cis: ["2.4.6"]
@@ -665,7 +665,7 @@ checks:
     compliance:
       - cis: ["3.6"]
       - cis_level: ["1"]
-    condition: all
+    condition: any
     rules:
       - 'c:sh -c "system_profiler SPFirewallDataType | /usr/bin/grep Logging" -> r:Firewall Logging: Yes'
       - "c:defaults read read /Library/Preferences/com.apple.alf.plist loggingoption -> r:^2$"
@@ -807,7 +807,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'not c:find /Applications -iname "*.app" -type d -perm -2 -ls 2> /dev/null -> r:/Applications/'
+      - 'not c:find /Applications -iname "*.app" -type d -perm -2 -ls -> r:/Applications/'
 
   # 5.1.7 Ensure No World Writable Files Exist in the System Folder (Automated)
   - id: 29047
@@ -820,7 +820,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'not c:find /System/Volumes/Data/System -type d -perm -2 -ls  2> /dev/null -> r:\d+\s+/System/Volumes/Data/System'
+      - 'not c:find /System/Volumes/Data/System -type d -perm -2 -ls  -> r:\d+\s+/System/Volumes/Data/System'
 
   # 5.1.8 Ensure No World Writable Files Exist in the Library Folder (Automated)
   - id: 29048
@@ -833,7 +833,7 @@ checks:
       - cis_level: ["2"]
     condition: all
     rules:
-      - 'not c:sh -c "find /System/Volumes/Data/Library -type d -perm -2 -ls  2> /dev/null | grep -v ''Caches|Audio''" -> r:\d+\s+/System/Volumes/Data/Library'
+      - 'not c:sh -c "find /System/Volumes/Data/Library -type d -perm -2 -ls | grep -v ''Caches|Audio''" -> r:\d+\s+/System/Volumes/Data/Library'
 
   ############################################################
   # 5.2 Password Management
@@ -938,7 +938,7 @@ checks:
       - "https://www.jamf.com/jamf-nation/discussions/18195/system-login-screensaver"
     condition: all
     rules:
-      - 'c:sh -c "security authorizationdb read system.login.screensaver 2>&1 | grep -c ''use-login-window-ui''" -> 1'
+      - 'c:sh -c "security authorizationdb read system.login.screensaver | grep -c ''use-login-window-ui''" -> 1'
 
   # 5.12 Ensure a Custom Message for the Login Screen Is Enabled (Automated)
   - id: 29055
