@@ -5,9 +5,15 @@ from enum import Enum
 from math import ceil
 
 from wazuh.core import utils
-from wazuh.core.agent import Agent, WazuhDBQueryAgents
-from wazuh.core.cluster import utils as cluster_utils
+from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.exception import WazuhError
+
+
+class SkippingException(Exception):
+    """Custom exception to control phase skips.
+    """
+    pass
 
 
 class AgentsReconnectionPhases(str, Enum):
@@ -72,10 +78,33 @@ class AgentsReconnect:
         self.posbalance_sleep = 60
         self.agents_connection_delay = 30
 
-    def reset_counters(self) -> None:
-        """Reset all counters of the reconnection procedure."""
-        self.balance_counter = 0
-        self.nodes_stability_counter = 0
+    def wazuh_exception_handler(func):
+        async def wrapper(self, *args, **kwargs):
+            try:
+                return await func(self, *args, **kwargs)
+            except WazuhError as e:
+                self.logger.error(f"Error in {func.__name__}: {e}")
+                self.reset_counters()
+
+                raise SkippingException from e
+
+        return wrapper
+
+    def reset_counters(self, node_name=None) -> None:
+        """Reset all counters of the reconnection procedure.
+        If the node is specified, it will be checked if it is on the blacklist.
+
+        Parameters
+        ----------
+        node_name : str, optional
+            Name of the node to be checked against the blacklist, by default None.
+        """
+        if node_name not in self.blacklisted_nodes:
+            self.balance_counter = 0
+            self.nodes_stability_counter = 0
+            self.logger.debug("Reset all counters.")
+        else:
+            self.logger.debug(f"Disconnected {node_name} node, it is blacklisted, skipping counters reset.")
 
     async def check_nodes_stability(self) -> bool:
         """Function in charge of determining whether an environment is stable.
@@ -121,6 +150,7 @@ class AgentsReconnect:
                          f"Counter: {self.nodes_stability_counter}/{self.nodes_stability_threshold}.")
         return False
 
+    @wazuh_exception_handler
     async def get_reconnected_agents(self, agents_list) -> dict:
         """Check that the specified agents reconnected correctly after the request.
 
@@ -175,6 +205,7 @@ class AgentsReconnect:
 
         return True
 
+    @wazuh_exception_handler
     async def get_agents_balance(self) -> dict:
         """Function in charge of checking the balance of the agents.
 
