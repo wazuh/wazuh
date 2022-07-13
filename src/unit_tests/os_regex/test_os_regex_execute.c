@@ -21,7 +21,7 @@
  */
 struct _result_test
 {
-    unsigned int expected_failed_tests; ///< Expected failed tests count
+    unsigned int expected_failed_tests;       ///< Expected failed tests count
     unsigned int failed_tests_count;          ///< Failed tests count
     unsigned int executed_tests_suite_count;  ///< Executed tests suit count
     unsigned int executed_unit_test_count;    ///< Executed tests suit count
@@ -40,6 +40,34 @@ typedef struct test_case_parameters {
 } test_case_parameters;
 
 typedef test_case_parameters ** batch_test;
+
+static inline void print_os_regex_test_parameters(const test_case_parameters * test)
+{
+    printf("*********************************\n");
+    printf("Test description:\n");
+    printf("\t%s\n", (test->description != NULL) ? test->description : "This unit test has no description.");
+    printf("\n");
+    printf("Is the result ignored? %s\n", (test->ignore_result) ? "yes" : "no");
+    printf("\n");
+    printf("Pattern:\n");
+    printf("\t\"%s\"\n", test->pattern);
+    printf("\n");
+    printf("Log:\n");
+    printf("\t\"%s\"\n", test->log);
+    printf("\n");
+    printf("Expected end matching string:\n");
+    printf("\t\"%s\"\n", (test->end_match != NULL) ? test->end_match : "");
+    printf("\n");
+    printf("Expected capture groups:\n");
+    if(test->captured_groups != NULL)
+    {
+        for(int i = 0; *(test->captured_groups+i) != NULL; i++) {
+            printf("\t\"%s\"\n", *(test->captured_groups+i));
+        }
+    }
+    printf("\n");
+    printf("*********************************\n");
+}
 
 /**
  * @brief Execute a test case for OS_Regex_Execute()*
@@ -63,7 +91,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         result.failed_tests_count++;
 
         if (!test_case->ignore_result) {
-            // --------- print
+            print_os_regex_test_parameters(test_case);
             if(match_retval != NULL) {
                 printf("Error: regex '%s' should not match '%s' but it does.\n", test_case->pattern, test_case->log);
             } else {
@@ -81,7 +109,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     // Check if the last character matched is equal to the expected one
     bool strcmp_matched = (strcmp(match_retval, test_case->end_match) == 0);
     if (!test_case->ignore_result) {
-        // ---- Print test case
+        print_os_regex_test_parameters(test_case);
         assert_string_equal(match_retval, test_case->end_match);
     } else if (!strcmp_matched) {
         result.failed_tests_count++;
@@ -99,7 +127,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
             if (!test_case->ignore_result) {
                 // Only print on fail test case
                 // Without this print is really hard to found the buggy line
-                // --------- Print del testcase printf("Fail on test);
+                print_os_regex_test_parameters(test_case);
                 if (expected_str != NULL) {
                     printf("The group: '%s' cannot be found\n", expected_str);
                 } else if (actual_str != NULL) {
@@ -116,7 +144,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         if (expected_str != NULL) {
             bool strcmp_group_matched = (strcmp(expected_str, actual_str) == 0);
             if (!test_case->ignore_result) {
-                // --------- Print del testcase printf("Fail on test);
+                print_os_regex_test_parameters(test_case);
                 assert_string_equal(expected_str, actual_str);
             } else if (!strcmp_group_matched) {
                 result.failed_tests_count++;
