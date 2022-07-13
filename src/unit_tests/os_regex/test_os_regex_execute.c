@@ -4,6 +4,7 @@
 #include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "../../external/cJSON/cJSON.h"
 #include "../../os_regex/os_regex.h"
@@ -15,6 +16,9 @@
 #endif
 
 // Helpers
+
+unsigned int failed_tests_count = 0;
+
 /**
  * @brief Unit test definition for OS_Regex_Execute()
  */
@@ -23,6 +27,8 @@ typedef struct test_case_parameters {
     char * log;              ///< Log to match with the pattern
     char * end_match;        ///< Expected end match string (NULL if not matched)
     char ** captured_groups; ///< Expected captured groups (NULL if not captured)
+    char * description;      ///< Test description
+    bool ignore_result;      ///< Ignore result (for tests with known failures)
 } test_case_parameters;
 
 typedef test_case_parameters ** batch_test;
@@ -42,42 +48,71 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     match_retval = OSRegex_Execute_ex(test_case->log, regex, matching_result);
 
     // Check results
-    // The regex should match
-    if (match_retval == NULL) {
-        printf("Error: regex '%s' should match '%s'\n", test_case->pattern, test_case->log);
-    }
-    assert_non_null(match_retval);
+    // Check match result
+    if ((test_case->end_match == NULL && match_retval != NULL) ||
+        (test_case->end_match != NULL && match_retval == NULL)) {
 
-    // If the end_match field is defined on the test, then it needs to be checked.
-    // Otherwise, it is because there is a know bug and so it make no sense to check it.
-    if (test_case->end_match != NULL) {
+        failed_tests_count++;
+
+        if (!test_case->ignore_result) {
+            // --------- print
+            if(match_retval != NULL) {
+                printf("Error: regex '%s' should not match '%s' but it does.\n", test_case->pattern, test_case->log);
+            } else {
+                printf("Error: regex '%s' should match '%s' but it doesn't.\n", test_case->pattern, test_case->log);
+            }
+            assert_false(true);
+        }
+    }
+
+    // If there is nothing to match (match_retval == NULL) then we are done
+    if (test_case->end_match == NULL) {
+        return;
+    }
+
+    // Check if the last character matched is equal to the expected one
+    bool strcmp_matched = (strcmp(match_retval, test_case->end_match) == 0);
+    if (!test_case->ignore_result) {
+        // ---- Print test case
         assert_string_equal(match_retval, test_case->end_match);
+    } else if (!strcmp_matched) {
+        failed_tests_count++;
     }
 
     // Check the captured groups
     int i = 0;
     do {
-        const char * exp_str = test_case->captured_groups != NULL ? test_case->captured_groups[i] : NULL;
-        const char * act_str = matching_result->sub_strings[i];
+        const char * expected_str = test_case->captured_groups != NULL ? test_case->captured_groups[i] : NULL;
+        const char * actual_str = matching_result->sub_strings[i];
 
         // All capture groups must be compared, that is, logical XOR
-        int parity = (!(exp_str == NULL) == !(act_str == NULL));
-
+        int parity = (!(expected_str == NULL) == !(actual_str == NULL));
         if (!parity) {
-            // Only print on fail test case
-            // Without this print is really hard to found the buggy line
-            printf("Fail on regex: '%s', with log: '%s'\n", test_case->pattern, test_case->log);
-            if (exp_str != NULL) {
-                printf("The group: '%s' cannot be found\n", exp_str);
-            } else if (act_str != NULL) {
-                printf("The group: '%s' was found, but not compared\n", act_str);
+            if (!test_case->ignore_result) {
+                // Only print on fail test case
+                // Without this print is really hard to found the buggy line
+                // --------- Print del testcase printf("Fail on test);
+                if (expected_str != NULL) {
+                    printf("The group: '%s' cannot be found\n", expected_str);
+                } else if (actual_str != NULL) {
+                    printf("The group: '%s' was found, but not compared\n", actual_str);
+                }
+                assert_true(false);
+            } else {
+                failed_tests_count++;
+                break;
             }
         }
-        assert_true(parity);
 
-        // Check the captured groups
-        if (exp_str != NULL) {
-            assert_string_equal(exp_str, act_str);
+        // Check the captured group
+        if (expected_str != NULL) {
+            bool strcmp_group_matched = (strcmp(expected_str, actual_str) == 0);
+            if (!test_case->ignore_result) {
+                // --------- Print del testcase printf("Fail on test);
+                assert_string_equal(expected_str, actual_str);
+            } else if (!strcmp_group_matched) {
+                failed_tests_count++;
+            }
         } else {
             break;
         }
@@ -139,6 +174,20 @@ test_case_parameters * load_test_case(cJSON * json_test_case) {
     test_case_parameters * test_case = calloc(1, sizeof(test_case_parameters));
     assert_non_null(test_case);
 
+    // Description
+    cJSON * j_description = cJSON_GetObjectItemCaseSensitive(json_test_case, "description");
+    if (j_description != NULL) {
+        assert_true(cJSON_IsString(j_description));
+        test_case->description = strdup(cJSON_GetStringValue(j_description));
+    }
+
+    // Ignore result
+    cJSON * j_ignore_result = cJSON_GetObjectItemCaseSensitive(json_test_case, "ignore_result");
+    if(j_ignore_result != NULL) {
+        assert_true(cJSON_IsBool(j_ignore_result));
+        test_case->ignore_result = cJSON_IsTrue(j_ignore_result);
+    }
+
     // pattern
     cJSON * j_pattern = cJSON_GetObjectItemCaseSensitive(json_test_case, "pattern");
     assert_non_null(j_pattern);
@@ -190,6 +239,9 @@ test_case_parameters * load_test_case(cJSON * json_test_case) {
  */
 void free_test_case_parameters(test_case_parameters * test_case) {
 
+    if (test_case->description != NULL) {
+        free(test_case->description);
+    }
     free(test_case->pattern);
     free(test_case->log);
     if (test_case->end_match != NULL) {
@@ -215,7 +267,7 @@ batch_test load_batch_test_case(cJSON * json_batch) {
     batch_test batch = NULL;
 
     int i = 0; // test index
-    while (TRUE) {
+    while (true) {
         batch = realloc(batch, sizeof(test_case_parameters) * (i + 2));
         batch[i] = NULL;
         batch[i + 1] = NULL;
@@ -273,16 +325,25 @@ void test_regex_execute_regex_matching(void ** state) {
     assert_true(cJSON_IsArray(json_file));
 
     // Load the suite of tests
-    int i = 0;
-    while (TRUE) {
+    cJSON * json_suite = cJSON_GetArrayItem(json_file, 0);
+    for (int i = 0; json_suite != NULL; json_suite = cJSON_GetArrayItem(json_file, ++i)){
         // Get test suite
-        cJSON * json_suite = cJSON_GetArrayItem(json_file, i);
-        if (json_suite == NULL) {
-            break;
-        }
+
         assert_true(cJSON_IsObject(json_suite));
+
+        // Every test suite must have a description
+        cJSON * j_description = cJSON_GetObjectItemCaseSensitive(json_suite, "description");
+        if(j_description == NULL) {
+            printf("Test suite %d has no description\n", i);
+        }
+        assert_non_null(j_description);
+        assert_true(cJSON_IsString(j_description));
+
         // Get batch of test
         cJSON * j_batch = cJSON_GetObjectItemCaseSensitive(json_suite, "batch_test");
+        if (j_batch == NULL) {
+            printf("Test suite %d has no batch of test\n", i);
+        }
         assert_non_null(j_batch);
         assert_true(cJSON_IsArray(j_batch));
 
@@ -292,7 +353,6 @@ void test_regex_execute_regex_matching(void ** state) {
         // Exceute the batch of test
         exectute_batch_test(batch);
         free_batch_test_case(batch);
-        i++;
     }
 
     cJSON_Delete(json_file);

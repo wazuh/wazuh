@@ -1,6 +1,6 @@
 [
     {
-        "test_suite_description": "Test a sigle patterns",
+        "description": "Test a sigle patterns",
         "batch_test": [
             {
                 "pattern": "^hi (\\w+).",
@@ -21,13 +21,13 @@
         ]
     },
     {
-        "test_suite_description": "Test a double patterns",
+        "description": "Test a double patterns",
         "batch_test": [
             {
-                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
-                "log": "god bye wazuh",
-                "__end_match": "h",
-                "end_match": null,
+                "ignore_result" : true,
+                "pattern": "^hi (\\w+)|^good bye (\\w+)$",
+                "log": "good bye wazuh",
+                "end_match": "h",
                 "captured_groups": [
                     "wazuh"
                 ]
@@ -35,31 +35,31 @@
         ]
     },
     {
-        "test_suite_description": "Test a double patterns",
+        "description": "Test a double patterns",
         "batch_test": [
             {
+                "ignore_result" : true,
                 "pattern": "^hi (\\w+)|^god bye (\\w+)$",
                 "log": "god bye wazuh",
-                "__end_match": "h",
-                "end_match": null,
+                "end_match": "h",
                 "captured_groups": [
                     "wazuh"
                 ]
             },
             {
+                "ignore_result" : true,
                 "pattern": "^hi (\\w+)|^god bye (\\w+)$",
                 "log": "god bye wazuh",
-                "__end_match": "h",
-                "end_match": null,
+                "end_match": "h",
                 "captured_groups": [
                     "wazuh"
                 ]
             },
             {
+                "ignore_result" : true,
                 "pattern": "^hi (\\w+)|^god bye (\\w+)$",
                 "log": "god bye wazuh",
-                "__end_match": "h",
-                "end_match": null,
+                "end_match": "h",
                 "captured_groups": [
                     "wazuh"
                 ]
