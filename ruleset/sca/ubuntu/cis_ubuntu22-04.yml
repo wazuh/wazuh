@@ -2565,7 +2565,7 @@ checks:
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28637
     title: "Ensure permissions on /etc/cron.daily are configured."
-    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+    description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : chown root:root /etc/cron.daily and chmod og-rwx /etc/cron.daily"
     compliance:
@@ -3502,6 +3502,7 @@ checks:
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
       - cis: ["6.2.11"]
+      - cis_csc: ["4.6"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -3523,7 +3524,7 @@ checks:
     title: "Ensure shadow group is empty."
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
-    remediation: "Remove all users from the shadow group, and change the primary group of any users with shadow as their primary group."
+    remediation: "Run the following command to remove all users from the shadow group # sed -ri 's/(^shadow:[^:]*:[^:]*:)([^:]+$)/\\1/' /etc/group. Change the primary group of any users with shadow as their primary group. # usermod -g <primary group> <user>"
     compliance:
       - cis: ["6.2.17"]
       - cis_csc: ["14.6"]
@@ -3535,4 +3536,4 @@ checks:
       - gdpr_IV: ["35.7", "32.2"]
     condition: none
     rules:
-      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+'
+      - 'c: sh -c "awk -F: -v GID=\"$(awk -F: ''($1==\"shadow\") {print $3}'' /etc/group)\" ''($4==GID) {print $1}'' /etc/passwd" -> r:\w+'
