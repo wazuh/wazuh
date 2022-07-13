@@ -1087,7 +1087,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Reset agents reconnect counters
         if self.server.agents_reconnect is not None:
-            self.server.agents_reconnect.reset_counters()
+            self.server.agents_reconnect.reset_counters(self.name)
 
         # Cancel agent-groups task
         try:
@@ -1204,7 +1204,12 @@ class Master(server.AbstractServer):
                 await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_time"])
 
             # Check agents balance
-            await self.agents_reconnect.balance_previous_conditions()
+            try:
+                await self.agents_reconnect.balance_previous_conditions()
+            except agents_reconnect.SkippingException:
+                # Skip current iteration
+                logger.info("Skipping current iteration.")
+                pass
 
             # Check if the current phase is Halt
             if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
