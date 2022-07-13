@@ -16,8 +16,16 @@
 #endif
 
 // Helpers
-
-unsigned int failed_tests_count = 0;
+/**
+ * @brief Test status result
+ */
+struct _result_test
+{
+    unsigned int expected_failed_tests; ///< Expected failed tests count
+    unsigned int failed_tests_count;          ///< Failed tests count
+    unsigned int executed_tests_suite_count;  ///< Executed tests suit count
+    unsigned int executed_unit_test_count;    ///< Executed tests suit count
+} result;
 
 /**
  * @brief Unit test definition for OS_Regex_Execute()
@@ -52,7 +60,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     if ((test_case->end_match == NULL && match_retval != NULL) ||
         (test_case->end_match != NULL && match_retval == NULL)) {
 
-        failed_tests_count++;
+        result.failed_tests_count++;
 
         if (!test_case->ignore_result) {
             // --------- print
@@ -76,7 +84,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         // ---- Print test case
         assert_string_equal(match_retval, test_case->end_match);
     } else if (!strcmp_matched) {
-        failed_tests_count++;
+        result.failed_tests_count++;
     }
 
     // Check the captured groups
@@ -99,7 +107,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
                 }
                 assert_true(false);
             } else {
-                failed_tests_count++;
+                result.failed_tests_count++;
                 break;
             }
         }
@@ -111,7 +119,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
                 // --------- Print del testcase printf("Fail on test);
                 assert_string_equal(expected_str, actual_str);
             } else if (!strcmp_group_matched) {
-                failed_tests_count++;
+                result.failed_tests_count++;
             }
         } else {
             break;
@@ -305,6 +313,7 @@ void exectute_batch_test(batch_test batch) {
     // Execute a batch of test cases
     for (int case_id = 0; batch[case_id] != NULL; case_id++) {
         exec_test_case(batch[case_id], &regex_match);
+        result.executed_unit_test_count++;
     }
     OSRegex_free_regex_matching(&regex_match);
 }
@@ -317,8 +326,18 @@ void exectute_batch_test(batch_test batch) {
  */
 
 void test_regex_execute_regex_matching(void ** state) {
+
+    // CMocka configuration
     (void) state;
     unsigned char test = 0;
+
+    /*
+    result.expected_failed_tests is a double check.
+    This number must be changed manually when:
+        - Failed tests are added (Increases)
+        - Bugs are fixed (Decreases)
+    */
+    result.expected_failed_tests = 4; ///< Number of tests that ignore the results and fail.
 
     // Load tests suite
     cJSON * json_file = readFile();
@@ -328,7 +347,6 @@ void test_regex_execute_regex_matching(void ** state) {
     cJSON * json_suite = cJSON_GetArrayItem(json_file, 0);
     for (int i = 0; json_suite != NULL; json_suite = cJSON_GetArrayItem(json_file, ++i)){
         // Get test suite
-
         assert_true(cJSON_IsObject(json_suite));
 
         // Every test suite must have a description
@@ -353,9 +371,22 @@ void test_regex_execute_regex_matching(void ** state) {
         // Exceute the batch of test
         exectute_batch_test(batch);
         free_batch_test_case(batch);
+        result.executed_tests_suite_count++;
     }
 
     cJSON_Delete(json_file);
+
+    // Print result test
+    // Total suite executed
+    printf("[ OS_REGEX ] >>> Total suite executed: %d\n", result.executed_tests_suite_count);
+    // Total unit test executed
+    printf("[ OS_REGEX ] >>> Total unit test executed: %d\n", result.executed_unit_test_count);
+    // Total unit test failed
+    printf("[ OS_REGEX ] >>> Total unit test failed: %d\n", result.failed_tests_count);
+
+    assert_int_equal(result.expected_failed_tests, result.failed_tests_count);
+
+
 }
 
 int main(void) {
