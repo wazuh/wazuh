@@ -180,7 +180,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/tmp\s && r:nosuid'
+      - "c:findmnt -n /tmp -> r:nosuid"
 
   # 1.1.5 Ensure noexec option set on /tmp partition (Automated)
   - id: 28509
@@ -663,6 +663,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - "c:apparmor_status -> r:profiles are in enforce|profiles are in complain"
       - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
@@ -1070,7 +1071,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - "c:dpkg -s dovecot-imapd dovecot-pop3d -> r:install ok installed"
+      - "c:dpkg -s dovecot-imapd -> r:install ok installed"
+      - "c:dpkg -s dovecot-pop3d -> r:install ok installed"
 
   # 2.1.12 Ensure Samba is not installed (Automated)
   - id: 28560
@@ -3326,6 +3328,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group='
+      - 'not c: sh -c "awk -F: -v GID=\"$(awk -F''[ =]'' ''($1==\"auth\" && $2==\"required\") {print $6}'' /etc/pam.d/su)\" ''($1==GID) {print $4}'' /etc/group " -> r:^\w+'
 
   # 6 System Maintenance
   # 6.1 System File Permissions
