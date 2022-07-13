@@ -171,7 +171,7 @@ namespace Utils
 
 
     /* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
-    static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
+    static std::string getSerialNumberFromSmbios(const BYTE* rawData, const DWORD rawDataSize)
     {
         std::string serialNumber;
         DWORD offset{0};
