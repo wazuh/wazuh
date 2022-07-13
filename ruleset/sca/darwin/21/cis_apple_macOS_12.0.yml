@@ -81,7 +81,7 @@ checks:
     title: "Ensure Installation of App Update Is Enabled."
     description: "Ensure that application updates are installed after they are available from Apple. These updates do not require reboots or admin privileges for end users."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
-    remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate - bool TRUE"
+    remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE"
     compliance:
       - cis: ["1.4"]
       - cis_level: ["1"]
@@ -134,7 +134,7 @@ checks:
     title: "Ensure Bluetooth Is Disabled If No Devices Are Paired."
     description: "Bluetooth devices use a wireless communications system that replaces the cables used by other peripherals to connect to a system. It is by design a peer-to-peer network technology and typically lacks centralized administration and security enforcement infrastructure."
     rationale: "Bluetooth is particularly susceptible to a diverse set of security vulnerabilities involving identity detection, location tracking, denial of service, unintended control and access of data and voice channels, and unauthorized device control and data access."
-    remediation: "Open a terminal session and enter the following command to disable bluetooth: sudo defaults write /Library/Preferences/com.apple.Bluetooth ControllerPowerState -int 0 && sudo killall -HUP bluetoohd"
+    remediation: "Open a terminal session and enter the following command to disable bluetooth: sudo defaults write /Library/Preferences/com.apple.Bluetooth ControllerPowerState -int 0 && sudo killall -HUP bluetoothd"
     compliance:
       - cis: ["2.1.1"]
       - cis_level: ["1"]
@@ -177,7 +177,7 @@ checks:
   # 2.2.2 Ensure time set is within appropriate limits (Automated)
   - id: 29009
     title: "Ensure time set is within appropriate limits."
-    description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries. Ensure that time on the computer is within acceptable limits. Truly accurate time is measured within milliseconds. For this audit, a drift under four and a half minutes passes the control check. Since Kerberos is one of the important features of macOS integration into Directory systems the guidance here is to warn you before there could be an impact to operations. From the perspective of accurate time, this check is not strict, so it may be too great for your organization. Your organization can adjust to a smaller offset value as needed. Note: ntpdate has been deprecated with 10.14. sntp replaces that command."
+    description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries. Ensure that time on the computer is within acceptable limits. Truly accurate time is measured within milliseconds. For this audit, a drift under four and a half minutes passes the control check. Since Kerberos is one of the important features of macOS integration into Directory systems the guidance here is to warn you before there could be an impact to operations. From the perspective of accurate time, this check is not strict, so it may be too great for your organization. Your organization can adjust to a smaller offset value as needed. Note: ntpdate has been deprecated with 10.14. sntp replaces that command. NOTE: set the correct network time server in the rules."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features. Audit check is for more than 4 minutes and 30 seconds ahead or behind."
     remediation: "Run the following commands to ensure your time is set within an appropriate limit: sudo systemsetup -getnetworktimeserver -> Get the time server name and then run: sudo touch /var/db/ntp-kod && sudo chown root:wheel /var/db/ntp-kod && sudo sntp -sS <YOUR-TIME-SERVER> "
     compliance:
@@ -197,13 +197,13 @@ checks:
     title: "Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled."
     description: "A locking screensaver is one of the standard security controls to limit access to a computer and the current user's session when the computer is temporarily unused or unattended. In macOS the screensaver starts after a value selected in a drop down menu, 10 minutes and 20 minutes are both options and either is acceptable. Any value can be selected through the command line or script but a number that is not reflected in the GUI can be problematic. 20 minutes is the default for new accounts."
     rationale: "Setting an inactivity interval for the screensaver prevents unauthorized persons from viewing a system left unattended for an extensive period of time."
-    remediation: "Run the following command to verify that the idle time of the screen saver to 20 minutes or less (≤1200): sudo defaults -currentHost write com.apple.screensaver idleTime -int 600"
+    remediation: "Run the following command to verify that the idle time of the screen saver to 20 minutes or less (≤1200):  $ sudo -u <username> /usr/bin/defaults -currentHost write com.apple.screensaver idleTime -int <value ≤1200>. If there are multiple users out of compliance with the prescribed setting, run this command for each user to set their idle time:  $ sudo -u <username> /usr/bin/defaults -currentHost write com.apple.screensaver idleTime -int <value ≤1200>. Note: Issues arise if the command line is used to make the setting something other than what is available in the GUI Menu. Choose either 1 (60), 2 (120), 5 (300), 10 (600), or 20 (120) minutes to avoid any issues. Profile Method: 1. Create or edit a configuration profile with the PayLoadType of com.apple.screensaver.user 2. Add the key idleTime 3. Set the key to <integer><≤1200></integer> "
     compliance:
       - cis: ["2.3.1"]
       - cis_level: ["1"]
     condition: any
     rules:
-      - "c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist"
+      - "not c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist"
       - 'c:defaults -currentHost read com.apple.screensaver idleTime -> n:^(\d+)$ compare <= 1200'
       - 'c:sh -c "profiles -P -o stdout | grep idleTime" -> n:idleTime\s*=\s*(\d+) compare <= 1200'
 
@@ -341,7 +341,7 @@ checks:
     title: "Ensure Remote Management Is Disabled."
     description: "Remote Management is the client portion of Apple Remote Desktop (ARD). Remote Management can be used by remote administrators to view the current screen, install software, report on, and generally manage client Macs. The screen sharing options in Remote Management are identical to those in the Screen Sharing section. In fact, only one of the two can be configured. If Remote Management is used, refer to the Screen Sharing section above on issues regard screen sharing. Remote Management should only be enabled when a Directory is in place to manage the accounts with access. Computers will be available on port 5900 on a macOS System and could accept connections from untrusted hosts depending on the configuration, definitely a concern for mobile systems."
     rationale: "Remote Management should only be enabled on trusted networks with strong user controls present in a Directory system. Mobile devices without strict controls are vulnerable to exploit and monitoring."
-    remediation: "Run the following command to disable Remote Management: sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources /kickstart -deactivate -stop"
+    remediation: "Run the following command to disable Remote Management: sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate -stop"
     compliance:
       - cis: ["2.4.9"]
       - cis_level: ["1"]
@@ -354,7 +354,7 @@ checks:
     title: "Ensure Content Caching Is Disabled."
     description: "Starting with 10.13 (macOS High Sierra) Apple introduced a service to make it easier to deploy data from Apple, including software updates, where there are bandwidth constraints to the Internet and fewer constraints and greater bandwidth on the local subnet. This capability can be very valuable for organizations that have throttled and possibly metered Internet connections. In heterogeneous enterprise networks with multiple subnets the effectiveness of this capability would be determined on how many Macs were on each subnet at the time new large updates were made available upstream. This capability requires the use of mac OS clients as P2P nodes for updated Apple content. Unless there is a business requirement to manage operational Internet connectivity bandwidth user endpoints should not store content and act as a cluster to provision data."
     rationale: "The main use case for Mac computers is as mobile user endpoints. P2P sharing services should not be enabled on laptops that are using untrusted networks. Content Caching can allow a computer to be a server for local nodes on an untrusted network. While there are certainly logical controls that could be used to mitigate risk they add to the management complexity, since the value of the service is in specific use cases organizations with the use case described above can accept risk as necessary."
-    remediation: "Run the following command in to disable Content Caching: sudo AssetCacheManagerUtil deactivate"
+    remediation: "Run the following command to disable Content Caching:: sudo AssetCacheManagerUtil deactivate"
     compliance:
       - cis: ["2.4.10"]
       - cis_level: ["2"]
@@ -465,7 +465,7 @@ checks:
     title: "Ensure Firewall Stealth Mode Is Enabled."
     description: "While in Stealth mode the computer will not respond to unsolicited probes, dropping that traffic."
     rationale: "Stealth mode on the firewall minimizes the threat of system discovery tools while connected to a network or the Internet."
-    remediation: "Run the following command to enable stealth mode:: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on"
+    remediation: "Run the following command to enable stealth mode: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on"
     compliance:
       - cis: ["2.5.2.3"]
       - cis_level: ["1"]
@@ -679,7 +679,7 @@ checks:
   ############################################################
   # 4.1 Ensure Bonjour Advertising Services Is Disabled (Automated)
   - id: 29039
-    title: "Disable Bonjour advertising service."
+    title: "Ensure Bonjour Advertising Services Is Disabled."
     description: "Bonjour is an auto-discovery mechanism for TCP/IP devices which enumerate devices and services within a local subnet. DNS on macOS is integrated with Bonjour and should not be turned off, but the Bonjour advertising service can be disabled."
     rationale: 'Bonjour can simplify device discovery from an internal rogue or compromised host. An attacker could use Bonjour''s multicast DNS feature to discover a vulnerable or poorly- configured service or additional information to aid a targeted attack. Implementing this control disables the continuous broadcasting of "I''m here!" messages. Typical end-user endpoints should not have to advertise services to other computers. This setting does not stop the computer from sending out service discovery messages when looking for services on an internal subnet, if the computer is looking for a printer or server and using service discovery. To block all Bonjour traffic except to approved devices the pf or other firewall would be needed.'
     remediation: "Run the following command to disable Bonjour Advertising services: sudo /usr/bin/defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -bool true"
@@ -710,7 +710,7 @@ checks:
   # 4.5 Ensure NFS Server Is Disabled (Automated)
   - id: 29041
     title: "Ensure NFS Server Is Disabled."
-    description: "macOS can act as an NFS fileserver. NFS sharing could be enabled to allow someone on another computer to mount shares and gain access to information from the user's computer. File sharing from a user endpoint has long been considered questionable, and Apple has removed that capability from the GUI. NFSD is still part of the Operating System and can be easily turned on to export shares and provide remote connectivity to an end- user computer."
+    description: "macOS can act as an NFS fileserver. NFS sharing could be enabled to allow someone on another computer to mount shares and gain access to information from the user's computer. File sharing from a user endpoint has long been considered questionable, and Apple has removed that capability from the GUI. NFSD is still part of the Operating System and can be easily turned on to export shares and provide remote connectivity to an end-user computer."
     rationale: "File serving should not be done from a user desktop. Dedicated servers should be used. Open ports make it easier to exploit the computer."
     remediation: "Run the following command to disable the nfsd fileserver services: sudo launchctl disable system/com.apple.nfsd. Remove the exported Directory listing:  sudo rm /etc/exports"
     compliance:
@@ -784,7 +784,7 @@ checks:
     title: "Ensure Sealed System Volume (SSV) Is Enabled."
     description: "Sealed System Volume is a security feature introduced in macOS 11.0 Big Sur. During system installation, a SHA-256 cryptographic hash is calculated for all immutable system files and stored in a Merkle tree which itself is hashed as the Seal. Both are stored in the metadata of the snapshot created of the System volume. The seal is verified by the boot loader at startup. macOS will not boot if system files have been tampered with. If validation fails, the user will be instructed to reinstall the operating system. During read operations for files located in the Sealed System Volume, a hash is calculated and compared to the value stored in the Merkle tree."
     rationale: "Running without Sealed System Volume on a production system could run the risk of Apple software, that integrates directly with macOS, being modified."
-    remediation: "Perform the following to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command (⌘) + R) 2. Select an administrator's account and enter that account's password 3. Select Utilities 4. Select Terminal 5. Run the following command: sudo /usr/bin/csrutil enable authenticated-root Successfully enabled System authenticated root. Restart the machine for the changes to take effect. 6. Reboot the computer."
+    remediation: "Perform the following to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command (⌘) + R) 2. Select an administrator's account and enter that account's password 3. Select Utilities 4. Select Terminal 5. Run the following command: sudo /usr/bin/csrutil enable authenticated-root 6. Reboot the computer."
     compliance:
       - cis: ["5.1.5"]
       - cis_level: ["1"]
@@ -799,7 +799,7 @@ checks:
   # 5.1.6 Ensure Appropriate Permissions Are Enabled for System Wide Applications (Automated)
   - id: 29046
     title: "Ensure Appropriate Permissions Are Enabled for System Wide Applications."
-    description: "Applications in the System Applications Directory (/Applications) should be world executable since that is their reason to be on the system. They should not be world- writable and allow any process or user to alter them for other processes or users to then execute modified versions."
+    description: "Applications in the System Applications Directory (/Applications) should be world executable since that is their reason to be on the system. They should not be world-writable and allow any process or user to alter them for other processes or users to then execute modified versions."
     rationale: "Unauthorized modifications of applications could lead to the execution of malicious code."
     remediation: "Run the following command to change the permissions for each application that does not meet the requirements: sudo chmod -R o-w /Applications/<applicationname>"
     compliance:
@@ -812,7 +812,7 @@ checks:
   # 5.1.7 Ensure No World Writable Files Exist in the System Folder (Automated)
   - id: 29047
     title: "Ensure No World Writable Files Exist in the System Folder."
-    description: "Software sometimes insists on being installed in the /System/Volumes/Data/System Directory and have inappropriate world-writable permissions."
+    description: "Software sometimes insists on being installed in the /System/Volumes/Data/SystemDirectory and have inappropriate world-writable permissions."
     rationale: 'Folders in /System/Volumes/Data/System should not be world-writable. The audit check excludes the "Drop Box" folder that is part of Apple''s default user template.'
     remediation: "Run the following command to set permissions so that folders are not world writable in the /System folder: sudo chmod -R o-w /Path/<baddirectory>"
     compliance:
@@ -885,7 +885,7 @@ checks:
     title: 'Ensure the "root" Account Is Disabled'
     description: "The root account is a superuser account that has access privileges to perform any actions and read/write to any file on the computer. With some Linux distros the system administrator may commonly use the root account to perform administrative functions."
     rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
-    remediation: "Run the following command to disable the root user: sudo /usr/sbin/dsenableroot -d username = root user password: "
+    remediation: "Run the following command to disable the root user: sudo /usr/sbin/dsenableroot -d"
     compliance:
       - cis: ["5.6"]
       - cis_level: ["1"]
@@ -916,7 +916,7 @@ checks:
     title: "Require an administrator password to access system-wide preferences."
     description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer."
     rationale: "By requiring a password to unlock system-wide System Preferences the risk is mitigated of a user changing configurations that affect the entire system and requires an admin user to re-authenticate to make changes."
-    remediation: "The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: sudo security authorizationdb read system.preferences > /tmp/system.preferences.plist YES (0) sudo defaults write /tmp/system.preferences.plist shared -bool false sudo security authorizationdb write system.preferences < /tmp/system.preferences.plist YES (0)"
+    remediation: "The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ sudo security authorizationdb read system.preferences > /tmp/system.preferences.plist $ sudo defaults write /tmp/system.preferences.plist shared -bool false $ sudo security authorizationdb write system.preferences < /tmp/system.preferences.plist"
     compliance:
       - cis: ["5.10"]
       - cis_level: ["1"]
