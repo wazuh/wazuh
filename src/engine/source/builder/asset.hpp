@@ -14,9 +14,27 @@
 namespace builder
 {
 
+/**
+ * @brief Intermediate representation of the Asset.
+ *
+ * The Asset contains the following information:
+ * - The name of the asset.
+ * - The type of the asset (decoder, rule, output, filter).
+ * - The list of parents of the asset, stored in a set.
+ * - Metadata about the asset, as a JSON object.
+ * - The expression of the check part (check, parse) of the asset.
+ * - The expression of the rest of stages in the asset.
+ *
+ * @warning Stages check and parse are builded first in said order, ignoring the
+ * order in the JSON object.
+ */
 class Asset
 {
 public:
+    /**
+     * @brief Type of Asset.
+     *
+     */
     enum class Type
     {
         DECODER,
@@ -25,6 +43,13 @@ public:
         FILTER
     };
 
+    /**
+     * @brief Get the type name.
+     *
+     * @param type
+     * @return std::string
+     * @throws std::runtime_error if the type is unknown.
+     */
     static std::string typeToString(Type type)
     {
         switch (type)
@@ -47,12 +72,28 @@ public:
     std::unordered_set<std::string> m_parents;
     json::Json m_metadata;
 
+    /**
+     * @brief Construct a new Empty Asset object
+     *
+     * @param name Name of the asset.
+     * @param type Type of the asset.
+     */
     Asset(std::string name, Type type)
         : m_name {name}
         , m_type {type}
     {
     }
 
+    /**
+     * @brief Construct a new Asset object from a JSON object.
+     *
+     * @warning Stages check and parse are builded first in said order, ignoring the order
+     * in the JSON object.
+     *
+     * @param jsonDefinition JSON object containing the definition of the asset.
+     * @param type Type of the asset.
+     * @throws std::runtime_error if the Asset could not be constructed.
+     */
     Asset(const json::Json& jsonDefinition, Type type)
         : m_type {type}
     {
@@ -73,7 +114,7 @@ public:
             std::find_if(objectDefinition.begin(),
                          objectDefinition.end(),
                          [](auto tuple) { return std::get<0>(tuple) == "name"; });
-        if (namePos != objectDefinition.end())
+        if (objectDefinition.end() != namePos && std::get<1>(*namePos).isString())
         {
             m_name = std::get<1>(*namePos).getString().value();
             objectDefinition.erase(namePos);
@@ -81,7 +122,7 @@ public:
         else
         {
             throw std::runtime_error("[Asset::Asset(jsonDefinition, type)] "
-                                     "Asset definition missing name");
+                                     "Asset definition missing string name");
         }
 
         // Get parents
@@ -91,7 +132,7 @@ public:
                                            return std::get<0>(tuple) == "parents"
                                                   || std::get<0>(tuple) == "after";
                                        });
-        if (parentsPos != objectDefinition.end())
+        if (objectDefinition.end() != parentsPos)
         {
             if (!std::get<1>(*parentsPos).isArray())
             {
@@ -113,7 +154,7 @@ public:
             std::find_if(objectDefinition.begin(),
                          objectDefinition.end(),
                          [](auto tuple) { return std::get<0>(tuple) == "metadata"; });
-        if (metadataPos != objectDefinition.end())
+        if (objectDefinition.end() != metadataPos)
         {
             m_metadata = std::get<1>(*metadataPos);
             objectDefinition.erase(metadataPos);
@@ -126,7 +167,7 @@ public:
                                          return std::get<0>(tuple) == "check"
                                                 || std::get<0>(tuple) == "allow";
                                      });
-        if (checkPos != objectDefinition.end())
+        if (objectDefinition.end() != checkPos)
         {
             try
             {
@@ -147,7 +188,7 @@ public:
             std::find_if(objectDefinition.begin(),
                          objectDefinition.end(),
                          [](auto tuple) { return std::get<0>(tuple) == "parse"; });
-        if (parsePos != objectDefinition.end())
+        if (objectDefinition.end() != parsePos)
         {
             try
             {
@@ -169,11 +210,20 @@ public:
         auto asOp = m_stages->getPtr<base::Operation>();
         for (auto& tuple : objectDefinition)
         {
-            asOp->getOperands().push_back(internals::Registry::getBuilder(
-                "stage." + std::get<0>(tuple))({std::get<1>(tuple)}));
+            auto stageName = "stage." + std::get<0>(tuple);
+            auto stageDefinition = std::get<1>(tuple);
+            auto stageExpression =
+                internals::Registry::getBuilder(stageName)({stageDefinition});
+            asOp->getOperands().push_back(stageExpression);
         }
     }
 
+    /**
+     * @brief Get the Expression object of the Asset.
+     *
+     * @return base::Expression
+     * @throws std::runtime_error if the Expression could not be constructed.
+     */
     base::Expression getExpression() const
     {
         base::Expression asset;
@@ -184,10 +234,7 @@ public:
             case Type::DECODER:
                 asset = base::Implication::create(m_name, m_check, m_stages);
                 break;
-            case Type::FILTER:
-                asset = base::And::create(
-                    m_name, m_check->getPtr<base::Operation>()->getOperands());
-                break;
+            case Type::FILTER: asset = base::And::create(m_name, {m_check}); break;
             default:
                 throw std::runtime_error("Unknown asset type in Asset::getExpression");
         }
