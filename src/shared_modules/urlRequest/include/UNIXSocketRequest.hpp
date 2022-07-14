@@ -24,7 +24,6 @@ class UNIXSocketRequest final : public IURLRequest, public Singleton<UNIXSocketR
     public:
         void download(const URL &url,
                       const std::string &fileName,
-                      std::function<void(const std::string &)> onSuccess,
                       std::function<void(const std::string &)> onError = [](auto){});
         void post(const URL &url,
                   const nlohmann::json &data,
@@ -38,7 +37,6 @@ class UNIXSocketRequest final : public IURLRequest, public Singleton<UNIXSocketR
                     std::function<void(const std::string &)> onSuccess,
                     std::function<void(const std::string &)> onError = [](auto){});
         void delete_(const URL &url,
-                     const nlohmann::json &data,
                      std::function<void(const std::string &)> onSuccess,
                      std::function<void(const std::string &)> onError = [](auto){});
 };

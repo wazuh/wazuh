@@ -15,11 +15,8 @@
 
 void HTTPRequest::download(const URL &url,
                            const std::string &outputFile,
-                           std::function<void(const std::string &)>/* onSuccess*/,
                            std::function<void(const std::string &)> onError)
 {
-    // TODO: implement
-    std::cout << "Downloading Sync " << url.url() << " outputFile: " << outputFile << std::endl;
     try
     {
         GetRequest::builder()
@@ -38,12 +35,14 @@ void HTTPRequest::post(const URL &url,
                        std::function<void(const std::string &)> onSuccess,
                        std::function<void(const std::string &)> onError)
 {
-    std::cout << "Posting Sync " << url.url() << std::endl;
     try
     {
         auto req { PostRequest::builder() };
         req.url(url.url())
-            .postData<PostRequest>(data)
+            .postData(data)
+            .appendHeader("Content-Type: application/json")
+            .appendHeader("Accept: application/json")
+            .appendHeader("Accept-Charset: utf-8")
             .execute();
 
         onSuccess(req.response());
@@ -58,11 +57,13 @@ void HTTPRequest::get(const URL &url,
                       std::function<void(const std::string &)> onSuccess,
                       std::function<void(const std::string &)> onError)
 {
-    std::cout << "Getting Sync" << url.url() << std::endl;
     try
     {
         auto req { GetRequest::builder() };
         req.url(url.url())
+            .appendHeader("Content-Type: application/json")
+            .appendHeader("Accept: application/json")
+            .appendHeader("Accept-Charset: utf-8")
             .execute();
 
         onSuccess(req.response());
@@ -78,12 +79,14 @@ void HTTPRequest::update(const URL &url,
                          std::function<void(const std::string &)> onSuccess,
                          std::function<void(const std::string &)> onError)
 {
-    std::cout << "Updating Sync " << url.url() << std::endl;
     try
     {
         auto req { PutRequest::builder() };
         req.url(url.url())
-            .postData<PutRequest>(data)
+            .postData(data)
+            .appendHeader("Content-Type: application/json")
+            .appendHeader("Accept: application/json")
+            .appendHeader("Accept-Charset: utf-8")
             .execute();
 
         onSuccess(req.response());
@@ -95,16 +98,16 @@ void HTTPRequest::update(const URL &url,
 }
 
 void HTTPRequest::delete_(const URL &url,
-                          const nlohmann::json &data,
                           std::function<void(const std::string &)> onSuccess,
                           std::function<void(const std::string &)> onError)
 {
-    std::cout << "Deleting Sync " << url.url() << std::endl;
     try
     {
         auto req { DeleteRequest::builder() };
         req.url(url.url())
-            .postData<DeleteRequest>(data)
+            .appendHeader("Content-Type: application/json")
+            .appendHeader("Accept: application/json")
+            .appendHeader("Accept-Charset: utf-8")
             .execute();
 
         onSuccess(req.response());

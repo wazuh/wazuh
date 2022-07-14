@@ -63,7 +63,6 @@ class IURLRequest
         virtual ~IURLRequest() = default;
         virtual void download(const URL &url,
                               const std::string &fileName,
-                              std::function<void(const std::string &)> onSuccess,
                               std::function<void(const std::string &)> onError = [](auto){}) = 0;
 
         virtual void post(const URL &url,
@@ -81,7 +80,6 @@ class IURLRequest
                             std::function<void(const std::string &)> onError = [](auto){}) = 0;
 
         virtual void delete_(const URL &url,
-                            const nlohmann::json &data,
                             std::function<void(const std::string &)> onSuccess,
                             std::function<void(const std::string &)> onError = [](auto){}) = 0;
 };
