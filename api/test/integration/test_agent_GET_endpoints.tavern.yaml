@@ -1934,7 +1934,7 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response: &resource_not_found
+    response:
       status_code: 404
       json:
         error: 1701
