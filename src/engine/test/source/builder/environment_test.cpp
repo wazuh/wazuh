@@ -47,6 +47,19 @@ TEST_F(EnvironmentTest, DefaultConstructor)
     ASSERT_NO_THROW(Environment env);
 }
 
+TEST_F(EnvironmentTest, GetName)
+{
+    Environment env;
+    ASSERT_NO_THROW(env.name());
+}
+
+TEST_F(EnvironmentTest, GetAssets)
+{
+    Environment env;
+    ASSERT_NO_THROW(auto& assets = env.assets());
+    ASSERT_NO_THROW(const auto& assets = env.assets());
+}
+
 TEST_F(EnvironmentTest, OneDecoderEnvironment)
 {
     FakeCatalog catalog;
