@@ -1,69 +1,149 @@
 [
     {
-        "description": "Test a sigle patterns",
+        "description": "[Functionality] Supported expression tests - Character Maps [\\w, \\d, \\s, \\W, \\D, \\S, \\p, \\t, \\.].",
         "batch_test": [
             {
-                "pattern": "^hi (\\w+).",
-                "log": "hi wazuh.bye",
-                "end_match": ".bye",
+                "description": "\\w test: Includes all letters, digits, @ and _ characters.",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\w+)' pattern",
+                "pattern": "(\\w+\\w)$",
+                "log": "\t\r !\"#$%&()*+,./:;<=>?[\\]^`{|}~0123456789_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+                "end_match": "z",
                 "captured_groups": [
-                    "wazuh"
+                    "0123456789_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
                 ]
             },
             {
-                "pattern": "^hi2 (\\w+).",
-                "log": "hi2 wazuh.bye",
-                "end_match": ".bye",
+                "description": "\\d test: Only digits.",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\d+)' pattern",
+                "pattern": "(\\d+\\d)$",
+                "log": "\t\r !\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                "end_match": "9",
                 "captured_groups": [
-                    "wazuh"
+                    "0123456789"
+                ]
+            },
+            {
+                "description": "\\s test: space character ' '.",
+                "pattern": "(\\s+)",
+                "log": "\t\r!\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ",
+                "end_match": " ",
+                "captured_groups": [
+                    " "
+                ]
+            },
+            {
+                "description": "\\t test: tab character '\\t'.",
+                "pattern": "(\\t+)",
+                "log": "\r !\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\t",
+                "end_match": "\t",
+                "captured_groups": [
+                    "\t"
+                ]
+            },
+            {
+                "description": "\\p test: symbols characters '()*+,-.:;<=>?[]!\"'#$%&|{}'.",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\p+)' pattern",
+                "pattern": "(\\p+\\p)$",
+                "log": "\r\t /\\^`~_@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()*+,-.:;<=>?[]!\"'#$%&|{}",
+                "end_match": "}",
+                "captured_groups": [
+                    "()*+,-.:;<=>?[]!\"'#$%&|{}"
+                ]
+            },
+            {
+                "description": "\\W test: Anything not \\w.",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\W+)' pattern",
+                "pattern": "(\\W+\\W)$",
+                "log": "0123456789_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\t\r !\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": [
+                    "\t\r !\"#$%&()*+,./:;<=>?[\\]^`{|}~"
+                ]
+            },
+            {
+                "description": "\\D test: Anything not \\d.",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\D+)' pattern",
+                "pattern": "(\\D+\\D)$",
+                "log": "0123456789_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\t !\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": [
+                    "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\t !\"#$%&()*+,./:;<=>?[\\]^`{|}~"
+                ]
+            },
+            {
+                "description": "\\S test: Anything not \\s.",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\S+)' pattern",
+                "pattern": "(\\S+\\S)$",
+                "log": " \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                "end_match": "9",
+                "captured_groups": [
+                    "\r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+                ]
+            },
+            {
+                "description": "\\. test: Anything",
+                "__knowIssue:": "The pattern was designed this way due to know issue. Workaround for '(\\S+)' pattern",
+                "pattern": "(\\.+\\.)$",
+                "log": " \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                "end_match": "9",
+                "captured_groups": [
+                    " \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                 ]
             }
         ]
     },
     {
-        "description": "Test a double patterns",
+        "description": "[Functionality] Modifiers (+ and *)",
         "batch_test": [
             {
-                "ignore_result" : true,
-                "pattern": "^hi (\\w+)|^good bye (\\w+)$",
-                "log": "good bye wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            }
-        ]
-    },
-    {
-        "description": "Test a double patterns",
-        "batch_test": [
+                "description": "[+] It should not match since there are no characters of the type `\\d`.",
+                "pattern": "(\\d+)",
+                "log": "asd_ _qwe",
+                "end_match": null,
+                "captured_groups": []
+            },
             {
-                "ignore_result" : true,
-                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
-                "log": "god bye wazuh",
-                "end_match": "h",
+                "description": "[+] It should match one time",
+                "pattern": "(\\d+)",
+                "log": "asd_1_qwe",
+                "end_match": "1_qwe",
                 "captured_groups": [
-                    "wazuh"
+                    "1"
                 ]
             },
             {
-                "ignore_result" : true,
-                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
-                "log": "god bye wazuh",
-                "end_match": "h",
+                "description" : "[+]",
+                "pattern": "(\\d+)",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "debug" : false,
+                "log": "asd_12_qwe",
+                "end_match": "2_qwe",
                 "captured_groups": [
-                    "wazuh"
+                    "12"
                 ]
             },
             {
-                "ignore_result" : true,
-                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
-                "log": "god bye wazuh",
-                "end_match": "h",
+                "description" : "[+]",
+                "pattern": "(\\d+)",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "debug" : false,
+                "log": "asd_123_qwe",
+                "end_match": "3_qwe",
                 "captured_groups": [
-                    "wazuh"
+                    "123"
                 ]
+            },
+            {
+                "description": "[*] It should not match since there are no characters of the type `\\d`.",
+                "pattern": "(\\d*)",
+                "debug": true,
+                "ignore_result": true,
+                "log": "asd_ _qwe",
+                "end_match": " ",
+                "captured_groups": []
             }
         ]
     }
-]
+  ]
