@@ -31,15 +31,16 @@ struct _result_test
  * @brief Unit test definition for OS_Regex_Execute()
  */
 typedef struct test_case_parameters {
+    char * description;      ///< Test description
+    bool ignore_result;      ///< Ignore result (for tests with known failures)
     char * pattern;          ///< Regex pattern
     char * log;              ///< Log to match with the pattern
     char * end_match;        ///< Expected end match string (NULL if not matched)
     char ** captured_groups; ///< Expected captured groups (NULL if not captured)
-    char * description;      ///< Test description
-    bool ignore_result;      ///< Ignore result (for tests with known failures)
 } test_case_parameters;
 
 typedef test_case_parameters ** batch_test;
+
 
 static inline void print_os_regex_test_parameters(const test_case_parameters * test)
 {
@@ -109,7 +110,9 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     // Check if the last character matched is equal to the expected one
     bool strcmp_matched = (strcmp(match_retval, test_case->end_match) == 0);
     if (!test_case->ignore_result) {
-        print_os_regex_test_parameters(test_case);
+        if (!strcmp_matched) {
+            print_os_regex_test_parameters(test_case);
+        }
         assert_string_equal(match_retval, test_case->end_match);
     } else if (!strcmp_matched) {
         result.failed_tests_count++;
@@ -144,7 +147,9 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         if (expected_str != NULL) {
             bool strcmp_group_matched = (strcmp(expected_str, actual_str) == 0);
             if (!test_case->ignore_result) {
-                print_os_regex_test_parameters(test_case);
+                if (!strcmp_group_matched) {
+                    print_os_regex_test_parameters(test_case);
+                }
                 assert_string_equal(expected_str, actual_str);
             } else if (!strcmp_group_matched) {
                 result.failed_tests_count++;
