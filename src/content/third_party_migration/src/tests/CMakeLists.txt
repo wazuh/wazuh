@@ -20,16 +20,17 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 
 file(GLOB CONTENT_CXX_UNITTEST_COMMON_SRC
-    "cmdLineHelper_test.cpp"
+    #"cmdLineHelper_test.cpp"
     "cveFileFetcher_test.cpp"
     "main.cpp"
 )
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
-#link_directories(${SRC_FOLDER}/external/openssl/)
 
 add_executable(content_unit_test
-      ${CONTENT_CXX_UNITTEST_COMMON_SRC} "../cveFetchers/cveFileFetcher.cpp"
+      ${CONTENT_CXX_UNITTEST_COMMON_SRC} 
+        "../cveFetchers/cveFileFetcher.cpp"
+        "../cveFetchers/cveFetchersHelper.cpp"
     )
     
     target_link_libraries(content_unit_test gtest

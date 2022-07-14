@@ -133,7 +133,7 @@ TEST_F(CveFileFetcherTest, oneRemote_TwoFixedPlaceHolders)
                             "description": "SLE version type",
                             "value": [
                                 "desktop",
-                                "enterprise"
+                                "server"
                                 ]
                             }
                         }
@@ -143,12 +143,60 @@ TEST_F(CveFileFetcherTest, oneRemote_TwoFixedPlaceHolders)
     auto urls = fileFetcher.urlsFromRemote(remote);
 
     EXPECT_EQ(6u, urls.size());
-    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.desktop.desktop.11.xml", urls[0]);
-    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.desktop.desktop.12.xml", urls[1]);
-    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.desktop.desktop.15.xml", urls[2]);
-    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.desktop.11.xml", urls[3]);
-    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.desktop.12.xml", urls[4]);
-    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.desktop.15.xml", urls[5]);
+    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.desktop.11.xml", urls[0]);
+    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.desktop.12.xml", urls[1]);
+    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.desktop.15.xml", urls[2]);
+    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.server.11.xml", urls[3]);
+    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.server.12.xml", urls[4]);
+    EXPECT_EQ("https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.server.15.xml", urls[5]);
 
 
+}
+
+TEST_F(CveFileFetcherTest, oneRemote_MultipleFixedPlaceHolders)
+{
+    auto remote = R"({
+                    "url": "https://ftp.suse.com/{first}/{second}/{third}-{fourth}.xml",
+                    "request": "file",
+                    "type": "xml",
+                    "parameters": {
+                        "first": {
+                            "type": "fixed",
+                            "value": ["A","B","C"]
+                            },
+                        "second": {
+                            "type": "fixed",
+                            "description": "second",
+                            "value": ["001","002"]
+                            },
+                        "fourth": {
+                            "type": "fixed",
+                            "description": "fourth",
+                            "value": ["ZZZ","YYY"]
+                            },
+                        "third": {
+                            "type": "fixed",
+                            "description": "third",
+                            "value": ["333"]
+                            }
+                        }
+                    })"_json;
+
+    CveFileFetcher fileFetcher;
+    auto urls = fileFetcher.urlsFromRemote(remote);
+
+    EXPECT_EQ(12u, urls.size());
+    size_t i{0};
+    EXPECT_EQ("https://ftp.suse.com/A/001/333-ZZZ.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/A/001/333-YYY.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/A/002/333-ZZZ.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/A/002/333-YYY.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/B/001/333-ZZZ.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/B/001/333-YYY.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/B/002/333-ZZZ.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/B/002/333-YYY.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/C/001/333-ZZZ.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/C/001/333-YYY.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/C/002/333-ZZZ.xml", urls[i++]);
+    EXPECT_EQ("https://ftp.suse.com/C/002/333-YYY.xml", urls[i++]);
 }

@@ -10,78 +10,9 @@
  */
 
 #include "cveFileFetcher.hpp"
+#include "cveFetchersHelper.hpp"
+#include "cveFetchersParameters.hpp"
 #include "stringHelper.h"
-#include <iterator>
-#include <algorithm>
-
-std::vector<std::string> getPlaceHolders(const std::string &str)
-{
-    std::vector<std::string> placeHolders;
-
-    size_t pos = 0;
-
-    do
-    {
-        auto begin = str.find('{', pos);
-        auto end = str.find('}', begin);
-        if (begin != std::string::npos && end != std::string::npos)
-        {
-            const std::string placeholder = str.substr(begin, end - begin + 1);
-            
-            //No duplicates
-            bool found = false;
-            for (auto &ph : placeHolders)
-            {
-                if (ph == placeholder)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            if(!found){
-                placeHolders.push_back(placeholder);
-            }
-        }
-        pos = end;
-    } while (pos != std::string::npos);
-
-    return placeHolders;
-}
-
-// could go in stringHelper, parameterizing delimiters
-std::string getNextPlaceholder(const std::string &url)
-{
-    auto first = url.find('{');
-    auto second = url.find('}');
-
-    if ((first == std::string::npos) && (first == std::string::npos))
-    {
-        return "";
-    }
-    return url.substr(first + 1, second - first - 1);
-}
-
-class AbstractParameter
-{
-public:
-    std::string key() { return m_key; };
-    std::string value() { return m_values[index]; };
-    bool hasValue() { return index<m_values.size(); }
-    void nextValue() { index++; }
-    AbstractParameter() = default;
-    AbstractParameter(const std::string &key, const nlohmann::json &value)
-    {
-        m_key = key;
-        m_values = value.at("value").get<std::vector<std::string>>();
-        index = 0;
-    }
-
-private:
-    std::string m_key;
-    std::vector<std::string> m_values;
-    size_t index;
-};
 
 std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json remote)
 {
@@ -97,40 +28,51 @@ std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json rem
     }
 
     // parse parameters
-    std::map<std::string, AbstractParameter> params;
+    // TODO extract as helper function: input urlString, output params map
+    std::map<std::string, std::unique_ptr<AbstractParameter>> params;
     if (remote.contains("parameters"))
     {
         for (auto const &parameter : remote.at("parameters").items())
         {
-            AbstractParameter p(parameter.key(), parameter.value());
-            params[parameter.key()] = p;
+            if (parameter.value().at("type") == "fixed")
+            {
+                params[parameter.key()] = std::make_unique<FixedParameter>(parameter.key(), parameter.value());
+            }
+            else
+            {
+                throw std::runtime_error{
+                    "unsupported parameter type: " + parameter.value().at("type").get<std::string>() + '.'};
+            }
         }
     }
 
     auto placeholders = getPlaceHolders(remote.at("url").get_ref<const std::string&>());
-    
-    if(placeholders.empty()){
-        urls.push_back(remote.at("url").get<std::string>());
-    }
-    else{
-        for (auto &ph : placeholders)
+
+    urls.push_back(remote.at("url").get<std::string>());
+    for (auto &ph : placeholders)
+    {
+        std::string phname = ph.substr(1, ph.size() - 2);
+
+        std::vector<std::string> partial_expanded;
+
+        for (const auto &u : urls)
         {
-            std::vector<std::string> partial;
-            std::string phname = ph.substr(1, ph.size() - 2);
-            std::cout << "Placeholder name:" << phname << '\n';
-            std::cout << "Placeholder:" << ph << '\n';
-
-            while (params[phname].hasValue())
+            params[phname]->restart();
+            while (params[phname]->hasValue())
             {
-                std::string url = remote.at("url").get<std::string>();
-                auto val = params[phname].value();
-                Utils::replaceAll(url, ph, val);
-                std::cout << "pushing..."<< url << '\n';
-
-                params[phname].nextValue();
-                urls.push_back(url);
+                std::string expanded = u;
+                Utils::replaceAll(expanded, ph, params[phname]->value());
+                params[phname]->nextValue();
+                partial_expanded.push_back(expanded);
             }
         }
+        urls = partial_expanded;
+    }
+
+    //just for testing
+    for (const auto &u : urls)
+    {
+        std::cout << "out: " << u << "\n";
     }
 
     return urls;
