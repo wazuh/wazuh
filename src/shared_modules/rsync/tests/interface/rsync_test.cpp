@@ -1142,7 +1142,6 @@ TEST_F(RSyncTest, RegisterStartSyncAndPushWithSyncLimitIntervalCPP)
         .distinctOpt(false)
         .orderByOpt("")
         .countOpt(100))
-        .minimalSyncIntervalTime(2)
 
     };
 
@@ -1272,7 +1271,6 @@ TEST_F(RSyncTest, RegisterStartSyncAndNullIntervalsCPP)
         .distinctOpt(false)
         .orderByOpt("")
         .countOpt(100))
-        .minimalSyncIntervalTime(5)
 
     };
 
@@ -1369,7 +1367,6 @@ TEST_F(RSyncTest, RegisterStartSyncAndPushWithSyncLimitRemoveCPP)
         .distinctOpt(false)
         .orderByOpt("")
         .countOpt(100))
-        .minimalSyncIntervalTime(5)
 
     };
 
@@ -1449,7 +1446,6 @@ TEST_F(RSyncTest, RegisterStartSyncAndPushWithSyncLimitRemoveCPP)
 
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
 
-    registerConfig.minimalSyncIntervalTime(0);
     ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), registerConfig.config(), callbackData));
 
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), startSyncConfig.config(), callbackData));
@@ -1520,7 +1516,6 @@ TEST_F(RSyncTest, RegisterStartSyncAndPushWithOnDemandSyncCPP)
         .distinctOpt(false)
         .orderByOpt("")
         .countOpt(100))
-        .minimalSyncIntervalTime(5)
 
     };
 

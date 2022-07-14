@@ -265,14 +265,6 @@ class EXPORTED RegisterConfiguration final : public Configuration<RegisterConfig
         RegisterConfiguration & decoderType(const std::string& decoderType);
 
         /**
-         * @brief Set the minimal sync interval time for the message controller.
-         *
-         * @param intervalTime Time in seconds to be set.
-         *
-         */
-        RegisterConfiguration & minimalSyncIntervalTime(const uint32_t intervalTime);
-
-        /**
          * @brief Set the nodata object to be used during the selection of data when all data are requested.
         *
         * @param parameter Nodata object to be used during the selection of data when all data are requested.

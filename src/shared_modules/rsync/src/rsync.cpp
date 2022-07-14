@@ -336,12 +336,6 @@ RegisterConfiguration& RegisterConfiguration::rangeChecksum(QueryParameter& para
     return *this;
 }
 
-RegisterConfiguration& RegisterConfiguration::minimalSyncIntervalTime(const uint32_t parameter)
-{
-    m_jsConfiguration["minimal_sync_interval"] = parameter;
-    return *this;
-}
-
 StartSyncConfiguration& StartSyncConfiguration::first(QueryParameter& parameter)
 {
     m_jsConfiguration["first_query"] = parameter.queryParameter();

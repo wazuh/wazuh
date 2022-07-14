@@ -14,7 +14,6 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "messageCreatorFactory.h"
-#include "messageController.hpp"
 
 using namespace RSync;
 
@@ -64,12 +63,11 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
     const auto& jsStartParamsTable  { startConfiguration.at("table")              };
     const auto& firstQuery          { startConfiguration.find("first_query")      };
     const auto& lastQuery           { startConfiguration.find("last_query")       };
-    const auto& component           { startConfiguration.at("component").get_ref<const std::string&>() };
     const auto& itSyncOnDemand      { startConfiguration.find("sync_on_demand")   };
 
     const auto syncOnDemand { itSyncOnDemand != startConfiguration.end()&& itSyncOnDemand->get<bool>() };
 
-    if (syncOnDemand || !MessageController::instance().waitToStartSync(component))
+    if (syncOnDemand)
     {
         if (!jsStartParamsTable.empty() && firstQuery != startConfiguration.end() && lastQuery != startConfiguration.end())
         {
@@ -118,7 +116,6 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
             // checksumCtx.rightCtx will have the needed (final) information
             messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
-            MessageController::instance().refreshLastMsgTime(component);
         }
         else
         {
@@ -191,18 +188,6 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
         }
     };
 
-    auto syncInterval { std::chrono::seconds(DEFAULT_SYNC_INTERVAL_VALUE) };
-    const auto itInterval { syncConfiguration.find("minimal_sync_interval") };
-
-    if (itInterval != syncConfiguration.end())
-    {
-        const auto intervalValue { itInterval->get<int32_t>() };
-        syncInterval = intervalValue > 0 ? std::chrono::seconds(intervalValue) : syncInterval;
-    }
-
-    MessageController::instance().setComponentContext(syncConfiguration.at("component").get_ref<const std::string&>(),
-                                                      syncInterval);
-
     ctx->m_msgDispatcher.setCallback(messageHeaderID, registerCallback);
 }
 
@@ -253,8 +238,6 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
     {
         throw rsync_error { UNEXPECTED_SIZE };
     }
-
-    MessageController::instance().refreshLastMsgTime(jsonSyncConfiguration.at("component").get_ref<const std::string&>());
 }
 
 size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
@@ -431,8 +414,6 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
         [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (const nlohmann::json & resultJSON)
         {
             messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);
-            MessageController::instance()
-            .refreshLastMsgTime(jsonSyncConfiguration.at("component").get_ref<const std::string&>());
         }
     };
     nlohmann::json selectData;

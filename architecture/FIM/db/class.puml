@@ -176,7 +176,7 @@ package "db.hpp" <<Folder>> #DDDDDD{
 }
 package "db.h" <<Folder>> #DDDDDD{
     interface db {
-        void fim_db_init(int, int, fim_sync_callback_t, logging_callback_t, int, uint32_t, int,bool)
+        void fim_db_init(int, int, fim_sync_callback_t, logging_callback_t, int, int,bool)
         void fim_run_integrity()
         void fim_sync_push_msg(const char*)
         TXN_HANDLE fim_db_transaction_start(const char*, result_callback_t, void*)
