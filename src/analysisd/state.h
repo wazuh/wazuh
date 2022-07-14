@@ -91,17 +91,21 @@ typedef struct _events_t {
     modules_t modules;
 } events_t;
 
-typedef struct _analysisd_state_t {
-    uint64_t received_bytes;
-    uint64_t events_received;
-    uint64_t events_processed;
+typedef struct _written_t {
     uint64_t alerts_written;
     uint64_t archives_written;
     uint32_t firewall_written;
     uint32_t fts_written;
     uint32_t stats_written;
+} written_t;
+
+typedef struct _analysisd_state_t {
+    uint64_t received_bytes;
+    uint64_t events_received;
+    uint64_t events_processed;
     events_t events_decoded_breakdown;
     events_t events_dropped_breakdown;
+    written_t events_written_breakdown;
 } analysisd_state_t;
 
 typedef struct _analysisd_agent_state_t {
@@ -454,5 +458,11 @@ void w_inc_stats_written();
  * @return JSON object
  */
 cJSON* asys_create_state_json();
+
+/**
+ * @brief Create a JSON object with all the analysisd agents state information
+ * @return JSON object
+ */
+cJSON* asys_create_agents_state_json();
 
 #endif /* STATE_A_H */

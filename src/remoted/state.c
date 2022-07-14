@@ -532,19 +532,8 @@ void rem_inc_keys_reload() {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_update_shared_files() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.update_shared_files_count++;
-    w_mutex_unlock(&state_mutex);
-}
-
 cJSON* rem_create_state_json() {
     remoted_state_t state_cpy;
-    cJSON *_statistics = NULL;
-    cJSON *_received = NULL;
-    cJSON *_control = NULL;
-    cJSON *_sent = NULL;
-    cJSON *_queue = NULL;
 
     w_mutex_lock(&state_mutex);
     memcpy(&state_cpy, &remoted_state, sizeof(remoted_state_t));
@@ -555,109 +544,129 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(rem_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(rem_state_json, "name", ARGV0);
 
-    _statistics = cJSON_CreateObject();
-    cJSON_AddItemToObject(rem_state_json, "statistics", _statistics);
+    cJSON *_metrics = cJSON_CreateObject();
+    cJSON_AddItemToObject(rem_state_json, "metrics", _metrics);
 
-    cJSON_AddNumberToObject(_statistics, "tcp_sessions", state_cpy.tcp_sessions);
+    // Fields within metrics are sorted alphabetically
 
-    cJSON_AddNumberToObject(_statistics, "received_bytes", state_cpy.recv_bytes);
+    cJSON *_bytes = cJSON_CreateObject();
+    cJSON_AddItemToObject(_metrics, "bytes", _bytes);
 
-    _received = cJSON_CreateObject();
-    cJSON_AddItemToObject(_statistics, "messages_received_breakdown", _received);
+    cJSON_AddNumberToObject(_bytes, "received", state_cpy.recv_bytes);
+    cJSON_AddNumberToObject(_bytes, "sent", state_cpy.sent_bytes);
 
-    cJSON_AddNumberToObject(_received, "event_messages", state_cpy.recv_breakdown.evt_count);
-    cJSON_AddNumberToObject(_received, "control_messages", state_cpy.recv_breakdown.ctrl_count);
+    cJSON_AddNumberToObject(_metrics, "keys_reload_count", state_cpy.keys_reload_count);
 
-    _control = cJSON_CreateObject();
-    cJSON_AddItemToObject(_received, "control_breakdown", _control);
+    cJSON *_messages = cJSON_CreateObject();
+    cJSON_AddItemToObject(_metrics, "messages", _messages);
 
-    cJSON_AddNumberToObject(_control, "request_messages", state_cpy.recv_breakdown.ctrl_breakdown.request_count);
-    cJSON_AddNumberToObject(_control, "startup_messages", state_cpy.recv_breakdown.ctrl_breakdown.startup_count);
-    cJSON_AddNumberToObject(_control, "shutdown_messages", state_cpy.recv_breakdown.ctrl_breakdown.shutdown_count);
-    cJSON_AddNumberToObject(_control, "keepalive_messages", state_cpy.recv_breakdown.ctrl_breakdown.keepalive_count);
+    cJSON *_received_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_messages, "received_breakdown", _received_breakdown);
 
-    cJSON_AddNumberToObject(_received, "ping_messages", state_cpy.recv_breakdown.ping_count);
-    cJSON_AddNumberToObject(_received, "unknown_messages", state_cpy.recv_breakdown.unknown_count);
-    cJSON_AddNumberToObject(_received, "dequeued_after_close_messages", state_cpy.recv_breakdown.dequeued_count);
-    cJSON_AddNumberToObject(_received, "discarded_messages", state_cpy.recv_breakdown.discarded_count);
+    cJSON_AddNumberToObject(_received_breakdown, "control", state_cpy.recv_breakdown.ctrl_count);
 
-    cJSON_AddNumberToObject(_statistics, "sent_bytes", state_cpy.sent_bytes);
+    cJSON *_control_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received_breakdown, "control_breakdown", _control_breakdown);
 
-    _sent = cJSON_CreateObject();
-    cJSON_AddItemToObject(_statistics, "messages_sent_breakdown", _sent);
+    cJSON_AddNumberToObject(_control_breakdown, "keepalive", state_cpy.recv_breakdown.ctrl_breakdown.keepalive_count);
+    cJSON_AddNumberToObject(_control_breakdown, "request", state_cpy.recv_breakdown.ctrl_breakdown.request_count);
+    cJSON_AddNumberToObject(_control_breakdown, "shutdown", state_cpy.recv_breakdown.ctrl_breakdown.shutdown_count);
+    cJSON_AddNumberToObject(_control_breakdown, "startup", state_cpy.recv_breakdown.ctrl_breakdown.startup_count);
 
-    cJSON_AddNumberToObject(_sent, "ack_messages", state_cpy.sent_breakdown.ack_count);
-    cJSON_AddNumberToObject(_sent, "shared_file_messages", state_cpy.sent_breakdown.shared_count);
-    cJSON_AddNumberToObject(_sent, "ar_messages", state_cpy.sent_breakdown.ar_count);
-    cJSON_AddNumberToObject(_sent, "cfga_messages", state_cpy.sent_breakdown.cfga_count);
-    cJSON_AddNumberToObject(_sent, "request_messages", state_cpy.sent_breakdown.request_count);
-    cJSON_AddNumberToObject(_sent, "discarded_messages", state_cpy.sent_breakdown.discarded_count);
+    cJSON_AddNumberToObject(_received_breakdown, "dequeued_after", state_cpy.recv_breakdown.dequeued_count);
+    cJSON_AddNumberToObject(_received_breakdown, "discarded", state_cpy.recv_breakdown.discarded_count);
+    cJSON_AddNumberToObject(_received_breakdown, "event", state_cpy.recv_breakdown.evt_count);
+    cJSON_AddNumberToObject(_received_breakdown, "ping", state_cpy.recv_breakdown.ping_count);
+    cJSON_AddNumberToObject(_received_breakdown, "unknown", state_cpy.recv_breakdown.unknown_count);
 
-    _queue = cJSON_CreateObject();
-    cJSON_AddItemToObject(_statistics, "queue_status", _queue);
+    cJSON *_sent_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_messages, "sent_breakdown", _sent_breakdown);
 
-    cJSON_AddNumberToObject(_queue, "receive_queue_usage", rem_get_qsize());
-    cJSON_AddNumberToObject(_queue, "receive_queue_size", rem_get_tsize());
+    cJSON_AddNumberToObject(_sent_breakdown, "ack", state_cpy.sent_breakdown.ack_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "ar", state_cpy.sent_breakdown.ar_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "cfga", state_cpy.sent_breakdown.cfga_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "discarded", state_cpy.sent_breakdown.discarded_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "request", state_cpy.sent_breakdown.request_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "shared", state_cpy.sent_breakdown.shared_count);
 
-    cJSON_AddNumberToObject(_statistics, "keys_reload_count", state_cpy.keys_reload_count);
-    cJSON_AddNumberToObject(_statistics, "update_shared_files_count", state_cpy.update_shared_files_count);
+    cJSON *_queues = cJSON_CreateObject();
+    cJSON_AddItemToObject(_metrics, "queues", _queues);
 
+    cJSON *_received_q = cJSON_CreateObject();
+    cJSON_AddItemToObject(_queues, "received", _received_q);
+
+    cJSON_AddNumberToObject(_received_q, "size", rem_get_tsize());
+    cJSON_AddNumberToObject(_received_q, "usage", rem_get_qsize());
+
+    cJSON_AddNumberToObject(_metrics, "tcp_sessions", state_cpy.tcp_sessions);
+
+    return rem_state_json;
+}
+
+cJSON* rem_create_agents_state_json() {
     OSHashNode *hash_node;
     unsigned int index = 0;
+
+    cJSON *rem_state_json = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(rem_state_json, "timestamp", time(NULL));
+    cJSON_AddStringToObject(rem_state_json, "name", ARGV0);
 
     w_mutex_lock(&agents_state_mutex);
 
     if (hash_node = OSHash_Begin(remoted_agents_state, &index), hash_node != NULL) {
         remoted_agent_state_t * data = NULL;
-        cJSON * _array = NULL;
-        cJSON * _item = NULL;
-        cJSON * _statistics = NULL;
-        cJSON * _messages_received_breakdown = NULL;
-        cJSON * _messages_sent_breakdown = NULL;
-        cJSON * _control_breakdown = NULL;
 
-        _array = cJSON_CreateArray();
+        cJSON *_array = cJSON_CreateArray();
 
         while (hash_node != NULL) {
             data = hash_node->data;
 
-            _item = cJSON_CreateObject();
-            _statistics = cJSON_CreateObject();
-            _messages_received_breakdown = cJSON_CreateObject();
-            _messages_sent_breakdown = cJSON_CreateObject();
-            _control_breakdown = cJSON_CreateObject();
+            cJSON *_item = cJSON_CreateObject();
 
-            cJSON_AddNumberToObject(_item, "agent_id", atoi(hash_node->key));
-            cJSON_AddItemToObject(_item, "statistics", _statistics);
+            cJSON_AddNumberToObject(_item, "id", atoi(hash_node->key));
 
-            cJSON_AddItemToObject(_statistics, "messages_received_breakdown", _messages_received_breakdown);
+            cJSON *_metrics = cJSON_CreateObject();
+            cJSON_AddItemToObject(_item, "metrics", _metrics);
 
-            cJSON_AddNumberToObject(_messages_received_breakdown, "event_messages", data->recv_evt_count);
-            cJSON_AddNumberToObject(_messages_received_breakdown, "control_messages", data->recv_ctrl_count);
+            // Fields within metrics are sorted alphabetically
 
-            cJSON_AddItemToObject(_messages_received_breakdown, "control_breakdown", _control_breakdown);
+            cJSON *_messages = cJSON_CreateObject();
+            cJSON_AddItemToObject(_metrics, "messages", _messages);
 
-            cJSON_AddNumberToObject(_control_breakdown, "request_messages", data->ctrl_breakdown.request_count);
-            cJSON_AddNumberToObject(_control_breakdown, "startup_messages", data->ctrl_breakdown.startup_count);
-            cJSON_AddNumberToObject(_control_breakdown, "shutdown_messages", data->ctrl_breakdown.shutdown_count);
-            cJSON_AddNumberToObject(_control_breakdown, "keepalive_messages", data->ctrl_breakdown.keepalive_count);
+            cJSON *_received_breakdown = cJSON_CreateObject();
+            cJSON_AddItemToObject(_messages, "received_breakdown", _received_breakdown);
 
-            cJSON_AddItemToObject(_statistics, "messages_sent_breakdown", _messages_sent_breakdown);
+            cJSON_AddNumberToObject(_received_breakdown, "control", data->recv_ctrl_count);
 
-            cJSON_AddNumberToObject(_messages_sent_breakdown, "ack_messages", data->sent_breakdown.ack_count);
-            cJSON_AddNumberToObject(_messages_sent_breakdown, "shared_file_messages", data->sent_breakdown.shared_count);
-            cJSON_AddNumberToObject(_messages_sent_breakdown, "ar_messages", data->sent_breakdown.ar_count);
-            cJSON_AddNumberToObject(_messages_sent_breakdown, "cfga_messages", data->sent_breakdown.cfga_count);
-            cJSON_AddNumberToObject(_messages_sent_breakdown, "request_messages", data->sent_breakdown.request_count);
-            cJSON_AddNumberToObject(_messages_sent_breakdown, "discarded_messages", data->sent_breakdown.discarded_count);
+            cJSON *_control_breakdown = cJSON_CreateObject();
+            cJSON_AddItemToObject(_received_breakdown, "control_breakdown", _control_breakdown);
+
+            cJSON_AddNumberToObject(_control_breakdown, "keepalive", data->ctrl_breakdown.keepalive_count);
+            cJSON_AddNumberToObject(_control_breakdown, "request", data->ctrl_breakdown.request_count);
+            cJSON_AddNumberToObject(_control_breakdown, "shutdown", data->ctrl_breakdown.shutdown_count);
+            cJSON_AddNumberToObject(_control_breakdown, "startup", data->ctrl_breakdown.startup_count);
+
+            cJSON_AddNumberToObject(_received_breakdown, "event", data->recv_evt_count);
+
+            cJSON *_sent_breakdown = cJSON_CreateObject();
+            cJSON_AddItemToObject(_messages, "sent_breakdown", _sent_breakdown);
+
+            cJSON_AddNumberToObject(_sent_breakdown, "ack", data->sent_breakdown.ack_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "ar", data->sent_breakdown.ar_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "cfga", data->sent_breakdown.cfga_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "discarded", data->sent_breakdown.discarded_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "request", data->sent_breakdown.request_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "shared", data->sent_breakdown.shared_count);
 
             cJSON_AddItemToArray(_array, _item);
 
             hash_node = OSHash_Next(remoted_agents_state, &index, hash_node);
         }
 
-        cJSON_AddItemToObject(rem_state_json, "agents_connected", _array);
+        cJSON_AddItemToObject(rem_state_json, "agents", _array);
     }
+
     w_mutex_unlock(&agents_state_mutex);
 
     return rem_state_json;

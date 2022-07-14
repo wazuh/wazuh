@@ -94,6 +94,8 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     if (command_json = cJSON_GetObjectItem(request_json, "command"), cJSON_IsString(command_json)) {
         if (strcmp(command_json->valuestring, "getstats") == 0) {
             *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_state_json());
+        } else if (strcmp(command_json->valuestring, "getagentsstats") == 0) {
+            *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json());
         } else if (strcmp(command_json->valuestring, "getconfig") == 0) {
             if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
                 if (section_json = cJSON_GetObjectItem(parameters_json, "section"), cJSON_IsString(section_json)) {

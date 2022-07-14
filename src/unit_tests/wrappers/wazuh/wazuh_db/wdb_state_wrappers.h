@@ -20,8 +20,6 @@ cJSON* __wrap_wdb_create_state_json();
 
 void __wrap_w_inc_queries_total();
 
-void __wrap_w_inc_unknown();
-
 // Global counters
 
 void __wrap_w_inc_global();
@@ -33,8 +31,6 @@ void __wrap_w_inc_global_sql_time();
 void __wrap_w_inc_global_backup();
 
 void __wrap_w_inc_global_backup_time(__attribute__((unused))struct timeval diff);
-
-void __wrap_w_inc_global_unknown();
 
 // Global agent counters
 

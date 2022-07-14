@@ -61,12 +61,6 @@ void w_inc_wazuhdb_remove_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_wazuhdb_unknown() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.wazuhdb_breakdown.unknown_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_agent() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_queries++;
@@ -135,61 +129,61 @@ void w_inc_agent_close_time(struct timeval time) {
 
 void w_inc_agent_rootcheck() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.rootcheck_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_rootcheck_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.rootcheck_time, &time, &wdb_state.queries_breakdown.agent_breakdown.rootcheck_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time, &time, &wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_sca() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.sca_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.sca.sca_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_sca_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.sca_time, &time, &wdb_state.queries_breakdown.agent_breakdown.sca_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.sca.sca_time, &time, &wdb_state.queries_breakdown.agent_breakdown.sca.sca_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_ciscat() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.ciscat_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_ciscat_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.ciscat_time, &time, &wdb_state.queries_breakdown.agent_breakdown.ciscat_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_time, &time, &wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_vul_detector() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.vulnerability_detector_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_vul_detector_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.vulnerability_detector_time, &time, &wdb_state.queries_breakdown.agent_breakdown.vulnerability_detector_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time, &time, &wdb_state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_dbsync() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.dbsync_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.sync.dbsync_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_dbsync_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.dbsync_time, &time, &wdb_state.queries_breakdown.agent_breakdown.dbsync_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.sync.dbsync_time, &time, &wdb_state.queries_breakdown.agent_breakdown.sync.dbsync_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -324,115 +318,109 @@ void w_inc_agent_syscollector_times(struct timeval time, int type) {
 
 void w_inc_agent_syscollector_deprecated_process() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.process_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.process_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_process_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.process_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.process_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.process_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.process_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_packages() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.package_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.package_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_packages_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.package_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.package_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.package_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.package_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_hotfixes() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.hotfix_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_hotfixes_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.hotfix_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.hotfix_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_ports() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.port_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.port_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_ports_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.port_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.port_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.port_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.port_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_network_protocol() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.netproto_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_network_protocol_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.netproto_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.netproto_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_network_address() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.netaddr_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_network_address_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.netaddr_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.netaddr_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_network_info() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.netinfo_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_network_info_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.netinfo_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.netinfo_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_hardware() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.hardware_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_hardware_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.hardware_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.hardware_time);
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_osinfo() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.syscollector.osinfo_queries++;
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.osinfo_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.osinfo_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_unknown() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.unknown_queries++;
+    timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -778,12 +766,6 @@ void w_inc_global_labels_get_labels_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_global_unknown() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.global_breakdown.unknown_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_task() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.task_queries++;
@@ -804,103 +786,97 @@ void w_inc_task_sql_time(struct timeval time) {
 
 void w_inc_task_set_timeout() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.set_timeout_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_set_timeout_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.set_timeout_time, &time, &wdb_state.queries_breakdown.task_breakdown.set_timeout_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_delete_old() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.delete_old_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_delete_old_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.delete_old_time, &time, &wdb_state.queries_breakdown.task_breakdown.delete_old_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_time, &time, &wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_custom() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_custom_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_custom_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_custom_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_custom_time, &time, &wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_custom_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_custom_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_custom_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_get_status() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_get_status_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_time, &time, &wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_update_status() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_update_status_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_time, &time, &wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_result() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_result_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_result_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_result_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_result_time, &time, &wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_result_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_result_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_result_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_cancel_tasks() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
 void w_inc_task_upgrade_cancel_tasks_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_time, &time, &wdb_state.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_unknown() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.unknown_queries++;
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -922,55 +898,8 @@ void w_inc_mitre_sql_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_mitre_unknown() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.mitre_breakdown.unknown_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_unknown() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.unknown_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 cJSON* wdb_create_state_json() {
     wdb_state_t wdb_state_cpy;
-    cJSON *_statistics = NULL;
-    cJSON *_queries_breakdown = NULL;
-    cJSON *_wazuhdb_queries_breakdown = NULL;
-    cJSON *_agent_queries_breakdown = NULL;
-    cJSON *_syscheck_queries = NULL;
-    cJSON *_rootcheck_queries = NULL;
-    cJSON *_sca_queries = NULL;
-    cJSON *_ciscat_queries = NULL;
-    cJSON *_syscollector_queries = NULL;
-    cJSON *_vulnerability_detector_queries = NULL;
-    cJSON *_global_queries_breakdown = NULL;
-    cJSON *_global_agent_queries_breakdown = NULL;
-    cJSON *_global_group_queries_breakdown = NULL;
-    cJSON *_global_belongs_queries_breakdown = NULL;
-    cJSON *_global_labels_queries_breakdown = NULL;
-    cJSON *_task_queries_breakdown = NULL;
-    cJSON *_task_upgrade_queries_breakdown = NULL;
-    cJSON *_mitre_queries_breakdown = NULL;
-    cJSON *_queries_time_breakdown = NULL;
-    cJSON *_wazuhdb_time_breakdown = NULL;
-    cJSON *_agent_time_breakdown = NULL;
-    cJSON *_syscheck_time = NULL;
-    cJSON *_rootcheck_time = NULL;
-    cJSON *_sca_time = NULL;
-    cJSON *_ciscat_time = NULL;
-    cJSON *_syscollector_time = NULL;
-    cJSON *_vulnerability_detector_time = NULL;
-    cJSON *_global_time_breakdown = NULL;
-    cJSON *_global_agent_time_breakdown = NULL;
-    cJSON *_global_group_time_breakdown = NULL;
-    cJSON *_global_belongs_time_breakdown = NULL;
-    cJSON *_global_labels_time_breakdown = NULL;
-    cJSON *_task_time_breakdown = NULL;
-    cJSON *_task_upgrade_time_breakdown = NULL;
-    cJSON *_mitre_time_breakdown = NULL;
 
     w_mutex_lock(&db_state_t_mutex);
     memcpy(&wdb_state_cpy, &wdb_state, sizeof(wdb_state_t));
@@ -981,318 +910,378 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(wdb_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(wdb_state_json, "name", ARGV0);
 
-    _statistics = cJSON_CreateObject();
-    cJSON_AddItemToObject(wdb_state_json, "statistics", _statistics);
+    cJSON *_metrics = cJSON_CreateObject();
+    cJSON_AddItemToObject(wdb_state_json, "metrics", _metrics);
 
-    cJSON_AddNumberToObject(_statistics, "queries_total", wdb_state_cpy.queries_total);
+    // Fields within metrics are sorted alphabetically
 
-    _queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_statistics, "queries_breakdown", _queries_breakdown);
-
-    cJSON_AddNumberToObject(_queries_breakdown, "wazuhdb_queries", wdb_state_cpy.queries_breakdown.wazuhdb_queries);
-
-    _wazuhdb_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_breakdown, "wazuhdb_queries_breakdown", _wazuhdb_queries_breakdown);
-
-    cJSON_AddNumberToObject(_wazuhdb_queries_breakdown, "remove_queries", wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_queries);
-    cJSON_AddNumberToObject(_wazuhdb_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.unknown_queries);
-
-    cJSON_AddNumberToObject(_queries_breakdown, "agent_queries", wdb_state_cpy.queries_breakdown.agent_queries);
-
-    _agent_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_breakdown, "agent_queries_breakdown", _agent_queries_breakdown);
-
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "sql_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.sql_queries);
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "remove_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.remove_queries);
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "begin_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.begin_queries);
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "commit_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.commit_queries);
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "close_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.close_queries);
-
-    _syscheck_queries = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_queries_breakdown, "syscheck_queries", _syscheck_queries);
+    cJSON *_queries = cJSON_CreateObject();
+    cJSON_AddItemToObject(_metrics, "queries", _queries);
 
-    cJSON_AddNumberToObject(_syscheck_queries, "syscheck_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_queries);
-    cJSON_AddNumberToObject(_syscheck_queries, "fim_file_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_queries);
-    cJSON_AddNumberToObject(_syscheck_queries, "fim_registry_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_queries);
+    cJSON_AddNumberToObject(_queries, "received", wdb_state_cpy.queries_total);
 
-    _rootcheck_queries = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_queries_breakdown, "rootcheck_queries", _rootcheck_queries);
+    cJSON *_received_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_queries, "received_breakdown", _received_breakdown);
 
-    cJSON_AddNumberToObject(_rootcheck_queries, "rootcheck_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.rootcheck_queries);
+    cJSON_AddNumberToObject(_received_breakdown, "agent", wdb_state_cpy.queries_breakdown.agent_queries);
 
-    _sca_queries = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_queries_breakdown, "sca_queries", _sca_queries);
+    cJSON *_agent_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received_breakdown, "agent_breakdown", _agent_breakdown);
 
-    cJSON_AddNumberToObject(_sca_queries, "sca_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.sca_queries);
+    cJSON *_agent_db = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_breakdown, "db", _agent_db);
 
-    _ciscat_queries = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_queries_breakdown, "ciscat_queries", _ciscat_queries);
+    cJSON_AddNumberToObject(_agent_db, "begin", wdb_state_cpy.queries_breakdown.agent_breakdown.begin_queries);
+    cJSON_AddNumberToObject(_agent_db, "close", wdb_state_cpy.queries_breakdown.agent_breakdown.close_queries);
+    cJSON_AddNumberToObject(_agent_db, "commit", wdb_state_cpy.queries_breakdown.agent_breakdown.commit_queries);
+    cJSON_AddNumberToObject(_agent_db, "remove", wdb_state_cpy.queries_breakdown.agent_breakdown.remove_queries);
+    cJSON_AddNumberToObject(_agent_db, "sql", wdb_state_cpy.queries_breakdown.agent_breakdown.sql_queries);
 
-    cJSON_AddNumberToObject(_ciscat_queries, "ciscat_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.ciscat_queries);
+    cJSON *_agent_tables = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_breakdown, "tables", _agent_tables);
 
-    _syscollector_queries = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_queries_breakdown, "syscollector_queries", _syscollector_queries);
+    cJSON *_agent_tables_ciscat = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "ciscat", _agent_tables_ciscat);
 
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_processes_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_packages_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_hotfixes_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_ports_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_network_protocol_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_protocol_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_network_address_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_address_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_network_iface_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_hwinfo_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "syscollector_osinfo_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "process_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.process_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "package_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.package_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "hotfix_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.hotfix_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "port_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.port_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "netproto_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.netproto_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "netaddr_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.netaddr_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "netinfo_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.netinfo_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "hardware_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.hardware_queries);
-    cJSON_AddNumberToObject(_syscollector_queries, "osinfo_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.osinfo_queries);
+    cJSON_AddNumberToObject(_agent_tables_ciscat, "ciscat", wdb_state_cpy.queries_breakdown.agent_breakdown.ciscat.ciscat_queries);
 
-    _vulnerability_detector_queries = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_queries_breakdown, "vulnerability_detector_queries", _vulnerability_detector_queries);
+    cJSON *_agent_tables_rootcheck = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "rootcheck", _agent_tables_rootcheck);
 
-    cJSON_AddNumberToObject(_vulnerability_detector_queries, "vuln_cves_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability_detector_queries);
+    cJSON_AddNumberToObject(_agent_tables_rootcheck, "rootcheck", wdb_state_cpy.queries_breakdown.agent_breakdown.rootcheck.rootcheck_queries);
 
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "dbsync_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.dbsync_queries);
-    cJSON_AddNumberToObject(_agent_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.agent_breakdown.unknown_queries);
+    cJSON *_agent_tables_sca = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "sca", _agent_tables_sca);
 
-    cJSON_AddNumberToObject(_queries_breakdown, "global_queries", wdb_state_cpy.queries_breakdown.global_queries);
+    cJSON_AddNumberToObject(_agent_tables_sca, "sca", wdb_state_cpy.queries_breakdown.agent_breakdown.sca.sca_queries);
 
-    _global_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_breakdown, "global_queries_breakdown", _global_queries_breakdown);
+    cJSON *_agent_tables_sync = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "sync", _agent_tables_sync);
 
-    cJSON_AddNumberToObject(_global_queries_breakdown, "sql_queries", wdb_state_cpy.queries_breakdown.global_breakdown.sql_queries);
-    cJSON_AddNumberToObject(_global_queries_breakdown, "backup_queries", wdb_state_cpy.queries_breakdown.global_breakdown.backup_queries);
+    cJSON_AddNumberToObject(_agent_tables_sync, "dbsync", wdb_state_cpy.queries_breakdown.agent_breakdown.sync.dbsync_queries);
 
-    _global_agent_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_queries_breakdown, "agent_queries", _global_agent_queries_breakdown);
+    cJSON *_agent_tables_syscheck = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "syscheck", _agent_tables_syscheck);
 
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "insert-agent_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.insert_agent_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "update-agent-data_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "update-agent-name_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "update-keepalive_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "update-connection-status_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "reset-agents-connection_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "delete-agent_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.delete_agent_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "select-agent-name_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_name_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "select-agent-group_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_group_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "find-agent_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.find_agent_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "get-agent-info_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agent_info_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "get-all-agents_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_all_agents_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "get-agents-by-connection-status_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "disconnect-agents_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.disconnect_agents_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "sync-agent-info-get_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_get_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "sync-agent-info-set_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_set_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "sync-agent-groups-get_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "set-agent-groups_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.set_agent_groups_queries);
-    cJSON_AddNumberToObject(_global_agent_queries_breakdown, "get-groups-integrity_queries", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_groups_integrity_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscheck, "fim_file", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscheck, "fim_registry", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscheck, "syscheck", wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_queries);
 
-    _global_group_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_queries_breakdown, "group_queries", _global_group_queries_breakdown);
+    cJSON *_agent_tables_syscollector = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "syscollector", _agent_tables_syscollector);
 
-    cJSON_AddNumberToObject(_global_group_queries_breakdown, "insert-agent-group_queries", wdb_state_cpy.queries_breakdown.global_breakdown.group.insert_agent_group_queries);
-    cJSON_AddNumberToObject(_global_group_queries_breakdown, "delete-group_queries", wdb_state_cpy.queries_breakdown.global_breakdown.group.delete_group_queries);
-    cJSON_AddNumberToObject(_global_group_queries_breakdown, "select-groups_queries", wdb_state_cpy.queries_breakdown.global_breakdown.group.select_groups_queries);
-    cJSON_AddNumberToObject(_global_group_queries_breakdown, "find-group_queries", wdb_state_cpy.queries_breakdown.global_breakdown.group.find_group_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_hotfixes", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_hwinfo", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_network_address", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_address_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_network_iface", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_network_protocol", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_protocol_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_osinfo", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_packages", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_ports", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_processes", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries);
 
-    _global_belongs_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_queries_breakdown, "belongs_queries", _global_belongs_queries_breakdown);
+    cJSON *_agent_tables_syscollector_deprecated = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_syscollector, "deprecated", _agent_tables_syscollector_deprecated);
 
-    cJSON_AddNumberToObject(_global_belongs_queries_breakdown, "select-group-belong_queries", wdb_state_cpy.queries_breakdown.global_breakdown.belongs.select_group_belong_queries);
-    cJSON_AddNumberToObject(_global_belongs_queries_breakdown, "get-group-agents_queries", wdb_state_cpy.queries_breakdown.global_breakdown.belongs.get_group_agent_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "hardware", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "hotfix", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "netaddr", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "netinfo", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "netproto", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "osinfo", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "package", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.package_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "port", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.port_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "process", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.process_queries);
 
-    _global_labels_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_queries_breakdown, "labels_queries", _global_labels_queries_breakdown);
+    cJSON *_agent_tables_vulnerability = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables, "vulnerability", _agent_tables_vulnerability);
 
-    cJSON_AddNumberToObject(_global_labels_queries_breakdown, "get-labels_queries", wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_queries);
+    cJSON_AddNumberToObject(_agent_tables_vulnerability, "vuln_cves", wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_queries);
 
-    cJSON_AddNumberToObject(_global_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.global_breakdown.unknown_queries);
+    cJSON_AddNumberToObject(_received_breakdown, "global", wdb_state_cpy.queries_breakdown.global_queries);
 
-    cJSON_AddNumberToObject(_queries_breakdown, "task_queries", wdb_state_cpy.queries_breakdown.task_queries);
+    cJSON *_global_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received_breakdown, "global_breakdown", _global_breakdown);
 
-    _task_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_breakdown, "task_queries_breakdown", _task_queries_breakdown);
+    cJSON *_global_db = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_breakdown, "db", _global_db);
 
-    cJSON_AddNumberToObject(_task_queries_breakdown, "sql_queries", wdb_state_cpy.queries_breakdown.task_breakdown.sql_queries);
+    cJSON_AddNumberToObject(_global_db, "backup", wdb_state_cpy.queries_breakdown.global_breakdown.backup_queries);
+    cJSON_AddNumberToObject(_global_db, "sql", wdb_state_cpy.queries_breakdown.global_breakdown.sql_queries);
 
-    _task_upgrade_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_task_queries_breakdown, "upgrade_queries", _task_upgrade_queries_breakdown);
+    cJSON *_global_tables = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_breakdown, "tables", _global_tables);
 
-    cJSON_AddNumberToObject(_task_upgrade_queries_breakdown, "upgrade_queries", wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_queries);
-    cJSON_AddNumberToObject(_task_upgrade_queries_breakdown, "upgrade_custom_queries", wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_custom_queries);
-    cJSON_AddNumberToObject(_task_upgrade_queries_breakdown, "upgrade_get_status_queries", wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_queries);
-    cJSON_AddNumberToObject(_task_upgrade_queries_breakdown, "upgrade_update_status_queries", wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_queries);
-    cJSON_AddNumberToObject(_task_upgrade_queries_breakdown, "upgrade_result_queries", wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_result_queries);
-    cJSON_AddNumberToObject(_task_upgrade_queries_breakdown, "upgrade_cancel_tasks_queries", wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_queries);
+    cJSON *_global_tables_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables, "agent", _global_tables_agent);
 
-    cJSON_AddNumberToObject(_task_queries_breakdown, "set_timeout_queries", wdb_state_cpy.queries_breakdown.task_breakdown.set_timeout_queries);
-    cJSON_AddNumberToObject(_task_queries_breakdown, "delete_old_queries", wdb_state_cpy.queries_breakdown.task_breakdown.delete_old_queries);
-    cJSON_AddNumberToObject(_task_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.task_breakdown.unknown_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "delete-agent", wdb_state_cpy.queries_breakdown.global_breakdown.agent.delete_agent_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "disconnect-agents", wdb_state_cpy.queries_breakdown.global_breakdown.agent.disconnect_agents_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "find-agent", wdb_state_cpy.queries_breakdown.global_breakdown.agent.find_agent_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "get-agent-info", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agent_info_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "get-agents-by-connection-status", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "get-all-agents", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_all_agents_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "get-groups-integrity", wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_groups_integrity_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "insert-agent", wdb_state_cpy.queries_breakdown.global_breakdown.agent.insert_agent_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "reset-agents-connection", wdb_state_cpy.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "select-agent-group", wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_group_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "select-agent-name", wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_name_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "set-agent-groups", wdb_state_cpy.queries_breakdown.global_breakdown.agent.set_agent_groups_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "sync-agent-groups-get", wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "sync-agent-info-get", wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_get_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "sync-agent-info-set", wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_set_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "update-agent-data", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "update-agent-name", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "update-connection-status", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "update-keepalive", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_queries);
 
-    cJSON_AddNumberToObject(_queries_breakdown, "mitre_queries", wdb_state_cpy.queries_breakdown.mitre_queries);
+    cJSON *_global_tables_belongs = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables, "belongs", _global_tables_belongs);
 
-    _mitre_queries_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_breakdown, "mitre_queries_breakdown", _mitre_queries_breakdown);
+    cJSON_AddNumberToObject(_global_tables_belongs, "get-group-agents", wdb_state_cpy.queries_breakdown.global_breakdown.belongs.get_group_agent_queries);
+    cJSON_AddNumberToObject(_global_tables_belongs, "select-group-belong", wdb_state_cpy.queries_breakdown.global_breakdown.belongs.select_group_belong_queries);
 
-    cJSON_AddNumberToObject(_mitre_queries_breakdown, "sql_queries", wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_queries);
-    cJSON_AddNumberToObject(_mitre_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.mitre_breakdown.unknown_queries);
+    cJSON *_global_tables_group = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables, "group", _global_tables_group);
 
-    cJSON_AddNumberToObject(_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.unknown_queries);
+    cJSON_AddNumberToObject(_global_tables_group, "delete-group", wdb_state_cpy.queries_breakdown.global_breakdown.group.delete_group_queries);
+    cJSON_AddNumberToObject(_global_tables_group, "find-group", wdb_state_cpy.queries_breakdown.global_breakdown.group.find_group_queries);
+    cJSON_AddNumberToObject(_global_tables_group, "insert-agent-group", wdb_state_cpy.queries_breakdown.global_breakdown.group.insert_agent_group_queries);
+    cJSON_AddNumberToObject(_global_tables_group, "select-groups", wdb_state_cpy.queries_breakdown.global_breakdown.group.select_groups_queries);
 
-    cJSON_AddNumberToObject(_statistics, "queries_time_total", get_time_total(wdb_state_cpy));
+    cJSON *_global_tables_labels = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables, "labels", _global_tables_labels);
 
-    _queries_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_statistics, "queries_time_breakdown", _queries_time_breakdown);
+    cJSON_AddNumberToObject(_global_tables_labels, "get-labels", wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_queries);
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "wazuhdb_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
+    cJSON_AddNumberToObject(_received_breakdown, "mitre", wdb_state_cpy.queries_breakdown.mitre_queries);
 
-    _wazuhdb_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_time_breakdown, "wazuhdb_time_breakdown", _wazuhdb_time_breakdown);
+    cJSON *_mitre_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received_breakdown, "mitre_breakdown", _mitre_breakdown);
 
-    cJSON_AddNumberToObject(_wazuhdb_time_breakdown, "remove_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
+    cJSON *_mitre_db = cJSON_CreateObject();
+    cJSON_AddItemToObject(_mitre_breakdown, "db", _mitre_db);
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "agent_time", get_agent_time(wdb_state_cpy));
+    cJSON_AddNumberToObject(_mitre_db, "sql", wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_queries);
 
-    _agent_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_time_breakdown, "agent_time_breakdown", _agent_time_breakdown);
+    cJSON_AddNumberToObject(_received_breakdown, "task", wdb_state_cpy.queries_breakdown.task_queries);
 
-    cJSON_AddNumberToObject(_agent_time_breakdown, "sql_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.sql_time));
-    cJSON_AddNumberToObject(_agent_time_breakdown, "remove_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.remove_time));
-    cJSON_AddNumberToObject(_agent_time_breakdown, "begin_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.begin_time));
-    cJSON_AddNumberToObject(_agent_time_breakdown, "commit_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.commit_time));
-    cJSON_AddNumberToObject(_agent_time_breakdown, "close_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.close_time));
+    cJSON *_task_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received_breakdown, "task_breakdown", _task_breakdown);
 
-    _syscheck_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "syscheck_time", _syscheck_time);
+    cJSON *_task_db = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_breakdown, "db", _task_db);
 
-    cJSON_AddNumberToObject(_syscheck_time, "syscheck_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_time));
-    cJSON_AddNumberToObject(_syscheck_time, "fim_file_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_time));
-    cJSON_AddNumberToObject(_syscheck_time, "fim_registry_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_time));
+    cJSON_AddNumberToObject(_task_db, "sql", wdb_state_cpy.queries_breakdown.task_breakdown.sql_queries);
 
-    _rootcheck_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "rootcheck_time", _rootcheck_time);
+    cJSON *_task_tables = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_breakdown, "tables", _task_tables);
 
-    cJSON_AddNumberToObject(_rootcheck_time, "rootcheck_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.rootcheck_time));
+    cJSON *_task_tables_tasks = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_tables, "tasks", _task_tables_tasks);
 
-    _sca_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "sca_time", _sca_time);
+    cJSON_AddNumberToObject(_task_tables_tasks, "delete_old", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.delete_old_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "set_timeout", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.set_timeout_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_cancel_tasks", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_custom", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_custom_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_get_status", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_get_status_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_result", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_result_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_update_status", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_update_status_queries);
 
-    cJSON_AddNumberToObject(_sca_time, "sca_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.sca_time));
+    cJSON_AddNumberToObject(_received_breakdown, "wazuhdb", wdb_state_cpy.queries_breakdown.wazuhdb_queries);
 
-    _ciscat_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "ciscat_time", _ciscat_time);
+    cJSON *_wazuhdb_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received_breakdown, "wazuhdb_breakdown", _wazuhdb_breakdown);
 
-    cJSON_AddNumberToObject(_ciscat_time, "ciscat_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.ciscat_time));
+    cJSON *_wazuhdb_db = cJSON_CreateObject();
+    cJSON_AddItemToObject(_wazuhdb_breakdown, "db", _wazuhdb_db);
 
-    _syscollector_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "syscollector_time", _syscollector_time);
+    cJSON_AddNumberToObject(_wazuhdb_db, "remove", wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_queries);
 
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_processes_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_packages_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_hotfixes_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_ports_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_network_protocol_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_protocol_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_network_address_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_address_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_network_iface_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_hwinfo_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_time));
-    cJSON_AddNumberToObject(_syscollector_time, "syscollector_osinfo_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time));
-    cJSON_AddNumberToObject(_syscollector_time, "process_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.process_time));
-    cJSON_AddNumberToObject(_syscollector_time, "package_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.package_time));
-    cJSON_AddNumberToObject(_syscollector_time, "hotfix_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.hotfix_time));
-    cJSON_AddNumberToObject(_syscollector_time, "port_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.port_time));
-    cJSON_AddNumberToObject(_syscollector_time, "netproto_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.netproto_time));
-    cJSON_AddNumberToObject(_syscollector_time, "netaddr_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.netaddr_time));
-    cJSON_AddNumberToObject(_syscollector_time, "netinfo_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.netinfo_time));
-    cJSON_AddNumberToObject(_syscollector_time, "hardware_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.hardware_time));
-    cJSON_AddNumberToObject(_syscollector_time, "osinfo_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.osinfo_time));
+    cJSON *_time = cJSON_CreateObject();
+    cJSON_AddItemToObject(_metrics, "time", _time);
 
-    _vulnerability_detector_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "vulnerability_detector_time", _vulnerability_detector_time);
+    cJSON_AddNumberToObject(_time, "execution", get_time_total(wdb_state_cpy));
 
-    cJSON_AddNumberToObject(_vulnerability_detector_time, "vuln_cves_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability_detector_time));
+    cJSON *_execution_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_time, "execution_breakdown", _execution_breakdown);
 
-    cJSON_AddNumberToObject(_agent_time_breakdown, "dbsync_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.dbsync_time));
+    cJSON_AddNumberToObject(_execution_breakdown, "agent", get_agent_time(wdb_state_cpy));
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "global_time", get_global_time(wdb_state_cpy));
+    cJSON *_agent_breakdown_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_execution_breakdown, "agent_breakdown", _agent_breakdown_t);
 
-    _global_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_time_breakdown, "global_time_breakdown", _global_time_breakdown);
+    cJSON *_agent_db_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_breakdown_t, "db", _agent_db_t);
 
-    cJSON_AddNumberToObject(_global_time_breakdown, "sql_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.sql_time));
-    cJSON_AddNumberToObject(_global_time_breakdown, "backup_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.backup_time));
+    cJSON_AddNumberToObject(_agent_db_t, "begin", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.begin_time));
+    cJSON_AddNumberToObject(_agent_db_t, "close", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.close_time));
+    cJSON_AddNumberToObject(_agent_db_t, "commit", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.commit_time));
+    cJSON_AddNumberToObject(_agent_db_t, "remove", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.remove_time));
+    cJSON_AddNumberToObject(_agent_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.sql_time));
 
-    _global_agent_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_time_breakdown, "agent_time", _global_agent_time_breakdown);
+    cJSON *_agent_tables_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_breakdown_t, "tables", _agent_tables_t);
 
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "insert-agent_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.insert_agent_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "update-agent-data_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "update-agent-name_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "update-keepalive_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "update-connection-status_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "reset-agents-connection_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.reset_agents_connection_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "delete-agent_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.delete_agent_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "select-agent-name_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_name_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "select-agent-group_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_group_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "find-agent_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.find_agent_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "get-agent-info_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agent_info_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "get-all-agents_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_all_agents_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "get-agents-by-connection-status_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "disconnect-agents_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.disconnect_agents_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "sync-agent-info-get_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_get_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "sync-agent-info-set_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_set_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "sync-agent-groups-get_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "set-agent-groups_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.set_agent_groups_time));
-    cJSON_AddNumberToObject(_global_agent_time_breakdown, "get-groups-integrity_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_groups_integrity_time));
+    cJSON *_agent_tables_ciscat_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "ciscat", _agent_tables_ciscat_t);
 
-    _global_group_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_time_breakdown, "group_time", _global_group_time_breakdown);
+    cJSON_AddNumberToObject(_agent_tables_ciscat_t, "ciscat", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.ciscat.ciscat_time));
 
-    cJSON_AddNumberToObject(_global_group_time_breakdown, "insert-agent-group_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.insert_agent_group_time));
-    cJSON_AddNumberToObject(_global_group_time_breakdown, "delete-group_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.delete_group_time));
-    cJSON_AddNumberToObject(_global_group_time_breakdown, "select-groups_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.select_groups_time));
-    cJSON_AddNumberToObject(_global_group_time_breakdown, "find-group_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.find_group_time));
+    cJSON *_agent_tables_rootcheck_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "rootcheck", _agent_tables_rootcheck_t);
 
-    _global_belongs_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_time_breakdown, "belongs_time", _global_belongs_time_breakdown);
+    cJSON_AddNumberToObject(_agent_tables_rootcheck_t, "rootcheck", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time));
 
-    cJSON_AddNumberToObject(_global_belongs_time_breakdown, "select-group-belong_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.belongs.select_group_belong_time));
-    cJSON_AddNumberToObject(_global_belongs_time_breakdown, "get-group-agents_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.belongs.get_group_agent_time));
+    cJSON *_agent_tables_sca_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "sca", _agent_tables_sca_t);
 
-    _global_labels_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_global_time_breakdown, "labels_time", _global_labels_time_breakdown);
+    cJSON_AddNumberToObject(_agent_tables_sca_t, "sca", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.sca.sca_time));
 
-    cJSON_AddNumberToObject(_global_labels_time_breakdown, "get-labels_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_time));
+    cJSON *_agent_tables_sync_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "sync", _agent_tables_sync_t);
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "task_time", get_task_time(wdb_state_cpy));
+    cJSON_AddNumberToObject(_agent_tables_sync_t, "dbsync", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.sync.dbsync_time));
 
-    _task_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_time_breakdown, "task_time_breakdown", _task_time_breakdown);
+    cJSON *_agent_tables_syscheck_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "syscheck", _agent_tables_syscheck_t);
 
-    cJSON_AddNumberToObject(_task_time_breakdown, "sql_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.sql_time));
+    cJSON_AddNumberToObject(_agent_tables_syscheck_t, "fim_file", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_time));
+    cJSON_AddNumberToObject(_agent_tables_syscheck_t, "fim_registry", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_time));
+    cJSON_AddNumberToObject(_agent_tables_syscheck_t, "syscheck", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_time));
 
-    _task_upgrade_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_task_time_breakdown, "upgrade_time", _task_upgrade_time_breakdown);
+    cJSON *_agent_tables_syscollector_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "syscollector", _agent_tables_syscollector_t);
 
-    cJSON_AddNumberToObject(_task_upgrade_time_breakdown, "upgrade_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_time));
-    cJSON_AddNumberToObject(_task_upgrade_time_breakdown, "upgrade_custom_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_custom_time));
-    cJSON_AddNumberToObject(_task_upgrade_time_breakdown, "upgrade_get_status_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_time));
-    cJSON_AddNumberToObject(_task_upgrade_time_breakdown, "upgrade_update_status_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_time));
-    cJSON_AddNumberToObject(_task_upgrade_time_breakdown, "upgrade_result_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_result_time));
-    cJSON_AddNumberToObject(_task_upgrade_time_breakdown, "upgrade_cancel_tasks_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_hotfixes", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_hwinfo", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_network_address", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_address_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_network_iface", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_network_protocol", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_network_protocol_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_osinfo", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_packages", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_ports", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_processes", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time));
 
-    cJSON_AddNumberToObject(_task_time_breakdown, "set_timeout_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.set_timeout_time));
-    cJSON_AddNumberToObject(_task_time_breakdown, "delete_old_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.delete_old_time));
+    cJSON *_agent_tables_syscollector_deprecated_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_syscollector_t, "deprecated", _agent_tables_syscollector_deprecated_t);
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "mitre_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "hardware", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "hotfix", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "netaddr", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "netinfo", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "netproto", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "osinfo", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "package", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.package_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "port", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.port_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "process", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.process_time));
 
-    _mitre_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_time_breakdown, "mitre_time_breakdown", _mitre_time_breakdown);
+    cJSON *_agent_tables_vulnerability_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_agent_tables_t, "vulnerability", _agent_tables_vulnerability_t);
 
-    cJSON_AddNumberToObject(_mitre_time_breakdown, "sql_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
+    cJSON_AddNumberToObject(_agent_tables_vulnerability_t, "vuln_cves", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time));
+
+    cJSON_AddNumberToObject(_execution_breakdown, "global", get_global_time(wdb_state_cpy));
+
+    cJSON *_global_breakdown_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_execution_breakdown, "global_breakdown", _global_breakdown_t);
+
+    cJSON *_global_db_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_breakdown_t, "db", _global_db_t);
+
+    cJSON_AddNumberToObject(_global_db_t, "backup", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.backup_time));
+    cJSON_AddNumberToObject(_global_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.sql_time));
+
+    cJSON *_global_tables_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_breakdown_t, "tables", _global_tables_t);
+
+    cJSON *_global_tables_agent_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables_t, "agent", _global_tables_agent_t);
+
+    cJSON_AddNumberToObject(_global_tables_agent_t, "delete-agent", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.delete_agent_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "disconnect-agents", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.disconnect_agents_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "find-agent", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.find_agent_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "get-agent-info", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agent_info_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "get-agents-by-connection-status", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "get-all-agents", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_all_agents_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "get-groups-integrity", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.get_groups_integrity_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "insert-agent", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.insert_agent_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "reset-agents-connection", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.reset_agents_connection_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "select-agent-group", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_group_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "select-agent-name", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.select_agent_name_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "set-agent-groups", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.set_agent_groups_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "sync-agent-groups-get", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "sync-agent-info-get", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_get_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "sync-agent-info-set", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.sync_agent_info_set_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "update-agent-data", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "update-agent-name", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "update-connection-status", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "update-keepalive", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_time));
+
+    cJSON *_global_tables_belongs_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables_t, "belongs", _global_tables_belongs_t);
+
+    cJSON_AddNumberToObject(_global_tables_belongs_t, "get-group-agents", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.belongs.get_group_agent_time));
+    cJSON_AddNumberToObject(_global_tables_belongs_t, "select-group-belong", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.belongs.select_group_belong_time));
+
+    cJSON *_global_tables_group_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables_t, "group", _global_tables_group_t);
+
+    cJSON_AddNumberToObject(_global_tables_group_t, "delete-group", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.delete_group_time));
+    cJSON_AddNumberToObject(_global_tables_group_t, "find-group", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.find_group_time));
+    cJSON_AddNumberToObject(_global_tables_group_t, "insert-agent-group", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.insert_agent_group_time));
+    cJSON_AddNumberToObject(_global_tables_group_t, "select-groups", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.group.select_groups_time));
+
+    cJSON *_global_tables_labels_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_global_tables_t, "labels", _global_tables_labels_t);
+
+    cJSON_AddNumberToObject(_global_tables_labels_t, "get-labels", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.labels.get_labels_time));
+
+    cJSON_AddNumberToObject(_execution_breakdown, "mitre", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
+
+    cJSON *_mitre_breakdown_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_execution_breakdown, "mitre_breakdown", _mitre_breakdown_t);
+
+    cJSON *_mitre_db_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_mitre_breakdown_t, "db", _mitre_db_t);
+
+    cJSON_AddNumberToObject(_mitre_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
+
+    cJSON_AddNumberToObject(_execution_breakdown, "task", get_task_time(wdb_state_cpy));
+
+    cJSON *_task_breakdown_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_execution_breakdown, "task_breakdown", _task_breakdown_t);
+
+    cJSON *_task_db_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_breakdown_t, "db", _task_db_t);
+
+    cJSON_AddNumberToObject(_task_db_t, "sql", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.sql_time));
+
+    cJSON *_task_tables_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_breakdown_t, "tables", _task_tables_t);
+
+    cJSON *_task_tables_tasks_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_task_tables_t, "tasks", _task_tables_tasks_t);
+
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "delete_old", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.delete_old_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "set_timeout", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.set_timeout_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_cancel_tasks", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_custom", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_custom_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_get_status", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_result", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_result_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_update_status", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time));
+
+    cJSON_AddNumberToObject(_execution_breakdown, "wazuhdb", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
+
+    cJSON *_wazuhdb_breakdown_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_execution_breakdown, "wazuhdb_breakdown", _wazuhdb_breakdown_t);
+
+    cJSON *_wazuhdb_db_t = cJSON_CreateObject();
+    cJSON_AddItemToObject(_wazuhdb_breakdown_t, "db", _wazuhdb_db_t);
+
+    cJSON_AddNumberToObject(_wazuhdb_db_t, "remove", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
 
     return wdb_state_json;
 }
@@ -1307,9 +1296,9 @@ STATIC uint64_t get_agent_time(wdb_state_t state){
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscheck.syscheck_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscheck.fim_file_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscheck.fim_registry_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.rootcheck_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.sca_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.ciscat_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.sca.sca_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.ciscat.ciscat_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_time, &task_time);
@@ -1319,17 +1308,17 @@ STATIC uint64_t get_agent_time(wdb_state_t state){
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_network_iface_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_hwinfo_time, &task_time);
     timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.syscollector_osinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.process_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.package_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.hotfix_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.port_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.netproto_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.netaddr_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.netinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.hardware_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.osinfo_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.vulnerability_detector_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.dbsync_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.process_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.package_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.hotfix_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.port_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.netproto_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.netaddr_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.agent_breakdown.sync.dbsync_time, &task_time);
 
     return timeval_to_milis(task_time);
 }
@@ -1371,14 +1360,14 @@ STATIC uint64_t get_global_time(wdb_state_t state){
 STATIC uint64_t get_task_time(wdb_state_t state){
     struct timeval task_time;
 
-    timeradd(&state.queries_breakdown.task_breakdown.sql_time, &state.queries_breakdown.task_breakdown.upgrade.upgrade_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.upgrade.upgrade_custom_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.upgrade.upgrade_result_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.set_timeout_time, &task_time);
-    timeradd(&task_time, &state.queries_breakdown.task_breakdown.delete_old_time, &task_time);
+    timeradd(&state.queries_breakdown.task_breakdown.sql_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_custom_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_result_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.set_timeout_time, &task_time);
+    timeradd(&task_time, &state.queries_breakdown.task_breakdown.tasks.delete_old_time, &task_time);
 
     return timeval_to_milis(task_time);
 }

@@ -108,7 +108,6 @@ void test_wdb_parse_global_substr_fail(void **state)
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_unknown);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -205,7 +204,6 @@ void test_wdb_parse_global_actor_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid DB query actor: error");
 
     expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_unknown);
 
     ret = wdb_parse(query, data->output, 0);
 

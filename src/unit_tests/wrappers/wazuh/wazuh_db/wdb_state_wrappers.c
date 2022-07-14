@@ -24,10 +24,6 @@ void __wrap_w_inc_queries_total() {
     function_called();
 }
 
-void __wrap_w_inc_unknown() {
-    function_called();
-}
-
 // Global counters
 
 void __wrap_w_inc_global() {
@@ -47,10 +43,6 @@ void __wrap_w_inc_global_backup() {
 }
 
 void __wrap_w_inc_global_backup_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
-void __wrap_w_inc_global_unknown(){
     function_called();
 }
 

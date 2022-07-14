@@ -646,7 +646,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_agent_syscollector_times(diff, result);
             }
         } else {
-            w_inc_agent_unknown();
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -679,7 +678,6 @@ int wdb_parse(char * input, char * output, int peer) {
             os_free(out);
             cJSON_Delete(data);
         } else {
-            w_inc_wazuhdb_unknown();
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err No agents id provided");
@@ -738,7 +736,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 }
             }
         } else {
-            w_inc_mitre_unknown();
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -1163,7 +1160,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_global_backup_time(diff);
             }
         } else {
-            w_inc_global_unknown();
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -1418,7 +1414,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 }
             }
         } else {
-            w_inc_task_unknown();
             mdebug1("Invalid DB query syntax.");
             mdebug2("Task DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
@@ -1427,7 +1422,6 @@ int wdb_parse(char * input, char * output, int peer) {
         wdb_leave(wdb);
         return result;
     } else {
-        w_inc_unknown();
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
         return OS_INVALID;
@@ -1700,7 +1694,6 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
     }
     else
     {
-        w_inc_agent_unknown();
         mdebug2("DB(%s) Invalid Syscollector query : %s", wdb->id, query);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
         return OS_INVALID;

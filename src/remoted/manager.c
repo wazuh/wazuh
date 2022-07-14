@@ -1573,7 +1573,6 @@ void *update_shared_files(__attribute__((unused)) void *none)
 
             c_files();
             _stime = _ctime;
-            rem_inc_update_shared_files();
         }
 
         sleep(1);

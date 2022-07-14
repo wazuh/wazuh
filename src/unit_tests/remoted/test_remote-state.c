@@ -40,16 +40,10 @@ void w_remoted_clean_agents_state();
 /* setup/teardown */
 
 static int test_setup(void ** state) {
-    test_struct_t *test_data = NULL;
-    os_calloc(1, sizeof(test_struct_t),test_data);
-    os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
-    os_calloc(1, sizeof(OSHashNode), test_data->hash_node);
-
     remoted_state.tcp_sessions = 5;
     remoted_state.recv_bytes = 123456;
     remoted_state.sent_bytes = 234567;
     remoted_state.keys_reload_count = 15;
-    remoted_state.update_shared_files_count = 39;
     remoted_state.recv_breakdown.evt_count = 1234;
     remoted_state.recv_breakdown.ctrl_count = 2345;
     remoted_state.recv_breakdown.ping_count = 18;
@@ -66,6 +60,15 @@ static int test_setup(void ** state) {
     remoted_state.sent_breakdown.cfga_count = 8;
     remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
+
+    return 0;
+}
+
+static int test_setup_agent(void ** state) {
+    test_struct_t *test_data = NULL;
+    os_calloc(1, sizeof(test_struct_t),test_data);
+    os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
+    os_calloc(1, sizeof(OSHashNode), test_data->hash_node);
 
     test_mode = 0;
     will_return(__wrap_time, 123456789);
@@ -95,7 +98,7 @@ static int test_setup(void ** state) {
     return 0;
 }
 
-static int test_teardown(void ** state) {
+static int test_teardown_agent(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
     cJSON_Delete(test_data->state_json);
@@ -143,11 +146,93 @@ static int test_teardown_empty_hash_table(void ** state) {
 /* Tests */
 
 void test_rem_create_state_json(void ** state) {
-    test_struct_t *test_data  = (test_struct_t *)*state;
-
     will_return(__wrap_time, 123456789);
     will_return(__wrap_rem_get_qsize, 789);
     will_return(__wrap_rem_get_tsize, 100000);
+
+    cJSON* state_json = rem_create_state_json();
+
+    assert_non_null(state_json);
+
+    assert_non_null(cJSON_GetObjectItem(state_json, "metrics"));
+    cJSON* metrics = cJSON_GetObjectItem(state_json, "metrics");
+
+    assert_non_null(cJSON_GetObjectItem(metrics, "bytes"));
+    cJSON* bytes = cJSON_GetObjectItem(metrics, "bytes");
+
+    assert_non_null(cJSON_GetObjectItem(bytes, "received"));
+    assert_int_equal(cJSON_GetObjectItem(bytes, "received")->valueint, 123456);
+    assert_non_null(cJSON_GetObjectItem(bytes, "sent"));
+    assert_int_equal(cJSON_GetObjectItem(bytes, "sent")->valueint, 234567);
+
+    assert_non_null(cJSON_GetObjectItem(metrics, "messages"));
+    cJSON* messages = cJSON_GetObjectItem(metrics, "messages");
+
+    assert_non_null(cJSON_GetObjectItem(messages, "received_breakdown"));
+    cJSON* recv = cJSON_GetObjectItem(messages, "received_breakdown");
+
+    assert_non_null(cJSON_GetObjectItem(recv, "event"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "event")->valueint, 1234);
+    assert_non_null(cJSON_GetObjectItem(recv, "control"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "control")->valueint, 2345);
+    assert_non_null(cJSON_GetObjectItem(recv, "ping"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "ping")->valueint, 18);
+    assert_non_null(cJSON_GetObjectItem(recv, "unknown"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "unknown")->valueint, 8);
+    assert_non_null(cJSON_GetObjectItem(recv, "dequeued_after"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "dequeued_after")->valueint, 4);
+    assert_non_null(cJSON_GetObjectItem(recv, "discarded"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "discarded")->valueint, 95);
+
+    assert_non_null(cJSON_GetObjectItem(recv, "control_breakdown"));
+    cJSON* ctrl = cJSON_GetObjectItem(recv, "control_breakdown");
+
+    assert_non_null(cJSON_GetObjectItem(ctrl, "request"));
+    assert_int_equal(cJSON_GetObjectItem(ctrl, "request")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(ctrl, "startup"));
+    assert_int_equal(cJSON_GetObjectItem(ctrl, "startup")->valueint, 48);
+    assert_non_null(cJSON_GetObjectItem(ctrl, "shutdown"));
+    assert_int_equal(cJSON_GetObjectItem(ctrl, "shutdown")->valueint, 12);
+    assert_non_null(cJSON_GetObjectItem(ctrl, "keepalive"));
+    assert_int_equal(cJSON_GetObjectItem(ctrl, "keepalive")->valueint, 1115);
+
+    assert_non_null(cJSON_GetObjectItem(messages, "sent_breakdown"));
+    cJSON* sent = cJSON_GetObjectItem(messages, "sent_breakdown");
+
+    assert_non_null(cJSON_GetObjectItem(sent, "ack"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "ack")->valueint, 1114);
+    assert_non_null(cJSON_GetObjectItem(sent, "shared"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
+    assert_non_null(cJSON_GetObjectItem(sent, "ar"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "ar")->valueint, 18);
+    assert_non_null(cJSON_GetObjectItem(sent, "cfga"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "cfga")->valueint, 8);
+    assert_non_null(cJSON_GetObjectItem(sent, "request"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
+    assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "discarded")->valueint, 85);
+
+    assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions"));
+    assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions")->valueint, 5);
+    assert_non_null(cJSON_GetObjectItem(metrics, "keys_reload_count"));
+    assert_int_equal(cJSON_GetObjectItem(metrics, "keys_reload_count")->valueint, 15);
+
+    assert_non_null(cJSON_GetObjectItem(metrics, "queues"));
+    cJSON* queue = cJSON_GetObjectItem(metrics, "queues");
+
+    cJSON* received = cJSON_GetObjectItem(queue, "received");
+    assert_non_null(cJSON_GetObjectItem(received, "usage"));
+    assert_int_equal(cJSON_GetObjectItem(received, "usage")->valueint, 789);
+    assert_non_null(cJSON_GetObjectItem(received, "size"));
+    assert_int_equal(cJSON_GetObjectItem(received, "size")->valueint, 100000);
+
+    cJSON_Delete(state_json);
+}
+
+void test_rem_create_agents_state_json(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
+
+    will_return(__wrap_time, 123456789);
 
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin, test_data->hash_node);
@@ -155,109 +240,46 @@ void test_rem_create_state_json(void ** state) {
     expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
     will_return(__wrap_OSHash_Next, NULL);
 
-    test_data->state_json = rem_create_state_json();
+    test_data->state_json = rem_create_agents_state_json();
 
     assert_non_null(test_data->state_json);
 
-    assert_non_null(cJSON_GetObjectItem(test_data->state_json, "statistics"));
-    cJSON* statistics = cJSON_GetObjectItem(test_data->state_json, "statistics");
+    assert_non_null(cJSON_GetObjectItem(test_data->state_json, "agents"));
+    cJSON* agents = cJSON_GetObjectItem(test_data->state_json, "agents");
 
-    assert_non_null(cJSON_GetObjectItem(statistics, "tcp_sessions"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "tcp_sessions")->valueint, 5);
-    assert_non_null(cJSON_GetObjectItem(statistics, "received_bytes"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "received_bytes")->valueint, 123456);
-    assert_non_null(cJSON_GetObjectItem(statistics, "sent_bytes"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "sent_bytes")->valueint, 234567);
-    assert_non_null(cJSON_GetObjectItem(statistics, "keys_reload_count"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "keys_reload_count")->valueint, 15);
-    assert_non_null(cJSON_GetObjectItem(statistics, "update_shared_files_count"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "update_shared_files_count")->valueint, 39);
+    assert_non_null(cJSON_GetArrayItem(agents, 0));
+    cJSON* agent = cJSON_GetArrayItem(agents, 0);
+    assert_int_equal(cJSON_GetObjectItem(agent, "id")->valueint, 1);
 
-    assert_non_null(cJSON_GetObjectItem(statistics, "messages_received_breakdown"));
-    cJSON* recv = cJSON_GetObjectItem(statistics, "messages_received_breakdown");
+    assert_non_null(cJSON_GetObjectItem(agent, "metrics"));
+    cJSON* agent_metrics = cJSON_GetObjectItem(agent, "metrics");
 
-    assert_non_null(cJSON_GetObjectItem(recv, "event_messages"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "event_messages")->valueint, 1234);
-    assert_non_null(cJSON_GetObjectItem(recv, "control_messages"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "control_messages")->valueint, 2345);
-    assert_non_null(cJSON_GetObjectItem(recv, "ping_messages"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "ping_messages")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(recv, "unknown_messages"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "unknown_messages")->valueint, 8);
-    assert_non_null(cJSON_GetObjectItem(recv, "dequeued_after_close_messages"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "dequeued_after_close_messages")->valueint, 4);
-    assert_non_null(cJSON_GetObjectItem(recv, "discarded_messages"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "discarded_messages")->valueint, 95);
+    assert_non_null(cJSON_GetObjectItem(agent_metrics, "messages"));
+    cJSON* messages = cJSON_GetObjectItem(agent_metrics, "messages");
 
-    assert_non_null(cJSON_GetObjectItem(recv, "control_breakdown"));
-    cJSON* ctrl = cJSON_GetObjectItem(recv, "control_breakdown");
+    assert_non_null(cJSON_GetObjectItem(messages, "received_breakdown"));
+    cJSON* messages_received_breakdown = cJSON_GetObjectItem(messages, "received_breakdown");
 
-    assert_non_null(cJSON_GetObjectItem(ctrl, "request_messages"));
-    assert_int_equal(cJSON_GetObjectItem(ctrl, "request_messages")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(ctrl, "startup_messages"));
-    assert_int_equal(cJSON_GetObjectItem(ctrl, "startup_messages")->valueint, 48);
-    assert_non_null(cJSON_GetObjectItem(ctrl, "shutdown_messages"));
-    assert_int_equal(cJSON_GetObjectItem(ctrl, "shutdown_messages")->valueint, 12);
-    assert_non_null(cJSON_GetObjectItem(ctrl, "keepalive_messages"));
-    assert_int_equal(cJSON_GetObjectItem(ctrl, "keepalive_messages")->valueint, 1115);
-
-    assert_non_null(cJSON_GetObjectItem(statistics, "messages_sent_breakdown"));
-    cJSON* sent = cJSON_GetObjectItem(statistics, "messages_sent_breakdown");
-
-    assert_non_null(cJSON_GetObjectItem(sent, "ack_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "ack_messages")->valueint, 1114);
-    assert_non_null(cJSON_GetObjectItem(sent, "shared_file_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "shared_file_messages")->valueint, 2540);
-    assert_non_null(cJSON_GetObjectItem(sent, "ar_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "ar_messages")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(sent, "cfga_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "cfga_messages")->valueint, 8);
-    assert_non_null(cJSON_GetObjectItem(sent, "request_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "request_messages")->valueint, 9);
-    assert_non_null(cJSON_GetObjectItem(sent, "discarded_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "discarded_messages")->valueint, 85);
-
-    assert_non_null(cJSON_GetObjectItem(statistics, "queue_status"));
-    cJSON* queue = cJSON_GetObjectItem(statistics, "queue_status");
-
-    assert_non_null(cJSON_GetObjectItem(queue, "receive_queue_usage"));
-    assert_int_equal(cJSON_GetObjectItem(queue, "receive_queue_usage")->valueint, 789);
-    assert_non_null(cJSON_GetObjectItem(queue, "receive_queue_size"));
-    assert_int_equal(cJSON_GetObjectItem(queue, "receive_queue_size")->valueint, 100000);
-
-    assert_non_null(cJSON_GetObjectItem(test_data->state_json, "agents_connected"));
-    cJSON* agents_connected = cJSON_GetObjectItem(test_data->state_json, "agents_connected");
-
-    assert_non_null(cJSON_GetArrayItem(agents_connected, 0));
-    cJSON* agent_connected = cJSON_GetArrayItem(agents_connected, 0);
-    assert_int_equal(cJSON_GetObjectItem(agent_connected, "agent_id")->valueint, 1);
-
-    assert_non_null(cJSON_GetObjectItem(agent_connected, "statistics"));
-    cJSON* agent_statistics = cJSON_GetObjectItem(agent_connected, "statistics");
-
-    assert_non_null(cJSON_GetObjectItem(agent_statistics, "messages_received_breakdown"));
-    cJSON* messages_received_breakdown = cJSON_GetObjectItem(agent_statistics, "messages_received_breakdown");
-
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "event_messages")->valueint, 12568);
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "control_messages")->valueint, 2568);
+    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "event")->valueint, 12568);
+    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "control")->valueint, 2568);
 
     assert_non_null(cJSON_GetObjectItem(messages_received_breakdown, "control_breakdown"));
     cJSON* control_breakdown = cJSON_GetObjectItem(messages_received_breakdown, "control_breakdown");
 
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "request_messages")->valueint, 127);
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "startup_messages")->valueint, 2345);
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "shutdown_messages")->valueint, 234);
-    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "keepalive_messages")->valueint, 1234);
+    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "request")->valueint, 127);
+    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "startup")->valueint, 2345);
+    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "shutdown")->valueint, 234);
+    assert_int_equal(cJSON_GetObjectItem(control_breakdown, "keepalive")->valueint, 1234);
 
-    assert_non_null(cJSON_GetObjectItem(agent_statistics, "messages_sent_breakdown"));
-    cJSON* messages_sent_breakdown = cJSON_GetObjectItem(agent_statistics, "messages_sent_breakdown");
+    assert_non_null(cJSON_GetObjectItem(messages, "sent_breakdown"));
+    cJSON* messages_sent_breakdown = cJSON_GetObjectItem(messages, "sent_breakdown");
 
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack_messages")->valueint, 2346);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared_file_messages")->valueint, 235);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar_messages")->valueint, 514);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "cfga_messages")->valueint, 134);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request_messages")->valueint, 153);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded_messages")->valueint, 235);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack")->valueint, 2346);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared")->valueint, 235);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar")->valueint, 514);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "cfga")->valueint, 134);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request")->valueint, 153);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
 
     os_free(test_data->agent_state);
 }
@@ -387,13 +409,17 @@ void test_w_remoted_clean_agents_state_query_fail(void ** state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test rem_create_state_json
-        cmocka_unit_test_setup_teardown(test_rem_create_state_json, test_setup, test_teardown),
+        cmocka_unit_test_setup(test_rem_create_state_json, test_setup),
+        // Test rem_create_agents_state_json
+        cmocka_unit_test_setup_teardown(test_rem_create_agents_state_json, test_setup_agent, test_teardown_agent),
+        // Test get_node
         cmocka_unit_test_setup_teardown(test_rem_get_node_new_node, test_setup_empty_hash_table, test_teardown_empty_hash_table),
-        cmocka_unit_test_setup_teardown(test_rem_get_node_existing_node, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_rem_get_node_existing_node, test_setup_agent, test_teardown_agent),
+        // Test w_remoted_clean_agents_state
         cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_empty_table, test_setup_empty_hash_table, test_teardown_empty_hash_table),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_completed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_completed_without_delete, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_query_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_completed, test_setup_agent, test_teardown_agent),
+        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_completed_without_delete, test_setup_agent, test_teardown_agent),
+        cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_query_fail, test_setup_agent, test_teardown_agent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -46,7 +46,6 @@ typedef struct _remoted_state_t {
     uint64_t sent_bytes;
     uint32_t tcp_sessions;
     uint32_t keys_reload_count;
-    uint32_t update_shared_files_count;
     recv_msgs_t recv_breakdown;
     sent_msgs_t sent_breakdown;
 } remoted_state_t;
@@ -190,14 +189,15 @@ void rem_inc_send_discarded(const char *agent_id);
 void rem_inc_keys_reload();
 
 /**
- * @brief Increment update shared files counter
- */
-void rem_inc_update_shared_files();
-
-/**
  * @brief Create a JSON object with all the remoted state information
  * @return JSON object
  */
 cJSON* rem_create_state_json();
+
+/**
+ * @brief Create a JSON object with all the remoted agents state information
+ * @return JSON object
+ */
+cJSON* rem_create_agents_state_json();
 
 #endif
