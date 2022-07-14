@@ -1635,9 +1635,8 @@ checks:
   # 3.5.3.1.1 Ensure iptables packages are installed (Automated)
   - id: 28589
     title: "Ensure ufw service or nftables or iptables is installed."
-    description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
-    rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
-    remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
+    description: "UFW - The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall. NFTABLES - nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: - nftables is available in Linux kernel 3.13 and newer - Only one firewall utility should be installed and configured - Changing firewall settings while connected over the network can result in being locked out of the system. IPTABLES - iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
+    rationale: "UFW - A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package. NFTABLES - nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. IPTABLES - A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
     compliance:
       - cis: ["3.5.1.1", "3.5.2.1", "3.5.3.1.1"]
       - cis_csc: ["9.4"]
@@ -1857,9 +1856,9 @@ checks:
   # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated)
   - id: 28601
     title: "Ensure Uncomplicated Firewall is not installed or disabled if iptables is installed."
-    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. - Uses a command-line interface consisting of a small number of simple commands - Uses iptables for configuration"
     rationale: "Running iptables.persistentwith ufw enabled may lead to conflict and unexpected results."
-    remediation: "Run the following command to remove ufw:# apt purge ufw  OR Run the following commands to disable ufw:# ufw disable"
+    remediation: "Run one of the following commands to either remove ufw or stop and mask ufw. Run the following command to remove ufw:# apt purge ufw OR Run the following commands to disable ufw: # ufw disable"
     compliance:
       - cis: ["3.5.3.1.3"]
       - cis_csc: ["9.4"]
@@ -2110,7 +2109,7 @@ checks:
   # 4.1.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 28614
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/network (directory containing network interface scripts and configurations) files. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
+    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed prelogin), /etc/hosts (file containing host names and associated IP addresses) and /etc/network (directory containing network interface scripts and configurations) files. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
     rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale."
     compliance:
@@ -2526,7 +2525,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:systemctl is-enabled cron -> enabled"
+      - "c:systemctl is-enabled cron -> r:enabled"
       - 'c:systemctl status cron -> r:Active: active \(running\)'
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
@@ -2726,7 +2725,7 @@ checks:
   - id: 28646
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
-    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non- privileged users."
+    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config"
     compliance:
       - cis: ["5.3.1"]
