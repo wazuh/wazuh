@@ -13,6 +13,7 @@ INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
+WAZUH_REGISTRATION_PASSWORD_PATH="${INSTALLDIR}/etc/authd.pass"
 
 
 # Set default sed alias
@@ -222,6 +223,7 @@ add_auto_enrollment () {
         echo "      <server_ca_path>/path/to/server_ca</server_ca_path>" >> "${TMP_ENROLLMENT}"
         echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>" >> "${TMP_ENROLLMENT}"
         echo "      <agent_key_path>/path/to/agent.key</agent_key_path>" >> "${TMP_ENROLLMENT}"
+        echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>" >> "${TMP_ENROLLMENT}"
         echo "      <delay_after_enrollment>20</delay_after_enrollment>" >> "${TMP_ENROLLMENT}"
         echo "    </enrollment>" >> "${TMP_ENROLLMENT}"
     fi
@@ -266,13 +268,14 @@ main () {
 
     edit_value_tag "port" ${WAZUH_MANAGER_PORT}
 
-    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ] || [ ! -z ${ENROLLMENT_DELAY} ]; then
+    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ] || [ ! -z ${ENROLLMENT_DELAY} ] || [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
         add_auto_enrollment
         set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
         set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
         set_auto_enrollment_tag_value "server_ca_path" ${WAZUH_REGISTRATION_CA}
         set_auto_enrollment_tag_value "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE}
         set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
+        set_auto_enrollment_tag_value "authorization_pass_path" ${WAZUH_REGISTRATION_PASSWORD_PATH}
         set_auto_enrollment_tag_value "agent_name" ${WAZUH_AGENT_NAME}
         set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
         set_auto_enrollment_tag_value "delay_after_enrollment" ${ENROLLMENT_DELAY}
@@ -282,7 +285,7 @@ main () {
 
             
     if [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
-        echo ${WAZUH_REGISTRATION_PASSWORD} > "${INSTALLDIR}/etc/authd.pass"
+        echo ${WAZUH_REGISTRATION_PASSWORD} > ${WAZUH_REGISTRATION_PASSWORD_PATH}
     fi
 
     if [ ! -z ${WAZUH_MANAGER} ]; then
