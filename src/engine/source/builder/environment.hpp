@@ -276,6 +276,16 @@ public:
     }
 
     /**
+     * @brief Get the map of assets.
+     *
+     * @return std::unordered_map<std::string, std::shared_ptr<Asset>>&
+     */
+    const std::unordered_map<std::string, std::shared_ptr<Asset>>& assets() const
+    {
+        return m_assets;
+    }
+
+    /**
      * @brief Get the Graphivz Str object
      *
      * @return std::string
