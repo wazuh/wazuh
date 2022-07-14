@@ -106,9 +106,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicExpression)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
+add_subdirectory(${ENGINE_SOURCE_DIR}/rxbk)
 
 #TODO isolate rxcpp
-target_link_libraries(main base builders catalog)
+target_link_libraries(main base builders catalog rxbk)
 
 # Build test
 if(ENGINE_BUILD_TEST)

@@ -9,10 +9,10 @@
 
 #include <atomic>
 #include <csignal>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
-#include <sstream>
 
 #include <argparse/argparse.hpp>
 
@@ -28,8 +28,7 @@
 #include <register.hpp>
 // #include <router.hpp>
 #include <hlp/hlp.hpp>
-
-#include "rxcppBackend/rxcppFactory.hpp"
+#include <rxbk/rxFactory.hpp>
 
 #define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
 
@@ -73,9 +72,7 @@ static auto configureCliArgs()
         .help("Number of events that can be queued for processing")
         .scan<'i', int>()
         .default_value(1000000);
-    argParser.add_argument("--environment")
-        .help("Environment to be loaded")
-        .required();
+    argParser.add_argument("--environment").help("Environment to be loaded").required();
 
     // TODO this is just to give the posibility to avoid a 'protected' folder
     // on the developement cycle of the engine. This would come from a config
@@ -99,15 +96,21 @@ static auto configureCliArgs()
     return argParser;
 }
 
-static std::string print_exception(const std::exception& e, int level =  0)
+static std::string print_exception(const std::exception& e, int level = 0)
 {
     std::stringstream ss;
     ss << std::string(level, ' ') << "exception: " << e.what() << '\n';
-    try {
+    try
+    {
         std::rethrow_if_nested(e);
-    } catch(const std::exception& nestedException) {
-        ss << print_exception(nestedException, level+1);
-    } catch(...) {}
+    }
+    catch (const std::exception& nestedException)
+    {
+        ss << print_exception(nestedException, level + 1);
+    }
+    catch (...)
+    {
+    }
 
     return ss.str();
 }
@@ -182,7 +185,8 @@ int main(int argc, char* argv[])
     // TODO: Handle errors on construction
     builder::Builder<catalog::Catalog> _builder(_catalog);
     decltype(_builder.buildEnvironment(environment)) env;
-    try{
+    try
+    {
         env = _builder.buildEnvironment(environment);
     }
     catch (const std::exception& e)
@@ -193,7 +197,6 @@ int main(int argc, char* argv[])
     std::cout << env.getGraphivzStr() << std::endl << std::endl;
     std::cout << base::toGraphvizStr(env.getExpression()) << std::endl;
 
-
     // Processing Workers (Router), Router is replicated in each thread
     // TODO: handle hot modification of routes
     for (auto i = 0; i < nThreads; ++i)
@@ -201,7 +204,7 @@ int main(int argc, char* argv[])
         std::thread t {
             [=, &eventBuffer = server.output()]()
             {
-                auto controller = rxcppBackend::buildRxcppPipeline(env);
+                auto controller = rxbk::buildRxPipeline(env);
                 // Trace cerr logger
                 // TODO: this will need to be handled by the api and on the
                 // reworked router
@@ -242,7 +245,7 @@ int main(int argc, char* argv[])
                     }
                 }
 
-                controller.m_envInput.on_completed();
+                controller.complete();
                 return 0;
             }};
 
