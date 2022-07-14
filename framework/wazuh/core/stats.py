@@ -178,7 +178,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
         dest_socket = os.path.join(sockets_path, daemon)
         command = "getstate"
     else:
-        dest_socket = os.path.join(sockets_path, "request")
+        dest_socket = os.path.join(sockets_path, "remote")
         command = f"{str(agent_id).zfill(3)} {daemon} getstate"
 
     # Socket connection
