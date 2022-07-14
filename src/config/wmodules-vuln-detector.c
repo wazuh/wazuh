@@ -217,8 +217,14 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             retval = OS_INVALID;
             goto end;
         }
+        // RHEL9
+        if (!strcmp(version, "9")) {
+            os_index = CVE_REDHAT9;
+            upd->dist_tag_ref = FEED_RHEL9;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_RHEL9];
         // RHEL8
-        if (!strcmp(version, "8")) {
+        } else if (!strcmp(version, "8")) {
             os_index = CVE_REDHAT8;
             upd->dist_tag_ref = FEED_RHEL8;
             os_strdup(version, upd->version);
