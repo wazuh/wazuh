@@ -1,0 +1,30 @@
+{
+    "vendor": "redhat",
+    "description": "RedHat",
+    "remotes": [
+        {
+            "url": "https://www.redhat.com/security/data/oval/v2/RHEL{version}/rhel-{version}-including-unpatched.oval.xml.bz2",
+            "request": "file",
+            "type": "xml",
+            "compressed": "bzip2",
+            "parameters": {
+                "version": {
+                    "type": "fixed",
+                    "description": "RedHat version number",
+                    "value": [
+                        "6",
+                        "7",
+                        "8",
+                        "9"
+                    ]
+                }
+            }
+        },
+        {
+            "url": "https://www.redhat.com/security/data/oval/com.redhat.rhsa-RHEL5.xml.bz2",
+            "request": "file",
+            "type": "xml",
+            "compressed": "bzip2"
+        }
+    ]
+}

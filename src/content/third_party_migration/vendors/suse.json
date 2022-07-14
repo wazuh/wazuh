@@ -1,0 +1,30 @@
+{
+    "vendor": "suse",
+    "description": "SUSE Linux Enterprise",
+    "remotes": [
+        {
+            "url": "https://ftp.suse.com/pub/projects/security/oval/suse.linux.enterprise.{type}.{version}.xml",
+            "request": "file",
+            "type": "xml",
+            "parameters": {
+                "version": {
+                    "type": "fixed",
+                    "description": "SLE version number",
+                    "value": [
+                        "desktop",
+                        "enterprise"
+                    ]
+                },
+                "type": {
+                    "type": "fixed",
+                    "description": "SLE version type",
+                    "value": [
+                        "11",
+                        "12",
+                        "15"
+                    ]
+                }
+            }
+        }
+    ]
+}

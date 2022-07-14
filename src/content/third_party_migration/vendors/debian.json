@@ -1,0 +1,22 @@
+{
+    "vendor": "debian",
+    "description": "Debian",
+    "remotes": [
+        {
+            "url": "https://www.debian.org/security/oval/oval-definitions-{version}.xml",
+            "request": "file",
+            "type": "xml",
+            "parameters": {
+                "version": {
+                    "type": "fixed",
+                    "description": "Debian codename",
+                    "value": [
+                        "stretch",
+                        "buster",
+                        "bullseye"
+                    ]
+                }
+            }
+        }
+    ]
+}

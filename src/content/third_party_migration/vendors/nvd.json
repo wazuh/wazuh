@@ -1,0 +1,21 @@
+{
+    "vendor": "nvd",
+    "description": "National Vulnerability Database",
+    "remotes": [
+        {
+            "url": "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-{year}.json.gz",
+            "request": "file",
+            "type": "json",
+            "compressed": "gzip",
+            "parameters": {
+                "year": {
+                    "type": "variable-incremental",
+                    "value": [
+                        "2010",
+                        "currentyear"
+                    ]
+                }
+            }
+        }
+    ]
+}

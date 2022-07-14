@@ -1,0 +1,30 @@
+{
+    "vendor": "redhat-json",
+    "description": "RedHat JSON",
+    "remotes": [
+        {
+            "url": "https://access.redhat.com/labs/securitydataapi/cve.json",
+            "request": "api",
+            "type": "json",
+            "parameters": {
+                "after": {
+                    "type": "fixed",
+                    "description": "Year",
+                    "value": "1999"
+                },
+                "per_page": {
+                    "type": "fixed",
+                    "description": "Vulns per page",
+                    "value": "1000"
+                },
+                "page": {
+                    "type": "variable-incremental",
+                    "value": [
+                        "0",
+                        "inf"
+                    ]
+                }
+            }
+        }
+    ]
+}

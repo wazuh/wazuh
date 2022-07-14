@@ -1,0 +1,10 @@
+{
+    "vendor": "arch",
+    "description": "Arch Linux",
+    "remotes": [
+        {
+            "url": "https://security.archlinux.org/all.json",
+            "type": "json"
+        }
+    ]
+}

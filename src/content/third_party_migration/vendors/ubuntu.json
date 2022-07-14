@@ -1,0 +1,43 @@
+{
+    "vendor": "canonical",
+    "description": "Ubuntu",
+    "remotes": [
+        {
+            "url": "https://security-metadata.canonical.com/oval/com.ubuntu.{version}.cve.oval.xml.bz2",
+            "request": "file",
+            "type": "xml",
+            "compressed": "bzip2",
+            "parameters": {
+                "version": {
+                    "type": "fixed",
+                    "description": "Canonical Ubuntu LTS codename",
+                    "value": [
+                        "trusty",
+                        "xenial",
+                        "bionic",
+                        "focal",
+                        "jammy"
+                    ]
+                }
+            }
+        },
+        {
+            "url": "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.{version}.cve.oval.xml.bz2",
+            "request": "file",
+            "type": "xml",
+            "compressed": "bzip2",
+            "parameters": {
+                "version": {
+                    "type": "fixed",
+                    "description": "Canonical Ubuntu non-LTS codename",
+                    "value": [
+                        "impish",
+                        "hirsute"
+                    ]
+                }
+            }
+        }
+
+
+    ]
+}

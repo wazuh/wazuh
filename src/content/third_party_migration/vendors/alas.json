@@ -1,0 +1,26 @@
+{
+    "vendor": "alas",
+    "description": "Amazon Linux",
+    "remotes": [
+        {
+            "url": "https://alas.aws.amazon.com/alas.rss",
+            "request": "file",
+            "type": "xml"
+        },
+        {
+            "url": "https://alas.aws.amazon.com/AL{version}/alas.rss",
+            "request": "file",
+            "type": "xml",
+            "parameters": {
+                "version": {
+                    "type": "fixed",
+                    "description": "Amazon Linux version",
+                    "value": [
+                        "2",
+                        "2022"
+                    ]
+                }
+            }
+        }
+    ]
+}
