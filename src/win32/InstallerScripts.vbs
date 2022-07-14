@@ -164,6 +164,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
             objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
             objFile.Close
+            strText = Replace(strText, "    </enrollment>", "        <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_REGISTRATION_CA <> "" Then
