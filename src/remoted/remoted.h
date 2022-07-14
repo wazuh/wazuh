@@ -23,6 +23,7 @@
 #define FD_LIST_INIT_VALUE 1024
 #define REMOTED_MSG_HEADER "1:" ARGV0 ":"
 #define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
+#define MAX_SHARED_PATH 200
 
 /* Pending data structure */
 
@@ -215,7 +216,6 @@ extern int response_timeout;
 extern int INTERVAL;
 extern rlim_t nofile;
 extern int guess_agent_group;
-extern int group_data_flush;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;
