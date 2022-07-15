@@ -2,7 +2,7 @@ import contextlib
 import copy
 from datetime import timedelta
 from enum import Enum
-from math import ceil
+from math import floor
 
 from api.util import raise_if_exc
 from wazuh import agent
@@ -72,7 +72,10 @@ class AgentsReconnect:
         self.balance_threshold = 3
 
         # Reconnection phase
+        self.expected_rounds = 0
+        self.round_counter = 0
         self.reconnection_timestamp = 0
+        self.reconnected_agents = []
 
         # General
         self.current_phase = AgentsReconnectionPhases.NOT_STARTED
@@ -93,7 +96,7 @@ class AgentsReconnect:
 
         return wrapper
 
-    def reset_counters(self, node_name=None) -> None:
+    def reset_counters(self, node_name=None, hard_reset=True) -> None:
         """Reset all counters of the reconnection procedure.
         If the node is specified, it will be checked if it is on the blacklist.
 
@@ -101,10 +104,15 @@ class AgentsReconnect:
         ----------
         node_name : str, optional
             Name of the node to be checked against the blacklist, by default None.
+        hard_reset : bool
+            Whether to reset all counters (including stability-related) or not.
         """
         if node_name not in self.blacklisted_nodes:
-            self.balance_counter = 0
-            self.nodes_stability_counter = 0
+            if hard_reset:
+                self.balance_counter = 0
+                self.nodes_stability_counter = 0
+            self.expected_rounds = 0
+            self.round_counter = 0
             self.logger.debug("Reset all counters.")
         else:
             self.logger.debug(f"Disconnected {node_name} node, it is blacklisted, skipping counters reset.")
@@ -131,26 +139,26 @@ class AgentsReconnect:
             return False
 
         self.logger.debug(f"Current detected nodes: {node_list}.")
+        self.last_nodes_stability_check = utils.get_utc_now()
 
         if self.previous_nodes == node_list or len(self.previous_nodes) == 0:
             if self.nodes_stability_counter < self.nodes_stability_threshold:
                 self.nodes_stability_counter += 1
             if self.previous_nodes == set():
                 self.previous_nodes = node_list.copy()
+            if self.nodes_stability_counter >= self.nodes_stability_threshold:
+                self.logger.info(f"Cluster is stable.")
+                return True
+            else:
+                self.logger.info(f"Cluster is not stable yet "
+                                 f"({self.nodes_stability_counter}/{self.nodes_stability_threshold}).")
+
         else:
-            self.logger.info("Nodes changed, restarting nodes stability phase.")
+            self.logger.info("Nodes changed, restarting cluster stability phase.")
             self.previous_nodes = node_list.copy()
             self.reset_counters()
+            return False
 
-        self.last_nodes_stability_check = utils.get_utc_now()
-        if self.nodes_stability_counter >= self.nodes_stability_threshold:
-            self.logger.info(f"Cluster is ready {self.nodes_stability_counter}/{self.nodes_stability_threshold}. "
-                             f"Nodes stability phase finished at "
-                             f"{self.last_nodes_stability_check.strftime(DECIMALS_DATE_FORMAT)}.")
-            return True
-
-        self.logger.info(f"Nodes are not stable at this moment. "
-                         f"Counter: {self.nodes_stability_counter}/{self.nodes_stability_threshold}.")
         return False
 
     @wazuh_exception_handler
@@ -188,20 +196,14 @@ class AgentsReconnect:
             return True
 
         lost_agents_threshold = sum(len(info['agents']) for info in self.env_status.values()) * self.lost_agents_percent
-
-        # Provisional until the balance_agents function is implemented
-        list_of_reconnected_agents = []
-        for d in self.env_status.values():
-            list_of_reconnected_agents.extend(d['agents'])
-
-        connected_agents = await self.get_reconnected_agents(list_of_reconnected_agents)
+        connected_agents = await self.get_reconnected_agents(self.reconnected_agents)
         connected_agents = connected_agents['items']
-        if len(list_of_reconnected_agents) != len(connected_agents):
+        if len(self.reconnected_agents) != len(connected_agents):
             lost_agents = []
             connected_agents = [d['id'] for d in connected_agents]
-            lost_agents.extend(agent for agent in list_of_reconnected_agents if agent not in connected_agents)
+            lost_agents.extend(r_agent for r_agent in self.reconnected_agents if r_agent not in connected_agents)
             if len(lost_agents) >= lost_agents_threshold:
-                self.logger.info('Too many lost agents. Halting reconnection procedure.')
+                self.logger.warning('Too many lost agents. Halting reconnection procedure.')
                 self.logger.debug(f'Lost agents: {lost_agents}.')
                 self.current_phase = AgentsReconnectionPhases.HALT
                 return False
@@ -238,7 +240,7 @@ class AgentsReconnect:
                 total += agent_query.total_items
 
             try:
-                mean = ceil(total / len(self.previous_nodes))
+                mean = floor(total / len(self.previous_nodes))
             except ZeroDivisionError:
                 return {}
 
@@ -249,7 +251,7 @@ class AgentsReconnect:
                     unbalanced_agents[node] = {}
                 unbalanced_agents[node]['agents'] = 0
                 unbalanced_agents[node]['total'] = agents
-                if difference > 0:
+                if difference > 1:
                     unbalanced_agents[node]['agents'] = difference
 
             return unbalanced_agents
@@ -288,11 +290,11 @@ class AgentsReconnect:
 
         current_unbalanced_agents = await get_agents(need_balance)
         if all(info['agents'] == [] for info in current_unbalanced_agents.values()):
-            self.logger.info('The agents connected to the cluster are balanced.')
+            self.logger.info('Agents are balanced in the cluster.')
             current_unbalanced_agents.clear()
+            self.reset_counters(hard_reset=False)
         else:
-            self.logger.info('The agents connected to the cluster are not balanced.')
-        self.reconnection_timestamp = utils.get_utc_now()
+            self.logger.info('Agents are not balanced in the cluster.')
 
         return current_unbalanced_agents
 
@@ -302,8 +304,11 @@ class AgentsReconnect:
         """
         if await self.check_previous_reconnections():
             self.env_status = await self.get_agents_balance()
-            self.logger.debug("Agents that need to be reconnected: "
-                              f"{str({node: info['agents'] for node, info in self.env_status.items()})}.")
+            if self.env_status:
+                self.logger.debug2(f"Agents that need to be reconnected: "
+                                   f"{str({node: info['agents'] for node, info in self.env_status.items()})}.")
+                self.reconnected_agents = await self.balance_agents(self.env_status)
+                self.reconnection_timestamp = utils.get_utc_now()
 
     def get_current_phase(self) -> AgentsReconnectionPhases:
         """Return the current phase of the algorithm.
@@ -342,58 +347,123 @@ class AgentsReconnect:
         """
         NotImplementedError("Not implemented yet")
 
-    async def reconnect_agents(self, agents: dict, max_assignments_per_node: int = 50):
-        """Redistribute agents in cluster.
+    def predict_distribution(self, nodes_info, max_assignments_per_node, calculate_rounds=False) -> dict:
+        """Predict how reconnected agents will be distributed.
 
-        Calculate which nodes have more agents than the average and which have fewer.
-        Then, send reconnect requests to agents in the bigger nodes so they are redistributed.
-        Redistribution only works if agents are connected through a load balancer configured as least_conn.
+        It predicts how many agents will connect to each node based on the current
+        distribution of the cluster. To prevent many agents from connecting to the same node,
+        this method will return the IDs to which the reconnection request should be sent so
+        that the limitation established in 'max_assignments_per_node' is respected.
+
+        If 'calculate_rounds=True', it will calculate how many rounds of 'max_assignments_per_node' agents
+        will be needed in order to redistribute all agents.
 
         Parameters
         ----------
-        agents : dict
-            Dict with workers names and list of agents connected to each one. I.e: {'worker1': ['001', '002']}
+        nodes_info : dict
+            Dict with workers names, list of agents connected to each one and number of active agents.
+        max_assignments_per_node : int
+            Number of agents that can reconnect to the same cluster node.
+        calculate_rounds : bool
+            Calculate how many reconnection rounds will be necessary.
+
+        Returns
+        -------
+        dict
+            Agents' IDs to reconnect and number of rounds necessary.
+        """
+        nodes_info_cpy = copy.deepcopy(nodes_info)
+        agents_to_reconnect = []
+        rounds = 1
+
+        while True:
+            biggest_node = max(nodes_info_cpy.keys(), key=lambda x: nodes_info_cpy[x]['total'])
+            smallest_node = min(nodes_info_cpy.keys(), key=lambda x: nodes_info_cpy[x]['total'])
+
+            if nodes_info_cpy[biggest_node]['total'] - nodes_info_cpy[smallest_node]['total'] <= 1:
+                break
+            elif nodes_info_cpy[smallest_node]['total'] >= \
+                    nodes_info[smallest_node]['total'] + max_assignments_per_node * rounds:
+                if not calculate_rounds:
+                    break
+                rounds += 1
+
+            if not calculate_rounds:
+                try:
+                    agents_to_reconnect.append(nodes_info_cpy[biggest_node]['agents'].pop())
+                except IndexError:
+                    break
+            nodes_info_cpy[biggest_node]['total'] -= 1
+            nodes_info_cpy[smallest_node]['total'] += 1
+
+        return {'agents': agents_to_reconnect, 'rounds': rounds}
+
+    async def reconnect_agents(self, agents_to_reconnect) -> list:
+        """Redistribute agents in cluster.
+
+        Send reconnect requests to agents so they are redistributed. Redistribution only works
+        if agents are connected through a load balancer configured as least_conn.
+
+        Parameters
+        ----------
+        agents_to_reconnect : list
+            Agents IDs to reconnect.
+
+        Returns
+        -------
+        reconnected_agents : list
+            Agents to whom a reconnection request was successfully sent.
+        """
+        dapi = DistributedAPI(f=agent.reconnect_agents, f_kwargs={'agent_list': agents_to_reconnect},
+                              request_type='distributed_master', logger=self.logger)
+        data = raise_if_exc(await dapi.distribute_function()).render()
+        return data.get('data', {}).get('affected_items', [])
+
+    async def balance_agents(self, nodes_info, max_assignments_per_node=100) -> list:
+        """Balance agents in rounds.
+
+        Determines how many rounds will be necessary to balance all agents, and sends
+        reconnection requests to a variable number of agents depending on the current round.
+
+        Parameters
+        ----------
+        nodes_info : dict
+            Dict with workers names, list of agents connected to each one and number of active agents.
         max_assignments_per_node : int
             Number of agents that can reconnect to the same cluster node.
 
         Returns
         -------
-        agents_to_reconnect : list
-            Agents to whom a reconnection request will be sent (expected agents).
         result : list
             Agents to whom a reconnection request was successfully sent.
-        disconnected_agents : list
-            Agents that were offline when a reconnect request was sent to them.
         """
-        agents_to_reconnect = []
-        disconnected_agents = []
-        result = {}
-        agents_nodes_cpy = copy.deepcopy(agents)
+        result = []
+        self.current_phase = AgentsReconnectionPhases.RECONNECT_AGENTS
 
-        # Calculate which agents should reconnect and how the new distribution would look like.
-        while True:
-            biggest_node = max(agents_nodes_cpy, key=lambda x: len((agents_nodes_cpy[x])))
-            smallest_node = min(agents_nodes_cpy, key=lambda x: len((agents_nodes_cpy[x])))
+        if self.expected_rounds == 0:
+            self.expected_rounds = self.predict_distribution(nodes_info, max_assignments_per_node, True)['rounds']
+            total_active_agents = sum([info['total'] for info in nodes_info.values()])
+            total_agents_to_reconnect = sum([len(info['agents']) for info in nodes_info.values()])
+            max_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
+            agents_to_reconnect = self.predict_distribution(nodes_info, max_assigns)['agents']
+            self.logger.info(f'It will take {self.expected_rounds} rounds to reconnect {total_agents_to_reconnect} '
+                             f'agents. Starting a small test round for {len(agents_to_reconnect)} agents.')
 
-            if len(agents_nodes_cpy[biggest_node]) - len(agents_nodes_cpy[smallest_node]) <= 1 or \
-                    len(agents_nodes_cpy[smallest_node]) >= len(agents[smallest_node]) + max_assignments_per_node:
-                break
+        elif self.round_counter < self.expected_rounds:
+            self.round_counter += 1
+            agents_to_reconnect = self.predict_distribution(nodes_info, max_assignments_per_node)['agents']
+            self.logger.info(f'Reconnecting agents (round {self.round_counter}/{self.expected_rounds}).')
 
-            agents_to_reconnect.append(agents_nodes_cpy[biggest_node].pop())
-            agents_nodes_cpy[smallest_node].append(agents_to_reconnect[-1])
+        else:
+            self.logger.warning(f'Expected number of agent reconnection rounds has been exceeded '
+                                f'({self.round_counter + 1}/{self.expected_rounds}). Stopping this task.')
+            self.current_phase = AgentsReconnectionPhases.HALT
+            return result
 
-        # Request agents to reconnect.
-        if agents_to_reconnect:
-            dapi = DistributedAPI(f=agent.reconnect_agents, f_kwargs={'agent_list': agents_to_reconnect},
-                                  request_type='distributed_master', logger=self.logger)
-            data = raise_if_exc(await dapi.distribute_function()).render()
+        try:
+            result = await self.reconnect_agents(agents_to_reconnect)
+        except Exception:
+            self.logger.error('Error while sending reconnection request to agents. Restarting task.')
+            self.reset_counters()
 
-            if data.get("data", {}).get("failed_items", []):
-                self.logger.debug("Not all expected agents received a reconnection request. Error codes: " +
-                                  ", ".join(code['error'] for code in result.get("data", {}).get("failed_items", [])))
-                for item in data["data"]["failed_items"]:
-                    if item["error"]["code"] == 1707:
-                        disconnected_agents = item["id"]
-                        break
-
-        return agents_to_reconnect, result.get("data", {}).get("affected_items", []), disconnected_agents
+        return result
