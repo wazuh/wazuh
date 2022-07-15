@@ -2285,10 +2285,6 @@ components:
           description: "Same as `alerts_written` but focusing in [FTS alerts]
           (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
-        hostinfo_events_decoded:
-          type: number
-          format: float
-          description: "Same as `total_events_decoded` but for hostinfo events"
         hostinfo_queue_size:
           type: number
           format: float
@@ -9065,7 +9061,6 @@ paths:
                       syscollector_events_decoded: 0
                       rootcheck_events_decoded: 0
                       sca_events_decoded: 0
-                      hostinfo_events_decoded: 0
                       winevt_events_decoded: 0
                       other_events_decoded: 5
                       events_processed: 5
@@ -10463,7 +10458,6 @@ paths:
                       syscollector_events_decoded: 0
                       rootcheck_events_decoded: 0
                       sca_events_decoded: 0
-                      hostinfo_events_decoded: 0
                       winevt_events_decoded: 0
                       other_events_decoded: 5
                       events_processed: 5

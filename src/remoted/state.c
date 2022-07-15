@@ -28,7 +28,7 @@ extern OSHash *remoted_agents_state;
  * @param agent_id Id of the agent that corresponds to the node
  * @return remoted_agent_state_t node
  */
-static remoted_agent_state_t * get_node(char *agent_id);
+static remoted_agent_state_t * get_node(const char *agent_id);
 
 /**
  * @brief Clean non active agents from agents state.
@@ -39,73 +39,73 @@ static void w_remoted_clean_agents_state();
  * @brief Increment received event messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_recv_evt(char * agent_id);
+static void rem_inc_agents_recv_evt(const char *agent_id);
 
 /**
  * @brief Increment received control messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_recv_ctrl(char * agent_id);
+static void rem_inc_agents_recv_ctrl(const char *agent_id);
 
 /**
  * @brief Increment received keepalive control messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_recv_ctrl_keepalive(char * agent_id);
+static void rem_inc_agents_recv_ctrl_keepalive(const char *agent_id);
 
 /**
  * @brief Increment received startup control messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_recv_ctrl_startup(char * agent_id);
+static void rem_inc_agents_recv_ctrl_startup(const char *agent_id);
 
 /**
  * @brief Increment received shutdown control messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_recv_ctrl_shutdown(char * agent_id);
+static void rem_inc_agents_recv_ctrl_shutdown(const char *agent_id);
 
 /**
  * @brief Increment received request control messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_recv_ctrl_request(char * agent_id);
+static void rem_inc_agents_recv_ctrl_request(const char *agent_id);
 
 /**
  * @brief Increment sent ack messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_send_ack(char * agent_id);
+static void rem_inc_agents_send_ack(const char *agent_id);
 
 /**
  * @brief Increment sent shared file messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_send_shared(char * agent_id);
+static void rem_inc_agents_send_shared(const char *agent_id);
 
 /**
  * @brief Increment sent AR messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_send_ar(char * agent_id);
+static void rem_inc_agents_send_ar(const char *agent_id);
 
 /**
  * @brief Increment sent CFGA messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_send_cfga(char * agent_id);
+static void rem_inc_agents_send_cfga(const char *agent_id);
 
 /**
  * @brief Increment sent request messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_send_request(char * agent_id);
+static void rem_inc_agents_send_request(const char *agent_id);
 
 /**
  * @brief Increment sent discarded messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
-static void rem_inc_agents_send_discarded(char * agent_id);
+static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
     int interval = getDefine_Int("remoted", "state_interval", 0, 86400);
@@ -208,7 +208,7 @@ int rem_write_state() {
     return 0;
 }
 
-static remoted_agent_state_t * get_node(char *agent_id) {
+static remoted_agent_state_t * get_node(const char *agent_id) {
     remoted_agent_state_t * agent_state = (remoted_agent_state_t *) OSHash_Get_ex(remoted_agents_state, agent_id);
 
     if(agent_state != NULL) {
@@ -267,84 +267,84 @@ static void w_remoted_clean_agents_state() {
     return;
 }
 
-static void rem_inc_agents_recv_evt(char * agent_id) {
+static void rem_inc_agents_recv_evt(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->recv_evt_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_recv_ctrl(char * agent_id) {
+static void rem_inc_agents_recv_ctrl(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->recv_ctrl_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_recv_ctrl_keepalive(char * agent_id) {
+static void rem_inc_agents_recv_ctrl_keepalive(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->ctrl_breakdown.keepalive_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_recv_ctrl_startup(char * agent_id) {
+static void rem_inc_agents_recv_ctrl_startup(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->ctrl_breakdown.startup_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_recv_ctrl_shutdown(char * agent_id) {
+static void rem_inc_agents_recv_ctrl_shutdown(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->ctrl_breakdown.shutdown_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_recv_ctrl_request(char * agent_id) {
+static void rem_inc_agents_recv_ctrl_request(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->ctrl_breakdown.request_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_ack(char * agent_id) {
+static void rem_inc_agents_send_ack(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->sent_breakdown.ack_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_shared(char * agent_id) {
+static void rem_inc_agents_send_shared(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->sent_breakdown.shared_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_ar(char * agent_id) {
+static void rem_inc_agents_send_ar(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->sent_breakdown.ar_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_cfga(char * agent_id) {
+static void rem_inc_agents_send_cfga(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->sent_breakdown.cfga_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_request(char * agent_id) {
+static void rem_inc_agents_send_request(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->sent_breakdown.request_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_discarded(char * agent_id) {
+static void rem_inc_agents_send_discarded(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
     agent_node->sent_breakdown.discarded_count++;
@@ -369,7 +369,7 @@ void rem_add_recv(unsigned long bytes) {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_recv_evt(char * agent_id) {
+void rem_inc_recv_evt(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.evt_count++;
     w_mutex_unlock(&state_mutex);
@@ -379,7 +379,7 @@ void rem_inc_recv_evt(char * agent_id) {
     }
 }
 
-void rem_inc_recv_ctrl(char * agent_id) {
+void rem_inc_recv_ctrl(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.ctrl_count++;
     w_mutex_unlock(&state_mutex);
@@ -413,7 +413,7 @@ void rem_inc_recv_discarded() {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_recv_ctrl_keepalive(char * agent_id) {
+void rem_inc_recv_ctrl_keepalive(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.ctrl_breakdown.keepalive_count++;
     w_mutex_unlock(&state_mutex);
@@ -423,7 +423,7 @@ void rem_inc_recv_ctrl_keepalive(char * agent_id) {
     }
 }
 
-void rem_inc_recv_ctrl_startup(char * agent_id) {
+void rem_inc_recv_ctrl_startup(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.ctrl_breakdown.startup_count++;
     w_mutex_unlock(&state_mutex);
@@ -433,7 +433,7 @@ void rem_inc_recv_ctrl_startup(char * agent_id) {
     }
 }
 
-void rem_inc_recv_ctrl_shutdown(char * agent_id) {
+void rem_inc_recv_ctrl_shutdown(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.ctrl_breakdown.shutdown_count++;
     w_mutex_unlock(&state_mutex);
@@ -443,7 +443,7 @@ void rem_inc_recv_ctrl_shutdown(char * agent_id) {
     }
 }
 
-void rem_inc_recv_ctrl_request(char * agent_id) {
+void rem_inc_recv_ctrl_request(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.ctrl_breakdown.request_count++;
     w_mutex_unlock(&state_mutex);
@@ -459,7 +459,7 @@ void rem_add_send(unsigned long bytes) {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_send_ack(char * agent_id) {
+void rem_inc_send_ack(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.ack_count++;
     w_mutex_unlock(&state_mutex);
@@ -469,7 +469,7 @@ void rem_inc_send_ack(char * agent_id) {
     }
 }
 
-void rem_inc_send_shared(char * agent_id) {
+void rem_inc_send_shared(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.shared_count++;
     w_mutex_unlock(&state_mutex);
@@ -479,7 +479,7 @@ void rem_inc_send_shared(char * agent_id) {
     }
 }
 
-void rem_inc_send_ar(char * agent_id) {
+void rem_inc_send_ar(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.ar_count++;
     w_mutex_unlock(&state_mutex);
@@ -489,7 +489,7 @@ void rem_inc_send_ar(char * agent_id) {
     }
 }
 
-void rem_inc_send_cfga(char * agent_id) {
+void rem_inc_send_cfga(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.cfga_count++;
     w_mutex_unlock(&state_mutex);
@@ -499,7 +499,7 @@ void rem_inc_send_cfga(char * agent_id) {
     }
 }
 
-void rem_inc_send_request(char * agent_id) {
+void rem_inc_send_request(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.request_count++;
     w_mutex_unlock(&state_mutex);
@@ -509,7 +509,7 @@ void rem_inc_send_request(char * agent_id) {
     }
 }
 
-void rem_inc_send_discarded(char * agent_id) {
+void rem_inc_send_discarded(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.discarded_count++;
     w_mutex_unlock(&state_mutex);
