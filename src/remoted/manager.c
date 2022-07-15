@@ -256,14 +256,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
         req_save(counter, payload, msg_length - (payload - r_msg));
 
-        rem_inc_recv_ctrl_request();
+        rem_inc_recv_ctrl_request(key->id);
         return;
     }
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
     if (send_msg(key->id, msg_ack, -1) >= 0) {
-        rem_inc_send_ack();
+        rem_inc_send_ack(key->id);
     }
 
     /* Filter UTF-8 characters */
@@ -285,11 +285,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (strcmp(r_msg, HC_STARTUP) == 0) {
             mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
             is_startup = 1;
-            rem_inc_recv_ctrl_startup();
+            rem_inc_recv_ctrl_startup(key->id);
         } else {
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             is_shutdown = 1;
-            rem_inc_recv_ctrl_shutdown();
+            rem_inc_recv_ctrl_shutdown(key->id);
         }
     } else {
         /* Clean msg and shared files (remove random string) */
@@ -305,7 +305,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             return;
         }
 
-        rem_inc_recv_ctrl_keepalive();
+        rem_inc_recv_ctrl_keepalive(key->id);
     }
 
     w_mutex_lock(&lastmsg_mutex);
@@ -1440,7 +1440,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         fclose(fp);
         return OS_INVALID;
     } else {
-        rem_inc_send_shared();
+        rem_inc_send_shared(agent_id);
     }
 
     /* The following code is used to get the protocol that the client is using in order to answer accordingly */
@@ -1460,7 +1460,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
             fclose(fp);
             return OS_INVALID;
         } else {
-            rem_inc_send_shared();
+            rem_inc_send_shared(agent_id);
         }
         /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
         if (protocol == REMOTED_NET_PROTOCOL_UDP) {
@@ -1480,7 +1480,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         fclose(fp);
         return OS_INVALID;
     } else {
-        rem_inc_send_shared();
+        rem_inc_send_shared(agent_id);
     }
 
     fclose(fp);

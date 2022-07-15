@@ -166,11 +166,12 @@ int nb_send(netbuffer_t * buffer, int socket);
  * @param socket socket id where send message.
  * @param crypt_msg msg to send.
  * @param msg_size message size.
+ * @param agent_id message agent id.
  *
  * @return -1 on error.
  * @return 0 on success.
  */
-int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size);
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size, char * agent_id);
 
 /* Network counter */
 

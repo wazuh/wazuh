@@ -84,6 +84,7 @@ void test_nb_queue_ok(void ** state) {
 
     ssize_t size = snprintf(msg, 10, "abcdefghi");
     ssize_t final_size = snprintf(final_msg, 14, "4321abcdefghi");
+    char *agent_id = "001";
 
     expect_value(__wrap_wnet_order, value, 9);
     will_return(__wrap_wnet_order, 0b00110001001100100011001100110100); //1234
@@ -106,7 +107,7 @@ void test_nb_queue_ok(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    int retval = nb_queue(netbuffer, sock, msg, size);
+    int retval = nb_queue(netbuffer, sock, msg, size, agent_id);
 
     assert_int_equal(retval, 0);
 }
@@ -118,6 +119,7 @@ void test_nb_queue_retry_ok(void ** state) {
 
     ssize_t size = snprintf(msg, 10, "abcdefghi");
     ssize_t final_size = snprintf(final_msg, 14, "4321abcdefghi");
+    char *agent_id = "001";
 
     send_timeout_to_retry = 5;
 
@@ -156,7 +158,7 @@ void test_nb_queue_retry_ok(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    int retval = nb_queue(netbuffer, sock, msg, size);
+    int retval = nb_queue(netbuffer, sock, msg, size, agent_id);
 
     assert_int_equal(retval, 0);
 }
@@ -168,6 +170,7 @@ void test_nb_queue_retry_err(void ** state) {
 
     ssize_t size = snprintf(msg, 10, "abcdefghi");
     ssize_t final_size = snprintf(final_msg, 14, "4321abcdefghi");
+    char *agent_id = "001";
 
     send_timeout_to_retry = 5;
 
@@ -196,14 +199,13 @@ void test_nb_queue_retry_err(void ** state) {
     expect_value(__wrap_bqueue_push, flags, BQUEUE_NOFLAG);
     will_return(__wrap_bqueue_push, -1);
 
+    expect_string(__wrap_rem_inc_send_discarded, agent_id, agent_id);
+
     expect_string(__wrap__mwarn, formatted_msg, "Package dropped. Could not append data into buffer.");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    int retval = nb_queue(netbuffer, sock, msg, size);
+    int retval = nb_queue(netbuffer, sock, msg, size, agent_id);
 
     assert_int_equal(retval, -1);
 }

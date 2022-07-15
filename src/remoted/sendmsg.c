@@ -118,7 +118,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         error = errno;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         /* TCP mode, enqueue the message in the send buffer */
-        retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size);
+        retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size, keys.keyentries[key_id]->id);
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         return retval;

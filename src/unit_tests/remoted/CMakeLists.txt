@@ -45,7 +45,9 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                             -Wl,--wrap,wdb_get_agent_group \
                             -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \
-                            -Wl,--wrap,wdb_remove_group_db -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info")
+                            -Wl,--wrap,wdb_remove_group_db -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info \
+                            -Wl,--wrap,rem_inc_send_ack -Wl,--wrap,rem_inc_recv_ctrl_request -Wl,--wrap,rem_inc_recv_ctrl_keepalive \
+                            -Wl,--wrap,rem_inc_recv_ctrl_startup -Wl,--wrap,rem_inc_recv_ctrl_shutdown")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
@@ -56,13 +58,15 @@ list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -
                             -Wl,--wrap=rem_inc_tcp -Wl,--wrap=rem_dec_tcp -Wl,--wrap=close -Wl,--wrap=accept \
                             -Wl,--wrap=wnotify_add -Wl,--wrap,fcntl -Wl,--wrap,_merror -Wl,--wrap=nb_open -Wl,--wrap=recvfrom \
                             -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send \
-                            -Wl,--wrap=rem_add_send -Wl,--wrap=OS_IsAllowedIP ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap=rem_add_send -Wl,--wrap=OS_IsAllowedIP ${DEBUG_OP_WRAPPERS} \
+                            -Wl,--wrap,rem_add_recv -Wl,--wrap,rem_add_send -Wl,--wrap,rem_inc_tcp -Wl,--wrap,rem_dec_tcp \
+                            -Wl,--wrap,rem_inc_recv_unknown")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
                             -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
                             -Wl,--wrap,send -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
-                            -Wl,--wrap,bqueue_used")
+                            -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded")
 
 list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
@@ -75,7 +79,12 @@ list(APPEND remoted_names "test_syslogtcp")
 list(APPEND remoted_flags "-W")
 
 list(APPEND remoted_names "test_remote-state")
-list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize")
+list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
+                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin \
+                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
+                            -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
+                            -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
+                            -Wl,--wrap,wdb_get_agents_by_connection_status -Wl,--wrap,get_node_name -Wl,--wrap,_merror")
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \

@@ -17,4 +17,6 @@
 size_t __wrap_rem_get_qsize();
 size_t __wrap_rem_get_tsize();
 
+int __wrap_rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
+
 #endif /* REM_QUEUE_WRAPPERS_H */

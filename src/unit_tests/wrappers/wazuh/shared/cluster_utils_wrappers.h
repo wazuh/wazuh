@@ -7,9 +7,10 @@
  * Foundation
  */
 
-#ifndef QUEUE_WRAPPERS_H
-#define QUEUE_WRAPPERS_H
 
-int __wrap_rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
+#ifndef CLUSTER_UTILS_WRAPPERS_H
+#define CLUSTER_UTILS_WRAPPERS_H
+
+char* __wrap_get_node_name(void);
 
 #endif

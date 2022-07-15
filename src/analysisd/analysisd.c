@@ -85,6 +85,7 @@ struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 int num_rule_matching_threads;
+OSHash *analysisd_agents_state;
 
 /* execd queue */
 static int execdq = 0;
@@ -965,6 +966,15 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("FTS_Init completed.");
 
+    /* Create OSHash for agents statistics */
+    analysisd_agents_state = OSHash_Create();
+    if (!analysisd_agents_state) {
+        merror_exit(HASH_ERROR);
+    }
+    if (!OSHash_setSize(analysisd_agents_state, 2048)) {
+        merror_exit(HSETSIZE_ERROR, "analysisd_agents_state");
+    }
+
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
 
@@ -1368,7 +1378,7 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            w_inc_archives_written();
+            w_inc_archives_written(lf->agent_id);
 
             /* If configured to log all, do it */
             if (Config.logall) {
@@ -1392,7 +1402,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue_log), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            w_inc_alerts_written();
+            w_inc_alerts_written(lf->agent_id);
 
             if (Config.custom_alert_output) {
                 __crt_ftell = ftell(_aflog);
@@ -1464,7 +1474,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_modules_syscheck_decoded_events();
+            w_inc_modules_syscheck_decoded_events(lf->agent_id);
 
             lf->decoder_info = fim_decoder;
 
@@ -1511,7 +1521,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_modules_syscollector_decoded_events();
+            w_inc_modules_syscollector_decoded_events(lf->agent_id);
 
             if (!DecodeSyscollector(lf, &socket)) {
                 /* We don't process syscollector events further */
@@ -1551,7 +1561,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_modules_rootcheck_decoded_events();
+            w_inc_modules_rootcheck_decoded_events(lf->agent_id);
 
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
@@ -1592,7 +1602,7 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_modules_sca_decoded_events();
+            w_inc_modules_sca_decoded_events(lf->agent_id);
 
             if (!DecodeSCA(lf, &socket)) {
                 /* We don't process rootcheck events further */
@@ -1632,7 +1642,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_modules_logcollector_others_decoded_events();
+            w_inc_modules_logcollector_others_decoded_events(lf->agent_id);
 
             if (!DecodeHostinfo(lf)) {
                 /* We don't process syscheck events further */
@@ -1672,7 +1682,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             }
 
             if (msg[0] == CISCAT_MQ) {
-                w_inc_modules_ciscat_decoded_events();
+                w_inc_modules_ciscat_decoded_events(lf->agent_id);
                 if (!DecodeCiscat(lf, &sock)) {
                     w_free_event_info(lf);
                     free(msg);
@@ -1682,7 +1692,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 if (msg[0] == SYSLOG_MQ) {
                     w_inc_syslog_decoded_events();
                 } else if (msg[0] == LOCALFILE_MQ) {
-                    w_inc_decoded_by_component_events(extract_module_from_location(lf->location));
+                    w_inc_decoded_by_component_events(extract_module_from_location(lf->location), lf->agent_id);
                 }
                 node = OS_GetFirstOSDecoder(lf->program_name);
                 DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
@@ -1725,7 +1735,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_modules_logcollector_eventchannel_decoded_events();
+            w_inc_modules_logcollector_eventchannel_decoded_events(lf->agent_id);
 
             if (DecodeWinevt(lf)) {
                 /* We don't process windows events further */
@@ -1762,7 +1772,7 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
 
         free(msg);
 
-        w_inc_dbsync_decoded_events();
+        w_inc_dbsync_decoded_events(lf->agent_id);
 
         DispatchDBSync(&ctx, lf);
         Free_Eventinfo(lf);
@@ -1792,7 +1802,7 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
         free(msg);
 
-        w_inc_modules_upgrade_decoded_events();
+        w_inc_modules_upgrade_decoded_events(lf->agent_id);
 
         // Inserts agent id into incomming message and sends it to upgrade module
         cJSON *message_obj = cJSON_Parse(lf->log);
@@ -1941,6 +1951,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
                     ARGV0, lf->decoder_info->type);
 
+        w_inc_processed_events(lf->agent_id);
+
         /* Loop over all the rules */
         rulenode_pt = OS_GetFirstRule();
         if (!rulenode_pt) {
@@ -2084,8 +2096,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
-        w_inc_processed_events();
-
         if (Config.logall || Config.logall_json){
             if (!lf_logall) {
                 os_calloc(1, sizeof(Eventinfo), lf_logall);
@@ -2199,7 +2209,7 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue_log_firewall), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            w_inc_firewall_written();
+            w_inc_firewall_written(lf->agent_id);
             FW_Log(lf);
             w_mutex_unlock(&writer_threads_mutex);
 

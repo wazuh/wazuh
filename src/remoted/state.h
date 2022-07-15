@@ -51,6 +51,12 @@ typedef struct _remoted_state_t {
     sent_msgs_t sent_breakdown;
 } remoted_state_t;
 
+typedef struct _remoted_agent_state_t {
+    uint64_t recv_evt_count;
+    uint64_t recv_ctrl_count;
+    ctrl_msgs_t ctrl_breakdown;
+    sent_msgs_t sent_breakdown;
+} remoted_agent_state_t;
 
 /* Status functions */
 
@@ -82,13 +88,15 @@ void rem_add_recv(unsigned long bytes);
 
 /**
  * @brief Increment received event messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_evt();
+void rem_inc_recv_evt(const char *agent_id);
 
 /**
  * @brief Increment received control messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_ctrl();
+void rem_inc_recv_ctrl(const char *agent_id);
 
 /**
  * @brief Increment received ping messages counter
@@ -112,23 +120,27 @@ void rem_inc_recv_discarded();
 
 /**
  * @brief Increment received keepalive control messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_ctrl_keepalive();
+void rem_inc_recv_ctrl_keepalive(const char *agent_id);
 
 /**
  * @brief Increment received startup control messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_ctrl_startup();
+void rem_inc_recv_ctrl_startup(const char *agent_id);
 
 /**
  * @brief Increment received shutdown control messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_ctrl_shutdown();
+void rem_inc_recv_ctrl_shutdown(const char *agent_id);
 
 /**
  * @brief Increment received request control messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_ctrl_request();
+void rem_inc_recv_ctrl_request(const char *agent_id);
 
 /**
  * @brief Increment bytes sent
@@ -138,33 +150,39 @@ void rem_add_send(unsigned long bytes);
 
 /**
  * @brief Increment sent ack messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_send_ack();
+void rem_inc_send_ack(const char *agent_id);
 
 /**
  * @brief Increment sent shared file messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_send_shared();
+void rem_inc_send_shared(const char *agent_id);
 
 /**
  * @brief Increment sent AR messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_send_ar();
+void rem_inc_send_ar(const char *agent_id);
 
 /**
  * @brief Increment sent CFGA messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_send_cfga();
+void rem_inc_send_cfga(const char *agent_id);
 
 /**
  * @brief Increment sent request messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_send_request();
+void rem_inc_send_request(const char *agent_id);
 
 /**
  * @brief Increment sent discarded messages counter
+ * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_send_discarded();
+void rem_inc_send_discarded(const char *agent_id);
 
 /**
  * @brief Increment keys reload counter

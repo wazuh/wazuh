@@ -15,13 +15,24 @@
 #include "shared.h"
 #include "analysisd.h"
 #include "state.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
+
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
 
 analysisd_state_t analysisd_state;
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int w_analysisd_write_state();
 static int interval;
+
+extern OSHash *analysisd_agents_state;
 
 /**
  * @brief Get the number of elements divided by the size of queues
@@ -35,6 +46,191 @@ static void w_get_queues_size();
  */
 static void w_get_initial_queues_size();
 
+/**
+ * @brief Search or create and return agent state node
+ * @param agent_id Id of the agent that corresponds to the node
+ * @return analysisd_agent_state_t node
+ */
+STATIC analysisd_agent_state_t * get_node(const char *agent_id);
+
+/**
+ * @brief Clean non active agents from agents state.
+ */
+STATIC void w_analysisd_clean_agents_state();
+
+/**
+ * @brief Increment agent decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_agent_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment dbsync decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_dbsync_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment monitor decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_monitor_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment remote decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_remote_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment integrations virustotal decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_integrations_virustotal_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules aws decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_aws_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules azure decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_azure_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules ciscat decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_ciscat_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules command decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_command_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules docker decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_docker_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules gcp decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_gcp_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules github decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_github_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules office365 decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_office365_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules oscap decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_oscap_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules osquery decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_osquery_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules rootcheck decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_rootcheck_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules sca decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_sca_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules syscheck decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_syscheck_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules syscollector decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_syscollector_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules upgrade decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_upgrade_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules vulnerability decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_vulnerability_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules logcollector eventchannel decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_logcollector_eventchannel_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules logcollector eventlog decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_logcollector_eventlog_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules logcollector macos decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_logcollector_macos_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules logcollector others decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_modules_logcollector_others_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment processed events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_processed_events(const char *agent_id);
+
+/**
+ * @brief Increment alerts written counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_alerts_written(const char *agent_id);
+
+/**
+ * @brief Increment archives written counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_archives_written(const char *agent_id);
+
+/**
+ * @brief Increment firewall written counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
+ */
+static void w_inc_agents_firewall_written(const char *agent_id);
 
 void * w_analysisd_state_main() {
     interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
@@ -53,6 +249,7 @@ void * w_analysisd_state_main() {
     while (1) {
         w_analysisd_write_state();
         sleep(interval);
+        w_analysisd_clean_agents_state();
     }
 
     return NULL;
@@ -319,6 +516,268 @@ void w_get_initial_queues_size() {
     queue_status.stats_queue_size = writer_queue_log_statistical->size;
 }
 
+STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
+    analysisd_agent_state_t * agent_state = (analysisd_agent_state_t *) OSHash_Get_ex(analysisd_agents_state, agent_id);
+
+    if(agent_state != NULL) {
+        return agent_state;
+    } else {
+        os_calloc(1, sizeof(analysisd_agent_state_t), agent_state);
+        OSHash_Add_ex(analysisd_agents_state, agent_id, agent_state);
+        return agent_state;
+    }
+}
+
+STATIC void w_analysisd_clean_agents_state() {
+    char *node_name = NULL;
+    int *active_agents = NULL;
+    int sock = -1;
+    OSHashNode *hash_node;
+    unsigned int inode_it = 0;
+
+    hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
+
+    if (hash_node == NULL) {
+        return;
+    }
+
+    node_name = get_node_name();
+    active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock, node_name);
+    os_free(node_name);
+    if(!active_agents) {
+        merror("Unable to get connected agents.");
+        return;
+    }
+
+    char *agent_id = NULL;
+    analysisd_agent_state_t * agent_state = NULL;
+
+    while (hash_node) {
+        agent_id = hash_node->key;
+        agent_state = hash_node->data;
+
+        hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
+
+        int exist = 0;
+        for (size_t i = 0; active_agents[i] != -1; i++) {
+            if (atoi(agent_id) == active_agents[i] ) {
+                exist = 1;
+                break;
+            }
+        }
+
+        if (exist == 0) {
+            agent_state = (analysisd_agent_state_t *)OSHash_Delete_ex(analysisd_agents_state, agent_id);
+            os_free(agent_state);
+        }
+    }
+
+    return;
+}
+
+static void w_inc_agents_agent_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.agent++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_dbsync_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.dbsync++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_monitor_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.monitor++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_remote_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.remote++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_integrations_virustotal_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.integrations.virustotal++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_aws_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.aws++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_azure_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.azure++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_ciscat_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.ciscat++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_command_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.command++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_docker_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.docker++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_gcp_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.gcp++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_github_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.github++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_office365_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.office365++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_oscap_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.oscap++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_osquery_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.osquery++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_rootcheck_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.rootcheck++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_sca_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.sca++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_syscheck_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.syscheck++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_syscollector_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.syscollector++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_upgrade_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.upgrade++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_vulnerability_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.vulnerability++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_logcollector_eventchannel_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.logcollector.eventchannel++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_logcollector_eventlog_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.logcollector.eventlog++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_logcollector_macos_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.logcollector.macos++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_modules_logcollector_others_decoded_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_decoded_breakdown.modules.logcollector.others++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_processed_events(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->events_processed++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_alerts_written(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->alerts_written++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_archives_written(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->archives_written++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
+static void w_inc_agents_firewall_written(const char *agent_id) {
+    w_mutex_lock(&agents_state_mutex);
+    analysisd_agent_state_t *agent_node = get_node(agent_id);
+    agent_node->firewall_written++;
+    w_mutex_unlock(&agents_state_mutex);
+}
+
 void w_add_recv(unsigned long bytes) {
     w_mutex_lock(&state_mutex);
     analysisd_state.received_bytes += bytes;
@@ -331,64 +790,68 @@ void w_inc_received_events() {
     w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_decoded_by_component_events(const char *component) {
+void w_inc_decoded_by_component_events(const char *component, const char *agent_id) {
     if (component != NULL) {
         if (!strcmp(component, "wazuh-agent")) {
-            w_inc_agent_decoded_events();
+            w_inc_agent_decoded_events(agent_id);
         } else if (!strcmp(component, "wazuh-agentlessd")) {
-            w_inc_agentless_decoded_events();
+            w_inc_agentless_decoded_events(agent_id);
         } else if (!strcmp(component, "wazuh-monitord")) {
-            w_inc_monitor_decoded_events();
+            w_inc_monitor_decoded_events(agent_id);
         } else if (!strcmp(component, "wazuh-remoted")) {
-            w_inc_remote_decoded_events();
+            w_inc_remote_decoded_events(agent_id);
         } else if (!strcmp(component, "virustotal")) {
-            w_inc_integrations_virustotal_decoded_events();
+            w_inc_integrations_virustotal_decoded_events(agent_id);
         } else if (!strcmp(component, "aws-s3") || !strcmp(component, "Wazuh-AWS")) {
-            w_inc_modules_aws_decoded_events();
+            w_inc_modules_aws_decoded_events(agent_id);
         } else if (!strcmp(component, "azure-logs") || !strcmp(component, "Azure")) {
-            w_inc_modules_azure_decoded_events();
+            w_inc_modules_azure_decoded_events(agent_id);
         } else if (!strcmp(component, "cis-cat") || !strcmp(component, "wodle_cis-cat")) {
-            w_inc_modules_ciscat_decoded_events();
+            w_inc_modules_ciscat_decoded_events(agent_id);
         } else if (!strcmp(component, "command") || !strncmp(component, "command_", 8)) {
-            w_inc_modules_command_decoded_events();
+            w_inc_modules_command_decoded_events(agent_id);
         } else if (!strcmp(component, "docker-listener") || !strcmp(component, "Wazuh-Docker")) {
-            w_inc_modules_docker_decoded_events();
+            w_inc_modules_docker_decoded_events(agent_id);
         } else if (!strcmp(component, "gcp-pubsub") || !strcmp(component, "gcp-bucket") || !strcmp(component, "Wazuh-GCloud")) {
-            w_inc_modules_gcp_decoded_events();
+            w_inc_modules_gcp_decoded_events(agent_id);
         } else if (!strcmp(component, "github")) {
-            w_inc_modules_github_decoded_events();
+            w_inc_modules_github_decoded_events(agent_id);
         } else if (!strcmp(component, "office365")) {
-            w_inc_modules_office365_decoded_events();
+            w_inc_modules_office365_decoded_events(agent_id);
         } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
-            w_inc_modules_oscap_decoded_events();
+            w_inc_modules_oscap_decoded_events(agent_id);
         } else if (!strcmp(component, "osquery")) {
-            w_inc_modules_osquery_decoded_events();
+            w_inc_modules_osquery_decoded_events(agent_id);
         } else if (!strcmp(component, "rootcheck")) {
-            w_inc_modules_rootcheck_decoded_events();
+            w_inc_modules_rootcheck_decoded_events(agent_id);
         } else if (!strcmp(component, "sca")) {
-            w_inc_modules_sca_decoded_events();
+            w_inc_modules_sca_decoded_events(agent_id);
         } else if (!strcmp(component, "syscheck")) {
-            w_inc_modules_syscheck_decoded_events();
+            w_inc_modules_syscheck_decoded_events(agent_id);
         } else if (!strcmp(component, "syscollector")) {
-            w_inc_modules_syscollector_decoded_events();
+            w_inc_modules_syscollector_decoded_events(agent_id);
         } else if (!strcmp(component, "agent-upgrade")) {
-            w_inc_modules_upgrade_decoded_events();
+            w_inc_modules_upgrade_decoded_events(agent_id);
         } else if (!strcmp(component, "vulnerability-detector")) {
-            w_inc_modules_vulnerability_decoded_events();
+            w_inc_modules_vulnerability_decoded_events(agent_id);
         } else if (!strcmp(component, "macos")) {
-            w_inc_modules_logcollector_macos_decoded_events();
+            w_inc_modules_logcollector_macos_decoded_events(agent_id);
         } else if (!strcmp(component, "WinEvtLog")) {
-            w_inc_modules_logcollector_eventlog_decoded_events();
+            w_inc_modules_logcollector_eventlog_decoded_events(agent_id);
         } else {
-            w_inc_modules_logcollector_others_decoded_events();
+            w_inc_modules_logcollector_others_decoded_events(agent_id);
         }
     }
 }
 
-void w_inc_agent_decoded_events() {
+void w_inc_agent_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.agent++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_agent_decoded_events(agent_id);
+    }
 }
 
 void w_inc_agentless_decoded_events() {
@@ -397,22 +860,34 @@ void w_inc_agentless_decoded_events() {
     w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_dbsync_decoded_events() {
+void w_inc_dbsync_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.dbsync++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_dbsync_decoded_events(agent_id);
+    }
 }
 
-void w_inc_monitor_decoded_events() {
+void w_inc_monitor_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.monitor++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_monitor_decoded_events(agent_id);
+    }
 }
 
-void w_inc_remote_decoded_events() {
+void w_inc_remote_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.remote++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_remote_decoded_events(agent_id);
+    }
 }
 
 void w_inc_syslog_decoded_events() {
@@ -421,130 +896,214 @@ void w_inc_syslog_decoded_events() {
     w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_integrations_virustotal_decoded_events() {
+void w_inc_integrations_virustotal_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.integrations.virustotal++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_integrations_virustotal_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_aws_decoded_events() {
+void w_inc_modules_aws_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.aws++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_aws_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_azure_decoded_events() {
+void w_inc_modules_azure_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.azure++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_azure_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_ciscat_decoded_events() {
+void w_inc_modules_ciscat_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.ciscat++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_ciscat_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_command_decoded_events() {
+void w_inc_modules_command_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.command++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_command_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_docker_decoded_events() {
+void w_inc_modules_docker_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.docker++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_docker_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_gcp_decoded_events() {
+void w_inc_modules_gcp_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.gcp++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_gcp_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_github_decoded_events() {
+void w_inc_modules_github_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.github++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_github_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_office365_decoded_events() {
+void w_inc_modules_office365_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.office365++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_office365_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_oscap_decoded_events() {
+void w_inc_modules_oscap_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.oscap++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_oscap_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_osquery_decoded_events() {
+void w_inc_modules_osquery_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.osquery++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_osquery_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_rootcheck_decoded_events() {
+void w_inc_modules_rootcheck_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.rootcheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_rootcheck_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_sca_decoded_events() {
+void w_inc_modules_sca_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.sca++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_sca_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_syscheck_decoded_events() {
+void w_inc_modules_syscheck_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.syscheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_syscheck_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_syscollector_decoded_events() {
+void w_inc_modules_syscollector_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.syscollector++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_syscollector_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_upgrade_decoded_events() {
+void w_inc_modules_upgrade_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.upgrade++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_upgrade_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_vulnerability_decoded_events() {
+void w_inc_modules_vulnerability_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.vulnerability++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_vulnerability_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_logcollector_eventchannel_decoded_events() {
+void w_inc_modules_logcollector_eventchannel_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.logcollector.eventchannel++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_logcollector_eventchannel_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_logcollector_eventlog_decoded_events() {
+void w_inc_modules_logcollector_eventlog_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.logcollector.eventlog++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_logcollector_eventlog_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_logcollector_macos_decoded_events() {
+void w_inc_modules_logcollector_macos_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.logcollector.macos++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_logcollector_macos_decoded_events(agent_id);
+    }
 }
 
-void w_inc_modules_logcollector_others_decoded_events() {
+void w_inc_modules_logcollector_others_decoded_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_decoded_breakdown.modules.logcollector.others++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_modules_logcollector_others_decoded_events(agent_id);
+    }
 }
 
 void w_inc_dropped_by_component_events(const char *component) {
@@ -763,28 +1322,44 @@ void w_inc_modules_logcollector_others_dropped_events() {
     w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_processed_events() {
+void w_inc_processed_events(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_processed++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_processed_events(agent_id);
+    }
 }
 
-void w_inc_alerts_written() {
+void w_inc_alerts_written(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.alerts_written++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_alerts_written(agent_id);
+    }
 }
 
-void w_inc_archives_written() {
+void w_inc_archives_written(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.archives_written++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_archives_written(agent_id);
+    }
 }
 
-void w_inc_firewall_written() {
+void w_inc_firewall_written(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.firewall_written++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id != NULL && strcmp(agent_id, "000") != 0) {
+        w_inc_agents_firewall_written(agent_id);
+    }
 }
 
 void w_inc_fts_written() {
@@ -966,6 +1541,92 @@ cJSON* asys_create_state_json() {
     cJSON_AddNumberToObject(_queue, "stats_queue_size", queue_cpy.stats_queue_size);
     cJSON_AddNumberToObject(_queue, "archives_queue_usage", queue_cpy.archives_queue_usage);
     cJSON_AddNumberToObject(_queue, "archives_queue_size", queue_cpy.archives_queue_size);
+
+    OSHashNode *hash_node;
+    unsigned int index = 0;
+
+    w_mutex_lock(&agents_state_mutex);
+
+    if (hash_node = OSHash_Begin(analysisd_agents_state, &index), hash_node != NULL) {
+        analysisd_agent_state_t * data = NULL;
+        cJSON * _array = NULL;
+        cJSON * _item = NULL;
+        cJSON * _statistics = NULL;
+        cJSON * _events_decoded_breakdown = NULL;
+        cJSON * _events_received_breakdown = NULL;
+        cJSON * _integrations_decoded_breakdown = NULL;
+        cJSON * _modules_decoded_breakdown = NULL;
+        cJSON * _logcollector_decoded_breakdown = NULL;
+
+        _array = cJSON_CreateArray();
+
+        while (hash_node != NULL) {
+            data = hash_node->data;
+
+            _item = cJSON_CreateObject();
+            _statistics = cJSON_CreateObject();
+            _events_received_breakdown = cJSON_CreateObject();
+            _events_decoded_breakdown = cJSON_CreateObject();
+            _integrations_decoded_breakdown = cJSON_CreateObject();
+            _modules_decoded_breakdown = cJSON_CreateObject();
+            _logcollector_decoded_breakdown = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(_item, "agent_id", atoi(hash_node->key));
+            cJSON_AddItemToObject(_item, "statistics", _statistics);
+
+            cJSON_AddItemToObject(_statistics, "events_received_breakdown", _events_received_breakdown);
+
+            cJSON_AddItemToObject(_events_received_breakdown, "events_decoded_breakdown", _events_decoded_breakdown);
+
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "agent_decoded", data->events_decoded_breakdown.agent);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "dbsync_decoded", data->events_decoded_breakdown.dbsync);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "monitor_decoded", data->events_decoded_breakdown.monitor);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "remote_decoded", data->events_decoded_breakdown.remote);
+
+            cJSON_AddItemToObject(_events_decoded_breakdown, "integrations_decoded", _integrations_decoded_breakdown);
+
+            cJSON_AddNumberToObject(_integrations_decoded_breakdown, "virustotal_decoded", data->events_decoded_breakdown.integrations.virustotal);
+
+            cJSON_AddItemToObject(_events_decoded_breakdown, "modules_decoded", _modules_decoded_breakdown);
+
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "aws_decoded", data->events_decoded_breakdown.modules.aws);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "azure_decoded", data->events_decoded_breakdown.modules.azure);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "ciscat_decoded", data->events_decoded_breakdown.modules.ciscat);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "command_decoded", data->events_decoded_breakdown.modules.command);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "docker_decoded", data->events_decoded_breakdown.modules.docker);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "gcp_decoded", data->events_decoded_breakdown.modules.gcp);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "github_decoded", data->events_decoded_breakdown.modules.github);
+
+            cJSON_AddItemToObject(_modules_decoded_breakdown, "logcollector_decoded", _logcollector_decoded_breakdown);
+
+            cJSON_AddNumberToObject(_logcollector_decoded_breakdown, "eventchannel_decoded", data->events_decoded_breakdown.modules.logcollector.eventchannel);
+            cJSON_AddNumberToObject(_logcollector_decoded_breakdown, "eventlog_decoded", data->events_decoded_breakdown.modules.logcollector.eventlog);
+            cJSON_AddNumberToObject(_logcollector_decoded_breakdown, "macos_decoded", data->events_decoded_breakdown.modules.logcollector.macos);
+            cJSON_AddNumberToObject(_logcollector_decoded_breakdown, "others_decoded", data->events_decoded_breakdown.modules.logcollector.others);
+
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "office365_decoded", data->events_decoded_breakdown.modules.office365);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "oscap_decoded", data->events_decoded_breakdown.modules.oscap);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "osquery_decoded", data->events_decoded_breakdown.modules.osquery);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "rootcheck_decoded", data->events_decoded_breakdown.modules.rootcheck);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "sca_decoded", data->events_decoded_breakdown.modules.sca);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "syscheck_decoded", data->events_decoded_breakdown.modules.syscheck);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "syscollector_decoded", data->events_decoded_breakdown.modules.syscollector);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "upgrade_decoded", data->events_decoded_breakdown.modules.upgrade);
+            cJSON_AddNumberToObject(_modules_decoded_breakdown, "vulnerability_decoded", data->events_decoded_breakdown.modules.vulnerability);
+
+            cJSON_AddNumberToObject(_statistics, "events_processed", data->events_processed);
+            cJSON_AddNumberToObject(_statistics, "alerts_written", data->alerts_written);
+            cJSON_AddNumberToObject(_statistics, "firewall_written", data->firewall_written);
+            cJSON_AddNumberToObject(_statistics, "archives_written", data->archives_written);
+
+            cJSON_AddItemToArray(_array, _item);
+
+            hash_node = OSHash_Next(analysisd_agents_state, &index, hash_node);
+        }
+
+        cJSON_AddItemToObject(asys_state_json, "agents_connected", _array);
+    }
+    w_mutex_unlock(&agents_state_mutex);
 
     return asys_state_json;
 }

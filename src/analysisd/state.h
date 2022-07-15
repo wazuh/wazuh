@@ -104,6 +104,13 @@ typedef struct _analysisd_state_t {
     events_t events_dropped_breakdown;
 } analysisd_state_t;
 
+typedef struct _analysisd_agent_state_t {
+    uint64_t events_processed;
+    uint64_t alerts_written;
+    uint64_t archives_written;
+    uint32_t firewall_written;
+    events_t events_decoded_breakdown;
+} analysisd_agent_state_t;
 
 /* Status functions */
 
@@ -131,12 +138,12 @@ void w_inc_received_events();
 /**
  * @brief Increment decoded by component events related counter
  */
-void w_inc_decoded_by_component_events(const char *component);
+void w_inc_decoded_by_component_events(const char *component, const char *agent_id);
 
 /**
  * @brief Increment agent decoded events counter
  */
-void w_inc_agent_decoded_events();
+void w_inc_agent_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment agentless decoded events counter
@@ -146,17 +153,17 @@ void w_inc_agentless_decoded_events();
 /**
  * @brief Increment dbsync decoded events counter
  */
-void w_inc_dbsync_decoded_events();
+void w_inc_dbsync_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment monitor decoded events counter
  */
-void w_inc_monitor_decoded_events();
+void w_inc_monitor_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment remote decoded events counter
  */
-void w_inc_remote_decoded_events();
+void w_inc_remote_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment syslog decoded events counter
@@ -166,107 +173,107 @@ void w_inc_syslog_decoded_events();
 /**
  * @brief Increment integrations virustotal decoded events counter
  */
-void w_inc_integrations_virustotal_decoded_events();
+void w_inc_integrations_virustotal_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules aws decoded events counter
  */
-void w_inc_modules_aws_decoded_events();
+void w_inc_modules_aws_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules azure decoded events counter
  */
-void w_inc_modules_azure_decoded_events();
+void w_inc_modules_azure_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules ciscat decoded events counter
  */
-void w_inc_modules_ciscat_decoded_events();
+void w_inc_modules_ciscat_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules command decoded events counter
  */
-void w_inc_modules_command_decoded_events();
+void w_inc_modules_command_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules docker decoded events counter
  */
-void w_inc_modules_docker_decoded_events();
+void w_inc_modules_docker_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules gcp decoded events counter
  */
-void w_inc_modules_gcp_decoded_events();
+void w_inc_modules_gcp_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules github decoded events counter
  */
-void w_inc_modules_github_decoded_events();
+void w_inc_modules_github_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules office365 decoded events counter
  */
-void w_inc_modules_office365_decoded_events();
+void w_inc_modules_office365_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules oscap decoded events counter
  */
-void w_inc_modules_oscap_decoded_events();
+void w_inc_modules_oscap_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules osquery decoded events counter
  */
-void w_inc_modules_osquery_decoded_events();
+void w_inc_modules_osquery_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules rootcheck decoded events counter
  */
-void w_inc_modules_rootcheck_decoded_events();
+void w_inc_modules_rootcheck_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules sca decoded events counter
  */
-void w_inc_modules_sca_decoded_events();
+void w_inc_modules_sca_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules syscheck decoded events counter
  */
-void w_inc_modules_syscheck_decoded_events();
+void w_inc_modules_syscheck_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules syscollector decoded events counter
  */
-void w_inc_modules_syscollector_decoded_events();
+void w_inc_modules_syscollector_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules upgrade decoded events counter
  */
-void w_inc_modules_upgrade_decoded_events();
+void w_inc_modules_upgrade_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules vulnerability decoded events counter
  */
-void w_inc_modules_vulnerability_decoded_events();
+void w_inc_modules_vulnerability_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules logcollector eventchannel decoded events counter
  */
-void w_inc_modules_logcollector_eventchannel_decoded_events();
+void w_inc_modules_logcollector_eventchannel_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules logcollector eventlog decoded events counter
  */
-void w_inc_modules_logcollector_eventlog_decoded_events();
+void w_inc_modules_logcollector_eventlog_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules logcollector macos decoded events counter
  */
-void w_inc_modules_logcollector_macos_decoded_events();
+void w_inc_modules_logcollector_macos_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules logcollector others decoded events counter
  */
-void w_inc_modules_logcollector_others_decoded_events();
+void w_inc_modules_logcollector_others_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment dropped by component events related counter
@@ -410,23 +417,27 @@ void w_inc_modules_logcollector_others_dropped_events();
 
 /**
  * @brief Increment processed events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
-void w_inc_processed_events();
+void w_inc_processed_events(const char *agent_id);
 
 /**
  * @brief Increment alerts written counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
-void w_inc_alerts_written();
+void w_inc_alerts_written(const char *agent_id);
 
 /**
  * @brief Increment archives written counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
-void w_inc_archives_written();
+void w_inc_archives_written(const char *agent_id);
 
 /**
  * @brief Increment firewall written counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
-void w_inc_firewall_written();
+void w_inc_firewall_written(const char *agent_id);
 
 /**
  * @brief Increment fts written counter
