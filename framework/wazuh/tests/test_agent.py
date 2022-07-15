@@ -1289,7 +1289,7 @@ def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent
 @pytest.mark.parametrize('agent_list, component, configuration', [
     (['001'], 'logcollector', 'internal')
 ])
-@patch('wazuh.core.configuration.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 @patch('os.path.exists')
