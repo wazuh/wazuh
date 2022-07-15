@@ -19,12 +19,12 @@
 #include "headers/shared.h"
 
 #include "../wrappers/common.h"
-#include "../wrappers/linux/netbuffer_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/keys_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/time_op_wrappers.h"
+#include "../wrappers/wazuh/remoted/netbuffer_wrappers.h"
 
 extern remoted_state_t remoted_state;
 
@@ -48,6 +48,7 @@ static int test_setup_tcp(void ** state) {
     node_key->net_protocol = REMOTED_NET_PROTOCOL_TCP;
     node_key->rcvd = 10;
     node_key->sock = 15;
+    node_key->id = "001";
     os_calloc(2, sizeof(keyentry*), keys.keyentries);
     keys.keyentries[0] = node_key;
     keys.keyentries[1] = NULL;
@@ -101,6 +102,7 @@ void test_send_msg_tcp_ok(void ** state) {
     expect_value(__wrap_nb_queue, socket, 15);
     expect_string(__wrap_nb_queue, crypt_msg, crypto_msg);
     expect_value(__wrap_nb_queue, msg_size, crypto_size);
+    expect_value(__wrap_nb_queue, agent_id, agent_id);
     will_return(__wrap_nb_queue, 0);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -147,6 +149,7 @@ void test_send_msg_tcp_err(void ** state) {
     expect_value(__wrap_nb_queue, socket, 15);
     expect_string(__wrap_nb_queue, crypt_msg, crypto_msg);
     expect_value(__wrap_nb_queue, msg_size, crypto_size);
+    expect_value(__wrap_nb_queue, agent_id, agent_id);
     will_return(__wrap_nb_queue, -1);
 
     expect_function_call(__wrap_pthread_mutex_unlock);

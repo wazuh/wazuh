@@ -26,9 +26,9 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/keys_wrappers.h"
-#include "../wrappers/linux/netbuffer_wrappers.h"
-#include "../wrappers/linux/netcounter_wrappers.h"
-#include "../wrappers/linux/queue.h"
+#include "../wrappers/wazuh/remoted/queue_wrappers.h"
+#include "../wrappers/wazuh/remoted/netbuffer_wrappers.h"
+#include "../wrappers/wazuh/remoted/netcounter_wrappers.h"
 #include "remoted/secure.c"
 
 extern keystore keys;
@@ -439,6 +439,8 @@ void test_HandleSecureMessage_unvalid_message(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
     HandleSecureMessage(buffer, recv_b, (struct sockaddr_storage *)&peer_info, sock_client, &wdb_sock);
 
     os_free(key->id);
@@ -504,6 +506,8 @@ void test_HandleSecureMessage_different_sock(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
     HandleSecureMessage(buffer, recv_b, (struct sockaddr_storage *)&peer_info, sock_client, &wdb_sock);
 
     os_free(key->id);
@@ -567,6 +571,8 @@ void test_HandleSecureMessage_different_sock_2(void **state)
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
 
     HandleSecureMessage(buffer, recv_b, (struct sockaddr_storage *)&peer_info, sock_client, &wdb_sock);
 
@@ -719,7 +725,6 @@ void test_handle_incoming_data_from_udp_socket_success(void **state)
     will_return(__wrap_rem_msgpush, 0);
 
     expect_value(__wrap_rem_add_recv, bytes, 10);
-    expect_function_call(__wrap_rem_add_recv);
 
     handle_incoming_data_from_udp_socket((struct sockaddr_storage *)&peer_info);
 }
@@ -835,7 +840,6 @@ void test_handle_incoming_data_from_tcp_socket_success(void **state)
     will_return(__wrap_nb_recv, 100);
 
     expect_value(__wrap_rem_add_recv, bytes, 100);
-    expect_function_call(__wrap_rem_add_recv);
 
     handle_incoming_data_from_tcp_socket(sock_client);
 }
@@ -899,7 +903,6 @@ void test_handle_outgoing_data_to_tcp_socket_success(void **state)
     will_return(__wrap_nb_send, 100);
 
     expect_value(__wrap_rem_add_send, bytes, 100);
-    expect_function_call(__wrap_rem_add_send);
 
     handle_outgoing_data_to_tcp_socket(sock_client);
 }

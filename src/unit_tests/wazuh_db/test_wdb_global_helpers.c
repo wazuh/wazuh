@@ -3119,7 +3119,7 @@ void test_wdb_get_agents_by_connection_status_query_error(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
+    int *array = wdb_get_agents_by_connection_status("active", NULL, NULL);
 
     assert_null(array);
 }
@@ -3157,7 +3157,7 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
+    int *array = wdb_get_agents_by_connection_status("active", NULL, NULL);
 
     assert_null(array);
 }
@@ -3211,7 +3211,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     will_return(__wrap_cJSON_GetObjectItem, id3);
     expect_function_call(__wrap_cJSON_Delete);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL);
+    int *array = wdb_get_agents_by_connection_status("active", NULL, NULL);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);

@@ -6133,7 +6133,7 @@ void test_wdb_global_get_agents_by_connection_status_transaction_fail(void **sta
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
@@ -6150,7 +6150,7 @@ void test_wdb_global_get_agents_by_connection_status_cache_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
@@ -6189,7 +6189,7 @@ void test_wdb_global_get_agents_by_connection_status_bind1_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
@@ -6213,7 +6213,7 @@ void test_wdb_global_get_agents_by_connection_status_bind2_fail(void **state)
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_ERROR);
     assert_null(result);
@@ -6275,7 +6275,7 @@ void test_wdb_global_get_agents_by_connection_status_ok(void **state)
     wrap_wdb_exec_stmt_sized_success_call(root, STMT_MULTI_COLUMN);
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_OK);
     assert_non_null(result);
@@ -6347,7 +6347,7 @@ void test_wdb_global_get_agents_by_connection_status_due(void **state)
     wrap_wdb_exec_stmt_sized_socket_full_call(root, STMT_MULTI_COLUMN);
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_DUE);
     assert_non_null(result);
@@ -6413,7 +6413,7 @@ void test_wdb_global_get_agents_by_connection_status_err(void **state)
     wrap_wdb_exec_stmt_sized_failed_call(STMT_MULTI_COLUMN);
 
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(data->wdb, last_id, connection_status, &status, NULL);
 
     assert_int_equal(status, WDBC_ERROR);
     assert_null(result);

@@ -25,3 +25,11 @@ size_t __wrap_rem_get_qsize() {
 size_t __wrap_rem_get_tsize() {
     return mock();
 }
+
+int __wrap_rem_msgpush(__attribute__((unused)) const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
+    check_expected(sock);
+    check_expected_ptr(addr);
+    check_expected(size);
+
+    return mock();
+}
