@@ -13,7 +13,7 @@ INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
-WAZUH_REGISTRATION_PASSWORD_PATH="${INSTALLDIR}/etc/authd.pass"
+WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
 
 
 # Set default sed alias
