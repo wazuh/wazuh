@@ -25,3 +25,9 @@ add_executable(result_test
 )
 target_link_libraries(result_test gtest_main base)
 gtest_discover_tests(result_test)
+
+add_executable(graph_test
+graph_test.cpp
+)
+target_link_libraries(graph_test gtest_main base)
+gtest_discover_tests(graph_test)
