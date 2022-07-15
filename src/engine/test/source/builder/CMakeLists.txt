@@ -186,7 +186,12 @@ gtest_discover_tests(definitions_test)
 add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
 )
+
 gtest_discover_tests(register_test)
+add_executable(opBuilderSCAdecoderTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSCAdecoder_test.cpp
+)
+gtest_discover_tests(opBuilderSCAdecoderTest)
 
 add_executable(opBuilderHelperNetInfoAddress_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
