@@ -1,0 +1,289 @@
+name: decoder_sca
+
+check:
+  - queue: +i_eq/7
+
+normalize:
+  - check:
+      # create a parent decoder that checks every field needed for all sca sub-decoders
+      - event.original.type: +s_eq/check
+      - event.original.id: +exists                       #int
+      - event.original.policy: +exists                   #string
+      - event.original.policy_id: +exists                #string
+      - event.original.check: +exists                    #object
+      - event.original.check.id: +exists                 #int
+      - event.original.check.title: +exists              #string
+      - event.original.check.description: +exists        #string
+      - event.original.check.rationale: +exists          #string
+      - event.original.check.remediation: +exists        #string
+      - event.original.check.references: +exists         #string
+      - event.original.check.compliance: +exists         #object
+      - event.original.check.file: +exists               #string
+      - event.original.check.condition: +exists          #string
+      - event.original.check.directory: +exists          #string
+      - event.original.check.process: +exists            #string
+      - event.original.check.registry: +exists           #string
+      - event.original.check.command: +exists            #string
+      - event.original.check.rules: +exists              #object
+      - event.original.check.status: +exists             #string
+      - event.original.check.reason: +exists             #string
+      - event.original.check.result: +exists             #string
+    map:
+      #FindEventcheck
+      _query: +s_concat/agent /$agent.id /sca query /$event.original.id
+      query_response: +wdb_query/$query
+
+  - check:
+    - id: +not_exists
+    map:
+      _id: -1
+
+  - check:
+      #retval = 0
+      - query_response: +s_starts/found
+      # remove first 8 chars of reponse - does it arrives as ok found or removes the ok?
+      - _wdb_response: +s_trim/begin/found
+    map:
+      #SaveEventcheck
+      #Do i have to use another name for the query result?
+      #check if values inside /<>|<>| are being received correctly in .c if not present then ""
+      new_query: +s_concat/agent /$agent.id /sca update /$event.original.id|/$event.original.result|/$event.original.status|/$event.original.reason|/id
+      _result_event: +wdb_update/new_query #if result_event < 0 : error
+
+  - check:
+    - _wdb_response: +s_eq/$event.original.check.result
+    map:
+      #FillCheckEventInfo -> this should be checked field by field! but if not,
+      #is there a difference between assign an empty value and not creating a field
+      #if later on we do check if not emoty value then not
+      event.original.sca.type: check
+      event.original.sca.scan_id: $event.original.id
+      event.original.sca.policy: $event.original.name
+      event.original.sca.check.id: $event.original.check.id
+      event.original.sca.check.title: $event.original.check.title
+      event.original.sca.check.description: $event.original.check.description
+      event.original.sca.check.rationale: $event.original.check.rationale
+      event.original.sca.check.remediation: $event.original.check.remediation
+      #can we assing a full object to another? ( compliance.%s" + (key): X )
+      event.original.sca.check.compliance: $event.original.check.compliance
+      event.original.sca.check.references: $event.original.check.references
+      event.original.sca.check.file: $event.original.check.file
+      event.original.sca.check.directory: $event.original.check.directory
+      event.original.sca.check.registry: $event.original.check.registry
+      event.original.sca.check.process: $event.original.check.process
+      event.original.sca.check.command: $event.original.check.command
+      event.original.sca.check.previous_result: $wdb_response
+
+  # Result | status | reason -> how to do it without 3 check + map
+  - check:
+    - event.original.check.result: +exists
+    map:
+      event.original.sca.check.result: $event.original.check.result
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +exists
+    map:
+      event.original.sca.check.status: $event.original.check.status
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +not_exists
+    - event.original.check.reason: +exists
+    map:
+      event.original.sca.check.reason: $event.original.check.reason
+
+  - check:
+      - _wdb_response: +s_neq/$event.original.check.result
+      - $event.original.check.status: +exists
+    map:
+      #FillCheckEventInfo -> "else if (status && status->valuestring)"
+      event.original.sca.type: check
+      event.original.sca.scan_id: $event.original.id
+      event.original.sca.policy: $event.original.name
+      event.original.sca.check.id: $event.original.check.id
+      event.original.sca.check.title: $event.original.check.title
+      event.original.sca.check.description: $event.original.check.description
+      event.original.sca.check.rationale: $event.original.check.rationale
+      event.original.sca.check.remediation: $event.original.check.remediation
+      #can we assing a full object to another? ( compliance.%s" + (key): X )
+      event.original.sca.check.compliance: $event.original.check.compliance
+      event.original.sca.check.references: $event.original.check.references
+      event.original.sca.check.file: $event.original.check.file
+      event.original.sca.check.directory: $event.original.check.directory
+      event.original.sca.check.registry: $event.original.check.registry
+      event.original.sca.check.process: $event.original.check.process
+      event.original.sca.check.command: $event.original.check.command
+      event.original.sca.check.previous_result: $wdb_response
+
+  - check:
+    - event.original.check.result: +exists
+    map:
+      event.original.sca.check.result: $event.original.check.result
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +exists
+    map:
+      event.original.sca.check.status: $event.original.check.status
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +not_exists
+    - event.original.check.reason: +exists
+    map:
+      event.original.sca.check.reason: $event.original.check.reason
+
+  - check:
+    - _result_event: +i_lt/0
+    map:
+    #I should exit here! - "Error updating policy monitoring database for agent '%s'", lf->agent_id
+
+  - check:
+      #retval = 1
+      - query_response: +s_starts/not found
+    map:
+      #SaveEventcheck with exists = 0
+      new_query: +s_concat/agent /$agent.id /sca insert /$event #full event send?
+      _result_event: +wdb_update/new_query #if result_event < 0 : error
+
+  - check:
+    - _wdb_response: +s_eq/$event.original.check.result
+    map:
+      #FillCheckEventInfo -> this should be checked field by field! but if not,
+      #is there a difference between assign an empty value and not creating a field
+      #if later on we do check if not empty value then not
+      event.original.sca.type: check
+      event.original.sca.scan_id: $event.original.id
+      event.original.sca.policy: $event.original.name
+      event.original.sca.check.id: $event.original.check.id
+      event.original.sca.check.title: $event.original.check.title
+      event.original.sca.check.description: $event.original.check.description
+      event.original.sca.check.rationale: $event.original.check.rationale
+      event.original.sca.check.remediation: $event.original.check.remediation
+      #can we assing a full object to another? ( compliance.%s" + (key): X )
+      event.original.sca.check.compliance: $event.original.check.compliance
+      event.original.sca.check.references: $event.original.check.references
+      event.original.sca.check.file: $event.original.check.file
+      event.original.sca.check.directory: $event.original.check.directory
+      event.original.sca.check.registry: $event.original.check.registry
+      event.original.sca.check.process: $event.original.check.process
+      event.original.sca.check.command: $event.original.check.command
+      event.original.sca.check.previous_result: "" #how to clean a json field ??
+
+  - check:
+    - event.original.check.result: +exists
+    map:
+      event.original.sca.check.result: $event.original.check.result
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +exists
+    map:
+      event.original.sca.check.status: $event.original.check.status
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +not_exists
+    - event.original.check.reason: +exists
+    map:
+      event.original.sca.check.reason: $event.original.check.reason
+
+  - check:
+      - _wdb_response: +s_neq/$event.original.check.result
+      - $event.original.check.status: +exists
+    map:
+      #FillCheckEventInfo -> "else if (status && status->valuestring)"
+      event.original.sca.type: check
+      event.original.sca.scan_id: $event.original.id
+      event.original.sca.policy: $event.original.name
+      event.original.sca.check.id: $event.original.check.id
+      event.original.sca.check.title: $event.original.check.title
+      event.original.sca.check.description: $event.original.check.description
+      event.original.sca.check.rationale: $event.original.check.rationale
+      event.original.sca.check.remediation: $event.original.check.remediation
+      #can we assing a full object to another? ( compliance.%s" + (key): X )
+      event.original.sca.check.compliance: $event.original.check.compliance
+      event.original.sca.check.references: $event.original.check.references
+      event.original.sca.check.file: $event.original.check.file
+      event.original.sca.check.directory: $event.original.check.directory
+      event.original.sca.check.registry: $event.original.check.registry
+      event.original.sca.check.process: $event.original.check.process
+      event.original.sca.check.command: $event.original.check.command
+      event.original.sca.check.previous_result: ""
+
+  - check:
+    - event.original.check.result: +exists
+    map:
+      event.original.sca.check.result: $event.original.check.result
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +exists
+    map:
+      event.original.sca.check.status: $event.original.check.status
+
+  - check:
+    - event.original.check.result: +not_exists
+    - event.original.check.status: +not_exists
+    - event.original.check.reason: +exists
+    map:
+      event.original.sca.check.reason: $event.original.check.reason
+
+  #"Saving compliance fields to database for event id: %d", id->valueint
+  - check:
+    - _result_event: +i_ge/0
+    map:
+      iterate: +iterate_end/
+        $event.original.check.compliance: +iterate_get/_key/_value
+        #SaveCompliance
+        compliance_query: +s_concat/agent /$agent.id /sca insert_compliance /$event.original.check.id|/_key|_value
+        _compliance_result: +wdb_update/compliance_query
+
+      iterate: +iterate_end/
+        $event.original.check.rule: +iterate_get/_key/_value
+        - check:
+          - _value: +s_starts/f
+          map:
+            _value: "file"
+        - check:
+          - _value: +s_starts/d
+          map:
+            _value: "directory"
+        - check:
+          - _value: +s_starts/r
+          map:
+            _value: "registry"
+        - check:
+          - _value: +s_starts/c
+          map:
+            _value: "command"
+        - check:
+          - _value: +s_starts/p
+          map:
+            _value: "process"
+        - check:
+          - _value: +s_starts/n
+          map:
+            _value: "numeric"
+
+        #SaveRules
+        compliance_query: +s_concat/agent /$agent.id /sca insert_rules /$event.original.check.id|/_value|/_key
+        _compliance_result: +wdb_update/compliance_query
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
