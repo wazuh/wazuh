@@ -178,5 +178,102 @@
                 ]
             }
         ]
+    },
+    {
+        "description": "[Functionality] Special characters escaping (\\$ \\( \\) \\\\ \\| \\<)",
+        "batch_test": [
+            {
+                "description": "Using the '\\p+' token to test matching all the special characters with capture group. Note: the character '\\' is not captured by the token '\\p'.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "(\\p+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [ "$()|<" ]
+            },
+            {
+                "description": "Using the '\\p+' token to test matching all the special characters without capture group. Note: the character '\\' is not captured by the token '\\p'.",
+                "pattern": "\\p+",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\p*' token to test matching all the special characters with capture group. Note: the character '\\' is not captured by the token '\\p'.",
+                "pattern": "Special characters are (\\p*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "<\\",
+                "captured_groups": [ "$()|<" ]
+            },
+            {
+                "description": "Using the '\\p*' token to test matching all the special characters without capture group. Note: the character '\\' is not captured by the token '\\p'.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\p*",
+                "log": "Special characters are $()|<\\",
+                "end_match": "<\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\.+' token to test matching the character '\\' with capture group.",
+                "pattern": "Backslash character is (\\.+)",
+                "log": "Backslash character is \\",
+                "end_match": "\\",
+                "captured_groups": [ "\\" ]
+            },
+            {
+                "description": "Using the '\\.+' token to test matching the character '\\' without capture group.",
+                "pattern": "Backslash character is \\.+",
+                "log": "Backslash character is \\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\.*' token to test matching the character '\\' with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Backslash character is (\\.*)",
+                "log": "Backslash character is \\",
+                "end_match": "\\",
+                "captured_groups": [ "\\" ]
+            },
+            {
+                "description": "Using the '\\.*' token to test matching the character '\\' without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Backslash character is \\.*",
+                "log": "Backslash character is \\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\d*' token to test NOT matching all the special characters with capture group.",
+                "pattern": "Special characters are (\\d*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": [ "" ]
+            },
+            {
+                "description": "Using the '\\d*' token to test NOT matching all the special characters without capture group.",
+                "pattern": "Special characters are \\d*",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\w*' token to test NOT matching all the special characters with capture group.",
+                "pattern": "Special characters are (\\w*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": [ "" ]
+            },
+            {
+                "description": "Using the '\\w*' token to test NOT matching all the special characters without capture group.",
+                "pattern": "Special characters are \\w*",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": []
+            }
+        ]
     }
   ]
