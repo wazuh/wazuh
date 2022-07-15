@@ -25,11 +25,12 @@
 
 void DB::init(const int storage,
               const int syncInterval,
+              const uint32_t syncMaxInterval,
+              const uint32_t syncResponseTimeout,
               std::function<void(const std::string&)> callbackSyncFileWrapper,
               std::function<void(const std::string&)> callbackSyncRegistryWrapper,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
-              const uint32_t minSyncIntervalTime,
               const int valueLimit,
               bool syncRegistryEnabled)
 {
@@ -43,13 +44,14 @@ void DB::init(const int storage,
     auto rsyncHandler { std::make_shared<RemoteSync>() };
 
     FIMDB::instance().init(syncInterval,
+                           syncMaxInterval,
+                           syncResponseTimeout,
                            callbackSyncFileWrapper,
                            callbackSyncRegistryWrapper,
                            callbackLogWrapper,
                            dbsyncHandler,
                            rsyncHandler,
                            fileLimit,
-                           minSyncIntervalTime,
                            valueLimit,
                            syncRegistryEnabled);
 }
@@ -115,10 +117,11 @@ extern "C" {
 #endif
 FIMDBErrorCode fim_db_init(int storage,
                            int sync_interval,
+                           uint32_t sync_max_interval,
+                           uint32_t sync_response_timeout,
                            fim_sync_callback_t sync_callback,
                            logging_callback_t log_callback,
                            int file_limit,
-                           uint32_t min_sync_interval_time,
                            int value_limit,
                            bool sync_registry_enabled)
 {
@@ -149,6 +152,8 @@ FIMDBErrorCode fim_db_init(int storage,
                                                                            .get<int>());
                         json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
                                                                            .get<int>());
+
+                        FIMDB::instance().setTimeLastSyncMsg();
                     }
 
                     sync_callback(FIM_COMPONENT_FILE, json.dump().c_str());
@@ -194,6 +199,8 @@ FIMDBErrorCode fim_db_init(int storage,
                         json["data"]["attributes"].erase("last_event");
                         json["data"]["attributes"].erase("scanned");
                         json["data"]["version"] = 3;
+
+                        FIMDB::instance().setTimeLastSyncMsg();
                     }
 
                     sync_callback(component.c_str(), json.dump().c_str());
@@ -214,11 +221,12 @@ FIMDBErrorCode fim_db_init(int storage,
         };
         DB::instance().init(storage,
                             sync_interval,
+                            sync_max_interval,
+                            sync_response_timeout,
                             callbackSyncFileWrapper,
                             callbackSyncRegistryWrapper,
                             callbackLogWrapper,
                             file_limit,
-                            min_sync_interval_time,
                             value_limit,
                             sync_registry_enabled);
         retVal = FIMDBErrorCode::FIMDB_OK;

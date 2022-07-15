@@ -610,7 +610,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(process_priority->valueint, 10);
 
     cJSON *synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    assert_int_equal(cJSON_GetArraySize(synchronization), 5);
+    assert_int_equal(cJSON_GetArraySize(synchronization), 6);
     cJSON *enabled = cJSON_GetObjectItem(synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
     cJSON *interval = cJSON_GetObjectItem(synchronization, "interval");

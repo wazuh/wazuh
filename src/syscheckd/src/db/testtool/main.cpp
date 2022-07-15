@@ -50,7 +50,8 @@ int main(int argc, const char* argv[])
             const auto fileLimit{ jsonConfigFile.at("file_limit").get<const uint32_t>() };
             const auto registryLimit{ jsonConfigFile.at("registry_limit").get<const uint32_t>() };
             const bool syncRegistryEnabled { jsonConfigFile.at("registry_sync") };
-            const auto minSyncInterval{ jsonConfigFile.at("min_sync_interval").get<const uint32_t>() };
+            const auto syncResponseTimeout{ jsonConfigFile.at("sync_response_timeout").get<const uint32_t>() };
+            const auto syncMaxInterval{ jsonConfigFile.at("sync_max_interval").get<const uint32_t>() };
 
             std::function<void(const std::string&)> callbackSyncFileWrapper
             {
@@ -80,11 +81,12 @@ int main(int argc, const char* argv[])
             {
                 DB::instance().init(storageType,
                                     syncInterval,
+                                    syncMaxInterval,
+                                    syncResponseTimeout,
                                     callbackSyncFileWrapper,
                                     callbackSyncRegistryWrapper,
                                     callbackLogWrapper,
                                     fileLimit,
-                                    minSyncInterval,
                                     registryLimit,
                                     syncRegistryEnabled);
 

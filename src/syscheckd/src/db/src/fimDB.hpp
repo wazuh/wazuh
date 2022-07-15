@@ -115,24 +115,26 @@ class FIMDB
          * @brief Initialize the FIMDB singleton class, setting the attributes needed.
          *
          * @param syncInterval Interval in second, to determine frequency of the synchronization
+         * @param syncMaxInterval Maximum interval allowed for the synchronization process.
+         * @param syncResponseTimeout Minimum interval for the synchronization process.
          * @param callbackSyncFileWrapper callback used to send sync messages
          * @param callbackSyncRegistryWrapper callback used to send sync messages
          * @param callbackLogWrapper callback used to send log messages
          * @param dbsyncHandler Pointer to a dbsync handler.
          * @param rsyncHandler Pointer to a rsync handler.
-         * @param fileLimit Maximun number of file entries in database.
-         * @param minSyncIntervalTime Minimum interval for synchronization process.
-         * @param registryLimit Maximun number of registry values entries in database (only for Windows).
+         * @param fileLimit Maximum number of file entries in database.
+         * @param registryLimit Maximum number of registry values entries in database (only for Windows).
          * @param syncRegistryEnabled Flag to specify if the synchronization for registries is enabled (only for Windows).
          */
         void init(unsigned int syncInterval,
+                  const uint32_t syncMaxInterval,
+                  const uint32_t syncResponseTimeout,
                   std::function<void(const std::string&)> callbackSyncFileWrapper,
                   std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   int fileLimit,
-                  const uint32_t minSyncIntervalTime,
                   int registryLimit = 0,
                   bool syncRegistryEnabled = true);
 
@@ -243,6 +245,26 @@ class FIMDB
         */
         void teardown();
 
+        /**
+        * @brief Set m_timeLastSyncMsg variable to actual timestamp.
+        */
+        void setTimeLastSyncMsg()
+        {
+            m_timeLastSyncMsg = getCurrentTime();
+        }
+
+        /**
+        * @brief Execute the sync algorithm to avoid overlaping differents syncs.
+        */
+        void syncAlgorithm();
+
+        /**
+        * @brief Get the current timestamp using std::time() function.
+        *
+        * @return time_t timestamp in seconds.
+        */
+        virtual time_t getCurrentTime() const;
+
     private:
 
         unsigned int                                                            m_syncInterval;
@@ -258,7 +280,11 @@ class FIMDB
         std::thread                                                             m_integrityThread;
         std::shared_timed_mutex                                                 m_handlersMutex;
         bool                                                                    m_syncRegistryEnabled;
-        uint32_t                                                                m_minSyncIntervalTime;
+        uint32_t                                                                m_syncResponseTimeout;
+        uint32_t                                                                m_syncMaxInterval;
+        uint32_t                                                                m_currentSyncInterval;
+        bool                                                                    m_syncSuccessful;
+        std::time_t                                                             m_timeLastSyncMsg;
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager
@@ -268,7 +294,7 @@ class FIMDB
     protected:
         FIMDB() = default;
         // LCOV_EXCL_START
-        ~FIMDB() = default;
+        virtual ~FIMDB() = default;
         // LCOV_EXCL_STOP
         FIMDB(const FIMDB&) = delete;
 };

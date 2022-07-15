@@ -33,10 +33,11 @@ extern "C" {
  * It will be dbsync the responsible of managing the DB.
  * @param storage storage 1 Store database in memory, disk otherwise.
  * @param sync_interval Interval when the synchronization will be performed.
+ * @param sync_max_interval Maximum interval allowed for the synchronization process.
+ * @param sync_response_timeout Minimum interval for the synchronization process.
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  * @param file_limit Maximum number of files to be monitored.
- * @param min_sync_interval_time Minimum interval for synchronization process.
  * @param value_limit Maximum number of registry values to be monitored.
  * @param sync_registry_enable Flag to enable the registry synchronization.
  *
@@ -44,10 +45,11 @@ extern "C" {
  */
 FIMDBErrorCode fim_db_init(int storage,
                            int sync_interval,
+                           uint32_t sync_max_interval,
+                           uint32_t sync_response_timeout,
                            fim_sync_callback_t sync_callback,
                            logging_callback_t log_callback,
                            int file_limit,
-                           uint32_t min_sync_interval_time,
                            int value_limit,
                            bool sync_registry_enabled);
 

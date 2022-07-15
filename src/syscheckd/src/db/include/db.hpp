@@ -75,21 +75,23 @@ class EXPORTED DB final
         *
         * @param storage Storage type.
         * @param syncInterval Sync sync interval.
+        * @param sync_max_interval Maximum interval allowed for the synchronization process.
+        * @param sync_response_timeout Minimum interval for the synchronization process.
         * @param callbackSyncFileWrapper Callback sync file values.
         * @param callbackSyncRegistryWrapper Callback sync registry values.
         * @param callbackLogWrapper Callback to log lines.
         * @param fileLimit File limit.
-        * @param minSyncIntervalTime Minimum interval for synchronization process.
         * @param valueLimit Registry value limit.
         * @param syncRegistryEnabled Flag to enable/disable the registry sync mechanism.
         */
         void init(const int storage,
                   const int syncInterval,
+                  const uint32_t syncMaxInterval,
+                  const uint32_t syncResponseTimeout,
                   std::function<void(const std::string&)> callbackSyncFileWrapper,
                   std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   int fileLimit,
-                  const uint32_t minSyncIntervalTime,
                   int valueLimit,
                   bool syncRegistryEnabled);
 

@@ -38,6 +38,7 @@ const auto insertRegistryValueStatement = R"({
 )"_json;
 
 const auto minSyncInterval { 10 };
+const auto maxInterval { 600 };
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
@@ -110,6 +111,11 @@ TEST_F(DBTestFixture, TestFimRunIntegrity)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
+#ifdef WIN32
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
+#endif
 
     EXPECT_NO_THROW(
     {
@@ -124,6 +130,11 @@ TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
+#ifdef WIN32
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
+#endif
 
     EXPECT_NO_THROW(
     {
@@ -218,10 +229,11 @@ TEST(DBTest, TestInvalidFimLimit)
     {
         fim_db_init(FIM_DB_MEMORY,
                     300,
+                    maxInterval,
+                    minSyncInterval,
                     mockSyncMessage,
                     mockLoggingFunction,
                     -1,
-                    minSyncInterval,
                     -1,
                     true)
     };
@@ -240,10 +252,11 @@ TEST(DBTest, TestValidFimLimit)
     {
         fim_db_init(FIM_DB_MEMORY,
                     300,
+                    maxInterval,
+                    minSyncInterval,
                     mockSyncMessage,
                     mockLoggingFunction,
                     100,
-                    minSyncInterval,
                     100000,
                     true)
     };
