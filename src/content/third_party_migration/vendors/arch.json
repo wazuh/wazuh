@@ -3,7 +3,7 @@
     "description": "Arch Linux",
     "remotes": [
         {
-            "url": "https://security.archlinux.org/all.json",
+            "url": "https://git c/all.json",
             "type": "json"
         }
     ]

@@ -11,17 +11,17 @@
                     "type": "fixed",
                     "description": "SLE version number",
                     "value": [
-                        "desktop",
-                        "enterprise"
+                        "11",
+                        "12",
+                        "15"
                     ]
                 },
                 "type": {
                     "type": "fixed",
                     "description": "SLE version type",
                     "value": [
-                        "11",
-                        "12",
-                        "15"
+                        "desktop",
+                        "enterprise"
                     ]
                 }
             }

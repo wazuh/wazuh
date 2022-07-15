@@ -9,18 +9,18 @@
             "parameters": {
                 "after": {
                     "type": "fixed",
-                    "description": "Year",
-                    "value": "1999"
+                    "description": "Date in ISO 8601 format (YYYY-MM-DD or YYYYMMDD)",
+                    "value": "1999-01-01"
                 },
                 "per_page": {
                     "type": "fixed",
-                    "description": "Vulns per page",
+                    "description": "Vulnerabilities per page",
                     "value": "1000"
                 },
                 "page": {
                     "type": "variable-incremental",
                     "value": [
-                        "0",
+                        "1",
                         "inf"
                     ]
                 }
