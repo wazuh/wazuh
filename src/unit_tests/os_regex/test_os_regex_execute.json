@@ -128,7 +128,6 @@
                 "pattern": "(\\d+)",
                 "ignore_result": true,
                 "__knowIssue": "Link github issue ####",
-                "debug" : false,
                 "log": "asd_123_qwe",
                 "end_match": "3_qwe",
                 "captured_groups": [
@@ -137,13 +136,46 @@
             },
             {
                 "description": "[*] It should not match since there are no characters of the type `\\d`.",
-                "__toDo": "Remove initial spaces at pattern and log after fixing this case",
-                "pattern": " (\\d*)",
-                "debug": true,
+                "skip_test": true,
+                "pattern": "(\\d*)",
                 "ignore_result": true,
                 "log": " asd_ _qwe",
                 "end_match": " asd_ _qwe",
                 "captured_groups": [ "" ]
+            },
+            {
+                "description": "[*] It should match one time",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "log": "asd_1_qwe",
+                "end_match": "1_qwe",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description" : "[*]",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "log": "asd_12_qwe",
+                "end_match": "2_qwe",
+                "captured_groups": [
+                    "12"
+                ]
+            },
+            {
+                "description" : "[+]",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "log": "asd_123_qwe",
+                "end_match": "3_qwe",
+                "captured_groups": [
+                    "123"
+                ]
             }
         ]
     }

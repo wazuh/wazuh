@@ -25,6 +25,7 @@ struct _result_test {
     unsigned int failed_tests_count;         ///< Failed tests count
     unsigned int executed_tests_suite_count; ///< Executed tests suit count
     unsigned int executed_unit_test_count;   ///< Executed tests suit count
+    unsigned int skipped_unit_test_count;    ///< Skipped tests count
 } result;
 
 /**
@@ -34,6 +35,7 @@ typedef struct test_case_parameters {
     char * description;      ///< Test description
     bool ignore_result;      ///< Ignore result (for tests with known failures)
     bool debug;              ///< Debug UT, print all information on error
+    bool skip;               ///< Skip test
     char * pattern;          ///< Regex pattern
     char * log;              ///< Log to match with the pattern
     char * end_match;        ///< Expected end match string (NULL if not matched)
@@ -79,6 +81,15 @@ static inline void print_os_regex_test_parameters(const test_case_parameters * t
  * @param matching_result Pointer to the matching_result structure to fill with the results of the match
  */
 void exec_test_case(test_case_parameters * test_case, regex_matching * matching_result) {
+
+    if(test_case->skip) {
+        if(test_case->debug) {
+            printf("Test case skipped: %s\n", test_case->description != NULL ? test_case->description : "");
+        }
+        result.skipped_unit_test_count++;
+        return;
+    }
+    result.executed_unit_test_count++;
 
     // Compile & match
     OSRegex * regex = calloc(1, sizeof(OSRegex));
@@ -290,6 +301,13 @@ test_case_parameters * load_test_case(cJSON * json_test_case) {
         test_case->debug = cJSON_IsTrue(j_debug);
     }
 
+    // Load skip
+    cJSON * j_skip = cJSON_GetObjectItemCaseSensitive(json_test_case, "skip_test");
+    if (j_skip != NULL) {
+        assert_true(cJSON_IsBool(j_skip));
+        test_case->skip = cJSON_IsTrue(j_skip);
+    }
+
     // pattern
     cJSON * j_pattern = cJSON_GetObjectItemCaseSensitive(json_test_case, "pattern");
     assert_non_null(j_pattern);
@@ -410,7 +428,6 @@ void exectute_batch_test(batch_test batch) {
     // Execute a batch of test cases
     for (int case_id = 0; batch[case_id] != NULL; case_id++) {
         exec_test_case(batch[case_id], &regex_match);
-        result.executed_unit_test_count++;
     }
     OSRegex_free_regex_matching(&regex_match);
 }
@@ -479,8 +496,12 @@ void test_regex_execute_regex_matching(void ** state) {
     printf("[ OS_REGEX ] --------------------------------\n");
     // Total number of suites executed
     printf("[ OS_REGEX ] >>> Amount of executed suites: %d\n", result.executed_tests_suite_count);
+    // Total number of unit tests
+    printf("[ OS_REGEX ] >>> Amount of unit tests: %d\n", result.executed_unit_test_count + result.skipped_unit_test_count);
     // Total number of unit tests executed
     printf("[ OS_REGEX ] >>> Amount of executed unit tests: %d\n", result.executed_unit_test_count);
+    // Total number of unit tests that skipped
+    printf("[ OS_REGEX ] >>> Amount of skipped unit tests: %d\n", result.skipped_unit_test_count);
     // Total number of unit tests that failed
     printf("[ OS_REGEX ] >>> Amount of failed unit tests: %d\n", result.failed_tests_count);
     // Total number of errors found
