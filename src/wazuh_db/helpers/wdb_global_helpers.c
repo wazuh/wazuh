@@ -36,8 +36,8 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
-    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
-    [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s",
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s %d",
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
 };
 
@@ -857,10 +857,9 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock) {
     return result;
 }
 
-int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock, const char* node_name) {
+int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock, const char* node_name, int last_id, int limit) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
-    int last_id = 0;
     int *array = NULL;
     int len = 0;
     wdbc_result status = WDBC_DUE;
@@ -869,9 +868,9 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
     while (status == WDBC_DUE) {
         // Query WazuhDB
         if (node_name == NULL) {
-            snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS], last_id, connection_status);
+            snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS], last_id, connection_status, limit);
         } else {
-            snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, node_name);
+            snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, limit, node_name);
         }
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
@@ -1143,4 +1142,22 @@ time_t get_agent_date_added(int agent_id) {
 
     fclose(fp);
     return 0;
+}
+
+int* get_connected_agents_ids(const char* connection_status, int last_id, int *count, int limit) {
+    char *node_name = NULL;
+    int *active_agents = NULL;
+    int sock = -1;
+
+    node_name = get_node_name();
+    active_agents = wdb_get_agents_by_connection_status(connection_status, &sock, node_name, last_id, limit);
+    os_free(node_name);
+    if (!active_agents) {
+        merror("Unable to get connected agents.");
+        return NULL;
+    }
+
+    for (*count = 0; active_agents[(*count)] != -1; (*count)++);
+
+    return active_agents;
 }

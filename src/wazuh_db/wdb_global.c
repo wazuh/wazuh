@@ -1782,7 +1782,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
     }
 }
 
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, const char* node_name) {
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, const char* node_name, int limit) {
     sqlite3_stmt* stmt;
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -1821,6 +1821,11 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
             *status = WDBC_ERROR;
             return NULL;
         }
+    }
+    if (sqlite3_bind_int(stmt, 4, limit) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        *status = WDBC_ERROR;
+        return NULL;
     }
 
     //Execute SQL query limited by size

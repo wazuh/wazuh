@@ -13,6 +13,7 @@
 #define STATE_A_H
 
 #include <stdint.h>
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 /* Status structures */
 

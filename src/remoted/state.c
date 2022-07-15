@@ -13,7 +13,6 @@
 #include "remoted.h"
 #include "state.h"
 #include <pthread.h>
-#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -228,9 +227,8 @@ STATIC remoted_agent_state_t * get_node(const char *agent_id) {
 }
 
 STATIC void w_remoted_clean_agents_state() {
-    char *node_name = NULL;
     int *active_agents = NULL;
-    int sock = -1;
+    int count;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
@@ -240,11 +238,7 @@ STATIC void w_remoted_clean_agents_state() {
         return;
     }
 
-    node_name = get_node_name();
-    active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock, node_name);
-    os_free(node_name);
-    if(!active_agents) {
-        merror("Unable to get connected agents.");
+    if (active_agents = get_connected_agents_ids(AGENT_CS_ACTIVE, 0, &count, -1), active_agents == NULL) {
         return;
     }
 
@@ -603,28 +597,22 @@ cJSON* rem_create_state_json() {
     return rem_state_json;
 }
 
-cJSON* rem_create_agents_state_json() {
-    OSHashNode *hash_node;
-    unsigned int index = 0;
+cJSON* rem_create_agents_state_json(int* agents_ids) {
+    remoted_agent_state_t * agent_state;
 
     cJSON *rem_state_json = cJSON_CreateObject();
+    cJSON *_array = cJSON_CreateArray();
 
     cJSON_AddNumberToObject(rem_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(rem_state_json, "name", ARGV0);
 
     w_mutex_lock(&agents_state_mutex);
 
-    if (hash_node = OSHash_Begin(remoted_agents_state, &index), hash_node != NULL) {
-        remoted_agent_state_t * data = NULL;
-
-        cJSON *_array = cJSON_CreateArray();
-
-        while (hash_node != NULL) {
-            data = hash_node->data;
-
+    for (int i = 0; agents_ids[i] != -1; i++) {
+        if (agent_state = (remoted_agent_state_t *) OSHash_Numeric_Get_ex(remoted_agents_state, agents_ids[i]), agent_state != NULL) {
             cJSON *_item = cJSON_CreateObject();
 
-            cJSON_AddNumberToObject(_item, "id", atoi(hash_node->key));
+            cJSON_AddNumberToObject(_item, "id", agents_ids[i]);
 
             cJSON *_metrics = cJSON_CreateObject();
             cJSON_AddItemToObject(_item, "metrics", _metrics);
@@ -637,37 +625,56 @@ cJSON* rem_create_agents_state_json() {
             cJSON *_received_breakdown = cJSON_CreateObject();
             cJSON_AddItemToObject(_messages, "received_breakdown", _received_breakdown);
 
-            cJSON_AddNumberToObject(_received_breakdown, "control", data->recv_ctrl_count);
+            cJSON_AddNumberToObject(_received_breakdown, "control", agent_state->recv_ctrl_count);
 
             cJSON *_control_breakdown = cJSON_CreateObject();
             cJSON_AddItemToObject(_received_breakdown, "control_breakdown", _control_breakdown);
 
-            cJSON_AddNumberToObject(_control_breakdown, "keepalive", data->ctrl_breakdown.keepalive_count);
-            cJSON_AddNumberToObject(_control_breakdown, "request", data->ctrl_breakdown.request_count);
-            cJSON_AddNumberToObject(_control_breakdown, "shutdown", data->ctrl_breakdown.shutdown_count);
-            cJSON_AddNumberToObject(_control_breakdown, "startup", data->ctrl_breakdown.startup_count);
+            cJSON_AddNumberToObject(_control_breakdown, "keepalive", agent_state->ctrl_breakdown.keepalive_count);
+            cJSON_AddNumberToObject(_control_breakdown, "request", agent_state->ctrl_breakdown.request_count);
+            cJSON_AddNumberToObject(_control_breakdown, "shutdown", agent_state->ctrl_breakdown.shutdown_count);
+            cJSON_AddNumberToObject(_control_breakdown, "startup", agent_state->ctrl_breakdown.startup_count);
 
-            cJSON_AddNumberToObject(_received_breakdown, "event", data->recv_evt_count);
+            cJSON_AddNumberToObject(_received_breakdown, "event", agent_state->recv_evt_count);
 
             cJSON *_sent_breakdown = cJSON_CreateObject();
             cJSON_AddItemToObject(_messages, "sent_breakdown", _sent_breakdown);
 
-            cJSON_AddNumberToObject(_sent_breakdown, "ack", data->sent_breakdown.ack_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "ar", data->sent_breakdown.ar_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "cfga", data->sent_breakdown.cfga_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "discarded", data->sent_breakdown.discarded_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "request", data->sent_breakdown.request_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "shared", data->sent_breakdown.shared_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "ack", agent_state->sent_breakdown.ack_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "ar", agent_state->sent_breakdown.ar_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "cfga", agent_state->sent_breakdown.cfga_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "discarded", agent_state->sent_breakdown.discarded_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "request", agent_state->sent_breakdown.request_count);
+            cJSON_AddNumberToObject(_sent_breakdown, "shared", agent_state->sent_breakdown.shared_count);
 
             cJSON_AddItemToArray(_array, _item);
-
-            hash_node = OSHash_Next(remoted_agents_state, &index, hash_node);
         }
-
-        cJSON_AddItemToObject(rem_state_json, "agents", _array);
     }
 
+    cJSON_AddItemToObject(rem_state_json, "agents", _array);
     w_mutex_unlock(&agents_state_mutex);
 
     return rem_state_json;
+}
+
+int* cjson_to_array(cJSON * array_json) {
+    int array_size = cJSON_GetArraySize(array_json);
+    int *array;
+    int i;
+
+    if (array_size == 0) {
+        return NULL;
+    }
+
+    os_calloc(array_size + 1, sizeof(int), array);
+
+    for (i = 0; i < array_size; i++) {
+        array[i] = cJSON_GetArrayItem(array_json, i)->valueint;
+    }
+
+    if (array) {
+        (array)[i] = -1;
+    }
+
+    return array;
 }

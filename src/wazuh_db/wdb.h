@@ -2097,7 +2097,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, const char* node_name);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, const char* node_name, int limit);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
