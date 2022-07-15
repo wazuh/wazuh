@@ -137,12 +137,13 @@
             },
             {
                 "description": "[*] It should not match since there are no characters of the type `\\d`.",
-                "pattern": "(\\d*)",
+                "__toDo": "Remove initial spaces at pattern and log after fixing this case",
+                "pattern": " (\\d*)",
                 "debug": true,
                 "ignore_result": true,
-                "log": "asd_ _qwe",
-                "end_match": " ",
-                "captured_groups": []
+                "log": " asd_ _qwe",
+                "end_match": " asd_ _qwe",
+                "captured_groups": [ "" ]
             }
         ]
     }

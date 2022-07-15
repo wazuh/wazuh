@@ -35,6 +35,7 @@ The `unit tests` are also JSON objects that have a format similar to the followi
 {
   "description" : "Optional description of the unit test",
   "ignore_result" : false,
+  "debug": false,
   "pattern": "^Some pattern in a (\\w+) ",
   "log": "Some pattern in a Wazuh log.",
   "end_match": " log.",
@@ -47,6 +48,7 @@ The `unit tests` are also JSON objects that have a format similar to the followi
 Where:
 - `description` (string/optional): Unit test description.
 - `ignore_result` (bool/optional): If true, the test is executed but if it fails then such failures are ignored. This allows having tests for known buggy cases.
+- `debug` (bool/optional): If true, it prints a verbose description of the errors.
 - `pattern` (string) : OS Regex pattern.
 - `log` (string): Log to be analyzed.
 - `end_match` (string): When the regex matches, it should return a pointer to the last matched character. This parameter would be the string that is conformed starting from this character to the end of the log.

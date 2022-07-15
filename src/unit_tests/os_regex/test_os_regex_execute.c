@@ -21,6 +21,7 @@
  */
 struct _result_test {
     unsigned int expected_failed_tests;      ///< Expected failed tests count
+    unsigned int tests_errors_count;         ///< Tests errors count
     unsigned int failed_tests_count;         ///< Failed tests count
     unsigned int executed_tests_suite_count; ///< Executed tests suit count
     unsigned int executed_unit_test_count;   ///< Executed tests suit count
@@ -41,6 +42,11 @@ typedef struct test_case_parameters {
 
 typedef test_case_parameters ** batch_test;
 
+/**
+ * @brief Print the test's configuration
+ *
+ * @param test Contains the test configuration
+ */
 static inline void print_os_regex_test_parameters(const test_case_parameters * test) {
     printf("*********************************\n");
     printf("Test description:\n");
@@ -81,13 +87,17 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     OSRegex_Compile(test_case->pattern, regex, OS_RETURN_SUBSTRING);
     match_retval = OSRegex_Execute_ex(test_case->log, regex, matching_result);
 
+    bool test_failed = false;
     bool print_on_error = (test_case->debug || !test_case->ignore_result);
+
     // Check results
     // Check match result
     if ((test_case->end_match == NULL && match_retval != NULL) ||
         (test_case->end_match != NULL && match_retval == NULL)) {
 
+        test_failed = true;
         result.failed_tests_count++;
+        result.tests_errors_count++;
 
         if (print_on_error) {
             print_os_regex_test_parameters(test_case);
@@ -113,9 +123,19 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     // Check if the last character matched is equal to the expected one
     bool strcmp_matched = (strcmp(match_retval, test_case->end_match) == 0);
     if (!strcmp_matched) {
-        result.failed_tests_count++;
+
+        result.tests_errors_count++;
+
+        if (!test_failed) {
+            test_failed = true;
+            result.failed_tests_count++;
+
+            if(print_on_error) {
+                print_os_regex_test_parameters(test_case);
+            }
+        }
+
         if (print_on_error) {
-            print_os_regex_test_parameters(test_case);
             printf("DEBUG (ERROR): the last matched is '%s', but the expected one is '%s'.\n", match_retval,
                    test_case->end_match);
         }
@@ -134,18 +154,26 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         // All capture groups must be compared, that is, logical XOR
         int parity = (!(expected_str == NULL) == !(actual_str == NULL));
         if (!parity) {
-            if (print_on_error) {
+
+            result.tests_errors_count++;
+
+            if (!test_failed) {
+                test_failed = true;
                 result.failed_tests_count++;
-                // Only print on fail test case
-                // Without this print is really hard to found the buggy line
-                print_os_regex_test_parameters(test_case);
+
+                if(print_on_error) {
+                    print_os_regex_test_parameters(test_case);
+                }
+            }
+
+            if (print_on_error) {
                 if (expected_str != NULL) {
                     printf("The group: '%s' cannot be found\n", expected_str);
                 } else if (actual_str != NULL) {
                     printf("The group: '%s' was found, but not compared\n", actual_str);
                 }
-
             }
+
             // Stop if the test is not ignored
             if (!test_case->ignore_result) {
                 assert_false(true);
@@ -158,12 +186,23 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         if (expected_str != NULL) {
             bool strcmp_group_matched = (strcmp(expected_str, actual_str) == 0);
             if (!strcmp_group_matched) {
-                result.failed_tests_count++;
+
+                result.tests_errors_count++;
+
+                if (!test_failed) {
+                    test_failed = true;
+                    result.failed_tests_count++;
+
+                    if(print_on_error) {
+                        print_os_regex_test_parameters(test_case);
+                    }
+                }
+
                 if (print_on_error) {
-                    print_os_regex_test_parameters(test_case);
                     printf("DEBUG (ERROR): the expected group is '%s', but the captured one is '%s'.\n", expected_str,
                            actual_str);
                 }
+
                 // Only stop if the test is not ignored
                 if (!test_case->ignore_result) {
                     assert_false(true);
@@ -428,6 +467,7 @@ void test_regex_execute_regex_matching(void ** state) {
         assert_non_null(batch);
 
         // Exceute the batch of test
+        printf("[ OS_REGEX ] Testing suite: %s\n", j_description->valuestring);
         exectute_batch_test(batch);
         free_batch_test_case(batch);
         result.executed_tests_suite_count++;
@@ -436,12 +476,17 @@ void test_regex_execute_regex_matching(void ** state) {
     cJSON_Delete(json_file);
 
     // Print result test
-    // Total suite executed
-    printf("[ OS_REGEX ] >>> Total suite executed: %d\n", result.executed_tests_suite_count);
-    // Total unit test executed
-    printf("[ OS_REGEX ] >>> Total unit test executed: %d\n", result.executed_unit_test_count);
-    // Total unit test failed
-    printf("[ OS_REGEX ] >>> Total unit test failed: %d\n", result.failed_tests_count);
+    printf("[ OS_REGEX ] --------------------------------\n");
+    // Total number of suites executed
+    printf("[ OS_REGEX ] >>> Amount of executed suites: %d\n", result.executed_tests_suite_count);
+    // Total number of unit tests executed
+    printf("[ OS_REGEX ] >>> Amount of executed unit tests: %d\n", result.executed_unit_test_count);
+    // Total number of unit tests that failed
+    printf("[ OS_REGEX ] >>> Amount of failed unit tests: %d\n", result.failed_tests_count);
+    // Total number of errors found
+    printf("[ OS_REGEX ] >>> Amount of errors found: %d\n", result.tests_errors_count);
+    //
+    printf("[ OS_REGEX ] --------------------------------\n");
 
     // assert_int_equal(result.expected_failed_tests, result.failed_tests_count);
 }
