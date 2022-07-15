@@ -275,5 +275,168 @@
                 "captured_groups": []
             }
         ]
+    },
+    {
+        "description": "[Functionality] Special characters. '^'",
+        "batch_test": [
+            {
+                "description": "'^' test: Start of string without digits. Dont match",
+                "pattern": "^(\\d+)",
+                "log": "hi digits",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Match without special caracter",
+                "pattern": "\\d+^\\d\\d\\d",
+                "ignore_result": false,
+                "log": "123^456",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": ["1234"]
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^\\d+",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^\\d+",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "1234asd",
+                "end_match": "4asd",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "1234asd",
+                "end_match": "4asd",
+                "captured_groups": ["1234"]
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^\\d+",
+                "log": "1234asd",
+                "end_match": "4",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^\\d+",
+                "log": "1234asd",
+                "end_match": "4",
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Special characters. '$'",
+        "batch_test": [
+            {
+                "description": "'$' test: End of string. Without digits. Dont match",
+                "pattern": "(\\d+)$",
+                "log": "hi digits",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "'$' test: Match without special caracter",
+                "pattern": "\\d+$\\d\\d\\d",
+                "log": "123$456",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "'$' test: end of string.",
+                "pattern": "(\\d\\d\\d\\d)$",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": ["1234"]
+            },
+            {
+                "description": "'$' test: Start of string.",
+                "pattern": "(\\d\\d)$",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": ["34"]
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "pattern": "\\d\\d\\d\\d$",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^\\d+",
+                "log": "1234",
+                "end_match": "4",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "1234asd",
+                "end_match": "4asd",
+                "captured_groups": []
+            },
+            {
+                "description": "'^' test: Start of string.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "1234asd",
+                "end_match": "4asd",
+                "captured_groups": ["1234"]
+            },
+            {
+                "description": "'$' test: End of string.",
+                "pattern": "\\D\\D$",
+                "log": "1234asd",
+                "end_match": "d",
+                "captured_groups": []
+            },
+            {
+                "description": "'$' test: End of string.",
+                "ignore_result": true,
+                "pattern": "\\D\\D$",
+                "log": "1234asd",
+                "end_match": "d",
+                "captured_groups": []
+            }
+        ]
     }
   ]
