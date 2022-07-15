@@ -101,7 +101,7 @@ private:
             graph.addNode(name, asset);
             if (asset->m_parents.empty())
             {
-                graph.addEdge(graph.root(), name);
+                graph.addEdge(graph.rootId(), name);
             }
             else
             {
@@ -227,7 +227,7 @@ public:
             addFilters(name);
 
             // Check integrity
-            for (auto& [parent, children] : m_graphs[name].m_edges)
+            for (auto& [parent, children] : m_graphs[name].edges())
             {
                 if (!m_graphs[name].hasNode(parent))
                 {
@@ -313,11 +313,11 @@ public:
             ss << "style=filled;" << std::endl;
             ss << "color=lightgrey;" << std::endl;
             ss << fmt::format("node [style=filled,color=white];") << std::endl;
-            for (auto& [name, asset] : graph.m_nodes)
+            for (auto& [name, asset] : graph.nodes())
             {
                 ss << name << " [label=\"" << name << "\"];" << std::endl;
             }
-            for (auto& [parent, children] : graph.m_edges)
+            for (auto& [parent, children] : graph.edges())
             {
                 for (auto& child : children)
                 {
@@ -348,16 +348,16 @@ public:
         {
             // Create root subgraph expression
             std::shared_ptr<base::Operation> inputExpression;
-            switch (graph.node(graph.root())->m_type)
+            switch (graph.node(graph.rootId())->m_type)
             {
                 case Asset::Type::DECODER:
                     inputExpression =
-                        base::Or::create(graph.node(graph.root())->m_name, {});
+                        base::Or::create(graph.node(graph.rootId())->m_name, {});
                     break;
                 case Asset::Type::RULE:
                 case Asset::Type::OUTPUT:
                     inputExpression =
-                        base::Broadcast::create(graph.node(graph.root())->m_name, {});
+                        base::Broadcast::create(graph.node(graph.rootId())->m_name, {});
                     break;
                 default:
                     throw std::runtime_error("Unsupported root asset type in "
@@ -426,7 +426,7 @@ public:
                                                               assetChildren);
 
                         // Visit children and add them to the children node
-                        for (auto& child : graph.m_edges.at(current))
+                        for (auto& child : graph.children(current))
                         {
                             assetChildren->getOperands().push_back(
                                 visitRef(child, current, visitRef));
@@ -449,10 +449,10 @@ public:
             };
 
             // Visit root childs and add them to the root expression
-            for (auto& child : graph.m_edges.at(graph.root()))
+            for (auto& child : graph.children(graph.rootId()))
             {
                 inputExpression->getOperands().push_back(
-                    visit(child, graph.root(), visit));
+                    visit(child, graph.rootId(), visit));
             }
         }
 
