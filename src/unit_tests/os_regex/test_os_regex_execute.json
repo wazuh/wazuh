@@ -112,11 +112,11 @@
                 ]
             },
             {
-                "description" : "[+]",
+                "description": "[+]",
                 "pattern": "(\\d+)",
                 "ignore_result": true,
                 "__knowIssue": "Link github issue ####",
-                "debug" : false,
+                "debug": false,
                 "log": "asd_12_qwe",
                 "end_match": "2_qwe",
                 "captured_groups": [
@@ -124,7 +124,7 @@
                 ]
             },
             {
-                "description" : "[+]",
+                "description": "[+]",
                 "pattern": "(\\d+)",
                 "ignore_result": true,
                 "__knowIssue": "Link github issue ####",
@@ -141,7 +141,9 @@
                 "ignore_result": true,
                 "log": " asd_ _qwe",
                 "end_match": " asd_ _qwe",
-                "captured_groups": [ "" ]
+                "captured_groups": [
+                    ""
+                ]
             },
             {
                 "description": "[*] It should match one time",
@@ -154,7 +156,7 @@
                 ]
             },
             {
-                "description" : "[*]",
+                "description": "[*]",
                 "skip_test": true,
                 "pattern": "(\\d*)",
                 "ignore_result": true,
@@ -166,7 +168,7 @@
                 ]
             },
             {
-                "description" : "[+]",
+                "description": "[+]",
                 "skip_test": true,
                 "pattern": "(\\d*)",
                 "ignore_result": true,
@@ -189,7 +191,9 @@
                 "pattern": "(\\p+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
-                "captured_groups": [ "$()|<" ]
+                "captured_groups": [
+                    "$()|<"
+                ]
             },
             {
                 "description": "Using the '\\p+' token to test matching all the special characters without capture group. Note: the character '\\' is not captured by the token '\\p'.",
@@ -203,7 +207,9 @@
                 "pattern": "Special characters are (\\p*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "<\\",
-                "captured_groups": [ "$()|<" ]
+                "captured_groups": [
+                    "$()|<"
+                ]
             },
             {
                 "description": "Using the '\\p*' token to test matching all the special characters without capture group. Note: the character '\\' is not captured by the token '\\p'.",
@@ -219,7 +225,9 @@
                 "pattern": "Backslash character is (\\.+)",
                 "log": "Backslash character is \\",
                 "end_match": "\\",
-                "captured_groups": [ "\\" ]
+                "captured_groups": [
+                    "\\"
+                ]
             },
             {
                 "description": "Using the '\\.+' token to test matching the character '\\' without capture group.",
@@ -235,7 +243,9 @@
                 "pattern": "Backslash character is (\\.*)",
                 "log": "Backslash character is \\",
                 "end_match": "\\",
-                "captured_groups": [ "\\" ]
+                "captured_groups": [
+                    "\\"
+                ]
             },
             {
                 "description": "Using the '\\.*' token to test matching the character '\\' without capture group.",
@@ -251,7 +261,9 @@
                 "pattern": "Special characters are (\\d*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
-                "captured_groups": [ "" ]
+                "captured_groups": [
+                    ""
+                ]
             },
             {
                 "description": "Using the '\\d*' token to test NOT matching all the special characters without capture group.",
@@ -265,7 +277,9 @@
                 "pattern": "Special characters are (\\w*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
-                "captured_groups": [ "" ]
+                "captured_groups": [
+                    ""
+                ]
             },
             {
                 "description": "Using the '\\w*' token to test NOT matching all the special characters without capture group.",
@@ -308,7 +322,9 @@
                 "pattern": "^(\\d+)",
                 "log": "1234",
                 "end_match": "4",
-                "captured_groups": ["1234"]
+                "captured_groups": [
+                    "1234"
+                ]
             },
             {
                 "description": "'^' test: Start of string.",
@@ -340,7 +356,9 @@
                 "pattern": "^(\\d+)",
                 "log": "1234asd",
                 "end_match": "4asd",
-                "captured_groups": ["1234"]
+                "captured_groups": [
+                    "1234"
+                ]
             },
             {
                 "description": "'^' test: Start of string.",
@@ -382,14 +400,18 @@
                 "pattern": "(\\d\\d\\d\\d)$",
                 "log": "1234",
                 "end_match": "4",
-                "captured_groups": ["1234"]
+                "captured_groups": [
+                    "1234"
+                ]
             },
             {
                 "description": "'$' test: Start of string.",
                 "pattern": "(\\d\\d)$",
                 "log": "1234",
                 "end_match": "4",
-                "captured_groups": ["34"]
+                "captured_groups": [
+                    "34"
+                ]
             },
             {
                 "description": "'^' test: Start of string.",
@@ -420,7 +442,9 @@
                 "pattern": "^(\\d+)",
                 "log": "1234asd",
                 "end_match": "4asd",
-                "captured_groups": ["1234"]
+                "captured_groups": [
+                    "1234"
+                ]
             },
             {
                 "description": "'$' test: End of string.",
@@ -438,5 +462,96 @@
                 "captured_groups": []
             }
         ]
+    },
+    {
+        "description": "[Functionality] Combine special characters. ['^', '$']",
+        "batch_test": [
+            {
+                "description": "Combine ^$ with non empty string",
+                "pattern": "^$",
+                "log": "hi digits",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Combine ^$ with empty string. Should be match",
+                "pattern": "^$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": []
+            },
+            {
+                "description": "Combine ^$ with empty string. Should be match, and obtain an empty group",
+                "ignore_result": true,
+                "pattern": "^()$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Combine ^$ with non empty string",
+                "pattern": "^$",
+                "log": "hi digits",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Combine ^$ with empty string. Should be match",
+                "pattern": "^$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": []
+            },
+            {
+                "description": "Combine ^$ with empty string. Should be match, and obtain an empty group",
+                "ignore_result": true,
+                "pattern": "^()$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Special characters.  OR with flags ['^', '$','|']",
+        "batch_test": [
+            {
+                "description": "Only last subpattern with capture groups",
+                "ignore_result": true,
+                "pattern": "^$|^\\d|\\d$|\\s(\\w+\\w)",
+                "log": "^hi digits asd",
+                "end_match": "s asd",
+                "captured_groups": [
+                    "digits"
+                ]
+            },
+            {
+                "description": "Nothing to match",
+                "debug": true,
+                "pattern": "^$|^\\d|\\d$|\\s(\\w+)",
+                "log": "^hi*digits*asd$",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Only last subpattern with last",
+                "ignore_result": true,
+                "pattern": "^$|^\\d|\\d$|\\.+",
+                "log": "^hi digits asd&",
+                "end_match": "&",
+                "captured_groups": []
+            },
+            {
+                "description": "match with first",
+                "pattern": "\\d\\d\\d\\d$|(\\d\\d\\d\\d)$",
+                "log": "2020",
+                "end_match": "0",
+                "captured_groups": []
+            }
+        ]
     }
-  ]
+]
