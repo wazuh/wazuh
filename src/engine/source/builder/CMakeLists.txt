@@ -38,6 +38,7 @@ add_library(builders OBJECT
   builders/baseHelper.cpp
   builders/opBuilderWdb.cpp
   builders/opBuilderARWrite.cpp
+  builders/opBuilderSCAdecoder.cpp
   definitions.cpp
   asset.cpp
   environment.cpp
