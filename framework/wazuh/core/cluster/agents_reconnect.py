@@ -150,7 +150,7 @@ class AgentsReconnect:
                 self.logger.info(f"Cluster is stable.")
                 return True
             else:
-                self.logger.info(f"Cluster is not stable yet "
+                self.logger.info(f"Checking cluster stability "
                                  f"({self.nodes_stability_counter}/{self.nodes_stability_threshold}).")
 
         else:
