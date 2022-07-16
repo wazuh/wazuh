@@ -11,7 +11,7 @@
 
 #include "cveFetchersHelper.hpp"
 
-std::vector<std::string> getPlaceHolders(const std::string &str)
+std::vector<std::string> getPlaceHolders(const std::string &str, const char start_delim, const char end_delim)
 {
     std::vector<std::string> placeHolders;
 
@@ -19,11 +19,11 @@ std::vector<std::string> getPlaceHolders(const std::string &str)
 
     do
     {
-        auto begin = str.find('{', pos);
-        auto end = str.find('}', begin);
+        auto begin = str.find(start_delim, pos);
+        auto end = str.find(end_delim, begin);
         if (begin != std::string::npos && end != std::string::npos)
         {
-            const std::string placeholder = str.substr(begin, end - begin + 1);
+            const std::string placeholder = str.substr(begin+1, end - begin -1);
             
             //No duplicates
             bool found = false;
@@ -44,4 +44,26 @@ std::vector<std::string> getPlaceHolders(const std::string &str)
     } while (pos != std::string::npos);
 
     return placeHolders;
+}
+
+std::map<std::string, std::unique_ptr<AbstractParameter>> getParameters(const nlohmann::json& remote){
+    std::map<std::string, std::unique_ptr<AbstractParameter>> params;
+    if (remote.contains("parameters"))
+    {
+        for (auto const &parameter : remote.at("parameters").items())
+        {
+            if (parameter.value().at("type") == "fixed")
+            {
+                params[parameter.key()] = std::make_unique<FixedParameter>(parameter.key(), parameter.value());
+            }
+            else
+            {
+                throw std::runtime_error{
+                    "unsupported parameter type: " + parameter.value().at("type").get<std::string>() + '.'};
+            }
+        }
+    }
+
+    return params;
+
 }

@@ -17,10 +17,15 @@
 #include <vector>
 #include <json.hpp>
 
+#include <cveFetchersParameters.hpp>
+
 class CveFileFetcher final
 {
     public:
-        std::vector<std::string> urlsFromRemote(const nlohmann::json remote);
+        std::vector<std::string> urlsFromRemote(const nlohmann::json& remote);
+
+    private:
+        std::vector<std::string> expandPlaceHolder(const std::string& in, const std::string& placeHolder, AbstractParameter& parameter);
 };
 
 #endif // _CVEFILEFETCHER_HPP

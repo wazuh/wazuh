@@ -14,13 +14,8 @@
 #include "cveFetchersParameters.hpp"
 #include "stringHelper.h"
 
-std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json remote)
+std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json& remote)
 {
-    std::vector<std::string> urls;
-
-    if (remote == nullptr)
-        return urls; // or throw?
-
     if (remote.at("request").get_ref<const std::string &>() != "file")
     {
         throw std::runtime_error{
@@ -28,43 +23,21 @@ std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json rem
     }
 
     // parse parameters
-    // TODO extract as helper function: input urlString, output params map
-    std::map<std::string, std::unique_ptr<AbstractParameter>> params;
-    if (remote.contains("parameters"))
-    {
-        for (auto const &parameter : remote.at("parameters").items())
-        {
-            if (parameter.value().at("type") == "fixed")
-            {
-                params[parameter.key()] = std::make_unique<FixedParameter>(parameter.key(), parameter.value());
-            }
-            else
-            {
-                throw std::runtime_error{
-                    "unsupported parameter type: " + parameter.value().at("type").get<std::string>() + '.'};
-            }
-        }
-    }
+    auto parameters = getParameters(remote);
 
-    auto placeholders = getPlaceHolders(remote.at("url").get_ref<const std::string&>());
+    // parse placeholders
+    auto placeholders = getPlaceHolders(remote.at("url").get_ref<const std::string&>(),'{','}');
 
+    std::vector<std::string> urls;
     urls.push_back(remote.at("url").get<std::string>());
+    
     for (auto &ph : placeholders)
     {
-        std::string phname = ph.substr(1, ph.size() - 2);
-
         std::vector<std::string> partial_expanded;
-
         for (const auto &u : urls)
         {
-            params[phname]->restart();
-            while (params[phname]->hasValue())
-            {
-                std::string expanded = u;
-                Utils::replaceAll(expanded, ph, params[phname]->value());
-                params[phname]->nextValue();
-                partial_expanded.push_back(expanded);
-            }
+            auto expanded = expandPlaceHolder(u, '{' + ph + '}', *(parameters[ph]));
+            partial_expanded.insert(partial_expanded.end(),expanded.begin(),expanded.end());
         }
         urls = partial_expanded;
     }
@@ -76,4 +49,19 @@ std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json rem
     }
 
     return urls;
+}
+
+std::vector<std::string> CveFileFetcher::expandPlaceHolder(const std::string &in, const std::string &placeHolder, AbstractParameter& parameter)
+{
+    std::vector<std::string> expanded;
+    parameter.restart();
+    while (parameter.hasValue())
+    {
+        std::string toExpand = in;
+        Utils::replaceAll(toExpand, placeHolder, parameter.value());
+        parameter.nextValue();
+        expanded.push_back(toExpand);
+    }
+
+    return expanded;
 }

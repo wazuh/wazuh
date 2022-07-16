@@ -16,14 +16,6 @@ void CveFileFetcherTest::SetUp() {};
 
 void CveFileFetcherTest::TearDown() {};
 
-TEST_F(CveFileFetcherTest, dummyTest)
-{
-    CveFileFetcher fileFetcher;
-    auto urls = fileFetcher.urlsFromRemote(nullptr);
-
-    EXPECT_EQ(0u, urls.size());
-}
-
 TEST_F(CveFileFetcherTest, oneRemote_RequestTypeNotFile)
 {
     auto remote = R"(
