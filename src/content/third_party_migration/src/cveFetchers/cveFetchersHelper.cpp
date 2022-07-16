@@ -23,21 +23,11 @@ std::vector<std::string> getPlaceHolders(const std::string &str, const char star
         auto end = str.find(end_delim, begin);
         if (begin != std::string::npos && end != std::string::npos)
         {
-            const std::string placeholder = str.substr(begin+1, end - begin -1);
+            const std::string current = str.substr(begin+1, end - begin -1);
             
-            //No duplicates
-            bool found = false;
-            for (auto &ph : placeHolders)
-            {
-                if (ph == placeholder)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            if(!found){
-                placeHolders.push_back(placeholder);
+            //Do not allow repeated placeholders
+            if(std::find(placeHolders.begin(), placeHolders.end(), current) == placeHolders.end()){
+                placeHolders.push_back(current);
             }
         }
         pos = end;
@@ -52,8 +42,7 @@ std::map<std::string, std::unique_ptr<AbstractParameter>> getParameters(const nl
     {
         for (auto const &parameter : remote.at("parameters").items())
         {
-            if (parameter.value().at("type") == "fixed")
-            {
+            if (parameter.value().at("type") == "fixed"){
                 params[parameter.key()] = std::make_unique<FixedParameter>(parameter.key(), parameter.value());
             }
             else if(parameter.value().at("type") == "variable-incremental"){

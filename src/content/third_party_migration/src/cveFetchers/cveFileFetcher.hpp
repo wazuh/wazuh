@@ -21,11 +21,14 @@
 
 class CveFileFetcher final
 {
-    public:
-        std::vector<std::string> urlsFromRemote(const nlohmann::json& remote);
+public:
+    std::vector<std::string> urlsFromRemote(const nlohmann::json &remote);
 
-    private:
-        std::vector<std::string> expandPlaceHolder(const std::string& in, const std::string& placeHolder, AbstractParameter& parameter);
+private:
+    std::vector<std::string> expandAll(const std::string &in, 
+                                                const std::vector<std::string> &placeHolders, 
+                                                std::map<std::string, std::unique_ptr<AbstractParameter>> &parameters);
+    std::vector<std::string> expandPlaceHolder(const std::string &in, const std::string &placeHolder, AbstractParameter &parameter);
 };
 
 #endif // _CVEFILEFETCHER_HPP

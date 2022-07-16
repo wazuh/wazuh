@@ -15,20 +15,21 @@
 #include <string>
 #include <json.hpp>
 
-class AbstractParameter{
-    public:
-        AbstractParameter() = default;
-        AbstractParameter(const std::string &key, const nlohmann::json &value);
-        virtual ~AbstractParameter() = default;
+class AbstractParameter
+{
+public:
+    AbstractParameter() = default;
+    AbstractParameter(const std::string &key, const nlohmann::json &value);
+    virtual ~AbstractParameter() = default;
 
-        std::string key() { return m_key; };
-        virtual std::string value() = 0;
-        virtual bool hasValue() = 0;
-        virtual void nextValue() = 0; 
-        virtual void restart() = 0;
+    std::string key() { return m_key; };
+    virtual std::string value() = 0;
+    virtual bool hasValue() = 0;
+    virtual void nextValue() = 0;
+    virtual void restart() = 0;
 
-        protected:
-        std::string m_key;
+protected:
+    std::string m_key;
 };
 
 class FixedParameter : public AbstractParameter
@@ -38,7 +39,7 @@ public:
     bool hasValue() override { return index < m_values.size(); }
     void nextValue() override { index++; }
     void restart() override { index = 0; }
-    
+
     FixedParameter(const std::string &key, const nlohmann::json &value)
     {
         m_key = key;
