@@ -56,6 +56,9 @@ std::map<std::string, std::unique_ptr<AbstractParameter>> getParameters(const nl
             {
                 params[parameter.key()] = std::make_unique<FixedParameter>(parameter.key(), parameter.value());
             }
+            else if(parameter.value().at("type") == "variable-incremental"){
+                params[parameter.key()] = std::make_unique<IncrementalParameter>(parameter.key(), parameter.value());
+            }
             else
             {
                 throw std::runtime_error{

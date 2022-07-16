@@ -192,3 +192,81 @@ TEST_F(CveFileFetcherTest, oneRemote_MultipleFixedPlaceHolders)
     EXPECT_EQ("https://ftp.suse.com/C/002/333-ZZZ.xml", urls[i++]);
     EXPECT_EQ("https://ftp.suse.com/C/002/333-YYY.xml", urls[i++]);
 }
+
+TEST_F(CveFileFetcherTest, oneRemote_OneRangeParameter)
+{
+    auto remote = R"(
+                    {
+                    "url": "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-{year}.json.gz",
+                    "request": "file",
+                    "type": "json",
+                    "compressed": "gzip",
+                    "parameters": {
+                        "year": {
+                            "type": "variable-incremental",
+                            "value": [
+                                2015,
+                                2022
+                            ]
+                           }
+                         }
+                    })"_json;
+
+    CveFileFetcher fileFetcher;
+    auto urls = fileFetcher.urlsFromRemote(remote);
+
+    size_t i{0};
+    EXPECT_EQ(8u, urls.size());
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2015.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2016.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2017.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2018.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2019.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2020.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2021.json.gz", urls[i++]);
+    EXPECT_EQ("https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-2022.json.gz", urls[i++]);
+}
+
+TEST_F(CveFileFetcherTest, oneRemote_OneRangeOneFixedParameters)
+{
+    auto remote = R"(
+                    {
+                    "url": "https://test.com/feeds/{type}/{year}.json.gz",
+                    "request": "file",
+                    "type": "json",
+                    "compressed": "gzip",
+                    "parameters": {
+                        "year": {
+                            "type": "variable-incremental",
+                            "value": [
+                                2018,
+                                2022
+                            ]
+                           },
+                        "type": {
+                            "type": "fixed",
+                            "value": [
+                                "desktop",
+                                "server"
+                                ]
+                            }
+                        }
+                    })"_json;
+
+    CveFileFetcher fileFetcher;
+    auto urls = fileFetcher.urlsFromRemote(remote);
+
+    size_t i{0};
+    EXPECT_EQ(10u, urls.size());
+    EXPECT_EQ("https://test.com/feeds/desktop/2018.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/desktop/2019.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/desktop/2020.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/desktop/2021.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/desktop/2022.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/server/2018.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/server/2019.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/server/2020.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/server/2021.json.gz", urls[i++]);
+    EXPECT_EQ("https://test.com/feeds/server/2022.json.gz", urls[i++]);
+
+}

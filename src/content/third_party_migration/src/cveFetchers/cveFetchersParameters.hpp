@@ -52,4 +52,29 @@ private:
     size_t index;
 };
 
+class IncrementalParameter : public AbstractParameter
+{
+public:
+    std::string value() override { return std::to_string(range_current); };
+    bool hasValue() override { return range_current <= range_end; }
+    void nextValue() override { range_current += range_step; }
+    void restart() override { range_current = range_begin; }
+
+    IncrementalParameter(const std::string &key, const nlohmann::json &value)
+    {
+        m_key = key;
+        range_begin = value.at("value")[0].get<int>();
+        range_end = value.at("value")[1].get<int>();
+        range_step = 1;
+        range_current = range_begin;
+    }
+    virtual ~IncrementalParameter() = default;
+
+private:
+    int range_begin{};
+    int range_end{};
+    int range_step{};
+    int range_current{};
+};
+
 #endif //_CVE_FETCHERS_PARAMETERS_HPP
