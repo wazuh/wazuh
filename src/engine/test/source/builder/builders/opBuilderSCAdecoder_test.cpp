@@ -81,4 +81,36 @@ TEST_F(opBuilderSCAdecoderTest, BuildSimplest)
     ASSERT_NO_THROW(bld::opBuilderSCAdecoder(doc.get("/normalize/0/map"), tr));
 }
 
+TEST_F(opBuilderSCAdecoderTest, typeChecking)
+{
+    Document doc {R"({
+        "normalize": [
+            {
+                "map":
+                {
+                    "sca_result": "+sca_decoder"
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne =
+        createSharedEvent(R"({"event":{"original":{"message":{"type":"dump_end"}}}})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+    ASSERT_FALSE(expected[0]->getEvent()->get("/sca_result").GetBool());
+}
 } // namespace
