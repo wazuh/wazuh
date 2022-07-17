@@ -36,9 +36,6 @@ static bool CheckEventJSON(base::Event& e)
 {
     // TODO: check value types should always return false if not matched as espected
     // Check existance and fill all mandatory fields
-    // no se usan pero se obtienen :
-    //"/check/compliance", -> ???
-    //"/check/rules", -> ???
     const auto& doc = e->getEvent()->get(engineserver::EVENT_LOG);
     for (auto& pairKeyValue : eventKeyValues)
     {
@@ -300,12 +297,15 @@ static void FillCheckEventInfo(base::Event& e, std::string response)
 
 // - Event Info Handling - //
 
-static void HandleCheckEvent(base::Event& e)
+static bool HandleCheckEvent(base::Event& e, types::TracerFn tr)
 {
+    std::string failureTrace = fmt::format("HandleCheckEvent sca_decode Failure");
+
     if (!CheckEventJSON(e))
     {
         // exit error
-        return;
+        tr(failureTrace);
+        return false;
     }
 
     // TODO: delete sock_path!
@@ -322,8 +322,8 @@ static void HandleCheckEvent(base::Event& e)
 
     if (resultCode != wazuhdb::QueryResultCodes::OK)
     {
-        // error
-        return;
+        tr(failureTrace);
+        return false;
     }
 
     std::string SaveEventQuery;
@@ -356,11 +356,13 @@ static void HandleCheckEvent(base::Event& e)
     std::string saveEventResponse = std::get<1>(saveEventTuple).value();
     const auto result_event =
         (std::get<0>(saveEventTuple) == wazuhdb::QueryResultCodes::OK) ? 0 : 1;
-
+    bool functionResult = true;
     switch (result_db)
     {
         case -1:
             // Error querying policy monitoring database for agent
+            tr(failureTrace);
+            functionResult = false;
             break;
         case 0:
             if (!result.empty() && (wdb_response == result))
@@ -375,6 +377,8 @@ static void HandleCheckEvent(base::Event& e)
             if (result_event < 0)
             {
                 // Error updating policy monitoring database for agent
+                tr(failureTrace);
+                functionResult = false;
             }
             break;
         case 1:
@@ -390,6 +394,8 @@ static void HandleCheckEvent(base::Event& e)
             if (result_event < 0)
             {
                 // Error storing policy monitoring information for agent
+                tr(failureTrace);
+                functionResult = false;
             }
             else
             {
@@ -442,14 +448,16 @@ static void HandleCheckEvent(base::Event& e)
             }
             break;
 
-        default: break;
+        default: functionResult = false; break;
     }
+    return functionResult;
 }
 
 /// Scan Info Functions ///
 /* Security configuration assessment remoted queue */
 constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 
+// Map where needed json fields will be stored
 static std::unordered_map<std::string, std::string> scanInfoKeyValues {{"/policy_id", ""},
                                                                        {"/hash", ""},
                                                                        {"/hash_file", ""},
@@ -478,7 +486,7 @@ static bool CheckScanInfoJSON(base::Event& e)
     json::Value::ConstMemberIterator itr = doc.FindMember("/scan_id");
     if (itr != doc.MemberEnd() && itr->value.IsInt())
     {
-        // TODO: make it varaiant in order to avoid double casting
+        // TODO: make it variant in order to avoid double casting
         // afterwars it will be used as string on query, double check this!
         scanInfoKeyValues["/scan_id"] = std::to_string(itr->value.GetInt());
     }
@@ -509,7 +517,7 @@ static bool CheckScanInfoJSON(base::Event& e)
         }
     }
 
-    // TODO: maybe not neccesary! Get other fields
+    // Not mandatory fields
     std::vector<std::string> notMandatoryFields = {
         "/first_scan", "/force_alert", "/description", "/references"};
 
@@ -596,7 +604,7 @@ static int SaveScanInfo(base::Event& e, int update)
 
 static int FindPolicyInfo(base::Event& e)
 {
-    // "Find policies IDs for policy '%s', agent id '%s'"
+    // "Find policies IDs for policy  agent id "
     std::string agent_id = e->getEvent()->get("/agent/id").GetString();
     std::string FindPolicyInfoQuery = std::string("agent ") + agent_id
                                       + " sca query_policy "
@@ -638,7 +646,7 @@ static void PushDumpRequest(base::Event& e, int first_scan)
 static int
 SavePolicyInfo(base::Event& e, std::string& description_db, std::string& references_db)
 {
-    // "Saving policy info for policy id '%s', agent id '%s'"
+    // "Saving policy info for policy id agent id"
     std::string agent_id = e->getEvent()->get("/agent/id").GetString();
     std::string policy_id = scanInfoKeyValues["/policy_id"];
     std::string name = scanInfoKeyValues["/policy"];
@@ -691,7 +699,7 @@ static int FindPolicySHA256(base::Event& e, std::string& old_hash)
 
 static int DeletePolicy(base::Event& e)
 {
-    // "Deleting policy '%s', agent id '%s'"
+    // "Deleting policy"
     std::string agent_id = e->getEvent()->get("/agent/id").GetString();
     std::string policy_id = scanInfoKeyValues["/policy_id"];
     std::string deletePolicyQuery =
@@ -716,7 +724,7 @@ static int DeletePolicy(base::Event& e)
 
 static int DeletePolicyCheck(base::Event& e)
 {
-    // "Deleting check for policy '%s', agent id '%s'"
+    // "Deleting check for policy agent id "
     std::string agent_id = e->getEvent()->get("/agent/id").GetString();
     std::string policy_id = scanInfoKeyValues["/policy_id"];
     std::string deletePolicyCheckQuery =
@@ -741,7 +749,7 @@ static int DeletePolicyCheck(base::Event& e)
 
 static int FindCheckResults(base::Event& e, std::string& wdb_response)
 {
-    // "Find check results for policy id: %s"
+    // "Find check results for policy id"
     std::string agent_id = e->getEvent()->get("/agent/id").GetString();
     std::string findCheckResultsQuery = std::string("agent ") + agent_id
                                         + " sca query_results "
@@ -816,12 +824,15 @@ static void FillScanInfo(base::Event& e)
 
 // - Scan Info Handling - //
 
-static void HandleScanInfo(base::Event& e)
+static bool HandleScanInfo(base::Event& e, types::TracerFn tr)
 {
+    std::string failureTrace = fmt::format("HandleScanInfo sca_decode Failure");
+
     int alert_data_fill = 0;
     if (!CheckScanInfoJSON(e))
     {
-        return;
+        tr(failureTrace);
+        return false;
     }
 
     int result_event = 0;
@@ -832,7 +843,9 @@ static void HandleScanInfo(base::Event& e)
 
     if (separated_hash.size() < 2)
     {
-        // mdebug1("Retrieving sha256 hash for policy: '%s'", policy_id->valuestring);
+        // "Retrieving sha256 hash for policy: '%s'"
+        tr(failureTrace);
+        return false;
     }
     int scan_id_old = stoi(separated_hash.at(1));
     std::string hash_sha256 = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
@@ -840,6 +853,7 @@ static void HandleScanInfo(base::Event& e)
     std::string hash = scanInfoKeyValues["/hash"];
     std::string first_scan;
     std::string force_alert;
+    bool result = true;
     if (scanInfoKeyValues.find("/first_scan") != scanInfoKeyValues.end())
     {
         first_scan = scanInfoKeyValues["/first_scan"];
@@ -852,14 +866,18 @@ static void HandleScanInfo(base::Event& e)
     switch (result_db)
     {
         case -1:
-            // merror("Error querying policy monitoring database for agent
+            // "Error querying policy monitoring database for agent
+            tr(failureTrace);
+            result = false;
             break;
         case 0:
             // It exists, update
             result_event = SaveScanInfo(e, 1);
             if (result_event < 0)
             {
-                // merror("Error updating scan policy monitoring database for agent
+                // "Error updating scan policy monitoring database for agent
+                tr(failureTrace);
+                result = false;
             }
             else
             {
@@ -884,7 +902,9 @@ static void HandleScanInfo(base::Event& e)
             result_event = SaveScanInfo(e, 0);
             if (result_event < 0)
             {
-                // merror("Error storing scan policy monitoring information for
+                // "Error storing scan policy monitoring information for
+                tr(failureTrace);
+                result = false;
             }
             else
             {
@@ -910,7 +930,7 @@ static void HandleScanInfo(base::Event& e)
             }
 
             break;
-        default: break;
+        default: result = false; break;
     }
 
     std::string references_db;
@@ -921,26 +941,30 @@ static void HandleScanInfo(base::Event& e)
     switch (result_db)
     {
         case -1:
-            // merror("Error querying policy monitoring database for agent
+            // "Error querying policy monitoring database for agent
+            tr(failureTrace);
+            result = false;
             break;
         case 1:
             // It not exists, insert from event
             if (scanInfoKeyValues.find("/references") != scanInfoKeyValues.end())
             {
-                // Double check value type
+                // TODO: Double check value type
                 references_db = scanInfoKeyValues["/references"];
             }
 
             if (scanInfoKeyValues.find("/description") != scanInfoKeyValues.end())
             {
-                // Double check value type
+                // TODO: Double check value type
                 description_db = scanInfoKeyValues["/description"];
             }
 
             result_event = SavePolicyInfo(e, description_db, references_db);
             if (result_event < 0)
             {
-                // merror("Error storing scan policy monitoring information for
+                // "Error storing scan policy monitoring information for
+                tr(failureTrace);
+                result = false;
             }
             break;
         default:
@@ -957,11 +981,12 @@ static void HandleScanInfo(base::Event& e)
                             /* Delete checks */
                             DeletePolicyCheck(e);
                             PushDumpRequest(e, 1);
-                            // minfo("Policy '%s' information for agent '%s' is
+                            // "Policy '%s' information for agent '%s' is
                             // outdated.Requested latest scan results.",
                             break;
                         default:
-                            // merror("Unable to purge DB content for policy
+                            // "Unable to purge DB content for policy
+                            result = false;
                             break;
                     }
                 }
@@ -978,9 +1003,8 @@ static void HandleScanInfo(base::Event& e)
             /* Integrity check */
             if (wdb_response == hash)
             {
-                // mdebug1("Scan result integrity failed for policy '%s'. Hash from
-                // DB:'%s', hash from summary: '%s'. Requesting DB
-                // dump.",policy_id->valuestring, wdb_response, hash->valuestring);
+                // "Scan result integrity failed for policy '%s'. Hash from
+                // DB:'%s', hash from summary: '%s'. Requesting DB dump."
                 if (first_scan.empty())
                 {
                     PushDumpRequest(e, 0);
@@ -993,8 +1017,7 @@ static void HandleScanInfo(base::Event& e)
             break;
         case 1:
             /* Empty DB */
-            // mdebug1("Check results DB empty for policy '%s'. Requesting DB
-            // dump.",policy_id->valuestring);
+            // "Check results DB empty for policy '%s'. Requesting DB dump."
             if (first_scan.empty())
             {
                 PushDumpRequest(e, 0);
@@ -1005,10 +1028,14 @@ static void HandleScanInfo(base::Event& e)
             }
             break;
         default:
-            // merror("Error querying policy monitoring database for agent
-            // '%s'",lf->agent_id);
+            // "Error querying policy monitoring database for agent
+            tr(failureTrace);
+            result = false;
             break;
     }
+
+    //TODO: If it fails on any check it will resturn false
+    return result;
 }
 
 /// Policies Functions ///
@@ -1042,15 +1069,18 @@ static int FindPoliciesIds(base::Event& e, std::string& policies_ids)
 
 // - Policies Handling - //
 
-static void HandlePoliciesInfo(base::Event& e)
+static bool HandlePoliciesInfo(base::Event& e, types::TracerFn tr)
 {
+    std::string failureTrace = fmt::format("HandlePoliciesInfo sca_decode Failure");
+
     const auto& doc = e->getEvent()->get(engineserver::EVENT_LOG);
 
     json::Value::ConstMemberIterator itr = doc.FindMember("/policies");
     if (itr == doc.MemberEnd())
     {
-        // should I check? assert(policies.IsArray());
-        return;
+        // TODO: should I check? assert(policies.IsArray());
+        tr(failureTrace);
+        return false;
     }
     const auto& policies = itr->value;
 
@@ -1059,10 +1089,13 @@ static void HandlePoliciesInfo(base::Event& e)
 
     // "Retrieving policies from database."
     int result_db = FindPoliciesIds(e, policies_ids);
+    bool result = true;
     switch (result_db)
     {
         case -1:
             // "Error querying policy monitoring database for agent"
+            tr(failureTrace);
+            result = false;
             break;
 
         default:
@@ -1080,7 +1113,7 @@ static void HandlePoliciesInfo(base::Event& e)
                         std::string s_policy = policy.GetString();
                         if (!s_policy.empty())
                         {
-                            // "Comparing policy: '%s' '%s'", policy, p_id);
+                            // "Comparing policy
                             if (policy == p_id)
                             {
                                 exists = 1;
@@ -1092,7 +1125,7 @@ static void HandlePoliciesInfo(base::Event& e)
                     /* This policy is not being scanned anymore, delete it */
                     if (!exists)
                     {
-                        // "Policy id doesn't exist: '%s'. Deleting it.", p_id);
+                        // "Policy id doesn't exist: '%s'. Deleting it."
                         int result_delete = DeletePolicy(e);
 
                         switch (result_delete)
@@ -1103,7 +1136,9 @@ static void HandlePoliciesInfo(base::Event& e)
                                 break;
 
                             default:
-                                // "Unable to purge DB content for policy '%s'", p_id
+                                // "Unable to purge DB content for policy
+                                tr(failureTrace);
+                                result = false;
                                 break;
                         }
                     }
@@ -1111,42 +1146,51 @@ static void HandlePoliciesInfo(base::Event& e)
             }
             break;
     }
+    return result;
 }
 
 /// Dump Functions ///
 
-static bool CheckDumpJSON(base::Event e,
+static bool CheckDumpJSON(base::Event& e,
                           std::string& elements_sent,
                           std::string& policy_id,
                           std::string& scan_id)
 {
-    const auto& doc = e->getEvent()->get(engineserver::EVENT_LOG);
-    json::Value::ConstMemberIterator itr = doc.FindMember("/elements_sent");
-    if (itr != doc.MemberEnd())
+    try
     {
-        elements_sent = itr->value.GetInt(); // Check value type
-    }
-    else
-    {
-        return false;
-    }
+        // engineserver::EVENT_LOG
+        const auto& doc = e->getEvent()->get("/event/original/message");
+        json::Value::ConstMemberIterator itr = doc.FindMember("/elements_sent");
+        if (itr != doc.MemberEnd())
+        {
+            elements_sent = itr->value.GetInt(); // Check value type
+        }
+        else
+        {
+            return false;
+        }
 
-    itr = doc.FindMember("/policy_id");
-    if (itr != doc.MemberEnd())
-    {
-        policy_id = itr->value.GetString();
-    }
-    else
-    {
-        return false;
-    }
+        itr = doc.FindMember("/policy_id");
+        if (itr != doc.MemberEnd())
+        {
+            policy_id = itr->value.GetString();
+        }
+        else
+        {
+            return false;
+        }
 
-    itr = doc.FindMember("/scan_id");
-    if (itr != doc.MemberEnd())
-    {
-        scan_id = itr->value.GetInt();
+        itr = doc.FindMember("/scan_id");
+        if (itr != doc.MemberEnd())
+        {
+            scan_id = itr->value.GetInt();
+        }
+        else
+        {
+            return false;
+        }
     }
-    else
+    catch (const std::exception& e)
     {
         return false;
     }
@@ -1183,14 +1227,17 @@ DeletePolicyCheckDistinct(base::Event& e, std::string& policy_id, std::string& s
 
 // - Dump Handling - //
 
-static void HandleDumpEvent(base::Event& e)
+static bool HandleDumpEvent(base::Event& e, types::TracerFn tr)
 {
+    std::string failureTrace = fmt::format("HandleDumpEvent sca_decode Failure");
+
     std::string elements_sent;
     std::string policy_id;
     std::string scan_id;
+    bool result = true;
 
     // "Checking dump event JSON fields"
-    if (!CheckDumpJSON(e, elements_sent, policy_id, scan_id))
+    if (CheckDumpJSON(e, elements_sent, policy_id, scan_id))
     {
 
         int result_db = DeletePolicyCheckDistinct(e, policy_id, scan_id);
@@ -1198,8 +1245,9 @@ static void HandleDumpEvent(base::Event& e)
         switch (result_db)
         {
             case -1:
-                //  "Error querying policy monitoring database for agent '%s'",
-                //  lf->agent_id
+                //  "Error querying policy monitoring database for agent"
+                tr(failureTrace);
+                result = false;
                 break;
             default: break;
         }
@@ -1216,8 +1264,9 @@ static void HandleDumpEvent(base::Event& e)
 
             if (hash_scan_info.empty())
             { // TODO: check if it's ok "%s64"
-              // "Retrieving sha256 hash while handling dump for policy: '%s'",
-              // policy_id
+                // "Retrieving sha256 hash while handling dump for policy"
+                tr(failureTrace);
+                result = false;
             }
 
             if (!result_db_hash)
@@ -1225,14 +1274,18 @@ static void HandleDumpEvent(base::Event& e)
                 /* Integrity check */
                 if (wdb_response == hash_scan_info)
                 { // TODO: double check
-                    //  "Scan result integrity failed for policy '%s'. Hash from DB: '%s'
-                    //  hash from summary: '%s'. Requesting DB
-                    //  dump.",policy_id->valuestring, wdb_response, hash_sha256
+                    //"Scan result integrity failed for policy ''. Hash from DB: '%s'
+                    // hash from summary: '%s'. Requesting DB dump."
                     PushDumpRequest(e, 0);
                 }
             }
         }
     }
+    else
+    {
+        result = false;
+    }
+    return result;
 }
 
 // - Helper - //
@@ -1264,32 +1317,57 @@ base::Lifter opBuilderSCAdecoder(const base::DocumentValue& def, types::TracerFn
     return [=, tr = std::move(tr)](base::Observable o) {
         // Append rxcpp operation
         return o.map([=, tr = std::move(tr)](base::Event e) {
-            // Get Type value
+            bool proccessResult = false;
             try
             {
-                const auto& type =
-                    e->getEvent()->get("/original/message/type").GetString();
+                // Get Type value
+                const std::string& type =
+                    e->getEvent()->get("/event/original/message/type").GetString();
                 if (type == "check")
                 {
-                    HandleCheckEvent(e);
+                    proccessResult = HandleCheckEvent(e, tr);
                 }
                 else if (type == "summary")
                 {
-                    HandleScanInfo(e);
+                    proccessResult = HandleScanInfo(e, tr);
                 }
                 else if (type == "policies")
                 {
-                    HandlePoliciesInfo(e);
+                    proccessResult = HandlePoliciesInfo(e, tr);
                 }
                 else if (type == "dump_end")
                 {
-                    HandleDumpEvent(e);
+                    proccessResult = HandleDumpEvent(e, tr);
                 }
+                else
+                {
+                    throw std::invalid_argument("wrong type for SCA decoder");
+                }
+                proccessResult ? tr(successTrace) : tr(failureTrace);
+            }
+            catch (const std::invalid_argument& e)
+            {
+                // TODO: for now hanlde all the same, later on will fill the gaps
+                tr(failureTrace + ": " + e.what());
             }
             catch (const std::exception& e)
             {
-                // TOOD: for now hanlde all the same, later on will fill the gaps
+                tr(failureTrace + ": " + e.what());
             }
+            catch (...)
+            {
+                tr(failureTrace);
+            }
+
+            try
+            {
+                e->getEvent()->set(decode_result_status, rapidjson::Value(proccessResult));
+            }
+            catch(const std::exception& e)
+            {
+                tr(failureTrace);
+            }
+
             return e;
         });
     };

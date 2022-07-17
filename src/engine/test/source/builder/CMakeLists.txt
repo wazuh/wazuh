@@ -190,6 +190,7 @@ add_executable(register_test
 gtest_discover_tests(register_test)
 add_executable(opBuilderSCAdecoderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSCAdecoder_test.cpp
+  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
 gtest_discover_tests(opBuilderSCAdecoderTest)
 
