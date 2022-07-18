@@ -257,7 +257,65 @@
                 "captured_groups": []
             },
             {
+                "description": "Using the '\\t+' token to test NOT matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\t+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Using the '\\t+' token to test NOT matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\t+",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\t*' token to test NOT matching all the special characters with capture group.",
+                "pattern": "Special characters are (\\t*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Using the '\\t*' token to test NOT matching all the special characters without capture group.",
+                "pattern": "Special characters are \\t*",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\d+' token to test NOT matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\d+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Using the '\\d+' token to test NOT matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\d+",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": []
+            },
+            {
                 "description": "Using the '\\d*' token to test NOT matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
                 "pattern": "Special characters are (\\d*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -267,7 +325,69 @@
             },
             {
                 "description": "Using the '\\d*' token to test NOT matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
                 "pattern": "Special characters are \\d*",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\D+' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\D+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "$()|<\\"
+                ]
+            },
+            {
+                "description": "Using the '\\D+' token to test matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\D+",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\D*' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\D*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "$()|<\\"
+                ]
+            },
+            {
+                "description": "Using the '\\D*' token to test matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\D*",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\w+' token to test NOT matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\w+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": " $()|<\\",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Using the '\\w+' token to test NOT matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\w+",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
                 "captured_groups": []
@@ -286,6 +406,86 @@
                 "pattern": "Special characters are \\w*",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\W+' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\W+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "$()|<\\"
+                ]
+            },
+            {
+                "description": "Using the '\\W+' token to test matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\W+",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\W*' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\W*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "$()|<\\"
+                ]
+            },
+            {
+                "description": "Using the '\\W*' token to test matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\W*",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\S+' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\S+)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "$()|<\\"
+                ]
+            },
+            {
+                "description": "Using the '\\S+' token to test matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\S+",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\S*' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are (\\S*)",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "$()|<\\"
+                ]
+            },
+            {
+                "description": "Using the '\\S*' token to test matching all the special characters without capture group.",
+                "ignore_result": true,
+                "__knowIssue": "Link github issue ####",
+                "pattern": "Special characters are \\S*",
+                "log": "Special characters are $()|<\\",
+                "end_match": "\\",
                 "captured_groups": []
             }
         ]
