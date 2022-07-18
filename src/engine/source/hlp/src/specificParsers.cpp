@@ -1,3 +1,5 @@
+#include "specificParsers.hpp"
+
 #include <climits>
 #include <iostream>
 #include <memory>
@@ -6,16 +8,16 @@
 #include <string_view>
 #include <unordered_map>
 
+#include <arpa/inet.h>
+
 #include "date/date.h"
 #include "hlpDetails.hpp"
-#include "specificParsers.hpp"
 #include "tld.hpp"
-#include <arpa/inet.h>
+
 #include <curl/curl.h>
 #include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
-
 #include <profile/profile.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
