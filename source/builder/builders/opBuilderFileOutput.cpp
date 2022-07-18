@@ -50,7 +50,7 @@ base::Expression opBuilderFileOutput(const std::any& definition)
     auto pathPos = std::find_if(outputObj.begin(),
                                 outputObj.end(),
                                 [](auto& tuple) { return std::get<0>(tuple) == "path"; });
-    if (pathPos == outputObj.end())
+    if (outputObj.end() == pathPos)
     {
         throw std::runtime_error(
             "[builders::opBuilderFileOutput(json)] Missing attribute path");
