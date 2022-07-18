@@ -33,6 +33,7 @@ add_library(builders OBJECT
   builders/baseHelper.cpp
   definitions.cpp
   asset.cpp
+  environment.cpp
 )
 target_include_directories(builders
   PRIVATE
