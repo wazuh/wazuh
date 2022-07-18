@@ -46,14 +46,15 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        const auto msg =
+            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
     // Get reference key
     std::string& key = parametersArr[2];
     bool isReference = false;
-    if (key[0] == REFERENCE_ANCHOR)
+    if (REFERENCE_ANCHOR == key[0])
     {
         key = json::Json::formatJsonPath(key.substr(1));
         isReference = true;
@@ -140,7 +141,8 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        const auto msg =
+            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
