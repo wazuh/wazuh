@@ -30,29 +30,7 @@ constexpr const char* const FILTERS = "filters";
  * @return Asset::Type
  * @throws std::runtime_error if the name is not supported
  */
-static Asset::Type getAssetType(const std::string& name)
-{
-    if (DECODERS == name)
-    {
-        return Asset::Type::DECODER;
-    }
-    else if (RULES == name)
-    {
-        return Asset::Type::RULE;
-    }
-    else if (OUTPUTS == name)
-    {
-        return Asset::Type::OUTPUT;
-    }
-    else if (FILTERS == name)
-    {
-        return Asset::Type::FILTER;
-    }
-    else
-    {
-        throw std::runtime_error(fmt::format("Unknown asset type: {}", name));
-    }
-}
+Asset::Type getAssetType(const std::string& name);
 
 /**
  * @brief Intermediate representation of the environment.
@@ -81,37 +59,7 @@ private:
      */
     void buildGraph(const std::unordered_map<std::string, json::Json>& assetsDefinitons,
                     const std::string& graphName,
-                    Asset::Type type)
-    {
-        auto& graph = m_graphs[graphName];
-        for (auto& [name, json] : assetsDefinitons)
-        {
-            // Build Asset object and insert
-            std::shared_ptr<Asset> asset;
-            try
-            {
-                asset = std::make_shared<Asset>(json, type);
-            }
-            catch (const std::exception& e)
-            {
-                std::throw_with_nested(
-                    std::runtime_error(fmt::format("Failed to build asset: {}", name)));
-            }
-            m_assets.insert(std::make_pair(name, asset));
-            graph.addNode(name, asset);
-            if (asset->m_parents.empty())
-            {
-                graph.addEdge(graph.rootId(), name);
-            }
-            else
-            {
-                for (auto& parent : asset->m_parents)
-                {
-                    graph.addEdge(parent, name);
-                }
-            }
-        }
-    }
+                    Asset::Type type);
 
     /**
      * @brief Inject Filters into specific subgraph.
@@ -122,23 +70,7 @@ private:
      *
      * @param graphName Name of the subgraph.
      */
-    void addFilters(const std::string& graphName)
-    {
-        auto& graph = m_graphs[graphName];
-        for (auto& [name, asset] : m_assets)
-        {
-            if (Asset::Type::FILTER == asset->m_type)
-            {
-                for (auto& parent : asset->m_parents)
-                {
-                    if (graph.hasNode(parent))
-                    {
-                        graph.injectNode(name, asset, parent);
-                    }
-                }
-            }
-        }
-    }
+    void addFilters(const std::string& graphName);
 
 public:
     Environment() = default;
@@ -260,76 +192,28 @@ public:
      *
      * @return const std::string& Name of the environment.
      */
-    std::string name() const
-    {
-        return m_name;
-    }
+    std::string name() const;
 
     /**
      * @brief Get the map of assets.
      *
      * @return std::unordered_map<std::string, std::shared_ptr<Asset>>&
      */
-    std::unordered_map<std::string, std::shared_ptr<Asset>>& assets()
-    {
-        return m_assets;
-    }
+    std::unordered_map<std::string, std::shared_ptr<Asset>>& assets();
 
     /**
      * @brief Get the map of assets.
      *
      * @return std::unordered_map<std::string, std::shared_ptr<Asset>>&
      */
-    const std::unordered_map<std::string, std::shared_ptr<Asset>>& assets() const
-    {
-        return m_assets;
-    }
+    const std::unordered_map<std::string, std::shared_ptr<Asset>>& assets() const;
 
     /**
      * @brief Get the Graphivz Str object
      *
      * @return std::string
      */
-    std::string getGraphivzStr()
-    {
-        std::stringstream ss;
-        ss << "digraph G {" << std::endl;
-        ss << "compound=true;" << std::endl;
-        ss << fmt::format("fontname=\"Helvetica,Arial,sans-serif\";") << std::endl;
-        ss << fmt::format("fontsize=12;") << std::endl;
-        ss << fmt::format("node [fontname=\"Helvetica,Arial,sans-serif\", "
-                          "fontsize=10];")
-           << std::endl;
-        ss << fmt::format("edge [fontname=\"Helvetica,Arial,sans-serif\", "
-                          "fontsize=8];")
-           << std::endl;
-        ss << "environment [label=\"" << m_name << "\", shape=Mdiamond];" << std::endl;
-
-        for (auto& [name, graph] : m_graphs)
-        {
-            ss << std::endl;
-            ss << "subgraph cluster_" << name << " {" << std::endl;
-            ss << "label=\"" << name << "\";" << std::endl;
-            ss << "style=filled;" << std::endl;
-            ss << "color=lightgrey;" << std::endl;
-            ss << fmt::format("node [style=filled,color=white];") << std::endl;
-            for (auto& [name, asset] : graph.nodes())
-            {
-                ss << name << " [label=\"" << name << "\"];" << std::endl;
-            }
-            for (auto& [parent, children] : graph.edges())
-            {
-                for (auto& child : children)
-                {
-                    ss << parent << " -> " << child << ";" << std::endl;
-                }
-            }
-            ss << "}" << std::endl;
-            ss << "environment -> " << name << "Input;" << std::endl;
-        }
-        ss << "}\n";
-        return ss.str();
-    }
+    std::string getGraphivzStr();
 
     /**
      * @brief Build and Get the Expression from the environment.
@@ -337,127 +221,7 @@ public:
      * @return base::Expression Root expression of the environment.
      * @throws std::runtime_error If the expression cannot be built.
      */
-    base::Expression getExpression() const
-    {
-        // Expression of the environment, expression to be returned.
-        // All subgraphs are added to this expression.
-        std::shared_ptr<base::Operation> environment = base::Chain::create(m_name, {});
-
-        // Iterate over subgraphs
-        for (auto& [graphName, graph] : m_graphs)
-        {
-            // Create root subgraph expression
-            std::shared_ptr<base::Operation> inputExpression;
-            switch (graph.node(graph.rootId())->m_type)
-            {
-                case Asset::Type::DECODER:
-                    inputExpression =
-                        base::Or::create(graph.node(graph.rootId())->m_name, {});
-                    break;
-                case Asset::Type::RULE:
-                case Asset::Type::OUTPUT:
-                    inputExpression =
-                        base::Broadcast::create(graph.node(graph.rootId())->m_name, {});
-                    break;
-                default:
-                    throw std::runtime_error("Unsupported root asset type in "
-                                             "Environment::getExpression");
-            }
-            // Add input Expression to environment expression
-            environment->getOperands().push_back(inputExpression);
-
-            // Build rest of the graph
-
-            // Avoid duplicating nodes when multiple
-            // parents has the same child node
-            std::map<std::string, base::Expression> builtNodes;
-
-            // parentNode Expression is passed as filters need it.
-            auto visit = [&](const std::string& current,
-                             const std::string& parent,
-                             auto& visitRef) -> base::Expression
-            {
-                // If node is already built, return it
-                if (builtNodes.find(current) != builtNodes.end())
-                {
-                    return builtNodes[current];
-                }
-                else
-                {
-                    // Create node
-                    // If node has children, create an auxiliary Implication node, with
-                    // asset as condition and children as consequence, otherwise create an
-                    // asset node.
-                    auto asset = graph.node(current);
-                    std::shared_ptr<base::Operation> assetNode;
-
-                    if (graph.hasChildren(current))
-                    {
-                        std::shared_ptr<base::Operation> assetChildren;
-
-                        // Children expression depends on the type of the asset
-                        auto type = asset->m_type;
-
-                        // If Filter type is the same as the parent
-                        if (type == Asset::Type::FILTER)
-                        {
-                            type = m_assets.at(parent)->m_type;
-                        }
-
-                        switch (type)
-                        {
-                            case Asset::Type::DECODER:
-                                assetChildren = base::Or::create("children", {});
-                                break;
-                            case Asset::Type::RULE:
-                            case Asset::Type::OUTPUT:
-                                assetChildren = base::Broadcast::create("children", {});
-                                break;
-
-                            default:
-                                throw std::runtime_error(fmt::format(
-                                    "Unsupported asset type in "
-                                    "Environment::getExpression for asset [{}]",
-                                    current));
-                        }
-
-                        assetNode = base::Implication::create(asset->m_name + "Node",
-                                                              asset->getExpression(),
-                                                              assetChildren);
-
-                        // Visit children and add them to the children node
-                        for (auto& child : graph.children(current))
-                        {
-                            assetChildren->getOperands().push_back(
-                                visitRef(child, current, visitRef));
-                        }
-                    }
-                    else
-                    {
-                        // No children
-                        assetNode = asset->getExpression()->getPtr<base::Operation>();
-                    }
-
-                    // Add it to builtNodes
-                    if (asset->m_parents.size() > 1)
-                    {
-                        builtNodes.insert(std::make_pair(current, assetNode));
-                    }
-
-                    return assetNode;
-                }
-            };
-
-            // Visit root childs and add them to the root expression
-            for (auto& child : graph.children(graph.rootId()))
-            {
-                inputExpression->getOperands().push_back(
-                    visit(child, graph.rootId(), visit));
-            }
-        }
-
-        return environment;
-    }
+    base::Expression getExpression() const;
 };
 
 } // namespace builder
