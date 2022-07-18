@@ -91,18 +91,35 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     }
     result.executed_unit_test_count++;
 
+    bool test_failed = false;
+    bool print_on_error = (test_case->debug || !test_case->ignore_result);
+
     // Compile & match
     OSRegex * regex = calloc(1, sizeof(OSRegex));
     const char * match_retval = NULL;
 
-    OSRegex_Compile(test_case->pattern, regex, OS_RETURN_SUBSTRING);
-    match_retval = OSRegex_Execute_ex(test_case->log, regex, matching_result);
+    bool compile_regex = OSRegex_Compile(test_case->pattern, regex, OS_RETURN_SUBSTRING);
 
-    bool test_failed = false;
-    bool print_on_error = (test_case->debug || !test_case->ignore_result);
+    if(!compile_regex) {
+
+        result.failed_tests_count++;
+        result.tests_errors_count++;
+
+        if (print_on_error) {
+            print_os_regex_test_parameters(test_case);
+            printf("Syntax error on regex: '%s': %d.\n", test_case->pattern, regex->error);
+        }
+        // Only stop if the test is not ignored
+        if (!test_case->ignore_result) {
+            assert_false(true);
+        }
+        return;
+    }
 
     // Check results
     // Check match result
+    match_retval = OSRegex_Execute_ex(test_case->log, regex, matching_result);
+
     if ((test_case->end_match == NULL && match_retval != NULL) ||
         (test_case->end_match != NULL && match_retval == NULL)) {
 
