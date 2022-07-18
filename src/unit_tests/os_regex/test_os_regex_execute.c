@@ -248,7 +248,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
 // Load test cases from a JSON file
 cJSON * readFile() {
 
-    const size_t buffer_size = 65535;
+    const size_t buffer_size = 65535*2;
     char * raw_json_file = calloc(buffer_size, sizeof(char));
 
     // Open the file

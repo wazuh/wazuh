@@ -1,5 +1,47 @@
 [
     {
+        "description": "[Memory test] regex_matching alloc test: copy reg size.",
+        "batch_test": [
+            {
+                "description": "Create 20 patterns, 22 capture groups and match last.",
+                "__sub_string_size": "((36 gruopos x 2 know bug) + 1 null)  x 8 size = 584 bytes",
+                "__prts_main_array": " (20 pattern + 1 null)  x 8 size = 168 bytes",
+                "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 168",
+                "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_2": "(4 group x2 + 1 null)  x 8 size = 72 bytes",
+                "__prts_items_array_3": "(5 group x2 + 1 null)  x 8 size = 88 bytes",
+                "__prts_items_array_4": "(6 group x2 + 1 null)  x 8 size = 104 bytes",
+                "__prts_items_array_5": "(7 group x2 + 1 null)  x 8 size = 120 bytes",
+                "__prts_items_array_6": "(8 group x2 + 1 null)  x 8 size = 136 bytes",
+                "__prts_items_array_7": "(9 group x2 + 1 null)  x 8 size = 152 bytes",
+                "__prts_items_array_8": "(10 group x2 + 1 null)  x 8 size = 168 bytes",
+                "__prts_items_array_9": "(11 group x2 + 1 null)  x 8 size = 184 bytes",
+                "__prts_items_array_10": "(12 group x2 + 1 null)  x 8 size = 200 bytes",
+                "__prts_items_array_11": "(13 group x2 + 1 null)  x 8 size = 216 bytes",
+                "__prts_items_array_12": "(14 group x2 + 1 null)  x 8 size = 232 bytes",
+                "__prts_items_array_13": "(15 group x2 + 1 null)  x 8 size = 248 bytes",
+                "__prts_items_array_14": "(16 group x2 + 1 null)  x 8 size = 264 bytes",
+                "__prts_items_array_15": "(17 group x2 + 1 null)  x 8 size = 280 bytes",
+                "__prts_items_array_16": "(18 group x2 + 1 null)  x 8 size = 296 bytes",
+                "__prts_items_array_17": "(19 group x2 + 1 null)  x 8 size = 312 bytes",
+                "__prts_items_array_18": "(20 group x2 + 1 null)  x 8 size = 328 bytes",
+                "__prts_items_array_19": "(21 group x2 + 1 null)  x 8 size = 344 bytes",
+                "__prts_items_array_20": "(36 group x2 + 1 null)  x 8 size = 584 bytes",
+                "__prts_items_array_21": "0x0",
+                "pattern": "^01cg field_01=(\\d+)|^04cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+)|^05cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+)|^06cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+)|^07cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+)|^08cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+)|^09cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+)|^10cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+)|^11cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+)|^12cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+)|^13cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+)|^14cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+)|^15cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+)|^16cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+)|^17cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+)|^18cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+) field_18=(\\d+)|^19cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+) field_18=(\\d+) field_19=(\\d+)|^20cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+) field_18=(\\d+) field_19=(\\d+) field_20=(\\d+)|^21cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+) field_18=(\\d+) field_19=(\\d+) field_20=(\\d+) field_21=(\\d+)|^36cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+) field_18=(\\d+) field_19=(\\d+) field_20=(\\d+) field_21=(\\d+) field_22=(\\d+) field_23=(\\d+) field_24=(\\d+) field_25=(\\d+) field_26=(\\d+) field_27=(\\d+) field_28=(\\d+) field_29=(\\d+) field_30=(\\d+) field_31=(\\d+) field_32=(\\d+) field_33=(\\d+) field_34=(\\d+) field_35=(\\d+) field_36=(\\d\\d\\d)",
+                "log": "36cg field_01=001 field_02=002 field_03=003 field_04=004 field_05=005 field_06=006 field_07=007 field_08=008 field_09=009 field_10=010 field_11=011 field_12=012 field_13=013 field_14=014 field_15=015 field_16=016 field_17=017 field_18=018 field_19=019 field_20=020 field_21=021 field_22=022 field_23=023 field_24=024 field_25=025 field_26=026 field_27=027 field_28=028 field_29=029 field_30=030 field_31=031 field_32=032 field_33=033 field_34=034 field_35=035 field_36=036",
+                "end_match": "6",
+                "captured_groups": [
+                    "001", "002","003","004","005","006","007","008",
+                    "009", "010","011","012","013","014","015","016",
+                    "017", "018","019","020","021","022","023","024",
+                    "025", "026","027","028","029","030","031","032",
+                    "033", "034","035","036"
+                ]
+            }
+        ]
+    },
+    {
         "description": "[Memory test] regex_matching expand test: Incremental capture groups and match last.",
         "batch_test": [
             {
@@ -17,7 +59,133 @@
                 ]
             },
             {
-                "description": "Resize x 20 patterns, 22 incremental capture groups and match last.",
+                "description": "Resize x 36 incremental capture groups and match.",
+                "__sub_string_size": "((36 gruopos x 2 know bug) + 1 null)  x 8 size = 584 bytes",
+                "__prts_main_array": " (1 pattern + 1 null)  x 8 size = 16 bytes",
+                "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 16",
+                "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_2": "(4 group x2 + 1 null)  x 8 size = 72 bytes",
+                "__prts_items_array_3": "(5 group x2 + 1 null)  x 8 size = 88 bytes",
+                "__prts_items_array_4": "(6 group x2 + 1 null)  x 8 size = 104 bytes",
+                "__prts_items_array_5": "(7 group x2 + 1 null)  x 8 size = 120 bytes",
+                "__prts_items_array_6": "(8 group x2 + 1 null)  x 8 size = 136 bytes",
+                "__prts_items_array_7": "(9 group x2 + 1 null)  x 8 size = 152 bytes",
+                "__prts_items_array_8": "(10 group x2 + 1 null)  x 8 size = 168 bytes",
+                "__prts_items_array_9": "(11 group x2 + 1 null)  x 8 size = 184 bytes",
+                "__prts_items_array_10": "(12 group x2 + 1 null)  x 8 size = 200 bytes",
+                "__prts_items_array_11": "(13 group x2 + 1 null)  x 8 size = 216 bytes",
+                "__prts_items_array_12": "(14 group x2 + 1 null)  x 8 size = 232 bytes",
+                "__prts_items_array_13": "(15 group x2 + 1 null)  x 8 size = 248 bytes",
+                "__prts_items_array_14": "(16 group x2 + 1 null)  x 8 size = 264 bytes",
+                "__prts_items_array_15": "(17 group x2 + 1 null)  x 8 size = 280 bytes",
+                "__prts_items_array_16": "(18 group x2 + 1 null)  x 8 size = 296 bytes",
+                "__prts_items_array_17": "(19 group x2 + 1 null)  x 8 size = 312 bytes",
+                "__prts_items_array_18": "(20 group x2 + 1 null)  x 8 size = 328 bytes",
+                "__prts_items_array_19": "(21 group x2 + 1 null)  x 8 size = 344 bytes",
+                "__prts_items_array_20": "(36 group x2 + 1 null)  x 8 size = 584 bytes",
+                "__prts_items_array_21": "0x0",
+                "pattern": "^36cg field_01=(\\d+) field_02=(\\d+) field_03=(\\d+) field_04=(\\d+) field_05=(\\d+) field_06=(\\d+) field_07=(\\d+) field_08=(\\d+) field_09=(\\d+) field_10=(\\d+) field_11=(\\d+) field_12=(\\d+) field_13=(\\d+) field_14=(\\d+) field_15=(\\d+) field_16=(\\d+) field_17=(\\d+) field_18=(\\d+) field_19=(\\d+) field_20=(\\d+) field_21=(\\d+) field_22=(\\d+) field_23=(\\d+) field_24=(\\d+) field_25=(\\d+) field_26=(\\d+) field_27=(\\d+) field_28=(\\d+) field_29=(\\d+) field_30=(\\d+) field_31=(\\d+) field_32=(\\d+) field_33=(\\d+) field_34=(\\d+) field_35=(\\d+) field_36=(\\d\\d\\d)",
+                "log": "36cg field_01=001 field_02=002 field_03=003 field_04=004 field_05=005 field_06=006 field_07=007 field_08=008 field_09=009 field_10=010 field_11=011 field_12=012 field_13=013 field_14=014 field_15=015 field_16=016 field_17=017 field_18=018 field_19=019 field_20=020 field_21=021 field_22=022 field_23=023 field_24=024 field_25=025 field_26=026 field_27=027 field_28=028 field_29=029 field_30=030 field_31=031 field_32=032 field_33=033 field_34=034 field_35=035 field_36=036",
+                "end_match": "6",
+                "captured_groups": [
+                    "001", "002","003","004","005","006","007","008",
+                    "009", "010","011","012","013","014","015","016",
+                    "017", "018","019","020","021","022","023","024",
+                    "025", "026","027","028","029","030","031","032",
+                    "033", "034","035","036"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Memory test] regex_matching expand test: Incremental patterns and match last.",
+        "batch_test": [
+            {
+                "description": "Inizialize regex matching with capture grup, min size (1 patter, 1 capture).",
+                "__sub_string_size": "((1 pattern x 2 know bug) + 1 null)  x 8 size = 24 bytes",
+                "__prts_main_array": " (1 pattern + 1 null)  x 8 size = 16 bytes",
+                "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 16",
+                "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_array_2": "0x0",
+                "pattern": "hi (\\w+).",
+                "log": "Hi wazuh.",
+                "end_match": ".",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Resize x 38 incremental patterns and match last.",
+                "__sub_string_size": "((1 gruopos x 2 know bug) + 1 null)  x 8 size = 24 bytes",
+                "__prts_main_array": " (38 pattern + 1 null)  x 8 size = 312 bytes",
+                "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 312",
+                "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_2": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_3": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_4": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_5": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_6": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_7": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_8": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_9": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_10": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_11": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_12": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_13": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_14": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_15": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_16": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_17": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_18": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_19": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_20": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_21": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_22": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_23": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_24": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_25": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_26": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_27": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_28": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_29": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_30": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_31": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_32": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_33": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_34": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_35": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_36": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_37": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_38": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_items_array_39": "0x0",
+                "pattern": "^01cg field_01=(\\d+)|^04cg field_01=(\\d+)|^05cg field_01=(\\d+)|^06cg field_01=(\\d+)|^07cg field_01=(\\d+)|^08cg field_01=(\\d+)|^09cg field_01=(\\d+)|^10cg field_01=(\\d+)|^11cg field_01=(\\d+)|^12cg field_01=(\\d+)|^13cg field_01=(\\d+)|^14cg field_01=(\\d+)|^15cg field_01=(\\d+)|^16cg field_01=(\\d+)|^17cg field_01=(\\d+)|^18cg field_01=(\\d+)|^19cg field_01=(\\d+)|^20cg field_01=(\\d+)|^21cg field_01=(\\d+)|^22cg field_01=(\\d+)|^23cg field_01=(\\d+)|^24cg field_01=(\\d+)|^25cg field_01=(\\d+)|^26cg field_01=(\\d+)|^27cg field_01=(\\d+)|^28cg field_01=(\\d+)|^29cg field_01=(\\d+)|^30cg field_01=(\\d+)|^31cg field_01=(\\d+)|^32cg field_01=(\\d+)|^33cg field_01=(\\d+)|^34cg field_01=(\\d+)|^35cg field_01=(\\d+)|^36cg field_01=(\\d+)|^37cg field_01=(\\d+)|^38cg field_01=(\\d\\d\\d)",
+                "log": "38cg field_01=001",
+                "end_match": "1",
+                "captured_groups": [
+                    "001"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Memory test] regex_matching expand test: Incremental capture groups, patterns and match last.",
+        "batch_test": [
+            {
+                "description": "Inizialize regex matching with capture grup, min size (1 patter, 1 capture).",
+                "__sub_string_size": "((1 pattern x 2 know bug) + 1 null)  x 8 size = 24 bytes",
+                "__prts_main_array": " (1 pattern + 1 null)  x 8 size = 16 bytes",
+                "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 16",
+                "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_array_2": "0x0",
+                "pattern": "hi (\\w+).",
+                "log": "Hi wazuh.",
+                "end_match": ".",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Resize x 20 patterns, 2236 incremental capture groups and match last.",
                 "__sub_string_size": "((36 gruopos x 2 know bug) + 1 null)  x 8 size = 584 bytes",
                 "__prts_main_array": " (20 pattern + 1 null)  x 8 size = 168 bytes",
                 "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 168",
