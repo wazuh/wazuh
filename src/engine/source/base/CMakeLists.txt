@@ -77,6 +77,7 @@ add_library(base STATIC
     utils/stringUtils.hpp
     result.hpp
     baseTypes.hpp
+    expression.cpp
     )
 
 if(PROFILE_BUILD)
