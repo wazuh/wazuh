@@ -20,7 +20,7 @@ add_library(hlp STATIC
     src/date/date.h
 )
 
-target_link_libraries(hlp 
+target_link_libraries(hlp
     PUBLIC base
     PRIVATE CURL::libcurl)
 

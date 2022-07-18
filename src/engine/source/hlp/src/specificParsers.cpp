@@ -1,5 +1,3 @@
-#include "specificParsers.hpp"
-
 #include <climits>
 #include <iostream>
 #include <memory>
@@ -8,16 +6,16 @@
 #include <string_view>
 #include <unordered_map>
 
-#include <arpa/inet.h>
-
 #include "date/date.h"
 #include "hlpDetails.hpp"
+#include "specificParsers.hpp"
 #include "tld.hpp"
-
+#include <arpa/inet.h>
 #include <curl/curl.h>
 #include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
+
 #include <profile/profile.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -426,52 +424,6 @@ static bool parseFormattedTime(std::string const& fmt,
     if (!ss.fail())
     {
         result[name] = ss.str();
-        // std::cout << "FormattedTime string: " << ss.str() << std::endl;
-        // std::cout << "FormattedTime offset: " << offset.count() << std::endl;
-        // std::cout << "FormattedTime abbrev: " << abbrev << std::endl;
-
-        // if (fds.ymd.year().ok())
-        // {
-        //     result[name + ".year"] = static_cast<int>(fds.ymd.year());
-        // }
-
-        // if (fds.ymd.month().ok())
-        // {
-        //     result[name + ".month"] = static_cast<unsigned>(fds.ymd.month());
-        // }
-
-        // if (fds.ymd.day().ok())
-        // {
-        //     result[name + ".day"] = static_cast<unsigned>(fds.ymd.day());
-        // }
-
-        // if (fds.has_tod && fds.tod.in_conventional_range())
-        // {
-        //     result[name + ".hour"] = fds.tod.hours().count();
-        //     result[name + ".minutes"] = fds.tod.minutes().count();
-
-        //     // result[name + ".seconds"] =
-        //     // std::to_string(fds.tod.seconds().count());
-        //     auto secs = fds.tod.seconds() + fds.tod.subseconds();
-
-        //     result[name + ".seconds"] = static_cast<double>(secs.count() / 1e9);
-
-        //     if (offset.count() != 0)
-        //     {
-        //         date::hh_mm_ss<std::chrono::minutes> t {offset};
-        //         char str[6] = {0};
-        //         snprintf(str,
-        //                  6,
-        //                  t.is_negative() ? "-%02lu%02lu" : "%02lu%02lu",
-        //                  t.hours().count(),
-        //                  t.minutes().count());
-        //         result[name + ".timezone"] = std::string {str};
-        //     }
-        //     else if (!abbrev.empty())
-        //     {
-        //         result[name + ".timezone"] = abbrev;
-        //     }
-        // }
         return true;
     }
 
