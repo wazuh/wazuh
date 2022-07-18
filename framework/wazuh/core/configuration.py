@@ -138,21 +138,21 @@ def _insert_section(json_dst, section_name, section_data):
     Inserts a new section (section_data) called section_name in json_dst.
     """
 
-    if section_name in CONF_SECTIONS and CONF_SECTIONS[section_name]['type'] == 'duplicate':
+    if CONF_SECTIONS.get(section_name, {}).get('type') == 'duplicate':
         if section_name in json_dst:
             json_dst[section_name].append(section_data)  # Append new values
         else:
             json_dst[section_name] = [section_data]  # Create as list
-    elif section_name in CONF_SECTIONS and CONF_SECTIONS[section_name]['type'] == 'merge':
+    elif CONF_SECTIONS.get(section_name, {}).get('type') == 'merge':
         if section_name in json_dst:
             for option in section_data:
-                if option in json_dst[section_name] and option in CONF_SECTIONS[section_name]['list_options']:
+                if option in json_dst[section_name] and option in CONF_SECTIONS[section_name].get('list_options', []):
                     json_dst[section_name][option].extend(section_data[option])  # Append new values
                 else:
                     json_dst[section_name][option] = section_data[option]  # Update values
         else:
             json_dst[section_name] = section_data  # Create
-    elif section_name in CONF_SECTIONS and CONF_SECTIONS[section_name]['type'] == 'last':
+    elif CONF_SECTIONS.get(section_name, {}).get('type') == 'last':
         if section_name in json_dst:
             # if the option already exists it is overwritten. But a warning is shown.
             logger.warning(f'There are multiple {section_name} sections in configuration. Using only last section.')
