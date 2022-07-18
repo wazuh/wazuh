@@ -105,7 +105,8 @@
                 "nodes_stability_delay": 30,
                 "nodes_stability_time": 300,
                 "nodes_stability_threshold": 3,
-                "posbalance_time": 600
+                "posbalance_time": 600,
+                "max_assignments_per_node": 100
             }
         },
 

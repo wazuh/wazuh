@@ -1193,7 +1193,9 @@ class Master(server.AbstractServer):
             logger=logger, blacklisted_nodes=blacklisted_nodes,
             nodes=self.clients, master_name=self.configuration['node_name'],
             nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"][
-                "nodes_stability_threshold"]
+                "nodes_stability_threshold"],
+            max_assignments_per_node=self.cluster_items["intervals"]["master"]["agent_reconnection"][
+                "max_assignments_per_node"]
         )
 
         while True:

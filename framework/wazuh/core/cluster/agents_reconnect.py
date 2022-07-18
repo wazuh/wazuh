@@ -33,7 +33,8 @@ class AgentsReconnectionPhases(str, Enum):
 class AgentsReconnect:
     """Class that encapsulates everything related to the agent reconnection algorithm."""
 
-    def __init__(self, logger, nodes, master_name, blacklisted_nodes, nodes_stability_threshold) -> None:
+    def __init__(self, logger, nodes, master_name, blacklisted_nodes, nodes_stability_threshold,
+                 max_assignments_per_node) -> None:
         """Class constructor.
 
         Parameters
@@ -48,6 +49,8 @@ class AgentsReconnect:
             Set of nodes that are not taken into account for the agents reconnection.
         nodes_stability_threshold : int
             Number of consecutive checks that must be successful to consider the environment stable.
+        max_assignments_per_node : int
+            Number of agents that can reconnect to the same cluster node at the same time.
         """
         # Logger
         self.logger = logger
@@ -72,6 +75,7 @@ class AgentsReconnect:
         self.balance_threshold = 3
 
         # Reconnection phase
+        self.max_assignments_per_node = max_assignments_per_node
         self.expected_rounds = 0
         self.round_counter = 0
         self.reconnection_timestamp = 0
@@ -307,7 +311,7 @@ class AgentsReconnect:
             if self.env_status:
                 self.logger.debug2(f"Agents that need to be reconnected: "
                                    f"{str({node: info['agents'] for node, info in self.env_status.items()})}.")
-                self.reconnected_agents = await self.balance_agents(self.env_status)
+                self.reconnected_agents = await self.balance_agents(self.env_status, self.max_assignments_per_node)
                 self.reconnection_timestamp = utils.get_utc_now()
 
     def get_current_phase(self) -> AgentsReconnectionPhases:
