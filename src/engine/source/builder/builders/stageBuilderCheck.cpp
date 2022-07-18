@@ -59,7 +59,8 @@ base::Expression stageBuilderCheckList(const std::any& definition)
                     "Invalid array item object size: expected [1] but got [{}]",
                     condition.size()));
             }
-            return Registry::getBuilder("operation.condition")(condition.getObject().value()[0]);
+            return Registry::getBuilder("operation.condition")(
+                condition.getObject().value()[0]);
         });
 
     auto expression = base::And::create("stage.check", conditionExpressions);
@@ -86,13 +87,13 @@ base::Expression stageBuilderCheckExpression(const std::any& definition)
             value = term.substr(pos + 2);
         }
         // TODO: handle rest of operators
-        else if (term[0] == syntax::FUNCTION_HELPER_ANCHOR)
+        else if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
             auto pos1 = term.find("/");
             auto pos2 = [&]()
             {
                 auto tmp = term.find("/", pos1 + 1);
-                if (tmp != std::string::npos)
+                if (std::string::npos != tmp)
                 {
                     return tmp;
                 }

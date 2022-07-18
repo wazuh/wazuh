@@ -32,19 +32,19 @@ constexpr const char* const FILTERS = "filters";
  */
 static Asset::Type getAssetType(const std::string& name)
 {
-    if (name == DECODERS)
+    if (DECODERS == name)
     {
         return Asset::Type::DECODER;
     }
-    else if (name == RULES)
+    else if (RULES == name)
     {
         return Asset::Type::RULE;
     }
-    else if (name == OUTPUTS)
+    else if (OUTPUTS == name)
     {
         return Asset::Type::OUTPUT;
     }
-    else if (name == FILTERS)
+    else if (FILTERS == name)
     {
         return Asset::Type::FILTER;
     }
@@ -127,7 +127,7 @@ private:
         auto& graph = m_graphs[graphName];
         for (auto& [name, asset] : m_assets)
         {
-            if (asset->m_type == Asset::Type::FILTER)
+            if (Asset::Type::FILTER == asset->m_type)
             {
                 for (auto& parent : asset->m_parents)
                 {
@@ -166,7 +166,7 @@ public:
             std::find_if(envObj.begin(),
                          envObj.end(),
                          [](auto& tuple) { return std::get<0>(tuple) == FILTERS; });
-        if (filtersPos != envObj.end())
+        if (envObj.end() != filtersPos)
         {
             auto filtersList = std::get<1>(*filtersPos).getArray().value();
             std::transform(filtersList.begin(),

@@ -16,8 +16,9 @@
 #include <re2/re2.h>
 
 #include "syntax.hpp"
-#include <utils/stringUtils.hpp>
+
 #include <baseHelper.hpp>
+#include <utils/stringUtils.hpp>
 
 namespace
 {
@@ -47,24 +48,23 @@ enum class IntOperator
 
 IntOperator strToOp(const helper::base::Parameter& op)
 {
-    if (op.m_value == "sum")
+    if ("sum" == op.m_value)
     {
         return IntOperator::SUM;
     }
-    else if (op.m_value == "sub")
+    else if ("sub" == op.m_value)
     {
         return IntOperator::SUB;
     }
-    else if (op.m_value == "mul")
+    else if ("mul" == op.m_value)
     {
         return IntOperator::MUL;
     }
-    else if (op.m_value == "div")
+    else if ("div" == op.m_value)
     {
         return IntOperator::DIV;
     }
-    throw std::runtime_error(fmt::format(
-            "[builders::strToOp()] operation not support"));
+    throw std::runtime_error(fmt::format("[builders::strToOp()] operation not support"));
 }
 
 /**
@@ -77,10 +77,12 @@ IntOperator strToOp(const helper::base::Parameter& op)
  * - `LO`: Lower case
  * @return base::Expression
  */
-base::Expression opBuilderHelperStringTransformation(const std::any& definition, StringOperator op)
+base::Expression opBuilderHelperStringTransformation(const std::any& definition,
+                                                     StringOperator op)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -103,7 +105,8 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
             transformFunction = [](const std::string& value)
             {
                 std::string result;
-                std::transform(value.begin(), value.end(), std::back_inserter(result), ::toupper);
+                std::transform(
+                    value.begin(), value.end(), std::back_inserter(result), ::toupper);
                 return result;
             };
             break;
@@ -111,12 +114,12 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
             transformFunction = [](const std::string& value)
             {
                 std::string result;
-                std::transform(value.begin(), value.end(), std::back_inserter(result), ::tolower);
+                std::transform(
+                    value.begin(), value.end(), std::back_inserter(result), ::tolower);
                 return result;
             };
             break;
-        default:
-            break;
+        default: break;
     }
 
     // Tracing messages
@@ -127,39 +130,39 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
 
     // Function that implements the helper
-    return base::Term<base::EngineOp>::create(name,
-    [=,targetField=std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
-    {
-        // We assert that references exists, checking if the optional from Json getter is
-        // empty ot not. Then if is a reference we get the value from the event, otherwise
-        // we get the value from the parameter
-
-        // REF
-
-        if (rValueType == helper::base::Parameter::Type::REFERENCE)
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedRValue = event->getString(rValue);
-            if (!resolvedRValue.has_value())
-            {
-                return base::result::makeFailure(event, failureTrace1);
-            }
+            // We assert that references exists, checking if the optional from Json getter
+            // is empty ot not. Then if is a reference we get the value from the event,
+            // otherwise we get the value from the parameter
 
+            // REF
+
+            if (helper::base::Parameter::Type::REFERENCE == rValueType)
+            {
+                auto resolvedRValue = event->getString(rValue);
+                if (!resolvedRValue.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace1);
+                }
+
+                else
+                {
+                    auto res = transformFunction(resolvedRValue.value());
+                    event->setString(res, targetField);
+                    return base::result::makeSuccess(event, successTrace);
+                }
+            }
             else
             {
-                auto res = transformFunction(resolvedRValue.value());
+                auto res = transformFunction(rValue);
                 event->setString(res, targetField);
                 return base::result::makeSuccess(event, successTrace);
             }
-        }
-        else
-        {
-            auto res = transformFunction(rValue);
-            event->setString(res, targetField);
-            return base::result::makeSuccess(event, successTrace);
-        }
-    }
-    );
-
+        });
 }
 
 /**
@@ -176,9 +179,9 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
  */
 base::Expression
 opBuilderHelperIntTransformation(const std::string& targetField,
-                  IntOperator op,
-                  const helper::base::Parameter& rightParameter,
-                  const std::string& name)
+                                 IntOperator op,
+                                 const helper::base::Parameter& rightParameter,
+                                 const std::string& name)
 {
     // Depending on rValue type we store the reference or the integer value
     std::variant<std::string, int> rValue {};
@@ -192,13 +195,15 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             }
             catch (const std::exception& e)
             {
-                std::throw_with_nested(std::runtime_error(fmt::format(
-                    "[builders::opBuilderHelperIntTransformation()] could not convert {} to int",
-                    rightParameter.m_value)));
+                std::throw_with_nested(std::runtime_error(
+                    fmt::format("[builders::opBuilderHelperIntTransformation()] could "
+                                "not convert {} to int",
+                                rightParameter.m_value)));
             }
-            if(op == IntOperator::DIV && std::get<int>(rValue) == 0) {
+            if (IntOperator::DIV == op && std::get<int>(rValue) == 0)
+            {
                 throw std::runtime_error(fmt::format(
-                "[builders::opBuilderHelperIntTransformation()] division by zero"));
+                    "[builders::opBuilderHelperIntTransformation()] division by zero"));
             }
 
             break;
@@ -208,9 +213,10 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             break;
 
         default:
-            throw std::runtime_error(fmt::format(
-                "[builders::opBuilderHelperIntTransformation()] invalid parameter type for {}",
-                rightParameter.m_value));
+            throw std::runtime_error(
+                fmt::format("[builders::opBuilderHelperIntTransformation()] invalid "
+                            "parameter type for {}",
+                            rightParameter.m_value));
     }
 
     // Depending on the operator we return the correct function
@@ -238,17 +244,17 @@ opBuilderHelperIntTransformation(const std::string& targetField,
         case IntOperator::DIV:
             transformFunction = [](int l, int r)
             {
-                if(r==0)
+                if (0 == r)
                 {
-                    throw std::runtime_error(fmt::format(
-                "[builders::opBuilderHelperIntTransformation()] division by zero"));
+                    throw std::runtime_error(
+                        fmt::format("[builders::opBuilderHelperIntTransformation()] "
+                                    "division by zero"));
                 }
 
                 return l / r;
             };
             break;
-        default:
-            break;
+        default: break;
     }
 
     // Tracing messages
@@ -260,49 +266,50 @@ opBuilderHelperIntTransformation(const std::string& targetField,
         fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value);
     const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
 
-    const auto failureTrace4 =
-        fmt::format("[{}] -> Failure: [{}] division by zero", name, rightParameter.m_value);
+    const auto failureTrace4 = fmt::format(
+        "[{}] -> Failure: [{}] division by zero", name, rightParameter.m_value);
 
     // Function that implements the helper
-    return base::Term<base::EngineOp>::create(name,
-    [=, targetField=std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
-    {
-        // We assert that references exists, checking if the optional from Json getter is
-        // empty ot not. Then if is a reference we get the value from the event, otherwise
-        // we get the value from the parameter
-
-        auto lValue = event->getInt(targetField);
-        if (!lValue.has_value())
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
         {
-            return base::result::makeFailure(event, failureTrace1);
-        }
+            // We assert that references exists, checking if the optional from Json getter
+            // is empty ot not. Then if is a reference we get the value from the event,
+            // otherwise we get the value from the parameter
 
-        if (rValueType == helper::base::Parameter::Type::REFERENCE)
-        {
-            auto resolvedRValue = event->getInt(std::get<std::string>(rValue));
-            if (!resolvedRValue.has_value())
+            auto lValue = event->getInt(targetField);
+            if (!lValue.has_value())
             {
-                return base::result::makeFailure(event, failureTrace2);
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            if (helper::base::Parameter::Type::REFERENCE == rValueType)
+            {
+                auto resolvedRValue = event->getInt(std::get<std::string>(rValue));
+                if (!resolvedRValue.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
+                else
+                {
+                    if (IntOperator::DIV == op && resolvedRValue == 0)
+                    {
+                        return base::result::makeFailure(event, failureTrace4);
+                    }
+                    auto res = transformFunction(lValue.value(), resolvedRValue.value());
+                    event->setInt(res, targetField);
+                    return base::result::makeSuccess(event, successTrace);
+                }
             }
             else
             {
-                if(op == IntOperator::DIV && resolvedRValue == 0)
-                {
-                    return base::result::makeFailure(event, failureTrace4);
-                }
-                auto res = transformFunction(lValue.value(), resolvedRValue.value());
+                auto res = transformFunction(lValue.value(), std::get<int>(rValue));
                 event->setInt(res, targetField);
                 return base::result::makeSuccess(event, successTrace);
             }
-        }
-        else
-        {
-            auto res = transformFunction(lValue.value(), std::get<int>(rValue));
-            event->setInt(res, targetField);
-            return base::result::makeSuccess(event, successTrace);
-        }
-    }
-    );
+        });
 }
 
 } // namespace
@@ -334,7 +341,8 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
 {
 
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -349,8 +357,8 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     char trimType = parameters[0].m_value == "begin"  ? 's'
                     : parameters[0].m_value == "end"  ? 'e'
                     : parameters[0].m_value == "both" ? 'b'
-                                                 : '\0';
-    if (trimType == '\0')
+                                                      : '\0';
+    if ('\0' == trimType)
     {
         throw std::runtime_error("Invalid trim type for s_trim operator");
     }
@@ -372,53 +380,49 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
 
     // Return Term
-    return base::Term<base::EngineOp>::create(name,
-            [=,targetField=std::move(targetField) ](base::Event event)->base::result::Result<base::Event>
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Get field value
+            auto resolvedField = event->getString(targetField);
+
+            // Check if field is a string
+            if (!resolvedField.has_value())
             {
-                // Get field value
-                auto resolvedField = event->getString(targetField);
+                return base::result::makeFailure(event, failureTrace1);
+            }
 
-                // Check if field is a string
-                if (!resolvedField.has_value())
-                {
-                    return  base::result::makeFailure(event, failureTrace1);
-                }
+            // Get string
+            std::string strToTrim {resolvedField.value()};
 
-                // Get string
-                std::string strToTrim {resolvedField.value()};
+            // Trim
+            switch (trimType)
+            {
+                case 's':
+                    // Trim begin
+                    strToTrim.erase(0, strToTrim.find_first_not_of(trimChar));
+                    break;
+                case 'e':
+                    // Trim end
+                    strToTrim.erase(strToTrim.find_last_not_of(trimChar) + 1);
+                    break;
+                case 'b':
+                    // Trim both
+                    strToTrim.erase(0, strToTrim.find_first_not_of(trimChar));
+                    strToTrim.erase(strToTrim.find_last_not_of(trimChar) + 1);
+                    break;
+                default:
+                    // if raise here, then the source code is wrong
+                    throw std::logic_error("Invalid trim type for s_trim operator");
+                    break;
+            }
 
-                // Trim
-                switch (trimType)
-                {
-                    case 's':
-                        // Trim begin
-                        strToTrim.erase(0,
-                                        strToTrim.find_first_not_of(trimChar));
-                        break;
-                    case 'e':
-                        // Trim end
-                        strToTrim.erase(strToTrim.find_last_not_of(trimChar) +
-                                        1);
-                        break;
-                    case 'b':
-                        // Trim both
-                        strToTrim.erase(0,
-                                        strToTrim.find_first_not_of(trimChar));
-                        strToTrim.erase(strToTrim.find_last_not_of(trimChar) +
-                                        1);
-                        break;
-                    default:
-                        // if raise here, then the source code is wrong
-                        throw std::logic_error(
-                            "Invalid trim type for s_trim operator");
-                        break;
-                }
+            event->setString(strToTrim, targetField);
 
-                event->setString(strToTrim, targetField);
-
-                return base::result::makeSuccess(event, successTrace);
-            });
-
+            return base::result::makeSuccess(event, successTrace);
+        });
 }
 
 //*************************************************
@@ -429,7 +433,8 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
 base::Expression opBuilderHelperIntCalc(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -438,9 +443,9 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
     auto op = strToOp(parameters[0]);
 
-    auto expression = opBuilderHelperIntTransformation(targetField, op, parameters[1], name);
+    auto expression =
+        opBuilderHelperIntTransformation(targetField, op, parameters[1], name);
     return expression;
-
 }
 
 //*************************************************
@@ -451,13 +456,15 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
 base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
-    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
     helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
@@ -467,8 +474,8 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     auto regex_ptr {std::make_shared<RE2>(parameters[1].m_value)};
     if (!regex_ptr->ok())
     {
-        const std::string err = "Error compiling regex '" + parameters[1].m_value +
-                                "'. " + regex_ptr->error();
+        const std::string err = "Error compiling regex '" + parameters[1].m_value + "'. "
+                                + regex_ptr->error();
         throw std::runtime_error(err);
     }
 
@@ -480,28 +487,28 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
 
     // Return Term
-    return base::Term<base::EngineOp>::create(name,
-            [=,targetField=std::move(targetField)](base::Event event)->base::result::Result<base::Event>
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // TODO Remove try catch
+            auto resolvedField = event->getString(map_field);
+
+            if (!resolvedField.has_value())
             {
-                // TODO Remove try catch
-                auto resolvedField = event->getString(map_field);
+                return base::result::makeFailure(event, failureTrace1);
+            }
 
-                if(!resolvedField.has_value())
-                {
-                    return base::result::makeFailure(event, failureTrace1);
-                }
+            std::string match;
+            if (RE2::PartialMatch(resolvedField.value(), *regex_ptr, &match))
+            {
+                event->setString(match, targetField);
 
-                std::string match;
-                if (RE2::PartialMatch(
-                        resolvedField.value(), *regex_ptr, &match))
-                {
-                    event->setString(match, targetField);
-
-                    return base::result::makeSuccess(event, successTrace);
-                }
-                return base::result::makeFailure(event, failureTrace2);
-            });
-
+                return base::result::makeSuccess(event, successTrace);
+            }
+            return base::result::makeFailure(event, failureTrace2);
+        });
 }
 
 base::Expression opBuilderHelperAppendString(const std::any& definition)

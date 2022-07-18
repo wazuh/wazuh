@@ -58,7 +58,7 @@ bool configureMapParser(Parser& parser, std::vector<std::string_view> const& arg
     size_t argsSize = args.size();
     if (argsSize < 2 || argsSize > 3)
     {
-        auto msg = fmt::format(
+        const auto msg = fmt::format(
             "[HLP] Invalid arguments for map Parser. Expected 2 or 3, got [{}]",
             argsSize);
         throw std::runtime_error(msg);
@@ -129,9 +129,9 @@ bool configureQuotedString(Parser& parser, std::vector<std::string_view> const& 
     }
     else
     {
-        auto msg = fmt::format("[HLP] Invalid arguments for quoted string Parser. "
-                               "Expected 0, 1 or 2, got [{}]",
-                               args.size());
+        const auto msg = fmt::format("[HLP] Invalid arguments for quoted string Parser. "
+                                     "Expected 0, 1 or 2, got [{}]",
+                                     args.size());
         throw std::runtime_error(msg);
     }
 
@@ -162,9 +162,9 @@ bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& 
         }
         else
         {
-            auto msg = fmt::format("[HLP] Invalid arguments for ignore Parser. "
-                                   "Expected 0 or 1, got [{}]",
-                                   args.size());
+            const auto msg = fmt::format("[HLP] Invalid arguments for ignore Parser. "
+                                         "Expected 0 or 1, got [{}]",
+                                         args.size());
             throw std::runtime_error(msg);
         }
     }
@@ -178,7 +178,6 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
     {
         auto ignoreStr = parser.options[0];
         size_t ignoreLen = ignoreStr.size();
-        bool ignore = true;
 
         auto checkIgnore = [&](const char** it)
         {
@@ -269,18 +268,18 @@ bool parseFilePath(const char** it, Parser const& parser, ParseResult& result)
     auto path = filePath;
     auto folderEnd = filePath.find_last_of(folderSeparator);
 
-    auto folder = (folderEnd == std::string::npos) ? "" : filePath.substr(0, folderEnd);
+    auto folder = (std::string::npos == folderEnd) ? "" : filePath.substr(0, folderEnd);
 
     auto name =
-        (folderEnd == std::string::npos) ? filePath : filePath.substr(folderEnd + 1);
+        (std::string::npos == folderEnd) ? filePath : filePath.substr(folderEnd + 1);
 
     auto extensionStart = name.find_last_of('.');
     auto extension =
-        (extensionStart == std::string::npos) ? "" : name.substr(extensionStart + 1);
+        (std::string::npos == extensionStart) ? "" : name.substr(extensionStart + 1);
 
     std::string driveLetter;
     if (hasDriveLetter && filePath[1] == ':'
-        && (filePath[2] == '\\' || filePath[2] == '/'))
+        && ('\\' == filePath[2] || '/' == filePath[2]))
     {
         driveLetter = std::toupper(filePath[0]);
     }
@@ -554,7 +553,7 @@ bool parseURL(const char** it, Parser const& parser, ParseResult& result)
     // TODO curl will parse and copy the URL into an allocated
     // char ptr and we will copy it again into the string for the result
     // Check if there's a way to avoid all the copying here
-    char* str;
+    char* str = nullptr;
     uc = curl_url_get(url.get(), CURLUPART_URL, &str, 0);
     if (uc)
     {
@@ -653,8 +652,8 @@ static bool isAsciiLow(char c)
 }
 static bool isDomainValidChar(char c)
 {
-    return (isAsciiNum(c) || isAsciiUpp(c) || isAsciiLow(c) || c == '-' || c == '_'
-            || c == '.');
+    return (isAsciiNum(c) || isAsciiUpp(c) || isAsciiLow(c) || '-' == c || '_' == c
+            || '.' == c);
 }
 
 bool parseDomain(const char** it, Parser const& parser, ParseResult& result)

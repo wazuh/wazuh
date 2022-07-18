@@ -22,32 +22,32 @@ namespace builder::internals::builders
 static bool any2Json(std::any const& anyVal, std::string const& path, base::Event event)
 {
     auto& type = anyVal.type();
-    if (type == typeid(void))
+    if (typeid(void) == type)
     {
         json::Json val;
         val.setNull();
         event->set(path, val);
     }
-    else if (type == typeid(long) || type == typeid(int) || type == typeid(unsigned))
+    else if (typeid(long) == type || typeid(int) == type || typeid(unsigned) == type)
     {
         json::Json val;
         val.setInt(std::any_cast<long>(anyVal));
         event->set(path, val);
     }
-    else if (type == typeid(float) || type == typeid(double))
+    else if (typeid(float) == type || typeid(double) == type)
     {
         json::Json val;
         val.setDouble(std::any_cast<double>(anyVal));
         event->set(path, val);
     }
-    else if (type == typeid(std::string))
+    else if (typeid(std::string) == type)
     {
         const auto& s = std::any_cast<std::string>(anyVal);
         json::Json val;
         val.setString(s);
         event->set(path, val);
     }
-    else if (type == typeid(hlp::JsonString))
+    else if (typeid(hlp::JsonString) == type)
     {
         const auto& s = std::any_cast<hlp::JsonString>(anyVal);
         json::Json val;
@@ -160,11 +160,11 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
                     }
                     auto ev = event->getString(field);
                     ParseResult result;
-                    auto ok = parserOp(ev.value(), result);
-                    if (!ok)
+                    auto parseResult = parserOp(ev.value(), result);
+                    if (!parseResult)
                     {
                         return base::result::makeFailure(std::move(event),
-                                                         errorTrace2 + ok.trace);
+                                                         errorTrace2 + parseResult.trace);
                     }
 
                     for (auto const& val : result)
