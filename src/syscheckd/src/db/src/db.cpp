@@ -42,7 +42,7 @@ void DB::init(const int storage,
                                  FIMDBCreator<OS_TYPE>::CreateStatement())
     };
 
-    auto rsyncHandler { std::make_shared<RemoteSync>() };
+    auto rsyncHandler { std::make_shared<RemoteSync>(syncThreadPool, syncQueueSize) };
 
     FIMDB::instance().init(syncInterval,
                            callbackSyncFileWrapper,
