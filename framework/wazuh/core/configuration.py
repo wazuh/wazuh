@@ -12,6 +12,7 @@ import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
+from types import MappingProxyType
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -32,7 +33,7 @@ logger = logging.getLogger('wazuh')
 #   entry.
 #   * Last -> there can be multiple sections in the configuration but only the last one will be returned.
 #   The rest are ignored.
-CONF_SECTIONS = {
+CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
     'agentless': {'type': 'duplicate', 'list_options': []},
@@ -107,7 +108,7 @@ CONF_SECTIONS = {
         'type': 'merge',
         'list_options': ['policies']
     }
-}
+})
 
 GETCONFIG_COMMAND = "getconfig"
 
@@ -126,7 +127,7 @@ def _insert(json_dst, section_name, option, value):
         else:
             json_dst[option] = value  # Update values
     else:
-        if section_name in CONF_SECTIONS and option in CONF_SECTIONS[section_name]['list_options']:
+        if option in CONF_SECTIONS.get(section_name, {}).get('list_options', []):
             json_dst[option] = [value]  # Create as list
         else:
             json_dst[option] = value  # Update values
@@ -815,7 +816,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    def get_active_configuration_000():
+    def get_active_configuration_manager():
         """Get manager active configuration."""
         # Communicate with the socket that corresponds to the component requested
         dest_socket = os_path.join(common.WAZUH_PATH, "queue", "sockets", component_socket_mapping[component])
@@ -823,7 +824,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
         # Verify component configuration
         if not os.path.exists(dest_socket):
             raise WazuhError(1121,
-                             extra_message=f"please verify that the component '{component}' is properly configured")
+                             extra_message=f"Please verify that the component '{component}' is properly configured")
 
         # Simple socket message
         if component_socket_mapping[component] not in sockets_json_protocol:
@@ -844,8 +845,8 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
                 rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
             except ValueError:
                 raise WazuhInternalError(1118, extra_message="Data could not be received")
-
-            s.close()
+            finally:
+                s.close()
 
             return rec_msg_ok, rec_msg
 
@@ -869,8 +870,8 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
                 response = s.receive(raw=True)
             except ValueError:
                 raise WazuhInternalError(1118, extra_message="Data could not be received")
-
-            s.close()
+            finally:
+                s.close()
 
             return response['error'], response['data']
 
@@ -897,12 +898,12 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
             rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
         except ValueError:
             raise WazuhInternalError(1118, extra_message="Data could not be received")
-
-        s.close()
+        finally:
+            s.close()
 
         return rec_msg_ok, rec_msg
 
-    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_000()
+    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
