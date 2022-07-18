@@ -155,7 +155,7 @@ getIntCmpFunction(const std::string& targetField,
             return base::result::makeFailure(event, failureTrace1);
         }
 
-        if (rValueType == helper::base::Parameter::Type::REFERENCE)
+        if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
             auto resolvedRValue = event->getInt(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
@@ -274,7 +274,7 @@ getStringCmpFunction(const std::string& targetField,
             return base::result::makeFailure(event, failureTrace1);
         }
 
-        if (rValueType == helper::base::Parameter::Type::REFERENCE)
+        if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
             auto resolvedRValue = event->getString(rValue);
             if (!resolvedRValue.has_value())
@@ -316,7 +316,8 @@ getStringCmpFunction(const std::string& targetField,
 base::Expression opBuilderComparison(const std::any& definition, Operator op, Type t)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -443,7 +444,8 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -496,7 +498,8 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -553,7 +556,8 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
@@ -746,28 +750,22 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                         }
 
                         cmpValue.setString(resolvedParameter.value());
-                        if (std::find(resolvedArray.value().begin(),
-                                      resolvedArray.value().end(),
-                                      cmpValue)
-                            == resolvedArray.value().end())
-                        {
-                            return base::result::makeFailure(event, failureTrace3);
-                        }
                     }
                     case helper::base::Parameter::Type::VALUE:
                     {
                         cmpValue.setString(parameter.m_value);
-                        if (std::find(resolvedArray.value().begin(),
-                                      resolvedArray.value().end(),
-                                      cmpValue)
-                            == resolvedArray.value().end())
-                        {
-                            return base::result::makeFailure(event, failureTrace3);
-                        }
                     }
                     default:
                         throw std::runtime_error(fmt::format(
                             "[opBuilderHelperContains] invalid parameter type"));
+                }
+
+                if (std::find(resolvedArray.value().begin(),
+                              resolvedArray.value().end(),
+                              cmpValue)
+                    == resolvedArray.value().end())
+                {
+                    return base::result::makeFailure(event, failureTrace3);
                 }
             }
 
