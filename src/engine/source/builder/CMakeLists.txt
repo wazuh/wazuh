@@ -32,6 +32,7 @@ add_library(builders OBJECT
   builders/opBuilderHelperMap.cpp
   builders/baseHelper.cpp
   definitions.cpp
+  asset.cpp
 )
 target_include_directories(builders
   PRIVATE
@@ -40,7 +41,6 @@ target_include_directories(builders
   ${ENGINE_SOURCE_DIR}/builder/builders
   ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}
-  ${ENGINE_SOURCE_DIR}/builder/builders
   PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}
   ${RxCpp_SOURCE_DIR}/Rx/v2/src
