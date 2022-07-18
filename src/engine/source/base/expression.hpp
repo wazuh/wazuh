@@ -48,11 +48,7 @@ private:
      *
      * @return Identifier for the formula.
      */
-    static unsigned int generateId()
-    {
-        static unsigned int id = 0;
-        return id++;
-    }
+    static unsigned int generateId();
 
 protected:
     // Unique identifier for the formula
@@ -66,12 +62,7 @@ protected:
      * @param name Name of formula.
      * @param typeName Type of formula.
      */
-    Formula(std::string name, std::string typeName)
-        : m_id {generateId()}
-        , m_name {name}
-        , m_typeName {typeName}
-    {
-    }
+    Formula(std::string name, std::string typeName);
 
 public:
     /**
@@ -101,7 +92,7 @@ public:
     /**
      * @brief Destroy the Formula object
      */
-    virtual ~Formula() = default;
+    virtual ~Formula();
 
     // Type checkers
 
@@ -111,10 +102,7 @@ public:
      *
      * @return true if expression is type Operation::Term, false otherwise.
      */
-    virtual bool isTerm() const
-    {
-        return false;
-    }
+    virtual bool isTerm() const;
 
     /**
      * @brief Check if this Specific Formula instance is that of Operation
@@ -122,10 +110,7 @@ public:
      *
      * @return true if expression is type Operation::Operation, false otherwise.
      */
-    virtual bool isOperation() const
-    {
-        return false;
-    }
+    virtual bool isOperation() const;
 
     /**
      * @brief Check if this Specific Formula instance is that of And
@@ -133,10 +118,7 @@ public:
      *
      * @return true if expression is type Operation::And, false otherwise.
      */
-    virtual bool isAnd() const
-    {
-        return false;
-    }
+    virtual bool isAnd() const;
 
     /**
      * @brief Check if this Specific Formula instance is that of Or
@@ -144,21 +126,14 @@ public:
      *
      * @return true if expression is type Operation::Or, false otherwise.
      */
-    virtual bool isOr() const
-    {
-        return false;
-    }
-
+    virtual bool isOr() const;
     /**
      * @brief Check if this Specific Formula instance is that of Chain
      * (Formula::Operation::Chain).
      *
      * @return true if expression is type Operation::Chain, false otherwise.
      */
-    virtual bool isChain() const
-    {
-        return false;
-    }
+    virtual bool isChain() const;
 
     /**
      * @brief Check if this Specific Formula instance is that of Implication
@@ -166,10 +141,7 @@ public:
      *
      * @return true if expression is type Operation::Implication, false otherwise.
      */
-    virtual bool isImplication() const
-    {
-        return false;
-    }
+    virtual bool isImplication() const;
 
     /**
      * @brief Check if this Specific Formula instance is that of Broadcast
@@ -177,10 +149,7 @@ public:
      *
      * @return true if expression is type Operation::Broadcast, false otherwise.
      */
-    virtual bool isBroadcast() const
-    {
-        return false;
-    }
+    virtual bool isBroadcast() const;
 
     // getters
 
@@ -189,30 +158,21 @@ public:
      *
      * @return Id of the Formula.
      */
-    unsigned int getId() const
-    {
-        return m_id;
-    }
+    unsigned int getId() const;
 
     /**
      * @brief Get the type name of this Specific Formula.
      *
      * @return Type name of the Formula.
      */
-    std::string getTypeName() const
-    {
-        return m_typeName;
-    }
+    std::string getTypeName() const;
 
     /**
      * @brief Get the name of this Specific Formula.
      *
      * @return Name of the Formula.
      */
-    std::string getName() const
-    {
-        return m_name;
-    }
+    std::string getName() const;
 };
 
 template<typename T>
@@ -246,11 +206,11 @@ protected:
 
 public:
     /**
-     * @brief
+     * @brief Construct a new Term object.
      *
-     * @param name
-     * @param fn
-     * @return std::shared_ptr<Term>
+     * @param name Name of the Term
+     * @param fn The function that will be used to compute the term
+     * @return new std::shared_ptr<Term> created
      */
     [[nodiscard]] static std::shared_ptr<Term> create(std::string name, T fn)
     {
@@ -303,24 +263,20 @@ protected:
      * @brief Construct a new Operation object.
      * Protected constructor to ensure that the operation is owned by a
      * shared_ptr
-     * @param name name of Operation
+     * @param name Name of Operation
      * @param nameType name of type of Operation
      * @param operands operation operators
      */
     Operation(std::string name,
               std::string nameType,
-              std::vector<std::shared_ptr<Formula>> operands)
-        : Formula(name, nameType)
-        , m_operands {operands}
-    {
-    }
+              std::vector<std::shared_ptr<Formula>> operands);
 
 public:
     /**
      * @brief Destroy the Operation object
      *
      */
-    virtual ~Operation() = default;
+    virtual ~Operation();
 
     /**
      * @brief Check if this Specific Formula instance is that of Operation
@@ -328,10 +284,7 @@ public:
      *
      * @return true if expression is type Operation::Operation, false otherwise.
      */
-    bool isOperation() const override
-    {
-        return true;
-    }
+    bool isOperation() const override;
 
     // TODO: check this on rvalue
     /**
@@ -339,10 +292,7 @@ public:
      *
      * @return the operands of the operation.
      */
-    const std::vector<std::shared_ptr<Formula>>& getOperands() const
-    {
-        return m_operands;
-    }
+    const std::vector<std::shared_ptr<Formula>>& getOperands() const;
 
     // TODO: check this on rvalue
     /**
@@ -350,10 +300,7 @@ public:
      *
      * @return the operands of the operation.
      */
-    std::vector<std::shared_ptr<Formula>>& getOperands()
-    {
-        return m_operands;
-    }
+    std::vector<std::shared_ptr<Formula>>& getOperands();
 };
 
 class Implication : public Operation
@@ -369,7 +316,7 @@ public:
     /**
      * @brief Construct a new Implication object.
      *
-     * @param name of the Implication
+     * @param name Name of the Implication
      * @param leftOperand left operand of the formula
      * @param rightOperand right operand of the formula
      * @return new implication created
@@ -377,17 +324,13 @@ public:
     [[nodiscard]] static std::shared_ptr<Implication>
     create(std::string name,
            std::shared_ptr<Formula> leftOperand,
-           std::shared_ptr<Formula> rightOperand)
-    {
-        return std::shared_ptr<Implication>(
-            new Implication {name, leftOperand, rightOperand});
-    }
+           std::shared_ptr<Formula> rightOperand);
 
     /**
      * @brief Destroy the Implication object.
      *
      */
-    virtual ~Implication() = default;
+    virtual ~Implication();
 
     /**
      * @brief Check if this Specific Formula instance is that of Implication
@@ -395,10 +338,7 @@ public:
      *
      * @return true if expression is type Operation::Implication, false otherwise.
      */
-    bool isImplication() const override
-    {
-        return true;
-    }
+    bool isImplication() const override;
 
 protected:
     /**
@@ -413,10 +353,7 @@ protected:
      */
     Implication(std::string name,
                 std::shared_ptr<Formula> leftOperand,
-                std::shared_ptr<Formula> rightOperand)
-        : Operation {name, "Implication", {leftOperand, rightOperand}}
-    {
-    }
+                std::shared_ptr<Formula> rightOperand);
 };
 
 class And : public Operation
@@ -440,15 +377,12 @@ public:
      * @return new and operation created
      */
     [[nodiscard]] static std::shared_ptr<And>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-    {
-        return std::shared_ptr<And>(new And(name, operands));
-    }
+    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the And object
      */
-    virtual ~And() = default;
+    virtual ~And();
 
     /**
      * @brief Check if this Specific Formula instance is that of And
@@ -456,10 +390,7 @@ public:
      *
      * @return true if expression is type Operation::And, false otherwise.
      */
-    bool isAnd() const override
-    {
-        return true;
-    }
+    bool isAnd() const override;
 
 protected:
     /**
@@ -470,10 +401,7 @@ protected:
      * @param name name of the and operation
      * @param operands operands of the operation
      */
-    And(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-        : Operation(name, "And", operands)
-    {
-    }
+    And(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 };
 
 class Or : public Operation
@@ -497,15 +425,12 @@ public:
      * @return new or operation created
      */
     [[nodiscard]] static std::shared_ptr<Or>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-    {
-        return std::shared_ptr<Or>(new Or(name, operands));
-    }
+    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the Or object
      */
-    virtual ~Or() = default;
+    virtual ~Or();
 
     /**
      * @brief Check if this Specific Formula instance is that of Or
@@ -513,10 +438,7 @@ public:
      *
      * @return true if expression is type Operation::Or, false otherwise.
      */
-    bool isOr() const override
-    {
-        return true;
-    }
+    bool isOr() const override;
 
 protected:
     /**
@@ -527,10 +449,7 @@ protected:
      * @param name name of the or operation
      * @param operands operands of the operation
      */
-    Or(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-        : Operation(name, "Or", operands)
-    {
-    }
+    Or(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 };
 
 class Chain : public Operation
@@ -551,15 +470,12 @@ public:
      * @return new chain operation created
      */
     [[nodiscard]] static std::shared_ptr<Chain>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-    {
-        return std::shared_ptr<Chain>(new Chain(name, operands));
-    }
+    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the Chain object
      */
-    virtual ~Chain() = default;
+    virtual ~Chain();
 
     /**
      * @brief Check if this Specific Formula instance is that of Chain
@@ -567,10 +483,7 @@ public:
      *
      * @return true if expression is type Operation::Chain, false otherwise.
      */
-    bool isChain() const override
-    {
-        return true;
-    }
+    bool isChain() const override;
 
 protected:
     /**
@@ -581,10 +494,7 @@ protected:
      * @param name name of the chain operation
      * @param operands operands of the operation
      */
-    Chain(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-        : Operation(name, "Chain", operands)
-    {
-    }
+    Chain(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 };
 
 class Broadcast : public Operation
@@ -598,15 +508,12 @@ public:
      * @return new broadcast operation created
      */
     [[nodiscard]] static std::shared_ptr<Broadcast>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-    {
-        return std::shared_ptr<Broadcast>(new Broadcast(name, operands));
-    }
+    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the Broadcast object
      */
-    virtual ~Broadcast() = default;
+    virtual ~Broadcast();
 
     /**
      * @brief Check if this Specific Formula instance is that of Broadcast
@@ -614,10 +521,7 @@ public:
      *
      * @return true if expression is type Operation::Broadcast, false otherwise.
      */
-    bool isBroadcast() const override
-    {
-        return true;
-    }
+    bool isBroadcast() const override;
 
 protected:
     /**
@@ -628,10 +532,7 @@ protected:
      * @param name name of the broadcast operation
      * @param operands operands of the operation
      */
-    Broadcast(std::string name, std::vector<std::shared_ptr<Formula>> operands)
-        : Operation(name, "Broadcast", operands)
-    {
-    }
+    Broadcast(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 };
 
 using Expression = std::shared_ptr<Formula>;
@@ -642,62 +543,7 @@ using Expression = std::shared_ptr<Formula>;
  * @param expression expression describing the graph
  * @return the string with the .dot format
  */
-static std::string toGraphvizStr(Expression expression)
-{
-    auto header = R"(
-compound=true;
-fontname="Helvetica,Arial,sans-serif";
-fontsize=12;
-node [color="#57abff", fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="white"];
-edge [fontname="Helvetica,Arial,sans-serif", fontsize=8];
-)";
-    auto clusterHeader = R"(
-style="rounded,filled";
-color="#57abff";
-)";
-
-    std::stringstream ss;
-    ss << "strict digraph G {" << std::endl << header << std::endl;
-
-    // Erase " from string
-    auto eraseQuotes = [](std::string str)
-    {
-        while (str.find("\"") != std::string::npos)
-        {
-            str.replace(str.find("\""), 1, "'");
-        }
-
-        return str;
-    };
-    auto visit = [&](Expression current, auto& visitRef) -> void
-    {
-        ss << "subgraph cluster_" << current->getId() << " {" << std::endl
-           << clusterHeader << std::endl;
-        ss << "label=\"" << current->getTypeName() << "\";" << std::endl;
-        ss << current->getId() << " [label=\"" << eraseQuotes(current->getName()) << " ["
-           << current->getId() << "]\"];" << std::endl;
-        ss << "}" << std::endl;
-        if (current->isOperation())
-        {
-            auto operation = current->getPtr<Operation>();
-            int i = 0;
-            for (auto& child : operation->getOperands())
-            {
-                ss << fmt::format("{} -> {} [ltail=cluster_{} lhead=cluster_{} label={} "
-                                  "fontcolor=\"red\"];\n",
-                                  current->getId(),
-                                  child->getId(),
-                                  current->getId(),
-                                  child->getId(),
-                                  i++);
-                visitRef(child, visitRef);
-            }
-        }
-    };
-    visit(expression, visit);
-    ss << "}\n";
-    return ss.str();
-}
+std::string toGraphvizStr(Expression expression);
 
 } // namespace base
 
