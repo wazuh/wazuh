@@ -7,7 +7,18 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 file(GLOB registrykey_UNIT_TEST_SRC
     "*.cpp")
 
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
+
 file(GLOB REGISTRYKEY_SRC "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistryKey.cpp")
+
+file(GLOB RSYNC_IMP_SRC
+    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
+
+file(GLOB DBSYNC_IMP_SRC
+    "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
+    "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     file(GLOB WINDOWS_REGISTRYKEY_SRC "${SRC_FOLDER}/syscheckd/src/db/src/fimDBSpecializationWindows.cpp")
@@ -16,7 +27,9 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 add_executable(registrykey_unit_test
     ${registrykey_UNIT_TEST_SRC}
     ${REGISTRYKEY_SRC}
-    ${WINDOWS_REGISTRYKEY_SRC})
+    ${WINDOWS_REGISTRYKEY_SRC}
+    ${RSYNC_IMP_SRC}
+    ${DBSYNC_IMP_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(registrykey_unit_test
@@ -34,8 +47,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         crypto
         ws2_32
         crypt32
-        rsync
-        dbsync
         -static-libgcc -static-libstdc++
     )
 else()
@@ -52,9 +63,6 @@ else()
         sqlite3
         cjson
         crypto
-        ssl
-        rsync
-        dbsync
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

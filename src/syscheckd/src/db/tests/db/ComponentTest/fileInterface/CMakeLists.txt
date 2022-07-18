@@ -19,9 +19,9 @@ file(GLOB FILE_SRC
     "${SRC_FOLDER}/syscheckd/src/db/src/dbFileItem.cpp")
 
 file(GLOB FIMDB_SRC
-     "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp")
+    "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp")
 
- file(GLOB RSYNC_IMP_SRC
+file(GLOB RSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
 
 file(GLOB DBSYNC_IMP_SRC
