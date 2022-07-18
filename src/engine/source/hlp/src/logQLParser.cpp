@@ -197,13 +197,6 @@ ExpressionList parseLogQlExpr(const char *expr)
                     throw std::runtime_error(msg);
                 }
 
-                // if (peekToken(tokenizer).type == TokenType::OpenAngle)
-                // {
-                //     auto msg = fmt::format("[HLP]Invalid LogQL expression at "
-                //                            "[{}]. Can't captures back to back",
-                //                            std::string(prev));
-                //     throw std::runtime_error(msg);
-                // }
                 break;
             }
             case TokenType::Literal:
