@@ -53,7 +53,7 @@ namespace helper::base
      * @throws std::runtime_error if definition is not a tuple with the expected structure.
      */
     std::tuple<std::string, std::string, std::vector<std::string>>
-    extractDefinition(const std::any& definition) ;
+    extractDefinition(const std::any& definition);
 
     /**
      * @brief Transforms a vector of strings into a vector of Parameters.
