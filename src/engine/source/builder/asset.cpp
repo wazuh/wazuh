@@ -1,5 +1,10 @@
 #include "asset.hpp"
 
+#include <fmt/format.h>
+
+#include "definitions.hpp"
+#include "registry.hpp"
+
 namespace builder
 {
 std::string Asset::typeToString(Asset::Type type)

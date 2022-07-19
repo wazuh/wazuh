@@ -47,6 +47,7 @@ gtest_discover_tests(expression_test)
 # Registry test
 add_executable(registry_test
   ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(registry_test
   gtest_main base
@@ -57,6 +58,7 @@ gtest_discover_tests(registry_test)
 add_executable(operationBuilder_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/operationBuilder_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(operationBuilder_test
   gtest_main base
@@ -68,6 +70,7 @@ add_executable(stageBuilderCheck_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheck_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(stageBuilderCheck_test
   gtest_main base logicExpression
@@ -79,6 +82,7 @@ add_executable(stageBuilderMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderMap_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(stageBuilderMap_test
   gtest_main base
@@ -92,6 +96,7 @@ add_executable(stageBuilderNormalize_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(stageBuilderNormalize_test
   gtest_main base logicExpression
@@ -103,6 +108,7 @@ add_executable(stageBuilderOutputs_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputs_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(stageBuilderOutputs_test
   gtest_main base
@@ -114,6 +120,7 @@ add_executable(stageBuilderParse_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderParse_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderParse.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(stageBuilderParse_test
   gtest_main base hlp
@@ -165,6 +172,8 @@ add_executable(asset_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/asset.cpp
 )
 target_link_libraries(asset_test
   gtest_main base re2 logicExpression kvdb hlp
@@ -187,6 +196,9 @@ add_executable(environment_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/asset.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/environment.cpp
 )
 target_link_libraries(environment_test
   gtest_main base re2 logicExpression kvdb hlp
@@ -275,6 +287,10 @@ add_executable(register_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/asset.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/environment.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/definitions.cpp
 )
 target_link_libraries(register_test
   gtest_main base kvdb hlp logicExpression re2
