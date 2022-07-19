@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-#include "json.hpp"
+#include <json/json.hpp>
 
 namespace builder::internals::outputs
 {

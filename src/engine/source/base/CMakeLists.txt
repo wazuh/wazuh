@@ -91,6 +91,7 @@ target_link_libraries(base
     PUBLIC
     dl
     fmt
+    json
     )
 
 target_include_directories(base
@@ -98,4 +99,5 @@ target_include_directories(base
     ${CMAKE_CURRENT_LIST_DIR}
     ${fmtlog_SOURCE_DIR}
     ${rapidjson_SOURCE_DIR}/include
+    ${ENGINE_SOURCE_DIR}/json
     )

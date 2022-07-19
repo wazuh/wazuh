@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 
 #include "baseTypes.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 #include "syntax.hpp"
 #include <kvdb/kvdbManager.hpp>
 #include <utils/stringUtils.hpp>

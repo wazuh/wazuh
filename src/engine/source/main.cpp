@@ -20,7 +20,7 @@
 #include <catalog.hpp>
 #include <engineServer.hpp>
 #include <graph.hpp>
-#include <json.hpp>
+#include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
