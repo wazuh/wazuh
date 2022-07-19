@@ -79,7 +79,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 continue;
             }
         }
-        if(strcmp(integrator_config[s]->name, "telegram") == 0)
+        else if (strcmp(integrator_config[s]->name, "telegram") == 0)
         {
             if(!integrator_config[s]->hookurl)
             {
