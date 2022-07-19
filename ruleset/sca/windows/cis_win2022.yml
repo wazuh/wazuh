@@ -4687,10 +4687,10 @@ checks:
 
 
   - id: 27280
-    title: "Ensure 'Scan all downloaded files and attachments' is set to'Enabled'"
-    description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled. "
-    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Scan all downloaded files and attachments Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). "
+    title: "Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'"
+    description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled."
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Scan all downloaded files and attachments. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.9.1"]
     condition: any
@@ -4706,59 +4706,65 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real-time protection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.9.2"]
-      - cis_csc: ["8.1"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
   - id: 27282
     title: "Ensure 'Turn on behavior monitoring' is set to 'Enabled'"
-    description: "This policy setting allows you to configure behavior monitoring for Microsoft Defender Antivirus. The recommended state for this setting is: Enabled. "
-    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn on behavior monitoring Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer).   "
+    description: "This policy setting allows you to configure behavior monitoring for Microsoft Defender Antivirus. The recommended state for this setting is: Enabled."
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn on behavior monitoring. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.9.3"]
-      - cis_csc: ["10.7","8.1"]
-    condition: all
+      - cis_csc: ["10.7"]
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
   - id: 27283
     title: "Ensure 'Turn on script scanning' is set to 'Enabled'"
-    description: "This policy setting allows script scanning to be turned on/off. Script scanning intercepts scripts then scans them before they are executed on the system. The recommended state for this setting is: Enabled. "
-    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn on script scanning Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
+    description: "This policy setting allows script scanning to be turned on/off. Script scanning intercepts scripts then scans them before they are executed on the system. The recommended state for this setting is: Enabled."
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn on script scanning. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.9.4"]
-      - cis_csc: ["9.2"]
-    condition: all
+      - cis_csc: ["10.7"]
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableScriptScanning -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
   - id: 27284
     title: "Ensure 'Configure Watson events' is set to 'Disabled'"
     description: "This policy setting allows you to configure whether or not Watson events are sent. The recommended state for this setting is: Disabled."
     rationale: "Watson events are the reports that get sent to Microsoft when a program or service crashes or fails, including the possibility of automatic submission. Preventing this information from being sent can help reduce privacy concerns."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Reporting\\Configure Watson events. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Reporting\\Configure Watson events. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.11.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-33880-6'
+      - "CCE-33880-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts -> 1'
 
   - id: 27285
     title: "Ensure 'Scan removable drives' is set to 'Enabled'"
-    description: "This policy setting allows you to manage whether or not to scan for malicious software and unwanted software in the contents of removable drives, such as USB flash drives, when running a full scan."
+    description: "This policy setting allows you to manage whether or not to scan for malicious software and unwanted software in the contents of removable drives, such as USB flash drives, when running a full scan. The recommended state for this setting is: Enabled."
     rationale: "It is important to ensure that any present removable drives are always included in any type of scan, as removable drives are more likely to contain malicious software brought in to the enterprise managed environment from an external, unmanaged computer."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Scan\\Scan removable drives"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Scan\\Scan removable drives. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.12.1"]
-      - cis_csc: ["13"]
+      - cis_csc: ["10.4"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -4766,19 +4772,20 @@ checks:
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-33888-9'
+      - "CCE-33888-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning -> 0'
 
   - id: 27286
     title: "Ensure 'Turn on e-mail scanning' is set to 'Enabled'"
-    description: "This policy setting allows you to configure e-mail scanning. When e-mail scanning is enabled, the engine will parse the mailbox and mail files, according to their specific format, in order to analyze the mail bodies and attachments. Several e-mail formats are currently supported, for example: pst (Outlook), dbx, mbx, mime (Outlook Express), binhex (Mac)."
-    rationale: "Incoming e-mails should be scanned by an antivirus solution such as Windows Defender Antivirus, as email attachments are a commonly used attack vector to infiltrate computers with malicious software."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Scan\\Turn on e-mail scanning"
+    description: "This policy setting allows you to configure e-mail scanning. When e-mail scanning is enabled, the engine will parse the mailbox and mail files, according to their specific format, in order to analyze the mail bodies and attachments. Several e-mail formats are currently supported, for example: pst (Outlook), dbx, mbx, mime (Outlook Express), binhex (Mac). The recommended state for this setting is: Enabled."
+    rationale: "Incoming e-mails should be scanned by an antivirus solution such as Microsoft Defender Antivirus, as email attachments are a commonly used attack vector to infiltrate computers with malicious software."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Scan\\Turn on e-mail scanning. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.12.2"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -4786,29 +4793,33 @@ checks:
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-33906-9'
+      - "CCE-33906-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning -> 0'
 
 
   - id: 27287
-    title: "Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block' "
-    description: "This policy setting controls detection and action for Potentially Unwanted Applications (PUA), which are sneaky unwanted application bundlers or their bundled applications, that can deliver adware or malware. The recommended state for this setting is: Enabled: Block. For more information, see this link: Block potentially unwanted applications with Microsoft Defender Antivirus | Microsoft Docs "
-    rationale: "Potentially unwanted applications can increase the risk of your network being infected with malware, cause malware infections to be harder to identify, and can waste IT resources in cleaning up the applications. They should be blocked from installation. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Configure detection for potentially unwanted applications Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer). "
+    title: "Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'"
+    description: "This policy setting controls detection and action for Potentially Unwanted Applications (PUA), which are sneaky unwanted application bundlers or their bundled applications, that can deliver adware or malware. The recommended state for this setting is: Enabled: Block. For more information, see this link: Block potentially unwanted applications with Microsoft Defender Antivirus | Microsoft Docs"
+    rationale: "Potentially unwanted applications can increase the risk of your network being infected with malware, cause malware infections to be harder to identify, and can waste IT resources in cleaning up the applications. They should be blocked from installation."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Configure detection for potentially unwanted applications. Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.15"]
-      - cis_csc: ["2.5","10.6","2.7","8.1"]
+      - cis_csc: ["2.5", "10.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
   - id: 27288
     title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'"
-    description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled. "
-    rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable 3rd-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Turn off Microsoft Defender AntiVirus Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn off Windows Defender, but it was renamed to Windows Defender Antivirus starting with the Windows 10 Release 1703 Administrative Templates. It was again renamed to Turn off Microsoft Defender Antivirus starting with the Windows 10 Release 2004 Administrative Templates. "
+    description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled."
+    rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable 3rd-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Turn off Microsoft Defender AntiVirus. Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn off Windows Defender, but it was renamed to Windows Defender Antivirus starting with the Windows 10 Release 1703 Administrative Templates. It was again renamed to Turn off Microsoft Defender Antivirus starting with the Windows 10 Release 2004 Administrative Templates."
     compliance:
       - cis: ["18.9.47.16"]
       - cis_csc: ["10.6","8.1"]
@@ -4818,49 +4829,53 @@ checks:
 
   - id: 27289
     title: "Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'"
-    description: "This policy setting lets you prevent apps and features from working with files on OneDrive using the Next Generation Sync Client."
-    rationale: "Enabling this setting prevents users from accidentally uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\OneDrive\\Prevent the usage of OneDrive for file storage"
+    description: "This policy setting lets you prevent apps and features from working with files on OneDrive using the Next Generation Sync Client. The recommended state for this setting is: Enabled."
+    rationale: "Enabling this setting prevents users from accidentally (or intentionally) uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client. Note: This security concern applies to any cloud-based file storage application installed on a workstation, not just the one supplied with Windows."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\OneDrive\\Prevent the usage of OneDrive for file storage. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template SkyDrive.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). However, we strongly recommend you only use the version included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Older versions of the templates had conflicting settings in different template files for both OneDrive & SkyDrive, until it was cleaned up properly in the above version. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Prevent the usage of SkyDrive for file storage, but it was renamed starting with the Windows 10 RTM (Release 1507) Administrative Templates."
     compliance:
       - cis: ["18.9.58.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-33826-9'
+      - "CCE-33826-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC -> 1'
 
   - id: 27290
     title: "Ensure 'Turn off Push To Install service' is set to 'Enabled'"
-    description: "This policy setting controls whether users can push Apps to the device from the Windows Store App running on other devices or the web. The recommended state for this setting is: Enabled."
+    description: "This policy setting controls whether users can push Apps to the device from the Microsoft Store App running on other devices or the web. The recommended state for this setting is: Enabled."
     rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Push to Install\\Turn off Push To Install service. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PushToInstall.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.64.1"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> 1'
 
   - id: 27291
     title: "Ensure 'Do not allow passwords to be saved' is set to 'Enabled'"
-    description: "This policy setting helps prevent Remote Desktop clients from saving passwords on a computer."
+    description: "This policy setting helps prevent Remote Desktop clients from saving passwords on a computer. The recommended state for this setting is: Enabled. Note: If this policy setting was previously configured as Disabled or Not configured, any previously saved passwords will be deleted the first time a Remote Desktop client disconnects from any server."
     rationale: "An attacker with physical access to the computer may be able to break the protection guarding saved passwords. An attacker who compromises a user's account and connects to their computer could use saved passwords to gain access to additional hosts."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Connection Client\\Do not allow passwords to be saved"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Connection Client\\Do not allow passwords to be saved. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.2.2"]
-      - cis_csc: ["16.4"]
       - pci_dss: ["12.3.8"]
     references:
-      - 'CCE-34506-6'
+      - "CCE-34506-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> 1'
 
   - id: 27292
@@ -4876,15 +4891,17 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fSingleSessionPerUser -> 1'
 
   - id: 27293
-    title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled' "
-    description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer´s Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don´t currently support UI Automation redirection. "
-    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled'"
+    description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computers Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions dont currently support UI Automation redirection."
+    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.65.3.3.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\TerminalServices -> EnableUiaRedirection -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
   - id: 27294
     title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
@@ -4893,42 +4910,47 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow COM port redirection. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.3.2"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-34496-0'
+      - "CCE-34496-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> 1'
 
   - id: 27295
     title: "Ensure 'Do not allow drive redirection' is set to 'Enabled'"
-    description: "This policy setting prevents users from sharing the local drives on their client computers to Remote Desktop Servers that they access. Mapped drives appear in the session folder tree in Windows Explorer in the following format: \\TSClient\\<driveletter>$ If local drives are shared they are left vulnerable to intruders who want to exploit the data that is stored on them."
+    description: "This policy setting prevents users from sharing the local drives on their client computers to Remote Desktop Servers that they access. Mapped drives appear in the session folder tree in Windows Explorer in the following format: \\\\TSClient\\<driveletter>$ If local drives are shared they are left vulnerable to intruders who want to exploit the data that is stored on them. The recommended state for this setting is: Enabled."
     rationale: "Data could be forwarded from the user's Remote Desktop Services session to the user's local computer without any direct user interaction. Malicious software already present on a compromised server would have direct and stealthy disk access to the user's local computer during the Remote Desktop session."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow drive redirection"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow drive redirection. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.3.3"]
-      - cis_csc: ["13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-34697-3'
+      - "CCE-34697-3"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> 1'
 
   - id: 27296
-    title: "Ensure 'Do not allow location redirection' is set to'Enabled'"
-    description: "This policy setting controls the redirection of location data to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled. "
-    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for location data redirection within a Remote Desktop session is rare, so it makes sense to reduce the number of unexpected avenues for malicious activity to occur. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow location redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
+    title: "Ensure 'Do not allow location redirection' is set to 'Enabled'"
+    description: "This policy setting controls the redirection of location data to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
+    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for location data redirection within a Remote Desktop session is rare, so it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow location redirection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.65.3.3.4"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir -> 1'
 
   - id: 27297
@@ -4938,13 +4960,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow LPT port redirection. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.3.5"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-34698-1'
+      - "CCE-34698-1"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> 1'
 
   - id: 27298
@@ -4954,98 +4977,108 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow supported Plug and Play device redirection. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.3.6"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-34790-6'
+      - "CCE-34790-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> 1'
 
   - id: 27299
     title: "Ensure 'Always prompt for password upon connection' is set to 'Enabled'"
-    description: "This policy setting specifies whether Remote Desktop Services always prompts the client computer for a password upon connection. You can use this policy setting to enforce a password prompt for users who log on to Remote Desktop Services, even if they already provided the password in the Remote Desktop Connection client."
+    description: "This policy setting specifies whether Remote Desktop Services always prompts the client computer for a password upon connection. You can use this policy setting to enforce a password prompt for users who log on to Remote Desktop Services, even if they already provided the password in the Remote Desktop Connection client. The recommended state for this setting is: Enabled."
     rationale: "Users have the option to store both their username and password when they create a new Remote Desktop Connection shortcut. If the server that runs Remote Desktop Services allows users who have used this feature to log on to the server but not enter their password, then it is possible that an attacker who has gained physical access to the user's computer could connect to a Remote Desktop Server through the Remote Desktop Connection shortcut, even though they may not know the user's password."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Always prompt for password upon connection"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Always prompt for password upon connection. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was named Always prompt client for password upon connection, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.9.1"]
-      - cis_csc: ["16.14"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-33960-6'
+      - "CCE-33960-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword -> 1'
 
   - id: 27300
     title: "Ensure 'Require secure RPC communication' is set to 'Enabled'"
-    description: "This policy setting allows you to specify whether Remote Desktop Services requires secure Remote Procedure Call (RPC) communication with all clients or allows unsecured communication. You can use this policy setting to strengthen the security of RPC communication with clients by allowing only authenticated and encrypted requests."
+    description: "This policy setting allows you to specify whether Remote Desktop Services requires secure Remote Procedure Call (RPC) communication with all clients or allows unsecured communication. You can use this policy setting to strengthen the security of RPC communication with clients by allowing only authenticated and encrypted requests. The recommended state for this setting is: Enabled."
     rationale: "Allowing unsecure RPC communication can exposes the server to man in the middle attacks and data disclosure attacks."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require secure RPC communication"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require secure RPC communication. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.9.2"]
-      - cis_csc: ["3.4"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-35723-6'
+      - "CCE-35723-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
   - id: 27301
-    title: "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL' "
-    description: "This policy setting specifies whether to require the use of a specific security layer to secure communications between clients and RD Session Host servers during Remote Desktop Protocol (RDP) connections. The recommended state for this setting is: Enabled: SSL. Note: In spite of this setting being labeled SSL, it is actually enforcing Transport Layer Security (TLS) version 1.0, not the older (and less secure) SSL protocol. "
-    rationale: "The native Remote Desktop Protocol (RDP) encryption is now considered a weak protocol, so enforcing the use of stronger Transport Layer Security (TLS) encryption for all RDP communications between clients and RD Session Host servers is preferred.   "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: SSL: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require use of specific security layer for remote (RDP) connections Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates.   "
+    title: "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'"
+    description: "This policy setting specifies whether to require the use of a specific security layer to secure communications between clients and RD Session Host servers during Remote Desktop Protocol (RDP) connections. The recommended state for this setting is: Enabled: SSL. Note: In spite of this setting being labeled SSL, it is actually enforcing Transport Layer Security (TLS) version 1.0, not the older (and less secure) SSL protocol."
+    rationale: "The native Remote Desktop Protocol (RDP) encryption is now considered a weak protocol, so enforcing the use of stronger Transport Layer Security (TLS) encryption for all RDP communications between clients and RD Session Host servers is preferred."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: SSL: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require use of specific security layer for remote (RDP) connections. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.9.3"]
-      - cis_csc: ["3.10","9.2"]
+      - cis_csc: ["3.10"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   - id: 27302
     title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
-    description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled. "
-    rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require user authentication for remote connections by using Network Level Authentication Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was initially named Require user authentication using RDP 6.0 for remote connections, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates. "
+    description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled."
+    rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require user authentication for remote connections by using Network Level Authentication. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was initially named Require user authentication using RDP 6.0 for remote connections, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.9.4"]
-      - cis_csc: ["3.10","9.2"]
-    condition: all
+      - cis_csc: ["3.10"]
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
   - id: 27303
-    title: "Ensure 'Set client connection encryption level' is set to'Enabled: High Level'"
-    description: "This policy setting specifies whether to require the use of a specific encryption level to secure communications between client computers and RD Session Host servers during Remote Desktop Protocol (RDP) connections. This policy only applies when you are using native RDP encryption. However, native RDP encryption (as opposed to SSL encryption) is not recommended. This policy does not apply to SSL encryption. The recommended state for this setting is: Enabled: High Level. "
-    rationale: "If Remote Desktop client connections that use low level encryption are allowed, it is more likely that an attacker will be able to decrypt any captured Remote Desktop Services network traffic. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: High Level: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Set client connection encryption level Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
+    title: "Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'"
+    description: "This policy setting specifies whether to require the use of a specific encryption level to secure communications between client computers and RD Session Host servers during Remote Desktop Protocol (RDP) connections. This policy only applies when you are using native RDP encryption. However, native RDP encryption (as opposed to SSL encryption) is not recommended. This policy does not apply to SSL encryption. The recommended state for this setting is: Enabled: High Level."
+    rationale: "If Remote Desktop client connections that use low level encryption are allowed, it is more likely that an attacker will be able to decrypt any captured Remote Desktop Services network traffic."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: High Level: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Set client connection encryption level. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.9.5"]
-      - cis_csc: ["3.10","9.2"]
-    condition: all
+      - cis_csc: ["3.10"]
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 2'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 3'
 
   - id: 27304
     title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'"
-    description: "This policy setting allows you to specify the maximum amount of time that an active Remote Desktop Services session can be idle (without user input) before it is automatically disconnected. The recommended state for this setting is: Enabled: 15 minutes or less."
+    description: "This policy setting allows you to specify the maximum amount of time that an active Remote Desktop Services session can be idle (without user input) before it is automatically disconnected. The recommended state for this setting is: Enabled: 15 minutes or less, but not Never (0)."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of inactive sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 15 minutes or less: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for active but idle Remote Desktop Services sessions. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Set time limit for active but idle Terminal Services sessions, but it was renamed starting with the Windows 7 & Server 2008 R2 Administrative Templates."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 15 minutes or less, but not Never (0): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for active but idle Remote Desktop Services sessions. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Set time limit for active but idle Terminal Services sessions, but it was renamed starting with the Windows 7 & Server 2008 R2 Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.10.1"]
-      - cis_csc: ["16.5", "16.11"]
       - pci_dss: ["8.1.8"]
       - tsc: ["CC6.1"]
     references:
       - https://workbench.cisecurity.org/benchmarks/766
-      - 'CCE-35595-8'
+      - "CCE-35595-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare <= 900000'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare != 0'
 
@@ -5056,29 +5089,31 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 minute: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for disconnected sessions. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.10.2"]
-      - cis_csc: ["16.5", "16.11"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-35599-0'
+      - "CCE-35599-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> 60000'
 
   - id: 27306
     title: "Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'"
-    description: "This policy setting specifies whether Remote Desktop Services retains a user's per-session temporary folders at logoff."
+    description: "This policy setting specifies whether Remote Desktop Services retains a user's per-session temporary folders at logoff. The recommended state for this setting is: Disabled."
     rationale: "Sensitive information could be contained inside the temporary folders and visible to other administrators that log into the system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Temporary Folders\\Do not delete temp folders upon exit"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Temporary Folders\\Do not delete temp folders upon exit. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Do not delete temp folder upon exit, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.11.1"]
-      - cis_csc: ["14.4", "14.6"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     references:
-      - 'CCE-34136-2'
-    condition: all
+      - "CCE-34136-2"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit -> 1'
 
   - id: 27307
@@ -5095,19 +5130,21 @@ checks:
 
   - id: 27308
     title: "Ensure 'Prevent downloading of enclosures' is set to 'Enabled'"
-    description: "This policy setting prevents the user from having enclosures (file attachments) downloaded from an RSS feed to the user's computer."
+    description: "This policy setting prevents the user from having enclosures (file attachments) downloaded from an RSS feed to the user's computer. The recommended state for this setting is: Enabled."
     rationale: "Allowing attachments to be downloaded through the RSS feed can introduce files that could have malicious intent."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\RSS Feeds\\Prevent downloading of enclosures"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\RSS Feeds\\Prevent downloading of enclosures. Note: This Group Policy path is provided by the Group Policy template InetRes.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Turn off downloading of enclosures, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.66.1"]
-      - cis_csc: ["7.2"]
+      - cis_csc: ["9.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-34822-7'
+      - "CCE-34822-7"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload -> 1'
 
   - id: 27309
@@ -5117,21 +5154,22 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Cloud Search: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow Cloud Search. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Search.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.67.2"]
-      - cis_csc: ["9.1", "9.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
 
   - id: 27310
     title: "Ensure 'Allow indexing of encrypted files' is set to 'Disabled'"
-    description: "This policy setting controls whether encrypted items are allowed to be indexed. When this setting is changed, the index is rebuilt completely. Full volume encryption (such as BitLocker Drive Encryption or a non-Microsoft solution) must be used for the location of the index to maintain security for encrypted files."
+    description: "This policy setting controls whether encrypted items are allowed to be indexed. When this setting is changed, the index is rebuilt completely. Full volume encryption (such as BitLocker Drive Encryption or a non-Microsoft solution) must be used for the location of the index to maintain security for encrypted files. The recommended state for this setting is: Disabled."
     rationale: "Indexing and allowing users to search encrypted files could potentially reveal confidential data stored within the encrypted files."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow indexing of encrypted files"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow indexing of encrypted files. Note: This Group Policy path is provided by the Group Policy template Search.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
-      - cis: ["18.9.67.3"]
-      - cis_csc: ["13.1"]
+      - cis: ["18.9.67.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
@@ -5151,23 +5189,28 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
 
   - id: 27312
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'"
-    description: "This policy setting allows you to manage the behavior of Windows SmartScreen. Windows SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled."
-    rationale: "Windows SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Warn and prevent bypass: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Explorer\\Configure Windows Defender SmartScreen"
+    description: "This policy setting allows you to manage the behavior of Windows Defender SmartScreen. Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled. The recommended state for this setting is: Enabled: Warn and prevent bypass."
+    rationale: "Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Warn and prevent bypass: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Explorer\\Configure Windows Defender SmartScreen. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsExplorer.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Configure Windows SmartScreen, but it was renamed starting with the Windows 10 Release 1703 Administrative Templates."
     compliance:
       - cis: ["18.9.85.1.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["10.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-34026-5'
+      - "CCE-34026-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
 
@@ -5178,57 +5221,63 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow suggested apps in Windows Ink Workspace. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsInkWorkspace.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.89.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
 
   - id: 27314
     title: "Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Disabled' but not 'Enabled: On'"
-    description: "This policy setting determines whether Windows Ink items are allowed above the lock screen."
+    description: "This policy setting determines whether Windows Ink items are allowed above the lock screen. The recommended state for this setting is: Enabled: On, but disallow access above lock OR Disabled."
     rationale: "Allowing any apps to be accessed while system is locked is not recommended. If this feature is permitted, it should only be accessible once a user authenticates with the proper credentials."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: On, but disallow access above lock OR Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow Windows Ink Workspace"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: On, but disallow access above lock OR Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow Windows Ink Workspace. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsInkWorkspace.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.89.2"]
-      - cis_csc: ["16.5"]
       - pci_dss: ["8.6"]
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
 
   - id: 27315
     title: "Ensure 'Allow user control over installs' is set to 'Disabled'"
-    description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user."
+    description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user. The recommended state for this setting is: Disabled."
     rationale: "In an enterprise managed environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Allow user control over installs"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Allow user control over installs. Note: This Group Policy path is provided by the Group Policy template MSI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Enable user control over installs, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.90.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["2.5"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     references:
-      - 'CCE-35431-6'
-    condition: all
+      - "CCE-35431-6"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
 
   - id: 27316
     title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'"
-    description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure."
+    description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure. The recommended state for this setting is: Disabled."
     rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that creates a new local account that belongs to the local built-in Administrators group, adds their current account to the local built-in Administrators group, installs malicious software, or performs other unauthorized activities."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Always install with elevated privileges"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Always install with elevated privileges. Note: This Group Policy path is provided by the Group Policy template MSI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.90.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["5.4"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     references:
-      - 'CCE-35400-1'
-    condition: all
+      - "CCE-35400-1"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
 
@@ -5239,128 +5288,146 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Prevent Internet Explorer security prompt for Windows Installer scripts. Note: This Group Policy path is provided by the Group Policy template MSI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Disable IE security prompt for Windows Installer scripts, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.90.3"]
-      - cis_csc: ["7"]
+      - cis_csc: ["2.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-35086-8'
-    condition: all
+      - "CCE-35086-8"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
 
 
   - id: 27318
     title: "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'"
-    description: "This policy setting controls whether a device will automatically sign-in the last interactive user after Windows Update restarts the system."
+    description: "This policy setting controls whether a device will automatically sign-in the last interactive user after Windows Update restarts the system. The recommended state for this setting is: Disabled."
     rationale: "Disabling this feature will prevent the caching of user's credentials and unauthorized use of the device, and also ensure the user is aware of the restart."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Sign-in last interactive user automatically after a system-initiated restart"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Sign-in and lock last interactive user automatically after a restart. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WinLogon.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Sign-in last interactive user automatically after a system-initiated restart, but it was renamed starting with the Windows 10 Release 1903 Administrative Templates."
     compliance:
       - cis: ["18.9.91.1"]
-      - cis_csc: ["16.5"]
       - pci_dss: ["8.6"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-33891-3'
+      - "CCE-33891-3"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   - id: 27319
     title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
-    description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log. The recommended state for this setting is: Enabled."
+    description: "This policy setting enables logging of all PowerShell script input to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel. The recommended state for this setting is: Enabled. Note: If logging of Script Block Invocation Start/Stop Events is enabled (option box checked), PowerShell will log additional events when invocation of a command, script block, function, or script starts or stops. Enabling this option generates a high volume of event logs. CIS has intentionally chosen not to make a recommendation for this option, since it generates a large volume of events. If an organization chooses to enable the optional setting (checked), this also conforms to the benchmark."
     rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.100.1"]
       - cis_csc: ["8.8"]
       - pci_dss: ["12.3.8"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   - id: 27320
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
-    description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts."
+    description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts. The recommended state for this setting is: Disabled."
     rationale: "If this setting is enabled there is a risk that passwords could get stored in plain text in the PowerShell_transcript output file."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.100.2"]
-      - cis_csc: ["16.4"]
       - pci_dss: ["12.3.8"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
 
   - id: 27321
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication."
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication. The recommended state for this setting is: Disabled. Note: Clients that use Microsoft's Exchange Online service (Office 365) will require an exception to this recommendation, to instead have this setting set to Enabled. Exchange Online uses Basic authentication over HTTPS, and so the Exchange Online authentication traffic will still be safely encrypted."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Allow Basic authentication"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Allow Basic authentication. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.102.1.1"]
-      - cis_csc: ["16.13", "16.5"]
+      - cis_csc: ["3.10"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-35258-3'
-    condition: all
+      - "CCE-35258-3"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
   - id: 27322
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network."
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Allow unencrypted traffic"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Allow unencrypted traffic. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.102.1.2"]
-      - cis_csc: ["16.5", "16.13"]
+      - cis_csc: ["3.10"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-34458-0'
-    condition: all
+      - "CCE-34458-0"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
 
   - id: 27323
     title: "Ensure 'Disallow Digest authentication' is set to 'Enabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication."
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication. The recommended state for this setting is: Enabled."
     rationale: "Digest authentication is less robust than other authentication methods available in WinRM, an attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Disallow Digest authentication"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Disallow Digest authentication. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.102.1.3"]
-      - cis_csc: ["16.5", "16.13"]
+      - cis_csc: ["3.10"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-34778-1'
+      - "CCE-34778-1"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
 
   - id: 27324
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client."
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client. The recommended state for this setting is: Disabled."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow Basic authentication"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow Basic authentication. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.102.2.1"]
-      - cis_csc: ["16.5", "16.13"]
+      - cis_csc: ["3.10"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-34779-9'
-    condition: all
+      - "CCE-34779-9"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
 
   - id: 27325
@@ -5370,49 +5437,55 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow remote server management through WinRM. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow automatic configuration of listeners, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.102.2.2"]
-      - cis_csc: ["3.4", "4.5"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-33146-2'
-    condition: all
+      - "CCE-33146-2"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
 
 
   - id: 27326
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port."
-    rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow unencrypted traffic"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
+    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow unencrypted traffic. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.102.2.3"]
-      - cis_csc: ["3.4"]
+      - cis_csc: ["3.10"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-35054-6'
-    condition: all
+      - "CCE-35054-6"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
 
   - id: 27327
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network."
-    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Disallow WinRM from storing RunAs credentials"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service will allow RunAs credentials to be stored for any plug-ins. The recommended state for this setting is: Enabled. Note: If you enable and then disable this policy setting, any values that were previously configured for RunAsPassword will need to be reset."
+    rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk of account compromise slightly. For example, if you forget to lock your desktop before leaving it unattended for a few minutes another person could access not only the desktop of your computer but also any hosts you manage via WinRM with cached RunAs credentials."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Disallow WinRM from storing RunAs credentials. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.102.2.4"]
-      - cis_csc: ["16.5", "16.13"]
       - pci_dss: ["12.3.8"]
     references:
-      - 'CCE-35416-7'
+      - "CCE-35416-7"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
 
   - id: 27328
@@ -5422,68 +5495,76 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Shell\\Allow Remote Shell Access. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteShell.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.103.1"]
-      - cis_csc: ["3.4", "4.5"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-33740-2'
+      - "CCE-33740-2"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
 
   - id: 27329
     title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'"
-    description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Defender Security Center."
+    description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Security settings. The recommended state for this setting is: Enabled."
     rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Security Center\\App and browser protection\\Prevent users from modifying settings"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Security\\App and browser protection\\Prevent users from modifying settings. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefenderSecurityCenter.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.105.2.1"]
-      - cis_csc: ["8.4"]
+      - cis_csc: ["10.5"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
 
   - id: 27330
     title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'"
-    description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation."
+    description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation. The recommended state for this setting is: Disabled. Note: This setting applies only when you configure Automatic Updates to perform scheduled update installations. If you configure the Configure Automatic Updates setting to Disabled, this setting has no effect."
     rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\No auto-restart with logged on users for scheduled automatic updates installations"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Legacy Policies\\No auto-restart with logged on users for scheduled automatic updates installations. Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named No auto-restart for scheduled Automatic Updates installations, but it was renamed starting with the Windows 7 & Server 2008 R2 Administrative Templates."
     compliance:
       - cis: ["18.9.108.1.1"]
-      - cis_csc: ["3.4", "3.5", "4.5"]
+      - cis_csc: ["7.3"]
       - pci_dss: ["6.2"]
-      - nist_800_53: ["SI.2","SA.11","SI.4"]
+      - nist_800_53: ["SI.2", "SA.11", "SI.4"]
       - gpg_13: ["4.3"]
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["A1.2","CC6.8"]
+      - tsc: ["A1.2", "CC6.8"]
     references:
-      - 'CCE-33813-7'
-    condition: all
+      - "CCE-33813-7"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
 
   - id: 27331
     title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'"
-    description: "This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: 2 - Notify for download and auto install (Notify before downloading any updates) 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting Configure automatic updating: has 4 possible values – all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a 3rd-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the 3rd-party patching process."
-    rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
+    description: "This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: 2 - Notify for download and auto install (Notify before downloading any updates) 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting \"Configure automatic updating:\" has 4 possible values - all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a 3rd-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the 3rd-party patching process."
+    rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates. Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.108.2.1"]
-      - cis_csc: ["7.3","3.4"]
-    condition: all
+      - cis_csc: ["7.3"]
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate '
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   - id: 27332
     title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
-    description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected. "
-    rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates: Scheduled install day Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
+    description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected."
+    rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates: Scheduled install day. Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.108.2.2"]
       - cis_csc: ["9.2"]
@@ -5493,53 +5574,59 @@ checks:
 
   - id: 27333
     title: "Ensure 'Manage preview builds' is set to 'Disabled'"
-    description: "This policy setting manage which updates that are receive prior to the update being released."
+    description: "This policy setting manage which updates that are receive prior to the update being released. Dev Channel: Ideal for highly technical users. Insiders in the Dev Channel will receive builds from our active development branch that is earliest in a development cycle. These builds are not matched to a specific Windows 10 release. Beta Channel: Ideal for feature explorers who want to see upcoming Windows 10 features. Your feedback will be especially important here as it will help our engineers ensure key issues are fixed before a major release. Release Preview Channel (default): Insiders in the Release Preview Channel will have access to the upcoming release of Windows 10 prior to it being released to the world. These builds are supported by Microsoft. The Release Preview Channel is where we recommend companies preview and validate upcoming Windows 10 releases before broad deployment within their organization. The recommended state for this setting is: Disabled. Note: Preview Build enrollment requires a telemetry level setting of 2 or higher and your domain registered on insider.windows.com. For additional information on Preview Builds, see: https://aka.ms/wipforbiz"
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable preview builds: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Manage preview builds"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Manage preview builds. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.108.4.1"]
-      - cis_csc: ["3"]
+      - cis_csc: ["2.5"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
-    condition: all
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
   - id: 27334
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
-    description: "This policy setting determines the level of Preview Build or Feature Updates to receive, and when. The Windows readiness level for each new Windows 10 Feature Update is classified in one of 5 categories, depending on your organizations level of comfort with receiving them: - Preview Build - Fast: Devices set to this level will be the first to receive new builds of Windows with features not yet available to the general public. Select Fast to participate in identifying and reporting issues to Microsoft, and provide suggestions on new functionality. - Preview Build - Slow: Devices set to this level receive new builds of Windows before they are available to the general public, but at a slower cadence than those set to Fast, and with changes and fixes identified in earlier builds. - Release Preview: Receive builds of Windows just before Microsoft releases them to the general public. - Semi-Annual Channel (Targeted): Receive feature updates when they are released to the general public. - Semi-Annual Channel: Feature updates will arrive when they are declared SemiAnnual Channel. This usually occurs about 4 months after Semi-Annual Channel (Targeted), indicating that Microsoft, Independent Software Vendors (ISVs), partners and customer believe that the release is ready for broad deployment."
-    rationale: "Forcing new features without prior testing in your environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Semi-Annual Channel, 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received"
+    description: "This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered). Note: If the \"Allow Diagnostic Data\" (formerly \"Allow Telemetry\") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying \"Dual Scan\" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog Note #3: Prior to Windows 10 R1703, values above 180 days are not recognized by the OS. Starting with Windows 10 R1703, the maximum number of days you can defer is 365 days."
+    rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Select when Feature Updates are received, but it was renamed to Select when Preview Builds and Feature Updates are received starting with the Windows 10 Release 1709 Administrative Templates."
     compliance:
       - cis: ["18.9.108.4.2"]
-      - cis_csc: ["3"]
+      - cis_csc: ["2.5", "7.3"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
 
   - id: 27335
     title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'"
-    description: "This settings controls when Quality Updates are received."
+    description: "This settings controls when Quality Updates are received. The recommended state for this setting is: Enabled: 0 days. Note: If the \"Allow Diagnostic Data\" (formerly \"Allow Telemetry\") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying “Dual Scan” - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog"
     rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:0 days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Quality Updates are received"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:0 days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Quality Updates are received Note: This Group Policy path does not exist by default. An updated Group Policy template (WindowsUpdate.admx/adml) is required - it is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.108.4.3"]
-      - cis_csc: ["3.4", "3.5", "4.5"]
+      - cis_csc: ["7.3"]
       - pci_dss: ["6.2"]
-      - nist_800_53: ["SI.2","SA.11","SI.4"]
+      - nist_800_53: ["SI.2", "SA.11", "SI.4"]
       - gpg_13: ["4.3"]
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["A1.2","CC6.8"]
+      - tsc: ["A1.2", "CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdates -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays -> 0'
-
