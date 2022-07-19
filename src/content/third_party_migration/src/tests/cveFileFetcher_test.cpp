@@ -29,6 +29,42 @@ TEST_F(CveFileFetcherTest, oneRemote_RequestTypeNotFile)
     EXPECT_THROW(fileFetcher.urlsFromRemote(remote), std::runtime_error);
 }
 
+TEST_F(CveFileFetcherTest, oneRemote_WithVariablesMissingParameters_Throws)
+{
+    auto remote = R"(
+                    {
+                     "url": "https://test.com/version{number}.rss",
+                     "request": "file",
+                     "type": "xml"
+                    })"_json;
+
+    CveFileFetcher fileFetcher;
+    EXPECT_THROW(fileFetcher.urlsFromRemote(remote), std::runtime_error);
+}
+
+TEST_F(CveFileFetcherTest, oneRemote_MissingParameter_Throws)
+{
+    // No parameter definition for placeholder 'number'
+    auto remote = R"(
+                    {
+                     "url": "https://test.com/version{number}.rss",
+                     "request": "file",
+                     "type": "xml",
+                     "parameters": {
+                        "version": {
+                            "type": "fixed",
+                            "description": "Amazon Linux version",
+                            "value": [
+                                    "2",
+                                    "2022"
+                                    ]
+                            }
+                        }
+                    })"_json;
+
+    CveFileFetcher fileFetcher;
+    EXPECT_THROW(fileFetcher.urlsFromRemote(remote), std::runtime_error);
+}
 
 TEST_F(CveFileFetcherTest, oneRemote_FixedUrl)
 {

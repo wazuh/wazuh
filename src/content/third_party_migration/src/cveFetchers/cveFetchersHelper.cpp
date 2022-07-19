@@ -36,24 +36,38 @@ std::vector<std::string> getPlaceHolders(const std::string &str, const char star
     return placeHolders;
 }
 
-std::map<std::string, std::unique_ptr<AbstractParameter>> getParameters(const nlohmann::json& remote){
+std::map<std::string, std::unique_ptr<AbstractParameter>> getParametersForPlaceHolders(const std::vector<std::string>& names, const nlohmann::json& remote){
     std::map<std::string, std::unique_ptr<AbstractParameter>> params;
+
+    if(names.empty()){
+        return params;
+    }
+
     if (remote.contains("parameters"))
     {
-        for (auto const &parameter : remote.at("parameters").items())
-        {
-            if (parameter.value().at("type") == "fixed"){
-                params[parameter.key()] = std::make_unique<FixedParameter>(parameter.key(), parameter.value());
+        for(auto const &variableName: names){
+            if(remote.at("parameters").contains(variableName)){
+                const auto param = remote.at("parameters").at(variableName);
+                if (param.at("type") == "fixed"){
+                    params[variableName] = std::make_unique<FixedParameter>(variableName, param);
+                }
+                else if(param.at("type") == "variable-incremental"){
+                    params[variableName] = std::make_unique<IncrementalParameter>(variableName, param);
+                }
+                else
+                {
+                    throw std::runtime_error{
+                        "unsupported parameter type: " + param.at("type").get<std::string>() + '.'};
+                }
             }
-            else if(parameter.value().at("type") == "variable-incremental"){
-                params[parameter.key()] = std::make_unique<IncrementalParameter>(parameter.key(), parameter.value());
-            }
-            else
-            {
-                throw std::runtime_error{
-                    "unsupported parameter type: " + parameter.value().at("type").get<std::string>() + '.'};
+            else{
+                throw std::runtime_error{"Parameter missing for variable '" + variableName + "'."};
             }
         }
+    }
+    else{
+        throw std::runtime_error{
+                    "'parameters' missing"};
     }
 
     return params;

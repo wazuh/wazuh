@@ -21,6 +21,5 @@
 #include "cveFetchersParameters.hpp"
 
 std::vector<std::string> getPlaceHolders(const std::string &str, const char start_delim, const char end_delim);
-std::map<std::string, std::unique_ptr<AbstractParameter>> getParameters(const nlohmann::json& remote);
-
+std::map<std::string, std::unique_ptr<AbstractParameter>> getParametersForPlaceHolders(const std::vector<std::string>& names, const nlohmann::json& remote);
 #endif //_CVE_FETCHERS_HELPER_HPP

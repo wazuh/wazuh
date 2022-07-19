@@ -22,13 +22,13 @@ std::vector<std::string> CveFileFetcher::urlsFromRemote(const nlohmann::json &re
             "request type invalid: " + remote.at("request").get<std::string>() + '.'};
     }
 
+    // parse placeHolders
+    auto placeHolders = getPlaceHolders(remote.at("url").get_ref<const std::string &>(), '{', '}');
+
     // parse parameters
-    auto parameters = getParameters(remote);
+    auto parameters = getParametersForPlaceHolders(placeHolders,remote);
 
-    // parse placeholders
-    auto placeholders = getPlaceHolders(remote.at("url").get_ref<const std::string &>(), '{', '}');
-
-    return expandAll(remote.at("url").get_ref<const std::string &>(), placeholders, parameters);
+    return expandAll(remote.at("url").get_ref<const std::string &>(), placeHolders, parameters);
 }
 
 std::vector<std::string> CveFileFetcher::expandAll(const std::string &in, const std::vector<std::string> &placeHolders, std::map<std::string, std::unique_ptr<AbstractParameter>> &parameters)
