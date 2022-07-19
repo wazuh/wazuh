@@ -13,7 +13,7 @@
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 #include <hlp/hlp.hpp>
 #include <logging/logging.hpp>
 

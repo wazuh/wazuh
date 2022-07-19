@@ -5,7 +5,7 @@
 #include <string>
 
 #include "builder/environment.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 
 constexpr auto outputPath = "/tmp/file";
 

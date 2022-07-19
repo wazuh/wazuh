@@ -6,7 +6,7 @@
 #include "builder/builders/stageBuilderMap.hpp"
 #include "builder/builders/stageBuilderNormalize.hpp"
 #include "builder/registry.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
