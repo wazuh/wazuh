@@ -54,4 +54,3 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["install_time"] = m_packageWrapper->install_time();
     package["multiarch"] = m_packageWrapper->multiarch();
 }
-

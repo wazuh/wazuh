@@ -87,6 +87,10 @@ class BrewWrapper final : public IPackageWrapper
         {
             return m_location;
         }
+        std::string vendor() const override
+        {
+            return m_vendor;
+        }
 
         std::string priority() const override
         {
@@ -96,11 +100,6 @@ class BrewWrapper final : public IPackageWrapper
         int size() const override
         {
             return m_size;
-        }
-
-        std::string vendor() const override
-        {
-            return m_vendor;
         }
 
         std::string install_time() const override
