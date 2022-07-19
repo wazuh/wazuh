@@ -420,7 +420,7 @@
                 ]
             },
             {
-                "description": "Using the '\\p+' token to test matching all the special characters without capture group. Note: the character '\\' is not captured by the token '\\p'.",
+                "description": "Using the '\\p+' token to test matching all the special characters w/o capture group. Note: the character '\\' is not captured by the token '\\p'.",
                 "pattern": "\\p+",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -436,7 +436,7 @@
                 ]
             },
             {
-                "description": "Using the '\\p*' token to test matching all the special characters without capture group. Note: the character '\\' is not captured by the token '\\p'.",
+                "description": "Using the '\\p*' token to test matching all the special characters w/o capture group. Note: the character '\\' is not captured by the token '\\p'.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\p*",
@@ -454,7 +454,7 @@
                 ]
             },
             {
-                "description": "Using the '\\.+' token to test matching the character '\\' without capture group.",
+                "description": "Using the '\\.+' token to test matching the character '\\' w/o capture group.",
                 "pattern": "Backslash character is \\.+",
                 "log": "Backslash character is \\",
                 "end_match": "\\",
@@ -472,7 +472,7 @@
                 ]
             },
             {
-                "description": "Using the '\\.*' token to test matching the character '\\' without capture group.",
+                "description": "Using the '\\.*' token to test matching the character '\\' w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Backslash character is \\.*",
@@ -492,7 +492,7 @@
                 ]
             },
             {
-                "description": "Using the '\\t+' token to test NOT matching all the special characters without capture group.",
+                "description": "Using the '\\t+' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\t+",
@@ -510,7 +510,7 @@
                 ]
             },
             {
-                "description": "Using the '\\t*' token to test NOT matching all the special characters without capture group.",
+                "description": "Using the '\\t*' token to test NOT matching all the special characters w/o capture group.",
                 "pattern": "Special characters are \\t*",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -528,7 +528,7 @@
                 ]
             },
             {
-                "description": "Using the '\\d+' token to test NOT matching all the special characters without capture group.",
+                "description": "Using the '\\d+' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\d+",
@@ -548,7 +548,7 @@
                 ]
             },
             {
-                "description": "Using the '\\d*' token to test NOT matching all the special characters without capture group.",
+                "description": "Using the '\\d*' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\d*",
@@ -568,7 +568,7 @@
                 ]
             },
             {
-                "description": "Using the '\\D+' token to test matching all the special characters without capture group.",
+                "description": "Using the '\\D+' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\D+",
@@ -588,7 +588,7 @@
                 ]
             },
             {
-                "description": "Using the '\\D*' token to test matching all the special characters without capture group.",
+                "description": "Using the '\\D*' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\D*",
@@ -608,7 +608,7 @@
                 ]
             },
             {
-                "description": "Using the '\\w+' token to test NOT matching all the special characters without capture group.",
+                "description": "Using the '\\w+' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\w+",
@@ -626,7 +626,7 @@
                 ]
             },
             {
-                "description": "Using the '\\w*' token to test NOT matching all the special characters without capture group.",
+                "description": "Using the '\\w*' token to test NOT matching all the special characters w/o capture group.",
                 "pattern": "Special characters are \\w*",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -644,7 +644,7 @@
                 ]
             },
             {
-                "description": "Using the '\\W+' token to test matching all the special characters without capture group.",
+                "description": "Using the '\\W+' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\W+",
@@ -664,7 +664,7 @@
                 ]
             },
             {
-                "description": "Using the '\\W*' token to test matching all the special characters without capture group.",
+                "description": "Using the '\\W*' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\W*",
@@ -684,7 +684,7 @@
                 ]
             },
             {
-                "description": "Using the '\\S+' token to test matching all the special characters without capture group.",
+                "description": "Using the '\\S+' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\S+",
@@ -704,7 +704,7 @@
                 ]
             },
             {
-                "description": "Using the '\\S*' token to test matching all the special characters without capture group.",
+                "description": "Using the '\\S*' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
                 "__knownIssue": "Link github issue ####",
                 "pattern": "Special characters are \\S*",
@@ -982,7 +982,7 @@
         "description": "[Functionality] Corner cases. This tests have shown that OS Regex is not working as expected.",
         "batch_test": [
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "Pattern \\w+ \\d+",
                 "log": "Pattern Wazuh 123",
@@ -990,7 +990,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w+ \\d+)",
                 "log": "Pattern Wazuh 123",
@@ -1000,7 +1000,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "^Pattern \\w+ \\d+",
                 "log": "Pattern Wazuh 123",
@@ -1008,7 +1008,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "^Pattern (\\w+ \\d+)",
                 "log": "Pattern Wazuh 123",
@@ -1018,7 +1018,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "Pattern \\w+ \\d+$",
                 "log": "Pattern Wazuh 123",
@@ -1026,7 +1026,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w+ \\d+)$",
                 "log": "Pattern Wazuh 123",
@@ -1036,7 +1036,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1'). Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
                 "ignore_result": true,
                 "pattern": "Pattern \\w* \\d*",
                 "log": "Pattern Wazuh 123",
@@ -1044,7 +1044,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1'). With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w* \\d*)",
                 "log": "Pattern Wazuh 123",
@@ -1054,7 +1054,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1'). Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
                 "ignore_result": true,
                 "pattern": "^Pattern \\w* \\d*",
                 "log": "Pattern Wazuh 123",
@@ -1062,7 +1062,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1'). With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
                 "ignore_result": true,
                 "pattern": "^Pattern (\\w* \\d*)",
                 "log": "Pattern Wazuh 123",
@@ -1072,7 +1072,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1'). Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
                 "ignore_result": true,
                 "pattern": "Pattern \\w* \\d*$",
                 "log": "Pattern Wazuh 123",
@@ -1080,7 +1080,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1'). With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w* \\d*)$",
                 "log": "Pattern Wazuh 123",
@@ -1090,7 +1090,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|Subpattern 2: \\d+",
                 "log": "Subpattern 2: 123",
@@ -1098,7 +1098,23 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "Subpattern 1: \\d+|^Subpattern 2: \\d+",
+                "log": "Subpattern 2: 123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "Subpattern 1: \\d+|Subpattern 2: \\d+$",
+                "log": "Subpattern 2: 123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|Subpattern 2: (\\d+)",
                 "log": "Subpattern 2: 123",
@@ -1108,7 +1124,27 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3'). Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "Subpattern 1: (\\d+)|^Subpattern 2: (\\d+)",
+                "log": "Subpattern 2: 123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "Subpattern 1: (\\d+)|Subpattern 2: (\\d+)$",
+                "log": "Subpattern 2: 123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123subpattern",
@@ -1116,7 +1152,15 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "\\d+",
+                "log": "subpattern123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123",
@@ -1124,7 +1168,32 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '9' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "\\d+",
+                "log": "123456789",
+                "end_match": "9",
+                "captured_groups": []
+            },
+            {
+                "description": "This case works well.",
+                "pattern": "\\d+",
+                "log": "1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "(\\d+)",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123subpattern",
@@ -1134,12 +1203,67 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3'). Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "(\\d+)",
+                "log": "subpattern123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '9' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "(\\d+)",
+                "log": "123456789",
+                "end_match": "9",
+                "captured_groups": [
+                    "123456789"
+                ]
+            },
+            {
+                "description": "This case works well.",
+                "pattern": "(\\d+)",
+                "log": "1",
+                "end_match": "1",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "ignore_result": true,
+                "pattern": "\\d*",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
                 "ignore_result": true,
                 "pattern": "\\d*",
                 "log": "123subpattern",
                 "end_match": "3subpattern",
                 "captured_groups": []
+            },
+            {
+                "description": "This test overflows the heap buffer.",
+                "skip_test": true,
+                "pattern": "\\d*",
+                "log": "subpattern123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "(\\d*)",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
             },
             {
                 "description": "With capture group the case works well.",
@@ -1151,7 +1275,17 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "This test overflows the heap buffer.",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "log": "subpattern123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "^\\d+",
                 "log": "123",
@@ -1159,7 +1293,22 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "ignore_result": true,
+                "pattern": "^\\d+",
+                "log": "123subpattern",
+                "end_match": "3subpattern",
+                "captured_groups": []
+            },
+            {
+                "description": "This test passes.",
+                "pattern": "^\\d+",
+                "log": "subpattern123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "^(\\d+)",
                 "log": "123",
@@ -1169,7 +1318,24 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)",
+                "log": "123subpattern",
+                "end_match": "3subpattern",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "This test passes.",
+                "pattern": "^(\\d+)",
+                "log": "subpattern123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "^\\d*",
                 "log": "123",
@@ -1177,7 +1343,23 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "ignore_result": true,
+                "pattern": "^\\d*",
+                "log": "123subpattern",
+                "end_match": "3subpattern",
+                "captured_groups": []
+            },
+            {
+                "description": "This test overflows the heap buffer.",
+                "skip_test": true,
+                "pattern": "^\\d*",
+                "log": "subpattern123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "^(\\d*)",
                 "log": "123",
@@ -1185,32 +1367,6 @@
                 "captured_groups": [
                     "123"
                 ]
-            },
-            {
-                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3'). Without capture group.",
-                "ignore_result": true,
-                "pattern": "^\\d+",
-                "log": "123subpattern",
-                "end_match": "3subpattern",
-                "captured_groups": []
-            },
-            {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
-                "ignore_result": true,
-                "pattern": "^(\\d+)",
-                "log": "123subpattern",
-                "end_match": "3subpattern",
-                "captured_groups": [
-                    "123"
-                ]
-            },
-            {
-                "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3'). Without capture group.",
-                "ignore_result": true,
-                "pattern": "^\\d*",
-                "log": "123subpattern",
-                "end_match": "3subpattern",
-                "captured_groups": []
             },
             {
                 "description": "With capture group the case works well.",
@@ -1222,7 +1378,17 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
+                "description": "This test overflows the heap buffer.",
+                "skip_test": true,
+                "pattern": "^(\\d*)",
+                "log": "subpattern123",
+                "end_match": null,
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "\\d+$",
                 "log": "123",
@@ -1230,7 +1396,15 @@
                 "captured_groups": []
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
+                "pattern": "\\d+$",
+                "log": "log123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "(\\d+)$",
                 "log": "123",
@@ -1240,33 +1414,7 @@
                 ]
             },
             {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
-                "ignore_result": true,
-                "pattern": "\\d*$",
-                "log": "123",
-                "end_match": "3",
-                "captured_groups": []
-            },
-            {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
-                "ignore_result": true,
-                "pattern": "(\\d*)$",
-                "log": "123",
-                "end_match": "3",
-                "captured_groups": [
-                    "123"
-                ]
-            },
-            {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. Without capture group.",
-                "ignore_result": true,
-                "pattern": "\\d+$",
-                "log": "log123",
-                "end_match": "3",
-                "captured_groups": []
-            },
-            {
-                "description": "Last matched character pointed (end_match) should be '3' but it is '1'. With capture group.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "(\\d+)$",
                 "log": "log123",
@@ -1276,31 +1424,66 @@
                 ]
             },
             {
-                "description": "It should match but it doesn't.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "\\d*$",
-                "log": "log123",
+                "log": "123",
                 "end_match": "3",
                 "captured_groups": []
             },
             {
                 "description": "It should match but it doesn't.",
                 "ignore_result": true,
+                "pattern": "\\d*$",
+                "log": "pattern123",
+                "end_match": "3",
+                "captured_groups": []
+            },
+            {
+                "description": "This test passes.",
+                "pattern": "\\d*$",
+                "log": "123pattern",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "ignore_result": true,
                 "pattern": "(\\d*)$",
-                "log": "log123",
+                "log": "123",
                 "end_match": "3",
                 "captured_groups": [
                     "123"
                 ]
             },
             {
-                "description": "Consecutive capture groups (without something in between) do not match.",
+                "description": "It should match but it doesn't.",
+                "ignore_result": true,
+                "pattern": "(\\d*)$",
+                "log": "pattern123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "This test passes.",
+                "pattern": "(\\d*)$",
+                "log": "123pattern",
+                "end_match": null,
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Consecutive capture groups (without something in between) do not match when should.",
                 "ignore_result": true,
                 "pattern": "(\\D+)(\\d+)",
                 "log": "Test123",
                 "end_match": "3",
                 "captured_groups": [
-                    "Test", "123"
+                    "Test",
+                    "123"
                 ]
             },
             {
@@ -1310,7 +1493,8 @@
                 "log": "123Test",
                 "end_match": "t",
                 "captured_groups": [
-                    "123", "Test"
+                    "123",
+                    "Test"
                 ]
             },
             {
@@ -1320,7 +1504,8 @@
                 "log": "Test123",
                 "end_match": "3",
                 "captured_groups": [
-                    "Test", "123"
+                    "Test",
+                    "123"
                 ]
             },
             {
@@ -1330,12 +1515,12 @@
                 "log": "123Test",
                 "end_match": "t",
                 "captured_groups": [
-                    "123", "Test"
+                    "123",
+                    "Test"
                 ]
             },
             {
-                "description": "Consecutive capture groups (without something in between) do not match. The same regex without capture group does match.",
-                "__knownIssue:": "In this case, the returned value is pointing to the '1' when it should be pointing to '3'.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
                 "pattern": "\\D+\\d+",
                 "log": "Test123",
@@ -1343,17 +1528,15 @@
                 "captured_groups": []
             },
             {
-                "description": "Consecutive capture groups (without something in between) do not match. The same regex without capture group does match.",
-                "__knownIssue:": "In this case, the returned value is pointing to 'T' when it should be pointing to 't'.",
+                "description": "Last matched character pointed (end_match) should be 't' but it is 'T'.",
                 "ignore_result": true,
                 "pattern": "\\d+\\D+",
-                "log": "1234Test",
+                "log": "123Test",
                 "end_match": "t",
                 "captured_groups": []
             },
             {
-                "description": "Consecutive capture groups (without something in between) do not match.",
-                "__knownIssue:": "In this case, the returned value is pointing to the 't' when it should be pointing to '3'.",
+                "description": "Last matched character pointed (end_match) should be '3' but it is 't'.",
                 "ignore_result": true,
                 "pattern": "\\D*\\d*",
                 "log": "Test123",
@@ -1361,8 +1544,7 @@
                 "captured_groups": []
             },
             {
-                "description": "Consecutive capture groups (without something in between) do not match.",
-                "__knownIssue:": "In this case, the returned value is pointing to the '3' when it should be pointing to 't'.",
+                "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
                 "ignore_result": true,
                 "pattern": "\\d*\\D*",
                 "log": "123Test",
@@ -1380,8 +1562,28 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 4 extra optional tokens inside a capture group, it does match.",
-                "pattern": "(\\w*\\w*\\d*\\w*\\d*\\w*)",
+                "__knownIssue:": "In this case, with extra optional tokens inside a capture group, it does match.",
+                "pattern": "(\\w*\\d*\\w*\\d*\\w*\\d*)",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": [
+                    "xy"
+                ]
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with extra optional tokens inside a capture group, it does match.",
+                "pattern": "^(\\w*\\d*\\w*\\d*\\w*\\d*)",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": [
+                    "xy"
+                ]
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with extra optional tokens inside a capture group, it does match.",
+                "pattern": "(\\w*\\d*\\w*\\d*\\w*\\d*)$",
                 "log": "xy",
                 "end_match": "y",
                 "captured_groups": [
@@ -1400,9 +1602,99 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with only 3 extra optional tokens, it does match. TODO",
+                "__knownIssue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
+                "pattern": "^(\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*)",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": [
+                    "xy"
+                ]
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
+                "pattern": "(\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*)$",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": [
+                    "xy"
+                ]
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
                 "ignore_result": true,
-                "pattern": "\\p*\\w*\\d*\\w*\\d*\\w*",
+                "pattern": "\\w*\\p*\\d*\\w*",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "ignore_result": true,
+                "pattern": "^\\w*\\p*\\d*\\w*",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "ignore_result": true,
+                "pattern": "\\w*\\p*\\d*\\w*$",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 3 extra optional tokens inside a capture group, it does match.",
+                "pattern": "(\\w*\\p*\\d*\\w*)",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": [
+                    "xy"
+                ]
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "ignore_result": true,
+                "pattern": "\\w*\\d*\\w*\\p*",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 2 extra optional tokens, it does match.",
+                "pattern": "\\w*\\d*\\w*",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 2 extra optional tokens, it does match.",
+                "pattern": "^\\w*\\d*\\w*",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 2 extra optional tokens, it does match.",
+                "pattern": "\\w*\\d*\\w*$",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "ignore_result": true,
+                "pattern": "\\w*\\d*\\p*\\w*",
                 "log": "xy",
                 "end_match": "y",
                 "captured_groups": []
