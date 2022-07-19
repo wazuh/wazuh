@@ -8,7 +8,7 @@
 
 #include "environment.hpp"
 #include "registry.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 
 namespace builder
 {
