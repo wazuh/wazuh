@@ -10,7 +10,7 @@
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 #include "outputs/file.hpp"
 
 namespace builder::internals::builders

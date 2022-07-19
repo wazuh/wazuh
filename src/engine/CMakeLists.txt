@@ -92,7 +92,6 @@ add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 target_include_directories(main
     PRIVATE
     ${ENGINE_SOURCE_DIR}/router
-    ${ENGINE_SOURCE_DIR}/json
     ${ENGINE_SOURCE_DIR}/rxcppBackend
     ${CameronQueue_SOURCE_DIR}
     ${argparse_SOURCE_DIR}/include
@@ -107,9 +106,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicExpression)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rxbk)
+add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 
 #TODO isolate rxcpp
-target_link_libraries(main base builders catalog rxbk)
+target_link_libraries(main base builders catalog rxbk json)
 
 # Build test
 if(ENGINE_BUILD_TEST)
