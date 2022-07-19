@@ -5,7 +5,7 @@
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 #include "registry.hpp"
 #include "syntax.hpp"
 #include <logicExpression/logicExpression.hpp>

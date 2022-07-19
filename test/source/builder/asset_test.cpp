@@ -7,7 +7,7 @@
 #include "builder/builder.hpp"
 #include "builder/register.hpp"
 #include "builder/registry.hpp"
-#include "json.hpp"
+#include <json/json.hpp>
 
 using namespace builder;
 using namespace builder::internals;
