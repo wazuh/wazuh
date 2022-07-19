@@ -9,8 +9,9 @@ import urllib2
 from requests.auth import HTTPBasicAuth
 reload(sys)
 sys.setdefaultencoding('utf8')
-BLACK_LIST= ["sca","vulnerability-detector"]
-BLACK_RULE= ["2902","2904","550","202","203"]
+# If you need to remove any notices about the rule, enable them
+# BLACK_LIST= ["sca","vulnerability-detector"]
+# BLACK_RULE= ["2902","2904","550","202","203"]
 def send_telegram_message(token, chat_id, text):
     url = 'https://api.telegram.org/bot%s/sendMessage' % (token)
     data = urllib.urlencode({'chat_id':chat_id, 'text':text, 'parse_mode':'Markdown'})
@@ -61,7 +62,7 @@ else:
 timestamp = alert_json['timestamp']
 location = alert_json['location']
 level = alert_json['rule']['level']
-text = """*Wazuh-OSSEC: (%s) %s -> %s*
+text = """*Wazuh: (%s) %s -> %s*
 ```
 Rule: %s
 Level:%s
@@ -70,7 +71,7 @@ Time: %s
 Description: %s
 %s```""" %(hostname,ip,location,rule,level,ipcl,timestamp,description,full_log)
 LOGGER.info(text)
-
-if location not in BLACK_LIST and rule not in BLACK_RULE and "ignore this message" not in description:
-        send_telegram_message(token, chat_id, text)
+# If you need to remove any notices about the rule, enable them
+# if location not in BLACK_LIST and rule not in BLACK_RULE and "ignore this message" not in description:
+send_telegram_message(token, chat_id, text)
 sys.exit(0)
