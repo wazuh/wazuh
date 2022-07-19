@@ -3624,182 +3624,194 @@ checks:
 
   - id: 27221
     title: "Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'"
-    description: "This policy setting allows you to prevent app notifications from appearing on the lock screen."
+    description: "This policy setting allows you to prevent app notifications from appearing on the lock screen. The recommended state for this setting is: Enabled."
     rationale: "App notifications might display sensitive business or personal data."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off app notifications on the lock screen"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off app notifications on the lock screen. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.28.5"]
-      - cis_csc: ["16.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-34837-5'
+      - "CCE-34837-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications -> 1'
 
   - id: 27222
     title: "Ensure 'Turn off picture password sign-in' is set to 'Enabled'"
-    description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled."
+    description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled. Note: If the picture password feature is permitted, the user's domain password is cached in the system vault when using it."
     rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off picture password sign-in"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off picture password sign-in. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.28.6"]
-      - cis_csc: ["16.5"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-35291-4'
+      - "CCE-35291-4"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword -> 1'
 
   - id: 27223
     title: "Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'"
-    description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work."
+    description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work. Note: The user's domain password will be cached in the system vault when using this feature. The recommended state for this setting is: Disabled."
     rationale: "A PIN is created from a much smaller selection of characters than a password, so in most cases a PIN will be much less robust than a password."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn on convenience PIN sign-in"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn on convenience PIN sign-in. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn on PIN sign-in, but it was renamed starting with the Windows 10 Release 1511 Administrative Templates."
     compliance:
       - cis: ["18.8.28.7"]
-      - cis_csc: ["16.5"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-35095-9'
-    condition: all
+      - "CCE-35095-9"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon -> 0'
 
   - id: 27224
     title: "Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'"
-    description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled ."
+    description: "This policy setting determines whether Clipboard contents can be synchronized across devices. The recommended state for this setting is: Disabled."
     rationale: "In high security environments, clipboard data should stay local to the system and not synced across devices, as it may contain very sensitive information that must be contained locally."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow Clipboard synchronization across devices"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow Clipboard synchronization across devices. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template OSPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.31.1"]
-      - cis_csc: ["5.1","13.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-34972-0'
+      - "CCE-34972-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard -> 0'
 
   - id: 27225
     title: "Ensure 'Allow upload of User Activities' is set to 'Disabled'"
-    description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled ."
+    description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled."
     rationale: "Due to privacy concerns, data should never be sent to any 3rd party since this data could contain sensitive information."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled : Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow upload of User Activities"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow upload of User Activities. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template OSPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1803 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.31.2"]
-      - cis_csc: ["5.1","13.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities -> 0'
 
   - id: 27226
     title: "Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'"
-    description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems."
+    description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems. The recommended state for this setting is: Disabled."
     rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, on battery and in a sleep state."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (on battery)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (on battery). Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.34.6.1"]
-      - cis_csc: ["9"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> DCSettingIndex'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> DCSettingIndex -> 0'
 
   - id: 27227
     title: "Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'"
-    description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems."
+    description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems. The recommended state for this setting is: Disabled."
     rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, plugged in and in a sleep state."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (plugged in)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (plugged in). Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.34.6.2"]
-      - cis_csc: ["9"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> ACSettingIndex'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> ACSettingIndex -> 0'
 
   - id: 27228
     title: "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'"
-    description: "Dictates whether or not Windows is allowed to use standby states when sleeping the computer."
-    rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow standby states (S1-S3) when sleeping (on battery)"
+    description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
+    rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Require a password when a computer wakes (on battery). Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.34.6.3"]
-      - cis_csc: ["13.2", "13.6"]
+      - cis_csc: ["4.3"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-33782-4'
-    condition: all
+      - "CCE-33782-4"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex -> 1'
 
   - id: 27229
     title: "Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'"
-    description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep."
+    description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
     rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Require a password when a computer wakes (plugged in)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Require a password when a computer wakes (plugged in). Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.34.6.4"]
-      - cis_csc: ["16.5"]
+      - cis: ["18.8.34.6.6"]
+      - cis_csc: ["4.3"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-35462-1'
-    condition: all
+      - "CCE-35462-1"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex -> 1'
 
   - id: 27230
     title: "Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'"
-    description: "This policy setting allows you to turn on or turn off Offer (Unsolicited) Remote Assistance on this computer. Help desk and support personnel will not be able to proactively offer assistance, although they can still respond to user assistance requests."
+    description: "This policy setting allows you to turn on or turn off Offer (Unsolicited) Remote Assistance on this computer. Help desk and support personnel will not be able to proactively offer assistance, although they can still respond to user assistance requests. The recommended state for this setting is: Disabled."
     rationale: "A user might be tricked and accept an unsolicited Remote Assistance offer from a malicious user."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Offer Remote Assistance"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Offer Remote Assistance. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RemoteAssistance.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.36.1"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-33801-2'
-    condition: all
+      - "CCE-33801-2"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited -> 0'
 
   - id: 27231
     title: "Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'"
-    description: "This policy setting allows you to turn on or turn off Solicited (Ask for) Remote Assistance on this computer."
+    description: "This policy setting allows you to turn on or turn off Solicited (Ask for) Remote Assistance on this computer. The recommended state for this setting is: Disabled."
     rationale: "There is slight risk that a rogue administrator will gain access to another user's desktop session, however, they cannot connect to a user's computer unannounced or control it without permission from the user. When an expert tries to connect, the user can still choose to deny the connection or give the expert view-only privileges. The user must explicitly click the Yes button to allow the expert to remotely control the workstation."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Solicited Remote Assistance"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Solicited Remote Assistance. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RemoteAssistance.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.36.2"]
-      - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-35331-8'
+      - "CCE-35331-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> 0'
 
   - id: 27232
     title: "Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only)"
-    description: "This policy setting controls whether RPC clients authenticate with the Endpoint Mapper Service when the call they are making contains authentication information. The Endpoint Mapper Service on computers running Windows NT4 (all service packs) cannot process authentication information supplied in this manner. This policy setting can cause a specific issue with 1-way forest trusts if it is applied to the trusting domain DCs (see Microsoft KB3073942), so we do not recommend applying it to Domain Controllers."
+    description: "This policy setting controls whether RPC clients authenticate with the Endpoint Mapper Service when the call they are making contains authentication information. The Endpoint Mapper Service on computers running Windows NT4 (all service packs) cannot process authentication information supplied in this manner. This policy setting can cause a specific issue with 1-way forest trusts if it is applied to the trusting domain DCs (see Microsoft KB3073942), so we do not recommend applying it to Domain Controllers. Note: This policy will not in effect until the system is rebooted. The recommended state for this setting is: Enabled."
     rationale: "Anonymous access to RPC services could result in accidental disclosure of information to unauthenticated users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Enable RPC Endpoint Mapper Client Authentication"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Enable RPC Endpoint Mapper Client Authentication. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RPC.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.37.1"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -3807,19 +3819,20 @@ checks:
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-35392-0'
+      - "CCE-35392-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution -> 1'
 
   - id: 27233
     title: "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)"
-    description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- None allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- Authenticated allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- Authenticated without exceptions allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.'"
+    description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- \"None\" allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- \"Authenticated\" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- \"Authenticated without exceptions\" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.' Note: This policy setting will not be applied until the system is rebooted. The recommended state for this setting is: Enabled: Authenticated."
     rationale: "Unauthenticated RPC communication can create a security vulnerability."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Authenticated: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Restrict Unauthenticated RPC clients"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Authenticated: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Restrict Unauthenticated RPC clients. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RPC.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.37.2"]
-      - cis_csc: ["9.1", "9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -3827,9 +3840,11 @@ checks:
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-35391-2'
-    condition: all
+      - "CCE-35391-2"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients -> 1'
 
   - id: 27234
@@ -3851,11 +3866,12 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Troubleshooting and Diagnostics\\Microsoft Support Diagnostic Tool\\Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template MSDT.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.48.5.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer -> 0'
 
   - id: 27236
@@ -3865,29 +3881,31 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Troubleshooting and Diagnostics\\Windows Performance PerfTrack\\Enable/Disable PerfTrack. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PerformancePerftrack.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.48.11.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-33662-8'
+      - "CCE-33662-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled -> 0'
 
   - id: 27237
     title: "Ensure 'Turn off the advertising ID' is set to 'Enabled'"
     description: "This policy setting turns off the advertising ID, preventing apps from using the ID for experiences across apps. The recommended state for this setting is: Enabled."
     rationale: "Tracking user activity for advertising purposes, even anonymously, may be a privacy concern. In an enterprise managed environment, applications should not need or require tracking for targeted advertising."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\User Profiles\\Turn off the advertising ID Note: This Group Policy path may not exist by default. It is provided by the Group Policy template UserProfiles.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\User Profiles\\Turn off the advertising ID. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template UserProfiles.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.50.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-33823-6'
+      - "CCE-33823-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy -> 1'
 
   - id: 27238
@@ -3897,14 +3915,16 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Client. Note: This Group Policy path is provided by the Group Policy template W32Time.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.53.1.1"]
-      - cis_csc: ["6.1"]
+      - cis_csc: ["8.4"]
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC7.2"]
     references:
-      - 'CCE-33661-0'
+      - "CCE-33661-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> 1'
 
   - id: 27239
@@ -3914,14 +3934,16 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Server. Note: This Group Policy path is provided by the Group Policy template W32Time.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.53.1.2"]
-      - cis_csc: ["9.1", "9.2"]
+      - cis_csc: ["8.4"]
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC7.2"]
     references:
-      - 'CCE-35135-3'
-    condition: all
+      - "CCE-35135-3"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled -> 0'
 
   - id: 27240
@@ -3931,11 +3953,12 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Package Deployment\\Allow a Windows app to share application data between users. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppxPackageManager.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.4.1"]
-      - cis_csc: ["14.4", "14.6"]
+      - cis_csc: ["3.3"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - 'CCE-41397-1'
     condition: all
@@ -3944,76 +3967,84 @@ checks:
 
   - id: 27241
     title: "Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'"
-    description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it."
+    description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it. The recommended state for this setting is: Enabled."
     rationale: "Enabling this setting allows an organization to use their enterprise user accounts instead of using their Microsoft accounts when accessing Windows store apps. This provides the organization with greater control over relevant credentials. Microsoft accounts cannot be centrally managed and as such enterprise credential security policies cannot be applied to them, which could put any information accessed by using Microsoft accounts at risk."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Allow Microsoft accounts to be optional"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Allow Microsoft accounts to be optional. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppXRuntime.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.6.1"]
-      - cis_csc: ["16.9"]
+      - cis_csc: ["5.6"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-35803-6'
+      - "CCE-35803-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
 
   - id: 27242
     title: "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'"
-    description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones."
+    description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones. The recommended state for this setting is: Enabled."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Disallow Autoplay for non-volume devices"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Disallow Autoplay for non-volume devices. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AutoPlay.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.8.1"]
-      - cis_csc: ["8.3", "8.4", "8.5"]
+      - cis_csc: ["10.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-35289-8'
+      - "CCE-35289-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
 
   - id: 27243
     title: "Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'"
     description: "This policy setting sets the default behavior for Autorun commands. Autorun commands are generally stored in autorun.inf files. They often launch the installation program or other routines. The recommended state for this setting is: Enabled: Do not execute any autorun commands."
     rationale: "Prior to Windows Vista, when media containing an autorun command is inserted, the system will automatically execute the program without user intervention. This creates a major security concern as code may be executed without user's knowledge. The default behavior starting with Windows Vista is to prompt the user whether autorun command is to be run. The autorun command is represented as a handler in the Autoplay dialog."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not execute any autorun commands: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Set the default behavior for AutoRun"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not execute any autorun commands: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Set the default behavior for AutoRun. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AutoPlay.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.8.2"]
-      - cis_csc: ["8.3", "8.4", "8.5"]
+      - cis_csc: ["10.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-34771-6'
+      - "CCE-34771-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> 1'
 
   - id: 27244
     title: "Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'"
-    description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives."
+    description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives. Note: You cannot use this policy setting to enable Autoplay on computer drives in which it is disabled by default, such as floppy disk and network drives. The recommended state for this setting is: Enabled: All drives."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: All drives: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Turn off Autoplay"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: All drives: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Turn off Autoplay. Note: This Group Policy path is provided by the Group Policy template AutoPlay.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.8.3"]
-      - cis_csc: ["8.3", "8.4", "8.5"]
+      - cis_csc: ["10.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-33791-5'
+      - "CCE-33791-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
 
   - id: 27245
     title: "Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'"
-    description: "This policy setting determines whether enhanced anti-spoofing is configured for devices which support it."
+    description: "This policy setting determines whether enhanced anti-spoofing is configured for devices which support it. The recommended state for this setting is: Enabled."
     rationale: "Enterprise managed environments are now supporting a wider range of mobile devices, increasing the security on these devices will help protect against unauthorized access on your network."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti-spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
     compliance:
       - cis: ["18.9.10.1.1"]
       - cis_csc: ["10.5"]
@@ -4021,91 +4052,99 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing -> 1'
 
   - id: 27246
     title: "Ensure 'Allow Use of Camera' is set to 'Disabled'"
     description: "This policy setting controls whether the use of Camera devices on the machine are permitted. The recommended state for this setting is: Disabled."
     rationale: "Cameras in a high security environment can pose serious privacy and data exfiltration risks - they should be disabled to help mitigate that risk."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Camera\\Allow Use of Camera Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Camera.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Camera\\Allow Use of Camera. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Camera.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.12.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera -> 0'
 
   - id: 27247
-    title: "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled' "
-    description: "This policy setting determines whether cloud consumer account state content is allowed in all Windows experiences. The recommended state for this setting is: Enabled. "
-    rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off cloud consumer account state content Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    title: "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'"
+    description: "This policy setting determines whether cloud consumer account state content is allowed in all Windows experiences. The recommended state for this setting is: Enabled."
+    rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off cloud consumer account state content. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.14.1"]
-      - cis_csc: ["9.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent -> 1'
 
   - id: 27248
     title: "Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'"
-    description: "This policy setting turns off experiences that help consumers make the most of their devices and Microsoft account."
+    description: "This policy setting turns off experiences that help consumers make the most of their devices and Microsoft account. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet, this policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions."
     rationale: "Having apps silently install in an enterprise managed environment is not good security practice - especially if the apps send data back to a 3rd party."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off Microsoft consumer experiences"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off Microsoft consumer experiences. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.14.2"]
       - cis_csc: ["13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
   - id: 27249
     title: "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'"
-    description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device."
+    description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device. The recommended state for this setting is: Enabled: First Time OR Enabled: Always."
     rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: First Time OR Enabled: Always: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WirelessDisplay.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). The new Choose one of the following actions sub-option was later added as of the Windows 10 Release 1809 Administrative Templates. Choosing Enabled in the older templates is the equivalent of choosing Enabled: First Time in the newer templates."
     compliance:
       - cis: ["18.9.15.1"]
-      - cis_csc: ["15.8", "15.9"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
-    condition: any
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing -> 1'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing -> 2'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing -> r:^1$|^2$'
 
   - id: 27250
     title: "Ensure 'Do not display the password reveal button' is set to 'Enabled'"
-    description: "This policy setting allows you to configure the display of the password reveal button in password entry user experiences."
+    description: "This policy setting allows you to configure the display of the password reveal button in password entry user experiences. The recommended state for this setting is: Enabled."
     rationale: "This is a useful feature when entering a long and complex password, especially when using a touchscreen. The potential risk is that someone else may see your password while surreptitiously observing your screen."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Do not display the password reveal button"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Do not display the password reveal button. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredUI.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.16.1"]
-      - cis_csc: ["16"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
     references:
-      - 'CCE-32965-6'
+      - "CCE-32965-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal -> 1'
 
   - id: 27251
     title: "Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'"
-    description: "This policy setting controls whether administrator accounts are displayed when a user attempts to elevate a running application."
+    description: "This policy setting controls whether administrator accounts are displayed when a user attempts to elevate a running application. The recommended state for this setting is: Disabled."
     rationale: "Users could see the list of administrator accounts, making it slightly easier for a malicious user who has logged onto a console session to try to crack the passwords of those accounts."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Enumerate administrator accounts on elevation"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Enumerate administrator accounts on elevation. Note: This Group Policy path is provided by the Group Policy template CredUI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.16.2"]
-      - cis_csc: ["16"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
     references:
@@ -4116,321 +4155,357 @@ checks:
 
   - id: 27252
     title: "Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'"
-    description: "This policy setting determines the amount of diagnostic and usage data reported to Microsoft: - A value of 0 - Security [Enterprise Only] will send minimal data to Microsoft. This data includes Malicious Software Removal Tool (MSRT) & Windows Defender data, if enabled, and telemetry client settings. Setting a value of 0 applies to enterprise, EDU, IoT and server devices only. Setting a value of 0 for other devices is equivalent to choosing a value of 1. - A value of 1 - Basic sends only a basic amount of diagnostic and usage data. Note that setting values of 0 or 1 will degrade certain experiences on the device. - A value of 2 - Enhanced sends enhanced diagnostic and usage data. - A value of 3 - Full sends the same data as a value of 2, plus additional diagnostics data, including the files and content that may have caused the problem. Windows 10 telemetry settings apply to the Windows operating system and some first party apps. This setting does not apply to third party apps running on Windows 10. The recommended state for this setting is: Enabled: 0 - Security [Enterprise Only] or Enabled: 1 - Basic."
+    description: "This policy setting determines the amount of diagnostic and usage data reported to Microsoft: - A value of (0) Diagnostic data off (not recommended). Using this value, no diagnostic data is sent from the device. This value is only supported on Enterprise,  Education, and Server editions. If you choose this setting, devices in your organization will still be secure. - A value of (1) Send required diagnostic data. This is the minimum diagnostic data necessary to keep Windows secure, up to date, and performing as expected. Using this value disables the Optional diagnostic data control in the  Settings app. - A value of (3)Send optional diagnostic data. Additional diagnostic data is collected that helps us to detect, diagnose and fix issues, as well as make product improvements. Required diagnostic data will always be included when you choose to send optional diagnostic data. Optional diagnostic data can also include diagnostic log files and crash dumps. Use the Limit Dump Collection and the Limit  Diagnostic Log Collection policies for more granular control of what optional diagnostic data is sent. Windows telemetry settings apply to the Windows operating system and some first party apps. This setting does not apply to third party apps running on Windows 10/11. The recommended state for this setting is: Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data. Note: If your organization relies on Windows Update, the minimum recommended setting is Required diagnostic data. Because no Windows Update information is collected when diagnostic data is off, important information about update failures is not sent. Microsoft uses this information to fix the causes of those failures and improve the quality of updates. Note #2: The Configure diagnostic data opt-in settings user interface group policy can be used to prevent end users from changing their data collection settings. Note #3: Enhanced diagnostic data setting is not available on Windows 11 and Windows Server 2022 and has been replaced with policies that can control the amount of optional diagnostic data that is sent. For more information on these settings visit Manage diagnostic data using Group Policy and MDM"
     rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 0 - Security [Enterprise Only] or Enabled: 1 - Basic: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Allow Telemetry"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Allow Diagnostic Data. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow Telemetry, but it was renamed to Allow Diagnostic Data starting with the Windows 11 Release 21H2 Administrative Templates."
     compliance:
       - cis: ["18.9.17.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-41400-3'
+      - "CCE-41400-3"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry -> r:^0$|^1$'
 
   - id: 27253
     title: "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'"
     description: "This policy setting controls whether the Connected User Experience and Telemetry service can automatically use an authenticated proxy to send data back to Microsoft. The recommended state for this setting is: Enabled: Disable Authenticated Proxy usage."
     rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Authenticated Proxy usage: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Authenticated Proxy usage: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.2"]
-      - cis_csc: ["13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy -> 1'
 
   - id: 27254
     title: "Ensure 'Disable OneSettings Downloads' is set to 'Enabled'"
-    description: "This policy setting controls whether Windows attempts to connect with the OneSettings service to download configuration settings. The recommended state for this setting is: Enabled. "
-    rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an asneeded basis. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Disable OneSettings Downloads Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
+    description: "This policy setting controls whether Windows attempts to connect with the OneSettings service to download configuration settings. The recommended state for this setting is: Enabled."
+    rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as-needed basis."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Disable OneSettings Downloads. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads -> 1'
 
   - id: 27255
     title: "Ensure 'Do not show feedback notifications' is set to 'Enabled'"
-    description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft."
+    description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft. The recommended state for this setting is: Enabled."
     rationale: "Users should not be sending any feedback to 3rd party vendors in an enterprise managed environment."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Do not show feedback notifications"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Do not show feedback notifications. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template FeedbackNotifications.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.4"]
-      - cis_csc: ["13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications -> 1'
 
   - id: 27256
     title: "Ensure 'Enable OneSettings Auditing' is set to 'Enabled'"
-    description: "This policy setting controls whether Windows records attempts to connect with the OneSettings service to the Operational EventLog. The recommended state for this setting is: Enabled. "
-    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Enable OneSettings Auditing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
+    description: "This policy setting controls whether Windows records attempts to connect with the OneSettings service to the Operational EventLog. The recommended state for this setting is: Enabled."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Enable OneSettings Auditing. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.5"]
-      - cis_csc: ["6.3","8.5"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing -> 1'
 
   - id: 27257
     title: "Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'"
-    description: "This policy setting controls whether additional diagnostic logs are collected when more information is needed to troubleshoot a problem on the device. The recommended state for this setting is: Enabled. Note: Diagnostic logs are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended)or Enabled: Send required diagnostic data to send only basic information. "
-    rationale: "Sending data to a 3rd-party vendor is a security concern and should only be done on an asneeded basis. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Diagnostic Log Collection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    description: "This policy setting controls whether additional diagnostic logs are collected when more information is needed to troubleshoot a problem on the device. The recommended state for this setting is: Enabled. Note: Diagnostic logs are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended)or Enabled: Send required diagnostic data to send only basic information."
+    rationale: "Sending data to a 3rd-party vendor is a security concern and should only be done on an as-needed basis."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Diagnostic Log Collection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection -> 1'
 
   - id: 27258
     title: "Ensure 'Limit Dump Collection' is set to 'Enabled'"
-    description: "This policy setting limits the type of dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Ensure Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information. "
-    rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as needed basis. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Dump Collection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    description: "This policy setting limits the type of dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Ensure Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information."
+    rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Dump Collection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.7"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> :LimitDumpCollection -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection -> 1'
 
   - id: 27259
     title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'"
-    description: "This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under \"Get Insider builds,\" and enable users to make their devices available for downloading and installing Windows preview software."
+    description: 'This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under "Get Insider builds," and enable users to make their devices available for downloading and installing Windows preview software. The recommended state for this setting is: Disabled. Note: This policy setting applies only to devices running Windows 10 Pro or Windows 10 Enterprise, up until Release 1703. For Release 1709 or newer, Microsoft encourages using the Manage preview builds setting (recommendation title ‘Manage preview builds’). We have kept this setting in the benchmark to ensure that any older builds of Windows 10 in the environment are still enforced.'
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Toggle user control over Insider builds"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Toggle user control over Insider builds. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AllowBuildPreview.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.8"]
-      - cis_csc: ["3"]
+      - cis_csc: ["2.5"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
-      - 'CCE-41380-7'
+      - "CCE-41380-7"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview -> 0'
 
   - id: 27260
     title: "Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
-    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size."
+    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Application\\Control Event Log behavior when the log file reaches its maximum size"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Application\\Control Event Log behavior when the log file reaches its maximum size. Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Retain old events, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.1.1"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-34169-3'
-    condition: all
+      - "CCE-34169-3"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention -> 0'
 
   - id: 27261
     title: "Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
-    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
+    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Application\\Specify the maximum log file size (KB)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Application\\Specify the maximum log file size (KB). Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Maximum Log Size (KB), but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.1.2"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-33975-4'
+      - "CCE-33975-4"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> n:^(\d+) compare >= 32768'
 
   - id: 27262
     title: "Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
-    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size."
+    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Security\\Control Event Log behavior when the log file reaches its maximum size"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Security\\Control Event Log behavior when the log file reaches its maximum size. Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Retain old events, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.2.1"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-35090-0'
-    condition: all
+      - "CCE-35090-0"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention -> 0'
 
   - id: 27263
     title: "Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'"
-    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
+    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 196,608 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 196,608 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Security\\Specify the maximum log file size (KB)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 196,608 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Security\\Specify the maximum log file size (KB). Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Maximum Log Size (KB), but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.2.2"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-33428-4'
+      - "CCE-33428-4"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> n:^(\d+) compare >= 196608'
 
   - id: 27264
     title: "Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
-    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size."
+    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Setup\\Control Event Log behavior when the log file reaches its maximum size"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Setup\\Control Event Log behavior when the log file reaches its maximum size. Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Retain old events, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.3.1"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-34170-1'
-    condition: all
+      - "CCE-34170-1"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention -> 0'
 
   - id: 27265
     title: "Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
-    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
-    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Setup\\Specify the maximum log file size (KB)"
+    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Setup\\Specify the maximum log file size (KB). Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Maximum Log Size (KB), but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.3.2"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-35091-8'
+      - "CCE-35091-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> n:^(\d+) compare >= 32768'
 
   - id: 27266
     title: "Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
-    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size."
+    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\System\\Control Event Log behavior when the log file reaches its maximum size"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\System\\Control Event Log behavior when the log file reaches its maximum size. Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Retain old events, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.4.1"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-33729-5'
-    condition: all
+      - "CCE-33729-5"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention -> 0'
 
   - id: 27267
     title: "Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
-    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
-    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\System\\Specify the maximum log file size (KB)"
+    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\System\\Specify the maximum log file size (KB). Note: This Group Policy path is provided by the Group Policy template EventLog.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Maximum Log Size (KB), but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.27.4.2"]
-      - cis_csc: ["6.3", "6.4"]
-      - pci_dss: ["10.6.1"]
-      - nist_800_53: ["AU.6"]
-      - gpg13: ["4.12"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
-    references:
-      - 'CCE-35288-0'
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> n:^(\d+) compare >= 32768'
-
-  - id: 27268
-    title: "Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'"
-    description: "Disabling Data Execution Prevention can allow certain legacy plug-in applications to function without terminating Explorer."
-    rationale: "Data Execution Prevention is an important security feature supported by Explorer that helps to limit the impact of certain types of malware."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off Data Execution Prevention for Explorer"
-    compliance:
-      - cis: ["18.9.31.2"]
-      - cis_csc: ["8.4", "8.3"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.6.1"]
       - nist_800_53: ["AU.6"]
       - gpg13: ["4.12"]
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
     references:
-      - 'CCE-33608-1'
+      - "CCE-35288-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> n:^(\d+) compare >= 32768'
+
+  - id: 27268
+    title: "Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'"
+    description: "Disabling Data Execution Prevention can allow certain legacy plug-in applications to function without terminating Explorer. The recommended state for this setting is: Disabled. Note: Some legacy plug-in applications and other software may not function with Data Execution Prevention and will require an exception to be defined for that specific plug- in/software."
+    rationale: "Data Execution Prevention is an important security feature supported by Explorer that helps to limit the impact of certain types of malware."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off Data Execution Prevention for Explorer. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Explorer.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.31.2"]
+      - cis_csc: ["10.5"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
+    references:
+      - "CCE-33608-1"
+    condition: any
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> 0'
 
   - id: 27269
     title: "Ensure 'Turn off heap termination on corruption' is set to 'Disabled'"
-    description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this."
+    description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this. The recommended state for this setting is: Disabled."
     rationale: "Allowing an application to function after its session has become corrupt increases the risk posture to the system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off heap termination on corruption"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off heap termination on corruption. Note: This Group Policy path is provided by the Group Policy template Explorer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.31.3"]
-      - cis_csc: ["8.4", "8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
-      - 'CCE-33745-1'
-    condition: all
+      - "CCE-33745-1"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> 0'
 
   - id: 27270
     title: "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'"
-    description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows."
+    description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows. The recommended state for this setting is: Disabled."
     rationale: "Limiting the opening of files and folders to a limited set reduces the attack surface of the system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off shell protocol protected mode"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off shell protocol protected mode. Note: This Group Policy path is provided by the Group Policy template WindowsExplorer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.31.4"]
-      - cis_csc: ["8.4", "8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -4447,102 +4522,123 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Location and Sensors\\Turn off location. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Sensors.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.41.1"]
-      - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-33743-6'
+      - "CCE-33743-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation -> 1'
 
   - id: 27272
     title: "Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'"
     description: "This policy setting allows backup and restore of cellular text messages to Microsoft's cloud services. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, data should never be sent to any 3rd party since this data could contain sensitive information."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Messaging\\Allow Message Service Cloud Sync Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Messaging.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Messaging\\Allow Message Service Cloud Sync. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Messaging.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.45.1"]
-      - cis_csc: ["9.1", "9.2", "13"]
       - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - hipaa:
+          ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync -> 0'
 
   - id: 27273
     title: "Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'"
-    description: "This setting determines whether applications and services on the device can utilize new consumer Microsoft account authentication via the Windows OnlineID and WebAccountManager APIs."
+    description: "This setting determines whether applications and services on the device can utilize new consumer Microsoft account authentication via the Windows OnlineID and WebAccountManager APIs. The recommended state for this setting is: Enabled."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used on their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft accounts\\Block all consumer Microsoft account user authentication"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft accounts\\Block all consumer Microsoft account user authentication. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template MSAPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.46.1"]
-      - cis_csc: ["16"]
+      - cis_csc: ["5.3"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth -> 1'
 
   - id: 27274
     title: "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'"
-    description: "This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft has now renamed to \"Windows Defender Antivirus Cloud Protection Service\". This setting can only be set by Group Policy."
-    rationale: "The decision on whether or not to participate in Microsoft MAPS / Windows Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS"
+    description: 'This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. This setting can only be set by Group Policy. The recommended state for this setting is: Disabled.'
+    rationale: "The decision on whether or not to participate in Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.4.1"]
-      - cis_csc: ["8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
-      - 'CCE-33833-5'
-    condition: all
+      - "CCE-33833-5"
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting -> 0'
 
   - id: 27275
     title: "Ensure 'Join Microsoft MAPS' is set to 'Disabled'"
-    description: "This policy setting allows you to join Microsoft Active Protection Service (MAPS), which Microsoft has now renamed to \"Windows Defender Antivirus Cloud Protection Service\". Microsoft MAPS / Windows Defender Antivirus Cloud Protection Service is the online community that helps you choose how to respond to potential threats. The community also helps stop the spread of new malicious software infections. You can choose to send basic or additional information about detected software. Additional information helps Microsoft create new definitions and help it to protect your computer. Possible options are: - (0x0) Disabled (default) - (0x1) Basic membership - (0x2) Advanced membership. The recommended state for this setting is: Disabled."
+    description: 'This policy setting allows you to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service is the online community that helps you choose how to respond to potential threats. The community also helps stop the spread of new malicious software infections. You can choose to send basic or additional information about detected software. Additional information helps Microsoft create new definitions and help it to protect your computer. Possible options are: - (0x0) Disabled (default) - (0x1) Basic membership - (0x2) Advanced membership Basic membership will send basic information to Microsoft about software that has been detected including where the software came from the actions that you apply or that are applied automatically and whether the actions were successful. Advanced membership in addition to basic information will send more information to Microsoft about malicious software spyware and potentially unwanted software including the location of the software file names how the software operates and how it has impacted your computer. The recommended state for this setting is: Disabled.'
     rationale: "The information that would be sent can include things like location of detected items on your computer if harmful software was removed. The information would be automatically collected and sent. In some instances personal information might unintentionally be sent to Microsoft. However, Microsoft states that it will not use this information to identify you or contact you. For privacy reasons in high security environments, it is best to prevent these data submissions altogether."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\MAPS\\Join Microsoft MAPS Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MAPS\\Join Microsoft MAPS. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.4.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting'
 
   - id: 27276
     title: "Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'"
-    description: "This policy setting controls the state for the Attack Surface Reduction (ASR) rules."
-    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules"
+    description: "This policy setting controls the state for the Attack Surface Reduction (ASR) rules. The recommended state for this setting is: Enabled."
+    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Microsoft Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.5.1.1"]
-      - cis_csc: ["8.4"]
+      - cis_csc: ["10.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
 
   - id: 27277
     title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured"
-    description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes)"
-    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
-    remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d and d4f940ab-401b-4efc-aadc-ad5f3c50688a are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule."
+    description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes) e6db77e5-3df2-4cf1-b95a-636979351e5b - 1 (Block persistence through WMI event subscription) Note: More information on ASR rules can be found at the following link: Use Attack surface reduction rules to prevent malware infection | Microsoft Docs"
+    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
+    remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d, d4f940ab-401b-4efc-aadc-ad5f3c50688a, and e6db77e5-3df2-4cf1-b95a-636979351e5b are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Microsoft Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.5.1.2"]
-      - cis_csc: ["8.4"]
+      - cis_csc: ["10.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 26190899-1602-49E8-8B27-eB1D0A1CE869'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550 -> 1'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A -> 1'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899 -> 1'
@@ -4557,12 +4653,12 @@ checks:
 
   - id: 27278
     title: "Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'"
-    description: "This policy setting controls Windows Defender Exploit Guard network protection."
+    description: "This policy setting controls Microsoft Defender Exploit Guard network protection. The recommended state for this setting is: Enabled: Block."
     rationale: "This setting can help prevent employees from using any application to access dangerous domains that may host phishing scams, exploit-hosting sites, and other malicious content on the Internet."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Network Protection\\Prevent users and apps from accessing dangerous websites"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Network Protection\\Prevent users and apps from accessing dangerous websites. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.5.3.1"]
-      - cis_csc: ["7"]
+      - cis_csc: ["9.3", "10.5"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -4571,18 +4667,23 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
 
   - id: 27279
-    title: "Ensure 'Enable file hash computation feature' is set to'Enabled'"
-    description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled. "
-    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MpEngine\\Enable file hash computation feature Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer). "
+    title: "Ensure 'Enable file hash computation feature' is set to 'Enabled'"
+    description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled."
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MpEngine\\Enable file hash computation feature. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.6.1"]
+      - cis_csc: ["10.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine -> EnableFileHashComputation -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation -> 1'
 
 
   - id: 27280
@@ -4592,16 +4693,17 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Scan all downloaded files and attachments Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). "
     compliance:
       - cis: ["18.9.47.9.1"]
-      - cis_csc: ["8.1"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableIOAVProtection -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
   - id: 27281
     title: "Ensure 'Turn off real-time protection' is set to 'Disabled'"
-    description: "This policy setting configures real-time protection prompts for known malware detection. Microsoft Defender Antivirus alerts you when malware or potentially unwanted software attempts to install itself or to run on your computer. The recommended state for this setting is: Disabled. "
-    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off realtime protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer).   "
+    description: "This policy setting configures real-time protection prompts for known malware detection. Microsoft Defender Antivirus alerts you when malware or potentially unwanted software attempts to install itself or to run on your computer. The recommended state for this setting is: Disabled."
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real-time protection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.47.9.2"]
       - cis_csc: ["8.1"]
