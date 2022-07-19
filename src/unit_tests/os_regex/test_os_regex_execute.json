@@ -2040,6 +2040,299 @@
                 "log": "123",
                 "end_match": "3",
                 "captured_groups": []
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be '123' but it is empty.",
+                "ignore_result": true,
+                "pattern": "(\\d+)\\D*",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "ignore_result": true,
+                "pattern": "(\\d+)\\D*",
+                "log": "123Test",
+                "end_match": "t",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be '123' but it is empty.",
+                "ignore_result": true,
+                "pattern": "(\\d+)\\D*",
+                "log": "Test123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "\\d+(\\D*)",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "ignore_result": true,
+                "pattern": "\\d+(\\D*)",
+                "log": "123Test",
+                "end_match": "t",
+                "captured_groups": [
+                    "Test"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "\\d+(\\D*)",
+                "log": "Test123",
+                "end_match": "3",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "^\\d+(\\D*)",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "ignore_result": true,
+                "pattern": "^\\d+(\\D*)",
+                "log": "123Test",
+                "end_match": "t",
+                "captured_groups": [
+                    "Test"
+                ]
+            },
+            {
+                "description": "This test passes.",
+                "pattern": "^\\d+(\\D*)",
+                "log": "Test123",
+                "end_match": null,
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)\\D*",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "ignore_result": true,
+                "pattern": "^(\\d+)\\D*",
+                "log": "123Test",
+                "end_match": "t",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "This test passes.",
+                "pattern": "^(\\d+)\\D*",
+                "log": "Test123",
+                "end_match": null,
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "\\d+(\\D*)$",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "ignore_result": true,
+                "pattern": "\\d+(\\D*)$",
+                "log": "123Test",
+                "end_match": "t",
+                "captured_groups": [
+                    "Test"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "\\d+(\\D*)$",
+                "log": "Test123",
+                "end_match": "3",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "(\\d+)\\D*$",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "(\\d+)\\D*$",
+                "log": "123Test",
+                "end_match": "t",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "ignore_result": true,
+                "pattern": "(\\d+)\\D*$",
+                "log": "Test123",
+                "end_match": "3",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained.",
+                "ignore_result": true,
+                "pattern": "(\\d*)\\w*",
+                "log": "123",
+                "end_match": "3",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Capture group is not correctly obtained.",
+                "ignore_result": true,
+                "pattern": "(\\d*)\\w*",
+                "log": "123Test",
+                "end_match": "3",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Regex should match but does not.",
+                "__knownIssue": "Only 4 'recoverage' levels are allowed.",
+                "ignore_result": true,
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5)",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
+                "end_match": "5",
+                "captured_groups": [
+                    "xyz1xyz1",
+                    "xyz2xyz2",
+                    "xyz3xyz3",
+                    "xyz4xyz4",
+                    "xyz5xyz5"
+                ]
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
+                "end_match": "5xyz5",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "ignore_result": true,
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5$",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5)",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5",
+                "end_match": "5",
+                "captured_groups": [
+                    "xyz1xyz1",
+                    "xyz2xyz2",
+                    "xyz3xyz3",
+                    "xyz4xyz4",
+                    "xyz5"
+                ]
+            },
+            {
+                "description": "Regex should match but does not.",
+                "ignore_result": true,
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6xyz6",
+                "end_match": "6",
+                "captured_groups": [
+                    "xyz1xyz1",
+                    "xyz2xyz2",
+                    "xyz3xyz3",
+                    "xyz4xyz4",
+                    "xyz5",
+                    "xyz6xyz6"
+                ]
+            },
+            {
+                "description": "Regex should match but does not.",
+                "ignore_result": true,
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6$",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6xyz6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6",
+                "end_match": "6",
+                "captured_groups": [
+                    "xyz1xyz1",
+                    "xyz2xyz2",
+                    "xyz3xyz3",
+                    "xyz4xyz4",
+                    "xyz5",
+                    "xyz6"
+                ]
+            },
+            {
+                "description": "Regex should match but does not.",
+                "ignore_result": true,
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
+                "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5 xyz6",
+                "end_match": "6",
+                "captured_groups": [
+                    "xyz1xyz1",
+                    "xyz2xyz2",
+                    "xyz3xyz3",
+                    "xyz4xyz4",
+                    "xyz5xyz5",
+                    "xyz6"
+                ]
             }
         ]
     }
