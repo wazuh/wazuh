@@ -13,7 +13,6 @@
 #include "expression.hpp"
 #include "graph.hpp"
 #include <json/json.hpp>
-#include "registry.hpp"
 
 namespace builder
 {
