@@ -79,7 +79,23 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 continue;
             }
         }
-
+        if(strcmp(integrator_config[s]->name, "telegram") == 0)
+        {
+            if(!integrator_config[s]->hookurl)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing ID chat.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+            if(!integrator_config[s]->apikey)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing Bot Telegram Token.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+        }
         else if(strcmp(integrator_config[s]->name, "pagerduty") == 0)
         {
             if(!integrator_config[s]->apikey)
