@@ -228,7 +228,8 @@ STATIC remoted_agent_state_t * get_node(const char *agent_id) {
 
 STATIC void w_remoted_clean_agents_state() {
     int *active_agents = NULL;
-    int count;
+    int count = 0;
+    int sock = -1;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
@@ -238,7 +239,7 @@ STATIC void w_remoted_clean_agents_state() {
         return;
     }
 
-    if (active_agents = get_connected_agents_ids(AGENT_CS_ACTIVE, 0, &count, -1), active_agents == NULL) {
+    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, 0, &count, -1), active_agents == NULL) {
         return;
     }
 
@@ -608,46 +609,48 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
 
     w_mutex_lock(&agents_state_mutex);
 
-    for (int i = 0; agents_ids[i] != -1; i++) {
-        if (agent_state = (remoted_agent_state_t *) OSHash_Numeric_Get_ex(remoted_agents_state, agents_ids[i]), agent_state != NULL) {
-            cJSON *_item = cJSON_CreateObject();
+    if (agents_ids != NULL) {
+        for (int i = 0; agents_ids[i] != -1; i++) {
+            if (agent_state = (remoted_agent_state_t *) OSHash_Numeric_Get_ex(remoted_agents_state, agents_ids[i]), agent_state != NULL) {
+                cJSON *_item = cJSON_CreateObject();
 
-            cJSON_AddNumberToObject(_item, "id", agents_ids[i]);
+                cJSON_AddNumberToObject(_item, "id", agents_ids[i]);
 
-            cJSON *_metrics = cJSON_CreateObject();
-            cJSON_AddItemToObject(_item, "metrics", _metrics);
+                cJSON *_metrics = cJSON_CreateObject();
+                cJSON_AddItemToObject(_item, "metrics", _metrics);
 
-            // Fields within metrics are sorted alphabetically
+                // Fields within metrics are sorted alphabetically
 
-            cJSON *_messages = cJSON_CreateObject();
-            cJSON_AddItemToObject(_metrics, "messages", _messages);
+                cJSON *_messages = cJSON_CreateObject();
+                cJSON_AddItemToObject(_metrics, "messages", _messages);
 
-            cJSON *_received_breakdown = cJSON_CreateObject();
-            cJSON_AddItemToObject(_messages, "received_breakdown", _received_breakdown);
+                cJSON *_received_breakdown = cJSON_CreateObject();
+                cJSON_AddItemToObject(_messages, "received_breakdown", _received_breakdown);
 
-            cJSON_AddNumberToObject(_received_breakdown, "control", agent_state->recv_ctrl_count);
+                cJSON_AddNumberToObject(_received_breakdown, "control", agent_state->recv_ctrl_count);
 
-            cJSON *_control_breakdown = cJSON_CreateObject();
-            cJSON_AddItemToObject(_received_breakdown, "control_breakdown", _control_breakdown);
+                cJSON *_control_breakdown = cJSON_CreateObject();
+                cJSON_AddItemToObject(_received_breakdown, "control_breakdown", _control_breakdown);
 
-            cJSON_AddNumberToObject(_control_breakdown, "keepalive", agent_state->ctrl_breakdown.keepalive_count);
-            cJSON_AddNumberToObject(_control_breakdown, "request", agent_state->ctrl_breakdown.request_count);
-            cJSON_AddNumberToObject(_control_breakdown, "shutdown", agent_state->ctrl_breakdown.shutdown_count);
-            cJSON_AddNumberToObject(_control_breakdown, "startup", agent_state->ctrl_breakdown.startup_count);
+                cJSON_AddNumberToObject(_control_breakdown, "keepalive", agent_state->ctrl_breakdown.keepalive_count);
+                cJSON_AddNumberToObject(_control_breakdown, "request", agent_state->ctrl_breakdown.request_count);
+                cJSON_AddNumberToObject(_control_breakdown, "shutdown", agent_state->ctrl_breakdown.shutdown_count);
+                cJSON_AddNumberToObject(_control_breakdown, "startup", agent_state->ctrl_breakdown.startup_count);
 
-            cJSON_AddNumberToObject(_received_breakdown, "event", agent_state->recv_evt_count);
+                cJSON_AddNumberToObject(_received_breakdown, "event", agent_state->recv_evt_count);
 
-            cJSON *_sent_breakdown = cJSON_CreateObject();
-            cJSON_AddItemToObject(_messages, "sent_breakdown", _sent_breakdown);
+                cJSON *_sent_breakdown = cJSON_CreateObject();
+                cJSON_AddItemToObject(_messages, "sent_breakdown", _sent_breakdown);
 
-            cJSON_AddNumberToObject(_sent_breakdown, "ack", agent_state->sent_breakdown.ack_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "ar", agent_state->sent_breakdown.ar_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "cfga", agent_state->sent_breakdown.cfga_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "discarded", agent_state->sent_breakdown.discarded_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "request", agent_state->sent_breakdown.request_count);
-            cJSON_AddNumberToObject(_sent_breakdown, "shared", agent_state->sent_breakdown.shared_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "ack", agent_state->sent_breakdown.ack_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "ar", agent_state->sent_breakdown.ar_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "cfga", agent_state->sent_breakdown.cfga_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "discarded", agent_state->sent_breakdown.discarded_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "request", agent_state->sent_breakdown.request_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "shared", agent_state->sent_breakdown.shared_count);
 
-            cJSON_AddItemToArray(_array, _item);
+                cJSON_AddItemToArray(_array, _item);
+            }
         }
     }
 
@@ -655,26 +658,4 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
     w_mutex_unlock(&agents_state_mutex);
 
     return rem_state_json;
-}
-
-int* cjson_to_array(cJSON * array_json) {
-    int array_size = cJSON_GetArraySize(array_json);
-    int *array;
-    int i;
-
-    if (array_size == 0) {
-        return NULL;
-    }
-
-    os_calloc(array_size + 1, sizeof(int), array);
-
-    for (i = 0; i < array_size; i++) {
-        array[i] = cJSON_GetArrayItem(array_json, i)->valueint;
-    }
-
-    if (array) {
-        (array)[i] = -1;
-    }
-
-    return array;
 }

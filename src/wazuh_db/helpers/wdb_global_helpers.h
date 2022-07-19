@@ -252,10 +252,9 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock);
  *
  * @param[in] connection_status The connection status.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @param [in] node_name Cluster node name
  * @return Pointer to the array, on success. NULL on errors.
  */
-int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock, const char* node_name, int last_id, int limit);
+int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock);
 
 /**
  * @brief Set agents as disconnected based on the keepalive and return an array containing
@@ -281,14 +280,15 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
 time_t get_agent_date_added(int agent_id);
 
 /**
- * @brief Get agents by status.
+ * @brief Returns an array containing the ID of every agent (excluding the manager) that matches
+ *        the specified connection status, last_id and limit, ended with -1.
  *
  * @param[in] connection_status Filter the query by agent connection status.
  * @param[in] last_id Filter the query whit ids higer than this value.
  * @param[out] count Store number of rows returned.
  * @param[in] limit Limit number of rows returned.
- * @return Returns an array of agents ids.
+ * @return Returns pointer to the array of agents ids, on success. NULL on errors.
  */
-int* get_connected_agents_ids(const char* connection_status, int last_id, int *count, int limit);
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int *count, int limit);
 
 #endif

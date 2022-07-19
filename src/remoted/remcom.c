@@ -28,6 +28,7 @@ typedef enum _error_codes {
     ERROR_UNRECOGNIZED_COMMAND,
     ERROR_EMPTY_PARAMATERS,
     ERROR_EMPTY_SECTION,
+    ERROR_INVALID_AGENTS,
     ERROR_EMPTY_AGENTS,
     ERROR_EMPTY_LASTID,
     ERROR_TOO_MANY_AGENTS,
@@ -42,7 +43,8 @@ const char * error_messages[] = {
     [ERROR_UNRECOGNIZED_COMMAND] = "Unrecognized command",
     [ERROR_EMPTY_PARAMATERS] = "Empty parameters",
     [ERROR_EMPTY_SECTION] = "Empty section",
-    [ERROR_EMPTY_AGENTS] = "Empty agents", // esste no seria mejor algo como: invalid agents try [ 1 , 2 , ... , N] or "all" ?????
+    [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
+    [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
     [ERROR_EMPTY_LASTID] = "Empty last id",
     [ERROR_TOO_MANY_AGENTS] = "Too many agents",
     [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section"
@@ -77,7 +79,7 @@ STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* d
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(root, "error", error_code);
-    cJSON_AddStringToObject(root, "message", message);  // este no pasa al final del json?
+    cJSON_AddStringToObject(root, "message", message);
     cJSON_AddItemToObject(root, "data", data_json ? data_json : cJSON_CreateObject());
 
     char *msg_string = cJSON_PrintUnformatted(root);
@@ -97,6 +99,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     const char *json_err;
     int *agents_ids;
     int count;
+    int sock = -1;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
         *output = remcom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL);
@@ -111,7 +114,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                 agents_json = cJSON_GetObjectItem(parameters_json, "agents");
                 if (cJSON_IsArray(agents_json)) {
                     if (cJSON_GetArraySize(agents_json) <  MAX_NUM_AGENTS_STATS) {
-                        agents_ids = cjson_to_array(agents_json);
+                        agents_ids = json_parse_agents(agents_json);
                         if (agents_ids != NULL) {
                             *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
                             os_free(agents_ids);
@@ -124,7 +127,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                 } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
                     last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
                     if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
-                        agents_ids = get_connected_agents_ids(AGENT_CS_ACTIVE, last_id_json->valueint, &count, MAX_NUM_AGENTS_STATS);
+                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, &count, MAX_NUM_AGENTS_STATS);
                         if (agents_ids != NULL) {
                             if (count < MAX_NUM_AGENTS_STATS) {
                                 *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
@@ -139,7 +142,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                         *output = remcom_output_builder(ERROR_EMPTY_LASTID, error_messages[ERROR_EMPTY_LASTID], NULL);
                     }
                 } else {
-                    *output = remcom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
+                    *output = remcom_output_builder(ERROR_INVALID_AGENTS, error_messages[ERROR_INVALID_AGENTS], NULL);
                 }
             } else {
                 *output = remcom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);

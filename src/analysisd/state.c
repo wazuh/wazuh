@@ -530,7 +530,8 @@ STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
 
 STATIC void w_analysisd_clean_agents_state() {
     int *active_agents = NULL;
-    int count;
+    int count = 0;
+    int sock = -1;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
@@ -540,7 +541,7 @@ STATIC void w_analysisd_clean_agents_state() {
         return;
     }
 
-    if (active_agents = get_connected_agents_ids(AGENT_CS_ACTIVE, 0, &count, -1), active_agents == NULL) {
+    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, 0, &count, -1), active_agents == NULL) {
         return;
     }
 

@@ -2094,6 +2094,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [in] connection_status Connection status of the agents requested.
  * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
  * @param [in] node_name Cluster node name
+ * @param [in] limit Limits the number of rows returned by the query.
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */

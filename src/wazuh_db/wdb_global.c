@@ -1821,11 +1821,17 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
             *status = WDBC_ERROR;
             return NULL;
         }
-    }
-    if (sqlite3_bind_int(stmt, 4, limit) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        *status = WDBC_ERROR;
-        return NULL;
+        if (sqlite3_bind_int(stmt, 4, limit) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            *status = WDBC_ERROR;
+            return NULL;
+        }
+    } else {
+        if (sqlite3_bind_int(stmt, 3, limit) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            *status = WDBC_ERROR;
+            return NULL;
+        }
     }
 
     //Execute SQL query limited by size

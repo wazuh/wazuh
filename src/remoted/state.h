@@ -204,11 +204,4 @@ cJSON* rem_create_state_json();
  */
 cJSON* rem_create_agents_state_json(int* agents_ids);
 
-/**
- * @brief Create a int array from CJson array
- * @param array_json CJson array object to convert.
- * @return Int array
- */
-int* cjson_to_array(cJSON * array_json);
-
 #endif

@@ -3119,12 +3119,12 @@ void test_wdb_get_agents_by_connection_status_query_error(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL, NULL, 0, -1);
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_null(array);
 }
 
-void test_wdb_get_agents_by_connection_status_and_node_query_error(void **state)
+void test_wdb_get_agents_ids_of_current_node_query_error(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status 0 active node01";
     const char *response = "err";
@@ -3136,7 +3136,7 @@ void test_wdb_get_agents_by_connection_status_and_node_query_error(void **state)
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL, "node01", 0, -1);
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, "node01", 0, -1);
 
     assert_null(array);
 }
@@ -3157,12 +3157,12 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL, NULL, 0, -1);
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_null(array);
 }
 
-void test_wdb_get_agents_by_connection_status_and_node_parse_error(void **state)
+void test_wdb_get_agents_ids_of_current_node_parse_error(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status 0 active node01";
     const char *response = "err";
@@ -3178,7 +3178,7 @@ void test_wdb_get_agents_by_connection_status_and_node_parse_error(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL, "node01", 0, -1);
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, "node01", 0, -1);
 
     assert_null(array);
 }
@@ -3211,7 +3211,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     will_return(__wrap_cJSON_GetObjectItem, id3);
     expect_function_call(__wrap_cJSON_Delete);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL, NULL, 0, -1);
+    int *array = wdb_get_agents_by_connection_status("active", NULL);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);
@@ -3230,7 +3230,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     memset(test_payload, '\0', OS_MAXSTR);
 }
 
-void test_wdb_get_agents_by_connection_status_and_node_success(void **state)
+void test_wdb_get_agents_ids_of_current_node_success(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status 0 active node01";
 
@@ -3258,7 +3258,7 @@ void test_wdb_get_agents_by_connection_status_and_node_success(void **state)
     will_return(__wrap_cJSON_GetObjectItem, id3);
     expect_function_call(__wrap_cJSON_Delete);
 
-    int *array = wdb_get_agents_by_connection_status("active", NULL, "node01", 0, -1);
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, "node01", 0, -1);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);
@@ -3837,11 +3837,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agents_by_connection_status */
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_and_node_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_and_node_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_and_node_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_get_agents_ids_of_current_node */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_ids_of_current_node_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_ids_of_current_node_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_ids_of_current_node_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_disconnect_agents */
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
