@@ -34,6 +34,7 @@ add_library(builders OBJECT
   definitions.cpp
   asset.cpp
   environment.cpp
+  registry.cpp
 )
 target_include_directories(builders
   PRIVATE

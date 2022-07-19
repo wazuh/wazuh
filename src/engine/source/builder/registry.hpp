@@ -38,11 +38,7 @@ public:
      *
      * @return auto& Registry instance.
      */
-    static auto& instance()
-    {
-        static Registry instance;
-        return instance;
-    }
+    static Registry& instance();
 
     /**
      * @brief Get the Builder object
@@ -50,17 +46,7 @@ public:
      * @param name Name of the builder.
      * @return Builder& Builder object reference.
      */
-    static Builder& getBuilder(const std::string& name)
-    {
-        if (Registry::instance().m_builders.find(name)
-            == Registry::instance().m_builders.end())
-        {
-            throw std::runtime_error(fmt::format(
-                "[Registry::getBuilder(name)] name not found in the registry: [{}]",
-                name));
-        }
-        return Registry::instance().m_builders.at(name);
-    }
+    static Builder& getBuilder(const std::string& name);
 
     /**
      * @brief Register a builder.
@@ -92,10 +78,7 @@ public:
      * @brief Clear the registry.
      *
      */
-    static void clear()
-    {
-        Registry::instance().m_builders.clear();
-    }
+    static void clear();
 };
 
 } // namespace builder::internals

@@ -1,5 +1,6 @@
 #include "environment.hpp"
 
+#include "registry.hpp"
 namespace builder
 {
 

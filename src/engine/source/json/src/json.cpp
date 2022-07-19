@@ -1,5 +1,7 @@
 #include <json/json.hpp>
 
+#include <fmt/format.h>
+
 namespace json
 {
 
