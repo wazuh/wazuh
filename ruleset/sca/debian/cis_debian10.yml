@@ -98,7 +98,7 @@ checks:
     title: "Ensure mounting of squashfs filesystems is disabled"
     description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems (similar to cramfs ). A squashfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf  Example: vi /etc/modprobe.d/squashfs.confand add the following line: install squashfs /bin/true  Run the following command to unload the squashfsmodule: # rmmod squashfs"
+    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf  Example: vi /etc/modprobe.d/squashfs.conf and add the following line: install squashfs /bin/true  Run the following command to unload the squashfsmodule: # rmmod squashfs"
     compliance:
       - cis: ["1.1.1.5"]
       - cis_csc: ["5.1"]
