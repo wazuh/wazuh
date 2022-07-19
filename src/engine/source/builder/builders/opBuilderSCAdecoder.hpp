@@ -15,6 +15,9 @@
 namespace builder::internals::builders
 {
 
+/* Security configuration assessment remoted queue */
+constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
+
 /**
  * @brief Executes query on WDB returning status ok or not ok.
  * @param def Json Doc
