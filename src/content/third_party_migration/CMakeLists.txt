@@ -3,9 +3,12 @@ project(content_migration)
 
 include_directories(src/)
 include_directories(src/NVD/)
+include_directories(src/cveFetchers/)
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
 file(GLOB CONTENT_MIGRATOR_SRC src/*.cpp src/NVD/*.cpp)
+
+add_subdirectory(src/tests)
 
 add_executable(content_migration
     ${CONTENT_MIGRATOR_SRC})

@@ -1,0 +1,36 @@
+/*
+ * Wazuh Migration
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 14, 2022.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+
+#ifndef _CVE_API_FETCHER_HPP
+#define _CVE_API_EFETCHER_HPP
+
+#include <iostream>
+#include <vector>
+#include <json.hpp>
+
+// Internal includes
+#include <cveFetchersParameters.hpp>
+
+class CveApiFetcher
+{
+    public:
+        std::vector<std::string> urlsFromRemote(const nlohmann::json &remote);
+
+    private:
+        std::vector<std::string> expandAll(const std::string &in, 
+                                                const std::vector<std::string> &placeHolders, 
+                                                std::map<std::string, std::unique_ptr<AbstractParameter>> &parameters);
+
+        std::vector<std::string> expandPlaceHolder(const std::string &in, const std::string &placeHolder, AbstractParameter &parameter);
+};
+
+#endif // _CVE_API_FETCHER_HPP
