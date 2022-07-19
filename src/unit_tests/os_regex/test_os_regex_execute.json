@@ -1,5 +1,162 @@
 [
     {
+        "description": "[Coverage] Regex, only charmap without backslash",
+        "batch_test": [
+            {
+                "description": "Match between pattern and regex. pattern[0] != '('.",
+                "pattern": "hi wazuh",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Match between pattern and regex. With capture group",
+                "pattern": "(hi) (wazuh)",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Dont match at all .pattern[0] != '('.",
+                "pattern": "hi wazuh",
+                "log": "bye wazuh",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "match with prefix.",
+                "pattern": "(hi) (wazuh)",
+                "log": "prefixhi wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "match with sufix.",
+                "pattern": "(hi) (wazuh)",
+                "log": "fixhi wazuhsub",
+                "end_match": "hsub",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "match with continue capture group.",
+                "ignore_result": true,
+                "__knownIssue:": "The capture groups cannot be adjacent to each other",
+                "pattern": "(hi)(wazuh)",
+                "log": "hiwazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "match with continue capture group and context",
+                "ignore_result": true,
+                "__knownIssue:": "The capture groups cannot be adjacent to each other",
+                "pattern": "(hi)(wazuh)",
+                "log": "prefixhiwazuhsub",
+                "end_match": "hsub",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Coverage] Regex, only charmap + END/BEGIN flags and st_error without backslash",
+        "batch_test": [
+            {
+                "description": "Pattern ends and the END_SET is set. (ENDOFFILE(pt) true)",
+                "pattern": "hi wazuh",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "pattern": "^$",
+                "log": "hi wazuh",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "ignore_result": true,
+                "__knownIssue:": "empty group?",
+                "pattern": "(^$)",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "ignore_result": true,
+                "__knownIssue:": "empty group?",
+                "pattern": "^()$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Pattern ends and the END_SET is not set.",
+                "pattern": "hi wazuh",
+                "log": "hi wazuh!",
+                "end_match": "h!",
+                "captured_groups": []
+            },
+            {
+                "description": "partially matched and then backward (st error test).",
+                "pattern": "(hi) (wazuh)",
+                "log": "XX hi wa hi wazuhXX",
+                "end_match": "hXX",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "partially matched and then return (st error + BEGIN_SET test).",
+                "pattern": "^(hi) (wazuh)",
+                "log": "hi wa hi wazuhXX",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Coverage] Loop on all sub patterns without capture groups",
+        "batch_test": [
+            {
+                "description": "Loop on all sub patterns, without match",
+                "pattern": "^hi|bye$|^$",
+                "log": "123456",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Loop on all sub patterns, match",
+                "pattern": "^hi|bye$|^$|\\w+\\d.|\\p*",
+                "log": "123456.",
+                "end_match": ".",
+                "captured_groups": []
+            }
+        ]
+    },
+    {
         "description": "[Memory test] regex_matching alloc test: copy reg size.",
         "batch_test": [
             {
@@ -32,11 +189,42 @@
                 "log": "36cg field_01=001 field_02=002 field_03=003 field_04=004 field_05=005 field_06=006 field_07=007 field_08=008 field_09=009 field_10=010 field_11=011 field_12=012 field_13=013 field_14=014 field_15=015 field_16=016 field_17=017 field_18=018 field_19=019 field_20=020 field_21=021 field_22=022 field_23=023 field_24=024 field_25=025 field_26=026 field_27=027 field_28=028 field_29=029 field_30=030 field_31=031 field_32=032 field_33=033 field_34=034 field_35=035 field_36=036",
                 "end_match": "6",
                 "captured_groups": [
-                    "001", "002","003","004","005","006","007","008",
-                    "009", "010","011","012","013","014","015","016",
-                    "017", "018","019","020","021","022","023","024",
-                    "025", "026","027","028","029","030","031","032",
-                    "033", "034","035","036"
+                    "001",
+                    "002",
+                    "003",
+                    "004",
+                    "005",
+                    "006",
+                    "007",
+                    "008",
+                    "009",
+                    "010",
+                    "011",
+                    "012",
+                    "013",
+                    "014",
+                    "015",
+                    "016",
+                    "017",
+                    "018",
+                    "019",
+                    "020",
+                    "021",
+                    "022",
+                    "023",
+                    "024",
+                    "025",
+                    "026",
+                    "027",
+                    "028",
+                    "029",
+                    "030",
+                    "031",
+                    "032",
+                    "033",
+                    "034",
+                    "035",
+                    "036"
                 ]
             }
         ]
@@ -88,11 +276,56 @@
                 "log": "36cg field_01=001 field_02=002 field_03=003 field_04=004 field_05=005 field_06=006 field_07=007 field_08=008 field_09=009 field_10=010 field_11=011 field_12=012 field_13=013 field_14=014 field_15=015 field_16=016 field_17=017 field_18=018 field_19=019 field_20=020 field_21=021 field_22=022 field_23=023 field_24=024 field_25=025 field_26=026 field_27=027 field_28=028 field_29=029 field_30=030 field_31=031 field_32=032 field_33=033 field_34=034 field_35=035 field_36=036",
                 "end_match": "6",
                 "captured_groups": [
-                    "001", "002","003","004","005","006","007","008",
-                    "009", "010","011","012","013","014","015","016",
-                    "017", "018","019","020","021","022","023","024",
-                    "025", "026","027","028","029","030","031","032",
-                    "033", "034","035","036"
+                    "001",
+                    "002",
+                    "003",
+                    "004",
+                    "005",
+                    "006",
+                    "007",
+                    "008",
+                    "009",
+                    "010",
+                    "011",
+                    "012",
+                    "013",
+                    "014",
+                    "015",
+                    "016",
+                    "017",
+                    "018",
+                    "019",
+                    "020",
+                    "021",
+                    "022",
+                    "023",
+                    "024",
+                    "025",
+                    "026",
+                    "027",
+                    "028",
+                    "029",
+                    "030",
+                    "031",
+                    "032",
+                    "033",
+                    "034",
+                    "035",
+                    "036"
+                ]
+            },
+            {
+                "description": "Go back to 1 pattern and 1 capture groups.",
+                "__sub_string_size": "((1 pattern x 2 know bug) + 1 null)  x 8 size = 24 bytes",
+                "__prts_main_array": " (1 pattern + 1 null)  x 8 size = 16 bytes",
+                "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 16",
+                "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
+                "__prts_array_2": "0x0",
+                "pattern": "hi (\\w+).",
+                "log": "Hi wazuh.",
+                "end_match": ".",
+                "captured_groups": [
+                    "wazuh"
                 ]
             }
         ]
@@ -101,7 +334,7 @@
         "description": "[Memory test] regex_matching expand test: Incremental patterns and match last.",
         "batch_test": [
             {
-                "description": "Inizialize regex matching with capture grup, min size (1 patter, 1 capture).",
+                "description": "Inizialize regex matching with a capture group, min size (1 patter, 1 capture).",
                 "__sub_string_size": "((1 pattern x 2 know bug) + 1 null)  x 8 size = 24 bytes",
                 "__prts_main_array": " (1 pattern + 1 null)  x 8 size = 16 bytes",
                 "__prts_items_array": "size of array d_size->prts_str_size == size of array prts_str == prts_str_alloc_size = 16",
@@ -168,7 +401,7 @@
         ]
     },
     {
-        "description": "[Memory test] regex_matching expand test: Incremental capture groups, patterns and match last.",
+        "description": "[Memory test] regex_matching expand test: Incremental capture groups and patterns, then match last.",
         "batch_test": [
             {
                 "description": "Inizialize regex matching with capture grup, min size (1 patter, 1 capture).",
@@ -214,11 +447,42 @@
                 "log": "36cg field_01=001 field_02=002 field_03=003 field_04=004 field_05=005 field_06=006 field_07=007 field_08=008 field_09=009 field_10=010 field_11=011 field_12=012 field_13=013 field_14=014 field_15=015 field_16=016 field_17=017 field_18=018 field_19=019 field_20=020 field_21=021 field_22=022 field_23=023 field_24=024 field_25=025 field_26=026 field_27=027 field_28=028 field_29=029 field_30=030 field_31=031 field_32=032 field_33=033 field_34=034 field_35=035 field_36=036",
                 "end_match": "6",
                 "captured_groups": [
-                    "001", "002","003","004","005","006","007","008",
-                    "009", "010","011","012","013","014","015","016",
-                    "017", "018","019","020","021","022","023","024",
-                    "025", "026","027","028","029","030","031","032",
-                    "033", "034","035","036"
+                    "001",
+                    "002",
+                    "003",
+                    "004",
+                    "005",
+                    "006",
+                    "007",
+                    "008",
+                    "009",
+                    "010",
+                    "011",
+                    "012",
+                    "013",
+                    "014",
+                    "015",
+                    "016",
+                    "017",
+                    "018",
+                    "019",
+                    "020",
+                    "021",
+                    "022",
+                    "023",
+                    "024",
+                    "025",
+                    "026",
+                    "027",
+                    "028",
+                    "029",
+                    "030",
+                    "031",
+                    "032",
+                    "033",
+                    "034",
+                    "035",
+                    "036"
                 ]
             }
         ]
