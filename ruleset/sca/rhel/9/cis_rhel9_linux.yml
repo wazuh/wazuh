@@ -19,7 +19,7 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check RHEL9 family platform"
+  title: "Check RHEL9 family platform."
   description: "Requirements for running the policy against RHEL 9 family."
   condition: any
   rules:
@@ -90,7 +90,7 @@ checks:
       - tsc: ["CC6.3"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
+    condition: any
     rules:
       - "c:modprobe -n -v udf -> r:install /bin/true|install /bin/false|Module udf not found"
       - 'not c:sh -c "lsmod | grep udf" -> r:udf'
@@ -488,7 +488,7 @@ checks:
 
   # 1.1.7.3 Ensure nosuid option set on /home partition (Automated)
   - id: 28025
-    title: "Ensure nosuid option set on /home partition"
+    title: "Ensure nosuid option set on /home partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
@@ -588,7 +588,7 @@ checks:
 
   # 1.1.9 Disable Automounting (Automated)
   - id: 28031
-    title: "Disable Automounting"
+    title: "Disable Automounting."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
     remediation: "If there are no other packages that depends on autofs, remove the package with: # dnf remove autofs Run the following command to disable autofs if it is required: # systemctl --now disable autofs"
@@ -604,7 +604,7 @@ checks:
 
   # 1.1.10 Disable USB Storage (Automated)
   - id: 28032
-    title: "Disable USB Storage"
+    title: "Disable USB Storage."
     description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf  Example: # vim /etc/modprobe.d/usb-storage.conf and add the following line: install usb-storage /bin/true. Run the following command to unload the usb-storage module: # rmmod usb-storage"
@@ -629,7 +629,7 @@ checks:
 
   # 1.2.3 Ensure gpgcheck is globally activated (Automated)
   - id: 28033
-    title: "Ensure gpgcheck is globally activated"
+    title: "Ensure gpgcheck is globally activated."
     description: "The gpgcheck option, found in the main section of the /etc/dnf/dnf.conf and individual /etc/yum.repos.d/* files, determines if an RPM package's signature is checked prior to its installation."
     rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
     remediation: 'Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' /etc/dnf/dnf.conf Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example:  # find /etc/yum.repos.d/ -name "*.repo" -exec echo "Checking:" {} \; -exec sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' {} \; '
@@ -645,7 +645,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
-      - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s{0,}=\s{0,}0'
+      - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s*=\s*0'
 
   # 1.2.4 Ensure package manager repositories are configured (Manual) - Not implemented
 
@@ -655,7 +655,7 @@ checks:
 
   # 1.3.1 Ensure AIDE is installed (Automated)
   - id: 28034
-    title: "Ensure AIDE is installed"
+    title: "Ensure AIDE is installed."
     description: "Advanced Intrusion Detection Environment (AIDE) is a intrusion detection tool that uses predefined rules to check the integrity of files and directories in the Linux operating system. AIDE has its own database to check the integrity of files and directories. AIDE takes a snapshot of files and directories including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Run the following command to install AIDE: # dnf install aide Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands  # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz"
@@ -682,10 +682,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
+    condition: all
     rules:
       - "c:systemctl is-enabled aidecheck.service -> r:enable"
       - "c:systemctl is-enabled aidecheck.timer -> r:enable"
@@ -717,7 +717,7 @@ checks:
   # 1.4.2 Ensure permissions on bootloader config are configured (Automated) - Not implemented - needs a script.
   # 1.4.3 Ensure authentication is required when booting into rescue mode (Automated)
   - id: 28037
-    title: "Ensure authentication is required when booting into rescue mode"
+    title: "Ensure authentication is required when booting into rescue mode."
     description: "Rescue mode (former single user mode) is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
     rationale: "Requiring authentication in rescue mode (former single user mode) prevents an unauthorized user from rebooting the system into rescue mode to gain root privileges without credentials."
     remediation: "The systemd drop-in files must be created if it is necessary to change the default settings: Create the file /etc/systemd/system/rescue.service.d/00-require-auth.conf which contains only the configuration to be overridden:[Service] ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue"
@@ -737,7 +737,7 @@ checks:
 
   # 1.5.1 Ensure core dump storage is disabled (Automated)
   - id: 28038
-    title: "Ensure core dump storage is disabled"
+    title: "Ensure core dump storage is disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
     rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems."
     remediation: "Edit /etc/systemd/coredump.conf and edit or add the following line: Storage=none "
@@ -754,7 +754,7 @@ checks:
 
   # 1.5.2 Ensure core dump backtraces are disabled (Automated)
   - id: 28039
-    title: "Ensure core dump backtraces are disabled"
+    title: "Ensure core dump backtraces are disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
     rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems, increasing the risk to the system."
     remediation: "Edit or add the following line in /etc/systemd/coredump.conf: ProcessSizeMax=0 "
@@ -771,7 +771,7 @@ checks:
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled (Automated)
   - id: 28040
-    title: "Ensure address space layout randomization (ASLR) is enabled"
+    title: "Ensure address space layout randomization (ASLR) is enabled."
     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
     remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " kernel.randomize_va_space = 2 " >> /etc/sysctl.d/60-kernel_sysctl.conf Run the following command to set the active kernel parameter:# sysctl -w kernel.randomize_va_space=2 '
@@ -800,7 +800,7 @@ checks:
 
   # 1.6.1.1 Ensure SELinux is installed (Automated)
   - id: 28041
-    title: "Ensure SELinux is installed"
+    title: "Ensure SELinux is installed."
     description: "SELinux provides Mandatory Access Control."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
     remediation: "Run the following command to install SELinux : # dnf install libselinux"
@@ -816,7 +816,7 @@ checks:
 
   # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration (Automated)
   - id: 28042
-    title: "Ensure SELinux is not disabled in bootloader configuration"
+    title: "Ensure SELinux is not disabled in bootloader configuration."
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
     rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
     remediation: "Run the following command to remove all instances of selinux=0 and enforcing=0 from all CMDLINE_LINUX parameters: grubby --update-kernel ALL --remove-args 'selinux=0 enforcing=0'"
@@ -832,7 +832,7 @@ checks:
 
   # 1.6.1.3 Ensure SELinux policy is configured (Automated)
   - id: 28043
-    title: "Ensure SELinux policy is configured"
+    title: "Ensure SELinux policy is configured."
     description: "Configure SELinux to meet or exceed the default targeted policy, which constrains daemons and system software only."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that at least the default recommendations are met."
     remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted"
@@ -849,7 +849,7 @@ checks:
 
   # 1.6.1.4 Ensure the SELinux mode is not disabled (Automated)
   - id: 28044
-    title: "Ensure the SELinux mode is not disabled"
+    title: "Ensure the SELinux mode is not disabled."
     description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t"
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
     remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive "
@@ -868,7 +868,7 @@ checks:
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing (Automated)
   - id: 28045
-    title: "Ensure the SELinux state is enforcing"
+    title: "Ensure the SELinux state is enforcing."
     description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t "
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
     remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing. "
@@ -891,7 +891,7 @@ checks:
 
   # 1.6.1.6 Ensure no unconfined services exist (Automated)
   - id: 28046
-    title: "Ensure no unconfined services exist"
+    title: "Ensure no unconfined services exist."
     description: "Unconfined processes run in unconfined domains"
     rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them"
     remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
@@ -907,7 +907,7 @@ checks:
 
   # 1.6.1.7 Ensure SETroubleshoot is not installed (Automated)
   - id: 28047
-    title: "Ensure SETroubleshoot is not installed"
+    title: "Ensure SETroubleshoot is not installed."
     description: "The SETroubleshoot service notifies desktop users of SELinux denials through a user-friendly interface. The service provides important information around configuration errors, unauthorized intrusions, and other potential errors."
     rationale: "The SETroubleshoot service is an unnecessary daemon to have running on a server, especially if X Windows is disabled."
     remediation: "Run the following command to uninstall setroubleshoot: # dnf remove setroubleshoot"
@@ -923,7 +923,7 @@ checks:
 
   # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed (Automated)
   - id: 28048
-    title: "Ensure the MCS Translation Service (mcstrans) is not installed"
+    title: "Ensure the MCS Translation Service (mcstrans) is not installed."
     description: "The mcstransd daemon provides category label information to client processes requesting information. The label translations are defined in /etc/selinux/targeted/setrans.conf"
     rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
     remediation: "Run the following command to uninstall mcstrans: # dnf remove mcstrans"
@@ -943,10 +943,10 @@ checks:
 
   # 1.7.1 Ensure message of the day is configured properly (Automated)
   - id: 28049
-    title: "Ensure message of the day is configured properly"
+    title: "Ensure message of the day is configured properly."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
-    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform    OR    If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\n , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.7.1"]
       - cis_csc: ["4.1", "5.1"]
@@ -958,7 +958,7 @@ checks:
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
   - id: 28050
-    title: "Ensure local login warning banner is configured properly"
+    title: "Ensure local login warning banner is configured properly."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
@@ -973,7 +973,7 @@ checks:
 
   # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
   - id: 28051
-    title: "Ensure remote login warning banner is configured properly"
+    title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net"
@@ -988,7 +988,7 @@ checks:
 
   # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
   - id: 28052
-    title: "Ensure permissions on /etc/motd are configured"
+    title: "Ensure permissions on /etc/motd are configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd"
@@ -1007,7 +1007,7 @@ checks:
 
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
   - id: 28053
-    title: "Ensure permissions on /etc/issue are configured"
+    title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue: # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue"
@@ -1026,7 +1026,7 @@ checks:
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
   - id: 28054
-    title: "Ensure permissions on /etc/issue.net are configured"
+    title: "Ensure permissions on /etc/issue.net are configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net"
@@ -1122,7 +1122,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/gdm/custom.conf"
-      - 'c:egrep -Eis "^\s{0,}Enable\s{0,}=\s{0,}true" /etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
+      - 'c:egrep -Eis "\s*Enable\s*=\s*true" /etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.8.5 Ensure automatic mounting of removable media is disabled (Automated)
   - id: 28059
@@ -1143,7 +1143,7 @@ checks:
 
   # 1.9 Ensure updates, patches, and additional security software are installed(Automated)
   - id: 28060
-    title: "Ensure updates, patches, and additional security software are installed"
+    title: "Ensure updates, patches, and additional security software are installed."
     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
     remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available security updates: # dnf update."
@@ -1162,7 +1162,7 @@ checks:
 
   # 1.10 Ensure system-wide crypto policy is not legacy (Automated)
   - id: 28061
-    title: "Ensure system-wide crypto policy is not legacy"
+    title: "Ensure system-wide crypto policy is not legacy."
     description: "The system-wide crypto-policies followed by the crypto core components allow consistently deprecating and disabling algorithms system-wide. The individual policy levels (DEFAULT, LEGACY, FUTURE, and FIPS) are included in the crypto-policies(7) package."
     rationale: "If the Legacy system-wide crypto policy is selected, it includes support for TLS 1.0, TLS 1.1, and SSH2 protocols or later. The algorithms DSA, 3DES, and RC4 are allowed, while RSA and Diffie-Hellman parameters are accepted if larger than 1023-bits. These legacy protocols and algorithms can make the system vulnerable to attacks, including those listed in RFC 7457"
     remediation: "Run the following command to change the system-wide crypto policy # update-crypto-policies --set <CRYPTO POLICY>         Example:     # update-crypto-policies --set DEFAULT              Run the following to make the updated system-wide crypto policy active           # update-crypto-policies"
@@ -1188,7 +1188,7 @@ checks:
 
   # 2.1.1 Ensure time synchronization is in use (Automated)
   - id: 28062
-    title: "Ensure time synchronization is in use"
+    title: "Ensure time synchronization is in use."
     description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: If another method for time synchronization is being used, this section may be skipped. "
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
     remediation: "Run the following command to install chrony: # dnf install chrony"
@@ -1204,7 +1204,7 @@ checks:
 
   # 2.1.2 Ensure chrony is configured (Automated)
   - id: 28063
-    title: "Ensure chrony is configured"
+    title: "Ensure chrony is configured."
     description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
     remediation: 'Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'': OPTIONS="-u chrony"'
@@ -1226,7 +1226,7 @@ checks:
 
   # 2.2.1 Ensure xinetd is not installed (Automated)
   - id: 28064
-    title: "Ensure xinetd is not installed"
+    title: "Ensure xinetd is not installed."
     description: "The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
     rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled. Note: If an xinetd service or services are required, ensure that any xinetd service not required is stopped and disabled. "
     remediation: "Run the following command to remove xinetd: # dnf remove xinetd"
@@ -1264,7 +1264,7 @@ checks:
 
   # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 28066
-    title: "Ensure Avahi Server is not installed"
+    title: "Ensure Avahi Server is not installed."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface."
     remediation: "Run the following commands to stop, mask and remove avahi-autoipd and avahi:  # systemctl stop avahi-daemon.socket avahi-daemon.service # dnf remove avahi-autoipd avahi"
@@ -1301,7 +1301,7 @@ checks:
   - id: 28068
     title: "Ensure DHCP Server is not installed."
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
-    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that the rpm -q dhcp-server package be removed to reduce the potential attack surface."
+    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that the dhcp-server package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove dhcp: # dnf remove dhcp-server"
     compliance:
       - cis: ["2.2.5"]
@@ -1352,7 +1352,7 @@ checks:
     title: "Ensure VSFTP Server is not installed."
     description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
     rationale: "Unless there is a need to run the system as an FTP server, it is recommended that the package be removed to reduce the potential attack surface."
-    remediation: "Run the following command to remove ftp: # dnf remove ftp"
+    remediation: "Run the following command to remove vsftpd: # dnf remove vsftpd"
     compliance:
       - cis: ["2.2.8"]
       - cis_csc: ["4.8", "9.2"]
@@ -1415,7 +1415,7 @@ checks:
 
   # 2.2.12 Ensure Samba is not installed (Automated)
   - id: 28075
-    title: "Ensure Samba is not enabled"
+    title: "Ensure Samba is not enabled."
     description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be disabled to reduce the potential attack surface."
     remediation: "Run the following command to remove samba: # dnf remove samba."
@@ -1433,7 +1433,7 @@ checks:
   - id: 28076
     title: "Ensure HTTP Proxy Server is not installed."
     description: "Squid is a standard proxy server used in many distributions and environments."
-    rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required. Note: Several HTTP proxy servers exist. These should be checked and removed unless required."
+    rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required."
     remediation: "Run the following command to remove the squid package: # dnf remove squid"
     compliance:
       - cis: ["2.2.13"]
@@ -1463,7 +1463,7 @@ checks:
 
   # 2.2.15 Ensure NIS server is not installed (Automated)
   - id: 28078
-    title: "Ensure NIS server is not installed"
+    title: "Ensure NIS server is not installed."
     description: "The ypserv package provides the Network Information Service (NIS). This service, formally known as Yellow Pages, is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used."
     remediation: "Run the following command to remove ypserv: # dnf remove ypserv"
@@ -1498,7 +1498,7 @@ checks:
 
   # 2.2.17 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 28080
-    title: "Ensure mail transfer agent is configured for local-only mode"
+    title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Notes: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
     remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only. Run the following command to restart postfix:: # systemctl restart postfix"
@@ -1514,7 +1514,7 @@ checks:
 
   # 2.2.18 Ensure nfs-utils is not installed or the nfs-server service is masked (Automated)
   - id: 28081
-    title: "Ensure nfs-utils is not installed or the nfs-server service is masked"
+    title: "Ensure nfs-utils is not installed or the nfs-server service is masked."
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not require network shares, it is recommended that the nfs-utils package be removed to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server"
@@ -1531,10 +1531,10 @@ checks:
 
   # 2.2.19 Ensure rpcbind is not installed or the rpcbind services are masked (Automated)
   - id: 28082
-    title: "Ensure RPC is not enabled"
+    title: "Ensure RPC is not enabled."
     description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service. Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening."
     rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
-    remediation: "Run the following command to remove nfs-utils: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind and rpcbind.socket services: # systemctl --now mask rpcbind # systemctl --now mask rpcbind.socket"
+    remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind and rpcbind.socket services: # systemctl --now mask rpcbind # systemctl --now mask rpcbind.socket"
     compliance:
       - cis: ["2.2.19"]
       - cis_csc: ["4.8", "9.2"]
@@ -1549,9 +1549,9 @@ checks:
 
   # 2.2.20 Ensure rsync is not installed or the rsyncd service is masked (Automated)
   - id: 28083
-    title: "Ensure rsync is not installed or the rsyncd service is masked"
+    title: "Ensure rsync is not installed or the rsyncd service is masked."
     description: "The rsyncd service can be used to synchronize files between systems over network links."
-    rationale: "Unless required, the rsync package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked."
+    rationale: "Unless required, the rsync package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked."
     remediation: "Run the following command to remove the rsync package: # dnf remove rsync OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd"
     compliance:
       - cis: ["2.2.20"]
@@ -1573,7 +1573,7 @@ checks:
 
   # 2.3.1 Ensure NIS Client is not installed (Automated)
   - id: 28084
-    title: "Ensure NIS Client is not installed"
+    title: "Ensure NIS Client is not installed."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
     remediation: "Run the following command to uninstall ypbind: # dnf remove ypbind "
@@ -1592,7 +1592,7 @@ checks:
 
   # 2.3.2 Ensure rsh client is not installed (Automated)
   - id: 28085
-    title: "Ensure rsh client is not installed"
+    title: "Ensure rsh client is not installed."
     description: "The rsh package contains the client commands for the rsh services."
     rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin."
     remediation: "Run the following command to remove the rsh package: # dnf remove rsh"
@@ -1611,7 +1611,7 @@ checks:
 
   # 2.3.3 Ensure talk client is not installed (Automated)
   - id: 28086
-    title: "Ensure talk client is not installed"
+    title: "Ensure talk client is not installed."
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
     remediation: "Run the following command to remove the rsh package: # dnf remove rsh"
@@ -1630,7 +1630,7 @@ checks:
 
   # 2.3.4 Ensure telnet client is not installed (Automated)
   - id: 28087
-    title: "Ensure telnet client is not installed"
+    title: "Ensure telnet client is not installed."
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
     remediation: "Run the following command to uninstall telnet : # dnf remove telnet"
@@ -1649,7 +1649,7 @@ checks:
 
   # 2.3.5 Ensure LDAP client is not installed (Automated)
   - id: 28088
-    title: "Ensure LDAP client is not installed"
+    title: "Ensure LDAP client is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove the openldap-clients package: # dnf remove openldap-clients"
@@ -1668,7 +1668,7 @@ checks:
 
   # 2.3.6 Ensure TFTP client is not installed (Automated)
   - id: 28089
-    title: "Ensure TFTP client is not installed"
+    title: "Ensure TFTP client is not installed."
     description: "Trivial File Transfer Protocol (TFTP) is a simple protocol for exchanging files between two TCP/IP machines. TFTP servers allow connections from a TFTP Client for sending and receiving files."
     rationale: "TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
     remediation: "Run the following command to remove tftp: # dnf remove tftp"
@@ -1698,7 +1698,7 @@ checks:
 
   # 3.1.2 Ensure SCTP is disabled (Automated)
   - id: 28090
-    title: "Ensure SCTP is disabled"
+    title: "Ensure SCTP is disabled."
     description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
     remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: printf " install sctp /bin/true " >> /etc/modprobe.d/sctp.conf'
@@ -1718,7 +1718,7 @@ checks:
 
   # 3.1.3 Ensure DCCP is disabled (Automated)
   - id: 28091
-    title: "Ensure DCCP is disabled"
+    title: "Ensure DCCP is disabled."
     description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery"
     rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
     remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf. Example:printf " install dccp /bin/true " >> /etc/modprobe.d/dccp.conf'
@@ -1738,7 +1738,7 @@ checks:
 
   # 3.1.4 Ensure wireless interfaces are disabled (Automated)
   - id: 28092
-    title: "Ensure wireless interfaces are disabled"
+    title: "Ensure wireless interfaces are disabled."
     description: "Wireless networking is used when wired networks are unavailable."
     rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
     remediation: 'Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi }'
@@ -1760,7 +1760,7 @@ checks:
 
   # 3.2.1 Ensure IP forwarding is disabled (Automated)
   - id: 28093
-    title: "Ensure IP forwarding is disabled"
+    title: "Ensure IP forwarding is disabled."
     description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
     rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
     remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:  # printf " net.ipv4.ip_forward = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.ip_forward=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:  # printf " net.ipv6.conf.all.forwarding = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.forwarding=0 sysctl -w net.ipv6.route.flush=1 }'
@@ -1776,14 +1776,14 @@ checks:
       - "d:/run/sysctl.d/"
       - "d:/etc/sysctl.d/"
       - "f:/etc/sysctl.conf"
-      - 'not c:grep -Rh -E -s "^\s{0,}net\.ipv4\.ip_forward" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
-      - 'not c:grep -Rh -E -s "^\s{0,}net\.ipv6\.conf\.all\.forwarding" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
+      - 'not c:grep -Rh -E -s "\s*net\.ipv4\.ip_forward" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
+      - 'not c:grep -Rh -E -s "\s*net\.ipv6\.conf\.all\.forwarding" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
       - 'not c:sysctl net.ipv4.ip_forward -> r:^\s*net.ipv4.ip_forward\s*=\s*1'
       - 'not c:sysctl net.ipv6.conf.all.forwarding -> r:^\s*net.ipv6.conf.all.forwarding\s*=\s*1'
 
   # 3.2.2 Ensure packet redirect sending is disabled (Automated)
   - id: 28094
-    title: "Ensure packet redirect sending is disabled"
+    title: "Ensure packet redirect sending is disabled."
     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:# printf " net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf . Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0; # sysctl -w net.ipv4.conf.default.send_redirects=0; # sysctl -w net.ipv4.route.flush=1'
@@ -1806,7 +1806,7 @@ checks:
 
   # 3.3.1 Ensure source routed packets are not accepted (Automated)
   - id: 28095
-    title: "Ensure source routed packets are not accepted"
+    title: "Ensure source routed packets are not accepted."
     description: "In networking, source routing allows a sender to partially or fully specify the route packets  take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
     rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf. Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.accept_source_route=0 sysctl -w net.ipv4.conf.default.accept_source_route=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.accept_source_route=0 sysctl -w net.ipv6.conf.default.accept_source_route=0 sysctl -w net.ipv6.route.flush=1 }'
@@ -1829,7 +1829,7 @@ checks:
 
   # 3.3.2 Ensure ICMP redirects are not accepted (Automated)
   - id: 28096
-    title: "Ensure ICMP redirects are not accepted"
+    title: "Ensure ICMP redirects are not accepted."
     description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects and net.ipv6.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
     rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.accept_redirects=0 sysctl -w net.ipv4.conf.default.accept_redirects=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.accept_redirects=0 sysctl -w net.ipv6.conf.default.accept_redirects=0 sysctl -w net.ipv6.route.flush=1 }'
@@ -1852,7 +1852,7 @@ checks:
 
   # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated)
   - id: 28097
-    title: "Ensure secure ICMP redirects are not accepted"
+    title: "Ensure secure ICMP redirects are not accepted."
     description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
     rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects and net.ipv4.conf.default.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following commands to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.secure_redirects=0 sysctl -w net.ipv4.conf.default.secure_redirects=0 sysctl -w net.ipv4.route.flush=1 } '
@@ -1871,7 +1871,7 @@ checks:
 
   # 3.3.4 Ensure suspicious packets are logged (Automated)
   - id: 28098
-    title: "Ensure suspicious packets are logged"
+    title: "Ensure suspicious packets are logged."
     description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
     rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:# printf " net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.log_martians=1 sysctl -w net.ipv4.conf.default.log_martians=1 sysctl -w net.ipv4.route.flush=1 } '
@@ -1890,7 +1890,7 @@ checks:
 
   # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated)
   - id: 28099
-    title: "Ensure broadcast ICMP requests are ignored"
+    title: "Ensure broadcast ICMP requests are ignored."
     description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
     rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.icmp_echo_ignore_broadcasts = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 sysctl -w net.ipv4.route.flush=1 } '
@@ -1903,11 +1903,11 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
-      - 'not c:grep -E -s -Rh ^\s{0,}net.ipv4.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*0'
+      - 'not c:grep -E -s -Rh "\s*net.ipv4.icmp_echo_ignore_broadcasts" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/  -> r:^\s*net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*0'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored (Automated)
   - id: 28100
-    title: "Ensure bogus ICMP responses are ignored"
+    title: "Ensure bogus ICMP responses are ignored."
     description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
     rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
     remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.icmp_ignore_bogus_error_responses = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 sysctl -w net.ipv4.route.flush=1 }'
@@ -1920,11 +1920,11 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
-      - 'not c:grep -E -s -Rh ^\s{0,}net.ipv4.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*0'
+      - 'not c:grep -E -s -Rh "\s*net.ipv4.icmp_ignore_bogus_error_responses" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*0'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated)
   - id: 28101
-    title: "Ensure Reverse Path Filtering is enabled"
+    title: "Ensure Reverse Path Filtering is enabled."
     description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
     rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf  Run the following commands to set the active kernel parameters: #{ sysctl -w net.ipv4.conf.all.rp_filter=1 sysctl -w net.ipv4.conf.default.rp_filter=1 sysctl -w net.ipv4.route.flush=1 }'
@@ -1938,12 +1938,12 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*1'
       - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
-      - 'not c:grep -E -s -Rh ^\s{0,}net.ipv4.conf.all.rp_filter /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*0'
-      - 'c:grep -E -s -Rh ^\s{0,}net.ipv4.conf.default.rp_filter /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
+      - 'not c:grep -E -s -Rh "^\s*net.ipv4.conf.all.rp_filter" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.all.rp_filter\s*=\s*0'
+      - 'c:grep -E -s -Rh "\s*net.ipv4.conf.default.rp_filter" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.conf.default.rp_filter\s*=\s*1'
 
   # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated)
   - id: 28102
-    title: "Ensure TCP SYN Cookies is enabled"
+    title: "Ensure TCP SYN Cookies is enabled."
     description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
     rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
     remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:  # printf " net.ipv4.tcp_syncookies = 1 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.tcp_syncookies=1 sysctl -w net.ipv4.route.flush=1 }'
@@ -1956,11 +1956,11 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*1'
-      - 'not c:grep -E -r -Rh ^\s{0,}net.ipv4.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ /run/sysctl.d/ -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*[02]'
+      - 'not c:grep -E -r -Rh "\s*net.ipv4.tcp_syncookies" /etc/sysctl.conf /etc/sysctl.d/ /usr/lib/sysctl.d/ -> r:^\s*net.ipv4.tcp_syncookies\s*=\s*[02]'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated)
   - id: 28103
-    title: "Ensure IPv6 router advertisements are not accepted"
+    title: "Ensure IPv6 router advertisements are not accepted."
     description: "This setting disables the system's ability to accept IPv6 router advertisements."
     rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
     remediation: 'IF IPv6 is enabled on the system: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.accept_ra=0 sysctl -w net.ipv6.conf.default.accept_ra=0 sysctl -w net.ipv6.route.flush=1 } '
@@ -1989,7 +1989,7 @@ checks:
 
   # 3.4.1.1 Ensure firewalld is installed (Automated)
   - id: 28104
-    title: "Ensure firewalld is installed"
+    title: "Ensure firewalld is installed."
     description: "firewalld is a firewall management tool for Linux operating systems. It provides firewall features by acting as a front-end for the Linux kernel's netfilter framework via the iptables backend or provides firewall features by acting as a front-end for the Linux kernel's netfilter framework via the nftables utility. firewalld replaces iptables as the default firewall management tool. Use the firewalld utility to configure a firewall for less complex firewalls. The utility is easy to use and covers the typical use cases scenario. FirewallD supports both IPv4 and IPv6 networks and can administer separate firewall zones with varying degrees of trust as defined in zone profiles. Note: Starting in v0.6.0, FirewallD added support for acting as a front-end for the Linux kernel's netfilter framework via the nftables userspace utility, acting as an alternative to the nft command line program."
     rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. FirewallD is dependent on the iptables package."
     remediation: "Run the following command to install FirewallD and iptables: # dnf install firewalld iptables"
@@ -2005,7 +2005,7 @@ checks:
 
   # 3.4.1.2 Ensure iptables-services not installed with firewalld (Automated)
   - id: 28105
-    title: "Ensure iptables-services not installed with firewalld"
+    title: "Ensure iptables-services not installed with firewalld."
     description: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package."
     rationale: "iptables.service and ip6tables.service are still supported and can be installed with the iptables-services package. Running both firewalld and the services included in the iptables-services package may lead to conflict."
     remediation: "Run the following commands to stop the services included in the iptables-services package and remove the iptables-services package # systemctl stop iptables # systemctl stop ip6tables # dnf remove iptables-services"
@@ -2080,7 +2080,7 @@ checks:
   ###############################################
   # 3.4.2.1 Ensure nftables is installed (Automated)
   - id: 28109
-    title: "Ensure nftables is installed"
+    title: "Ensure nftables is installed."
     description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Note: - nftables is available in Linux kernel 3.13 and newer. - Only one firewall utility should be installed and configured."
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
     remediation: "Run the following command to install nftables # dnf install nftables."
@@ -2100,7 +2100,7 @@ checks:
     title: "Ensure firewalld is either not installed or masked with nftables."
     description: "firewalld (Dynamic Firewall Manager) provides a dynamically managed firewall with support for network/firewall “zones” to assign a level of trust to a network and its associated connections, interfaces or sources. It has support for IPv4, IPv6, Ethernet bridges and also for IPSet firewall settings. There is a separation of the runtime and permanent configuration options."
     rationale: "Running both nftables.service and firewalld.service may lead to conflict and unexpected results."
-    remediation: "Run the following command to remove firewalld: # dnf remove firewalld OR Run the following command to stop and mask firewalld systemctl --now mask firewalld"
+    remediation: "Run the following command to remove firewalld: # dnf remove firewalld OR Run the following command to stop and mask firewalld: # systemctl --now mask firewalld"
     compliance:
       - cis: ["3.4.2.2"]
       - cis_csc: ["4.4", "4.8", "9.4"]
@@ -2140,8 +2140,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'not c:sh -c "iptables -L | egrep -v  \"^target|^Chain\"" -> r:^\w+'
-      - 'not c:sh -c "ip6tables -L | egrep -v  \"^target|^Chain\"" -> r:^\w+'
+      - 'not c:sh -c "iptables -L | egrep -v \"^target|^Chain\"" -> r:^\w+'
+      - 'not c:sh -c "ip6tables -L | egrep -v \"^target|^Chain\"" -> r:^\w+'
       - "c:rpm -q nftables -> r:^nftables-"
 
   # 3.4.2.5 Ensure an nftables table exists.
@@ -2166,7 +2166,7 @@ checks:
     title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; }"
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; }. Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }"
     compliance:
       - cis: ["3.4.2.6", "3.4.2.9"]
       - cis_csc: ["4.4", "9.4"]
@@ -2181,7 +2181,7 @@ checks:
 
   # 3.4.2.7 Ensure nftables loopback traffic is configured - Not implemented, SCA limitation.
   # 3.4.2.8 Ensure nftables outbound and established connections are configured - Not implemented, SCA limitation.
-  # 3.4.2.9 Ensure nftables default deny firewall policy - covered by 28113.
+  # 3.4.2.9 Ensure nftables default deny firewall policy - covered by 28114.
 
   # 3.4.2.10 Ensure nftables service is enabled.
   - id: 28115
@@ -2318,7 +2318,7 @@ checks:
     title: "Ensure ip6tables is enabled and active."
     description: "ip6tables.service is a utility for configuring and maintaining ip6tables."
     rationale: "ip6tables.service will load the iptables rules saved in the file /etc/sysconfig/ip6tables at boot, otherwise the ip6tables rules will be cleared during a re-boot of the system."
-    remediation: "Run the following command to enable and start iptables: # systemctl --now enable ip6tables"
+    remediation: "Run the following command to enable and start ip6tables: # systemctl --now enable ip6tables"
     compliance:
       - cis: ["3.4.3.3.6"]
       - cis_csc: ["4.4", "9.4"]
@@ -2677,7 +2677,7 @@ checks:
 
   # 4.2.1.1 Ensure rsyslog is installed (Automated)
   - id: 28139
-    title: "Ensure rsyslog is installed"
+    title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
     remediation: "Run the following command to install rsyslog:   # dnf install rsyslog"
@@ -2694,7 +2694,7 @@ checks:
 
   # 4.2.1.2 Ensure rsyslog Service is enabled (Automated)
   - id: 28140
-    title: "Ensure rsyslog Service is enabled"
+    title: "Ensure rsyslog Service is enabled."
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
     remediation: "Run the following command to enable rsyslog :   # systemctl --now enable rsyslog"
@@ -2711,7 +2711,7 @@ checks:
 
   # 4.2.1.3 Ensure journald is configured to send logs to rsyslog (Manual)
   - id: 28141
-    title: "Ensure journald is configured to send logs to rsyslog"
+    title: "Ensure journald is configured to send logs to rsyslog."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export. "
     rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog"
@@ -2728,7 +2728,7 @@ checks:
 
   # 4.2.1.4 Ensure rsyslog default file permissions configured (Automated)
   - id: 28142
-    title: "Ensure rsyslog default file permissions configured"
+    title: "Ensure rsyslog default file permissions configured."
     description: "Rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog"
@@ -2747,7 +2747,7 @@ checks:
 
   # 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host (Manual)
   - id: 28143
-    title: "Ensure rsyslog is configured to send logs to a remote log host"
+    title: "Ensure rsyslog is configured to send logs to a remote log host."
     description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000")  Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog'
@@ -2766,7 +2766,7 @@ checks:
     title: "Ensure rsyslog is not configured to recieve logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    remediation: "Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf."
+    remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. - Old format:  $ModLoad imtcp $InputTCPServerRun - New format:  module(load="imtcp") input(type="imtcp" port="514") - Restart the service: # systemctl restart rsyslog'
     compliance:
       - cis: ["4.2.1.7"]
       - cis_csc: ["4.8", "6.2", "6.3", "8.2", "9.2"]
@@ -2801,7 +2801,7 @@ checks:
 
   #  4.2.2.1.2 Ensure systemd-journal-remote is configured (Manual)
   - id: 28146
-    title: "Ensure systemd-journal-remote is configured"
+    title: "Ensure systemd-journal-remote is configured."
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the /etc/systemd/journal-upload.conf file and ensure the following lines are set per your environment: URL=192.168.50.42 ServerKeyFile=/etc/ssl/private/journal-upload.pem ServerCertificateFile=/etc/ssl/certs/journal-upload.pem TrustedCertificateFile=/etc/ssl/ca/trusted.pem. Restart the service: # systemctl restart systemd-journal-upload"
@@ -2842,7 +2842,7 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled"
+      - "c:systemctl is-enabled systemd-journal-remote.service -> r:^masked"
 
   # 4.2.2.2 Ensure journald service is enabled (Automated)
   - id: 28149
@@ -2857,7 +2857,7 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled|static"
+      - "c:systemctl is-enabled systemd-journald.service -> r:^static"
 
   # 4.2.2.3 Ensure journald is configured to compress large log files. (Automated)
   - id: 28150
@@ -2872,7 +2872,7 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Compress=yes"
+      - "f:/etc/systemd/journald.conf -> r:^Compress=yes"
 
   # 4.2.2.4 Ensure journald is configured to write logfiles to persistent disk
   - id: 28151
@@ -2891,7 +2891,7 @@ checks:
 
   # 4.2.2.5 Ensure journald is not configured to send logs to rsyslog (Manual)
   - id: 28152
-    title: "Ensure journald is not configured to send logs to rsyslog"
+    title: "Ensure journald is not configured to send logs to rsyslog."
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
     remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journal-upload"
@@ -2911,7 +2911,7 @@ checks:
 
   # 4.2.3 Ensure permissions on all logfiles are configured (Automated)
   - id: 28153
-    title: "Ensure permissions on all logfiles are configured"
+    title: "Ensure permissions on all logfiles are configured."
     description: "Log files contain information from many services on the the local system, or in the event of a centralized log server, others systems logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store logs in another, ensure to run the same test on that location."
     rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
     remediation: 'Run the following command to set permissions on all existing log files in /var/log. Although the command is not destructive, ensure that the output of the audit procedure is captured in the event that the remediation causes issues.  # find /var/log/ -type f -perm /g+wx,o+rwx -exec chmod --changes g-wx,o-rwx "{}" + . If there are services that logs to other locations, ensure that those log files have the appropriate permissions.'
@@ -2936,7 +2936,7 @@ checks:
 
   # 5.1.1 Ensure cron daemon is enabled (Automated)
   - id: 28154
-    title: "Ensure cron daemon is enabled"
+    title: "Ensure cron daemon is enabled."
     description: "The cron daemon is used to execute batch jobs on the system."
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
     remediation: "Run the following command to enable cron : # systemctl --now enable crond"
@@ -2952,7 +2952,7 @@ checks:
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 28155
-    title: "Ensure permissions on /etc/crontab are configured"
+    title: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab"
@@ -2971,7 +2971,7 @@ checks:
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28156
-    title: "Ensure permissions on /etc/cron.hourly are configured"
+    title: "Ensure permissions on /etc/cron.hourly are configured."
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : # chown root:root /etc/cron.hourly # chmod og-rwx /etc/cron.hourly"
@@ -2987,7 +2987,7 @@ checks:
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28157
-    title: "Ensure permissions on /etc/cron.daily are configured"
+    title: "Ensure permissions on /etc/cron.daily are configured."
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily"
@@ -3003,7 +3003,7 @@ checks:
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28158
-    title: "Ensure permissions on /etc/cron.weekly are configured"
+    title: "Ensure permissions on /etc/cron.weekly are configured."
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : # chown root:root /etc/cron.weekly # chmod og-rwx /etc/cron.weekly"
@@ -3019,7 +3019,7 @@ checks:
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28159
-    title: "Ensure permissions on /etc/cron.monthly are configured"
+    title: "Ensure permissions on /etc/cron.monthly are configured."
     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : # chown root:root /etc/cron.monthly # chmod og-rwx /etc/cron.monthly"
@@ -3035,7 +3035,7 @@ checks:
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28160
-    title: "Ensure permissions on /etc/cron.d are configured"
+    title: "Ensure permissions on /etc/cron.d are configured."
     description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab , but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.d : # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d"
@@ -3057,7 +3057,7 @@ checks:
   ###############################################
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
   - id: 28161
-    title: "Ensure permissions on /etc/ssh/sshd_config are configured"
+    title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config : # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config"
@@ -3073,7 +3073,7 @@ checks:
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured (Automated)
   - id: 28162
-    title: "Ensure permissions on SSH private host key files are configured"
+    title: "Ensure permissions on SSH private host key files are configured."
     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated"
     remediation: 'Run the following commands to set permissions, ownership, and group on the private SSH host key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key'' -exec chmod u-x,g-wx,o- rwx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key'' -exec chown root:ssh_keys {} \;'''
@@ -3091,7 +3091,7 @@ checks:
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28163
-    title: "Ensure permissions on SSH public host key files are configured"
+    title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
     remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go- wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;'
@@ -3109,7 +3109,7 @@ checks:
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 28164
-    title: "Ensure SSH access is limited"
+    title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist>; AllowGroups <grouplist>; DenyUsers <userlist> and DenyGroups <grouplist>"
@@ -3127,7 +3127,7 @@ checks:
 
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 28165
-    title: "Ensure SSH LogLevel is appropriate"
+    title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE or LogLevel INFO"
@@ -3147,7 +3147,7 @@ checks:
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 28166
-    title: "Ensure SSH PAM is enabled"
+    title: "Ensure SSH PAM is enabled."
     description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes"
@@ -3163,7 +3163,7 @@ checks:
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 28167
-    title: "Ensure SSH root login is disabled"
+    title: "Ensure SSH root login is disabled."
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su . This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
@@ -3177,11 +3177,11 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:PermitRootLogin\s*\t*no'
+      - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*\t*no'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 28168
-    title: "Ensure SSH HostbasedAuthentication is disabled"
+    title: "Ensure SSH HostbasedAuthentication is disabled."
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
@@ -3199,7 +3199,7 @@ checks:
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 28169
-    title: "Ensure SSH PermitEmptyPasswords is disabled"
+    title: "Ensure SSH PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
@@ -3217,7 +3217,7 @@ checks:
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 28170
-    title: "Ensure SSH PermitUserEnvironment is disabled"
+    title: "Ensure SSH PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)"
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
@@ -3235,7 +3235,7 @@ checks:
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 28171
-    title: "Ensure SSH IgnoreRhosts is enabled"
+    title: "Ensure SSH IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
@@ -3253,7 +3253,7 @@ checks:
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 28172
-    title: "Ensure SSH X11 forwarding is disabled"
+    title: "Ensure SSH X11 forwarding is disabled."
     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: X11Forwarding no"
@@ -3272,7 +3272,7 @@ checks:
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 28173
-    title: "Ensure SSH AllowTcpForwarding is disabled"
+    title: "Ensure SSH AllowTcpForwarding is disabled."
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
@@ -3292,7 +3292,7 @@ checks:
 
   # 5.2.14 Ensure system-wide crypto policy is not over-ridden (Automated)
   - id: 28174
-    title: "Ensure system-wide crypto policy is not over-ridden"
+    title: "Ensure system-wide crypto policy is not over-ridden."
     description: "System-wide Crypto policy can be over-ridden or opted out of for openSSH"
     rationale: "Over-riding or opting out of the system-wide crypto policy could allow for the use of less secure Ciphers, MACs, KexAlgoritms and GSSAPIKexAlgorithsm"
     remediation: "Run the following commands: # sed -ri \"s/^\\s*(CRYPTO_POLICY\\s*=.*)$/# \\1/\" /etc/sysconfig/sshd; # systemctl reload sshd"
@@ -3310,7 +3310,7 @@ checks:
 
   # 5.2.15 Ensure SSH warning banner is configured (Automated)
   - id: 28175
-    title: "Ensure SSH warning banner is configured"
+    title: "Ensure SSH warning banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net"
@@ -3326,7 +3326,7 @@ checks:
 
   # 5.2.16 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 28176
-    title: "Ensure SSH MaxAuthTries is set to 4 or less"
+    title: "Ensure SSH MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
@@ -3344,7 +3344,7 @@ checks:
 
   # 5.2.18 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 28177
-    title: "Ensure SSH MaxSessions is set to 10 or less"
+    title: "Ensure SSH MaxSessions is set to 10 or less."
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
@@ -3360,7 +3360,7 @@ checks:
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 28178
-    title: "Ensure SSH LoginGraceTime is set to one minute or less"
+    title: "Ensure SSH LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
@@ -3375,7 +3375,7 @@ checks:
 
   # 5.2.20 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 28179
-    title: "Ensure SSH Idle Timeout Interval is configured"
+    title: "Ensure SSH Idle Timeout Interval is configured."
     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. - ClientAliveInterval sets a timeout interval in seconds after which if no data has been received from the client, sshd will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax sets the number of client alive messages which may be sent without sshd receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. The default value is 3. o The client alive messages are sent through the encrypted channel o Setting ClientAliveCountMax to 0 disables connection termination Example: The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds"
     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value reduces this risk. - The recommended ClientAliveInterval setting is no greater than 900 seconds (15 minutes) - The recommended ClientAliveCountMax setting is 0 - At the 15 minute interval, if the ssh session is inactive, the session will be terminated."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 300 and ClientAliveCountMax 0"
@@ -3387,8 +3387,8 @@ checks:
       - "https://man.openbsd.org/sshd_config"
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare <= 3'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900 && n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare = 0'
 
   ############################################################
   # 5.3 Configure privilege escalation
@@ -3399,7 +3399,7 @@ checks:
     title: "Ensure sudo is installed."
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
     rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
-    remediation: "Run the following command to install sudo. # yum install sudo"
+    remediation: "Run the following command to install sudo. # dnf install sudo"
     compliance:
       - cis: ["5.3.1"]
       - cis_csc: ["4.3", "5.4"]
@@ -3454,8 +3454,8 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "f:/etc/sudoers -> r:^[^#].*NOPASSWD"
-      - 'd:/etc/sudoers.d -> r:\. -> r:^[^#].*NOPASSWD'
+      - "f:/etc/sudoers -> !r:^# && r:NOPASSWD"
+      - 'd:/etc/sudoers.d -> r:\. -> !r:^# && r:NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 28184
@@ -3470,13 +3470,13 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'f:/etc/sudoers -> r:^[^#].*\!authenticate'
-      - 'd:/etc/sudoers.d -> r:\. -> r:^[^#].*\!authenticate'
+      - "f:/etc/sudoers -> !r:^# && r:!authenticate"
+      - 'd:/etc/sudoers.d -> r:\. -> !r:^# && r:!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated) - Not implemented
 
   # 5.3.7 Ensure access to the su command is restricted (Automated)
-  - id: 20185
+  - id: 28185
     title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in the wheel group to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su, and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo, whereas su can only record that a user executed the su program."
@@ -3499,10 +3499,10 @@ checks:
   ###############################################
   # 5.4.1 Ensure custom authselect profile is used (Manual)
   - id: 28186
-    title: "Ensure custom authselect profile is used"
+    title: "Ensure custom authselect profile is used."
     description: "A custom profile can be created by copying and customizing one of the default profiles. The default profiles include: sssd, winbind, or the nis. This profile can then be customized to follow site specific requirements. You can select a profile for the authselect utility for a specific host. The profile will be applied to every user logging into the host."
     rationale: "A custom profile is required to customize many of the pam options. When you deploy a profile, the profile is applied to every user logging into the given host."
-    remediation: "Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example:  # authselect select custom/custom-profile with-sudo with-faillock without- nullok"
+    remediation: "Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example:  # authselect select custom/custom-profile with-sudo with-faillock without-nullok"
     compliance:
       - cis: ["5.4.1"]
       - cis_csc: ["16.2", "16.7"]
@@ -3514,7 +3514,7 @@ checks:
 
   # 5.4.2 Ensure authselect includes with-faillock (Automated)
   - id: 28187
-    title: "Ensure authselect includes with-faillock"
+    title: "Ensure authselect includes with-faillock."
     description: "The pam_faillock.so module maintains a list of failed authentication attempts per user during a specified interval and locks the account in case there were more than deny consecutive failed authentications. It stores the failure records into per-user files in the tally directory."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Run the following commands to include the with-faillock option to the current authselect profile:  # authselect enable-feature with-faillock # authselect apply-changes"
@@ -3533,10 +3533,10 @@ checks:
   ###############################################
   # 5.5.1 Ensure password creation requirements are configured (Automated)
   - id: 28188
-    title: "Ensure password creation requirements are configured"
+    title: "Ensure password creation requirements are configured."
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more ** Either of the following can be used to enforce complex passwords:** - minclass=4 - provide at least four classes of characters for the new password OR - dcredit=-1 - provide at least one digit - ucredit=-1 - provide at least one uppercase character - ocredit=-1 - provide at least one special character - lcredit=-1 - provide at least one lowercase character The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 -1 = -1 Run the following to update the system-auth and password-auth files: CP=$(authselect current | awk 'NR == 1 {print $3}' | grep custom/) for FN in system-auth password-auth; do [[ -n $CP ]] && PTF=/etc/authselect/$CP/$FN || PTF=/etc/authselect/$FN [[ -z $(grep -E '^\\s*password\\s+requisite\\s+pam_pwquality.so\\s+.*enforce-for-root\\s*.*$' $PTF) ]] && sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce-for-root/' $PTF [[ -n $(grep -E '^\\s*password\\s+requisite\\s+pam_pwquality.so\\s+.*\\s+retry=\\S+\\s*.*$' $PTF) ]] && sed -ri '/pwquality/s/retry=\\S+/retry=3/' $PTF || sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' $PTF done authselect apply-changes"
+    remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Run the following script to update the system-auth and password-auth files: #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4- 9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes"
     compliance:
       - cis: ["5.5.1"]
       - cis_csc: ["4.4", "5.2"]
@@ -3550,10 +3550,10 @@ checks:
 
   # 5.5.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 28189
-    title: "Ensure lockout for failed password attempts is configured"
+    title: "Ensure lockout for failed password attempts is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. - deny=<n> - Number of attempts before the account is locked - unlock_time=<n> - Time in seconds before the account is unlocked Note: The maximum configurable value for unlock_time is 604800"
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: "Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900 Versions 8.0 and 8.1: Run the following script to update the system-auth and password-auth files. This script will update/add the deny=5 and unlock_time=900 options. This script should be modified as needed to follow local site policy. #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if grep -Pq -- '^\\h*auth\\h+required\\h+pam_faillock\\.so(\\h+[^#\n\r]+)?\\h+deny=(0|[6-9]|[1- 9][0-9]+)\b.*$' \"$file\"; then sed -ri '/pam_faillock.so/s/deny=\\S+/deny=5/g' \"$file\" elif ! grep -Pq -- '^\\h*auth\\h+required\\h+pam_faillock\\.so(\\h+[^#\n\r]+)?\\h+deny=\\d*\b.*$' \"$file\"; then sed -r 's/^\\s*(auth\\s+required\\s+pam_faillock\\.so\\s+)([^{}#\n\r]+)?\\s*(\\{.*\\})?(.*)$ /\\1\\2\\3 deny=5 \\4/' $file fi if grep -P -- '^\\h*(auth\\h+required\\h+pam_faillock\\.so\\h+)([^#\n\r]+)?\\h+unlock_time=([1- 9]|[1-9][0-9]|[1-8][0-9][0-9])\b.*$' \"$file\"; then sed -ri '/pam_faillock.so/s/unlock_time=\\S+/unlock_time=900/g' \"$file\" elif ! grep -Pq -- '^\\h*auth\\h+required\\h+pam_faillock\\.so(\\h+[^#\n\r]+)?\\h+unlock_time=\\d*\b.*$ ' \"$file\"; then sed -ri 's/^\\s*(auth\\s+required\\s+pam_faillock\\.so\\s+)([^{}#\n\r]+)?\\s*(\\{.*\\})?(.*)$ /\\1\\2\\3 unlock_time=900 \\4/' \"$file\" fi don∫e authselect apply-changes"
+    remediation: "Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900"
     compliance:
       - cis: ["5.5.2"]
       - cis_csc: ["6.2", "16.7"]
@@ -3561,14 +3561,12 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/password-auth -> r:^\s*auth\.+required\.+pam_faillock.so\.+ && n:deny=(\d+) compare <= 5 && n:unlock_time=(\d+) compare >= 900'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*auth\.+required\.+pam_faillock.so\.+ && n:deny=(\d+) compare <= 5 && n:unlock_time=(\d+) compare >= 900'
       - "f:/etc/security/faillock.conf -> n:deny = (d+) compare <=5"
       - "f:/etc/security/faillock.conf -> n:unlock_time = (d+) compare = 0 || n:unlock_time = (d+) compare >= 900"
 
   # 5.5.3 Ensure password reuse is limited (Automated)
   - id: 28190
-    title: "Ensure password reuse is limited"
+    title: "Ensure password reuse is limited."
     description: 'The /etc/security/opasswd file stores the users" old passwords and can be checked to ensure that users are not recycling recent passwords. remember=<5> - Number of old passwords to remember'
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note that these change only apply to accounts configured on the local system."
     remediation: "Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option: #!/usr/bin/env bash { file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\n\ r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\n\ r]+\\h+)?remember=\\d+\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so\\s+([^# \n\r]+\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file elif grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\n\ r]+\\h+)?.*$' \"$file\"; then sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so/ s/$/ remember=5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file fi fi if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\n\r]+\\h +)?remember=([5-9]|[1-9][0-9]+)\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\n\r]+\\h +)?remember=\\d+\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\n\r] +\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/ s/$/ remember=5/' $file fi fi authselect apply-changes }"
@@ -3584,7 +3582,7 @@ checks:
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512 (Automated)
   - id: 28191
-    title: "Ensure password hashing algorithm is SHA-512"
+    title: "Ensure password hashing algorithm is SHA-512."
     description: "A cryptographic hash function converts an arbitrary-length input into a fixed length output. Password hashing performs a one-way transformation of a password, turning the password into another string, called the hashed password."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: These change only apply to accounts configured on the local system."
     remediation: 'Set password hashing algorithm to sha512. Edit /etc/libuser.conf and edit of add the following line: crypt_style = sha512 Edit /etc/login.defs and edit or add the following line: ENCRYPT_METHOD SHA512 Run the following script to configure pam_unix.so to use the sha512 hashing algorithm: #!/usr/bin/env bash for fn in system-auth password-auth; do file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep ''custom/'')/$fn" if ! grep -Pq -- ''^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so(\h+[^#\n\r]+)? \h+sha512\b.*$'' "$file"; then if grep -Pq -- ''^\h*password\h+(requisite|required|sufficient)\h+pam_unix\.so(\h+[^#\n\r]+)? \h+(md5|blowfish|bigcrypt|sha256)\b.*$'' "$file"; then sed -ri ''s/(md5|blowfish|bigcrypt|sha256)/sha512/'' "$file" else sed -ri ''s/(^\s*password\s+(requisite|required|sufficient)\s+pam_unix.so\s+)(.*)$/\1s ha512 \3/'' $file fi fi done authselect apply-changes Note: This only effects local users and passwords created after updating the files to use sha512. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID''s be immediately expired and forced to change their passwords on next login.'
@@ -3606,10 +3604,10 @@ checks:
   ###############################################
   # 5.6.1.1 Ensure password expiration is 365 days or less (Automated)
   - id: 28192
-    title: "Ensure password expiration is 365 days or less"
+    title: "Ensure password expiration is 365 days or less."
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
-    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 90 and modify user parameters for all users with a password set to match: chage --maxdays 365 <user>"
+    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 and modify user parameters for all users with a password set to match: chage --maxdays 365 <user>"
     compliance:
       - cis: ["5.6.1.1"]
       - cis_csc: ["4.1", "4.4"]
@@ -3621,7 +3619,7 @@ checks:
 
   # 5.6.1.2 Ensure minimum days between password changes is 7 or more (Automated)
   - id: 28193
-    title: "Ensure minimum days between password changes is 7 or more"
+    title: "Ensure minimum days between password changes is 7 or more."
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7 and modify user parameters for all users with a password set to match: chage --mindays 7 <user>"
@@ -3636,7 +3634,7 @@ checks:
 
   # 5.6.1.3 Ensure password expiration warning days is 7 or more (Automated)
   - id: 28194
-    title: "Ensure password expiration warning days is 7 or more"
+    title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7 and modify user parameters for all users with a password set to match: chage --warndays 7 <user>"
@@ -3651,7 +3649,7 @@ checks:
 
   # 5.6.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 28195
-    title: "Ensure inactive password lock is 30 days or less"
+    title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: useradd -D -f 30 and modify user parameters for all users with a password set to match: chage --inactive 30 <user>"
@@ -3669,7 +3667,7 @@ checks:
 
   # 5.6.3 Ensure default user shell timeout is 900 seconds or less (Automated)
   - id: 28196
-    title: "Ensure default user shell timeout is 900 seconds or less"
+    title: "Ensure default user shell timeout is 900 seconds or less."
     description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. - readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
     remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - TMOUT configuration examples: - As multiple lines:  TMOUT=900 readonly TMOUT export TMOUT. - As a single line: readonly TMOUT=900 ; export TMOUT"
@@ -3686,7 +3684,7 @@ checks:
 
   # 5.6.4 Ensure default group for the root account is GID 0 (Automated)
   - id: 28197
-    title: "Ensure default group for the root account is GID 0"
+    title: "Ensure default group for the root account is GID 0."
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
     remediation: "Run the following command to set the root user default group to GID 0: usermod -g 0 root"
@@ -3701,7 +3699,7 @@ checks:
 
   # 5.6.5 Ensure default user umask is 027 or more restrictive (Automated)
   - id: 28198
-    title: "Ensure default user umask is 027 or more restrictive"
+    title: "Ensure default user umask is 027 or more restrictive."
     description: "The user file-creation mode mask (umask) is use to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. The default umask can be set to use the pam_umask module or in a System Wide Shell Configuration File. The user creating the directories or files has the discretion of changing the permissions via the chmod command, or choosing a different default umask by adding the umask command into a User Shell Configuration File, ( .bash_profile or .bashrc), in their home directory. Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): - will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the <primary group name> - userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login"
     rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
     remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all umask entries to follow local site policy. Any remaining entries should be: umask 027, umask u=rwx,g=rx,o= or more restrictive. Configure umask in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - etc/bashrc.  Example: # vi /etc/profile.d/set_umask.sh umask 027. Run the following command and remove or modify the umask of any returned files: # grep -RPi '(^|^[^#]*)\\s*umask\\s+([0-7][0-7][01][0-7]\b|[0-7][0-7][0-7][0- 6]\b|[0-7][01][0-7]\b|[0-7][0-7][0- 6]\b|(u=[rwx]{0,3},)?(g=[rwx]{0,3},)?o=[rwx]+\b|(u=[rwx]{1,3},)?g=[^rx]{1,3}( ,o=[rwx]{0,3})?\b)' /etc/login.defs /etc/profile* /etc/bashrc*. Follow one of the following methods to set the default user umask: Edit /etc/login.defs and edit the UMASK and USERGROUPS_ENAB lines as follows:  UMASK 027 USERGROUPS_ENAB no Edit the files /etc/pam.d/password-auth and /etc/pam.d/system-auth and add or edit the following: session     optional      pam_umask.so OR Configure umask in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - etc/bashrc.  Example: # vi /etc/profile.d/set_umask.sh umask 027 Note: this method only applies to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. "
@@ -3745,7 +3743,7 @@ checks:
 
   # 6.1.3 Ensure permissions on /etc/passwd are configured (Automated)
   - id: 28200
-    title: "Ensure permissions on /etc/passwd are configured"
+    title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/passwd: # chown root:root /etc/passwd # chmod 644 /etc/passwd"
@@ -3761,7 +3759,7 @@ checks:
 
   # 6.1.4 Ensure permissions on /etc/shadow are configured  (Automated)
   - id: 28201
-    title: "Ensure permissions on /etc/shadow are configured"
+    title: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow: # chown root:root /etc/shadow # chmod 0000 /etc/shadow"
@@ -3777,10 +3775,10 @@ checks:
 
   # 6.1.5 Ensure permissions on /etc/group are configured (Automated)
   - id: 28202
-    title: "Ensure permissions on /etc/group are configured"
+    title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
-    remediation: "Run the following commands to set owner, group, and permissions on /etc/group:  # chown root:root /etc/group # chmod u-x,g-wx,o-wx /etc/group"
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/group: # chown root:root /etc/group # chmod u-x,g-wx,o-wx /etc/group"
     compliance:
       - cis: ["6.1.5"]
       - cis_csc: ["3.3", "16.4"]
@@ -3793,7 +3791,7 @@ checks:
 
   # 6.1.6 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 28203
-    title: "Ensure permissions on /etc/gshadow are configured"
+    title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
     remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow: # chown root:root /etc/gshadow # chmod 0000 /etc/gshadow"
@@ -3809,7 +3807,7 @@ checks:
 
   # 6.1.7 Ensure permissions on /etc/passwd- are configured (Automated)
   - id: 28204
-    title: "Ensure permissions on /etc/passwd- are configured"
+    title: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-"
@@ -3825,10 +3823,10 @@ checks:
 
   # 6.1.8 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 28205
-    title: "Ensure permissions on /etc/shadow- are configured"
+    title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow-: # chown root:shadow /etc/shadow- # chmod 0000 /etc/shadow-"
+    remediation: "Run the following commands to set owner, group, and permissions on /etc/shadow-: # chown root:root /etc/shadow- # chmod 0000 /etc/shadow-"
     compliance:
       - cis: ["6.1.8"]
       - cis_csc: ["3.3", "16.4"]
@@ -3841,7 +3839,7 @@ checks:
 
   # 6.1.9 Ensure permissions on /etc/group- are configured (Automated)
   - id: 28206
-    title: "Ensure permissions on /etc/group- are configured"
+    title: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-wx /etc/group-"
@@ -3857,7 +3855,7 @@ checks:
 
   # 6.1.10 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28207
-    title: "Ensure permissions on /etc/gshadow- are configured"
+    title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to set owner, group, and permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chmod 0000 /etc/gshadow-"
@@ -3882,7 +3880,7 @@ checks:
   ###############################################
   # 6.2.1 Ensure password fields are not empty  (Automated)
   - id: 28208
-    title: "Ensure password fields are not empty"
+    title: "Ensure password fields are not empty."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: passwd -l <username> || Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
