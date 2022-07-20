@@ -3126,17 +3126,20 @@ void test_wdb_get_agents_by_connection_status_query_error(void **state)
 
 void test_wdb_get_agents_ids_of_current_node_query_error(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status 0 active node01";
+    const char *query_str = "global get-agents-by-connection-status 0 active -1 node01";
     const char *response = "err";
+    char *cluster_node_name = NULL;
+    cluster_node_name = strdup("node01");
 
     // Calling Wazuh DB
+    will_return(__wrap_get_node_name, cluster_node_name);
     expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    int *array = wdb_get_agents_ids_of_current_node("active", NULL, "node01", 0, -1);
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, 0, -1);
 
     assert_null(array);
 }
@@ -3164,10 +3167,13 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
 
 void test_wdb_get_agents_ids_of_current_node_parse_error(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status 0 active node01";
+    const char *query_str = "global get-agents-by-connection-status 0 active -1 node01";
     const char *response = "err";
+    char *cluster_node_name = NULL;
+    cluster_node_name = strdup("node01");
 
     // Calling Wazuh DB
+    will_return(__wrap_get_node_name, cluster_node_name);
     expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
@@ -3178,7 +3184,7 @@ void test_wdb_get_agents_ids_of_current_node_parse_error(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    int *array = wdb_get_agents_ids_of_current_node("active", NULL, "node01", 0, -1);
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, 0, -1);
 
     assert_null(array);
 }
@@ -3232,7 +3238,9 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
 
 void test_wdb_get_agents_ids_of_current_node_success(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status 0 active node01";
+    const char *query_str = "global get-agents-by-connection-status 0 active -1 node01";
+    char *cluster_node_name = NULL;
+    cluster_node_name = strdup("node01");
 
     // Setting the payload
     set_payload = 1;
@@ -3243,6 +3251,7 @@ void test_wdb_get_agents_ids_of_current_node_success(void **state)
     cJSON* id3 = cJSON_CreateNumber(3);
 
     // Calling Wazuh DB
+    will_return(__wrap_get_node_name, cluster_node_name);
     expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
@@ -3258,7 +3267,7 @@ void test_wdb_get_agents_ids_of_current_node_success(void **state)
     will_return(__wrap_cJSON_GetObjectItem, id3);
     expect_function_call(__wrap_cJSON_Delete);
 
-    int *array = wdb_get_agents_ids_of_current_node("active", NULL, "node01", 0, -1);
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, 0, -1);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);

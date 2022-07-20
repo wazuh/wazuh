@@ -36,7 +36,7 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
-    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s %d",
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
 };
