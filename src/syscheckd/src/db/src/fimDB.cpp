@@ -58,6 +58,7 @@ void FIMDB::syncAlgorithm()
             snprintf(debugmsg, 1024, "Previous sync was successful. Sync interval is reset to: '%ds'", m_currentSyncInterval);
             m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
         }
+
         m_syncSuccessful = true;
 
         sync();
