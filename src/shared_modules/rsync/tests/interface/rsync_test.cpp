@@ -1079,3 +1079,220 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
     std::this_thread::sleep_for(std::chrono::seconds(3));
     remoteSync.reset();
 }
+
+TEST_F(RSyncTest, RegisterStartSyncAndPushWithSyncLimitRemoveCPP)
+{
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
+
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    const auto expectedResult1
+    {
+        R"({"component":"test_component","data":{"begin":"5","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"1","id":)"
+    };
+
+    const auto expectedResult2
+    {
+        R"(},"type":"integrity_check_global"})"
+    };
+
+    const auto expectedResult3
+    {
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+    };
+
+    const auto expectedResult4
+    {
+        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+    };
+
+
+    auto registerConfig
+    {
+        RegisterConfiguration::builder().decoderType("JSON_RANGE")
+        .table("entry_path")
+        .component("test_component")
+        .index("path")
+        .lastEvent("last_event")
+        .checksumField("checksum")
+        .noData(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"path, inode_id, mode, last_event, entry_type, scanned, options, checksum"})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+        .countRange(
+            QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
+            .countFieldName("count")
+        .columnList({"count(*) AS count "})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+        .rowData(
+            QueryParameter::builder().rowFilter("WHERE path ='?'")
+        .columnList({"path, inode_id, mode, last_event, entry_type, scanned, options, checksum"})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+        .rangeChecksum(
+            QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
+        .columnList({"path, inode_id, mode, last_event, entry_type, scanned, options, checksum"})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+
+    };
+
+    std::atomic_uint64_t messageCounter { 0 };
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 4ull };
+    const auto checkExpected
+    {
+        [&](const std::string & payload) -> ::testing::AssertionResult
+        {
+            auto retVal { ::testing::AssertionFailure() };
+            // Necessary to avoid checking against "ID" which is defined as: time(nullptr)
+            auto firstSegment  { payload.find(expectedResult1) };
+            auto secondSegment { payload.find(expectedResult2) };
+            auto thirdSegment  { payload.find(expectedResult3) };
+            auto fourSegment   { payload.find(expectedResult4) };
+
+            if ((std::string::npos != firstSegment && std::string::npos != secondSegment)
+                    || std::string::npos != thirdSegment
+                    || std::string::npos != fourSegment)
+            {
+                retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
+            }
+
+            return retVal;
+        }
+    };
+
+    std::function<void(const std::string&)> callbackWrapper
+    {
+        [&](const std::string & payload)
+        {
+            EXPECT_PRED1(checkExpected, payload);
+        }
+    };
+
+    SyncCallbackData callbackData
+    {
+        [&callbackWrapper](const std::string & payload)
+        {
+            callbackWrapper(payload);
+        }
+    };
+
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), registerConfig.config(), callbackData));
+
+    auto startSyncConfig
+    {
+        StartSyncConfiguration::builder().table("entry_path")
+        .component("test_component")
+        .index("inode_id")
+        .lastEvent("last_event")
+        .checksumField("checksum")
+        .rangeChecksum(
+            QueryParameter::builder().rowFilter("WHERE inode_id BETWEEN '?' and '?' ORDER BY inode_id")
+        .columnList({"inode_id, checksum"})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+        .first(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"inode_id"})
+        .distinctOpt(false)
+        .orderByOpt("inode_id ASC")
+        .countOpt(1))
+        .last(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"inode_id"})
+        .distinctOpt(false)
+        .orderByOpt("inode_id DESC")
+        .countOpt(1))
+    };
+
+    EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), startSyncConfig.config(), callbackData));
+
+    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+
+    ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
+
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), registerConfig.config(), callbackData));
+
+    EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), startSyncConfig.config(), callbackData));
+    remoteSync.reset();
+
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
+}
+
+TEST(RSyncBuilderRegisterConfigurationTest, TestExpectedHappyCase)
+{
+    auto registerConfig
+    {
+        RegisterConfiguration::builder().decoderType("JSON_RANGE")
+        .table("dbsync_osinfo")
+        .component("syscollector_osinfo")
+        .index("os_name")
+        .checksumField("checksum")
+        .noData(
+            QueryParameter::builder().rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"*"})
+        .distinctOpt(false)
+        .orderByOpt(""))
+        .countRange(
+            QueryParameter::builder().countFieldName("count")
+            .rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"count(*) AS count "})
+        .distinctOpt(false)
+        .orderByOpt(""))
+        .rowData(
+            QueryParameter::builder().rowFilter("WHERE os_name ='?'")
+        .columnList({"*"})
+        .distinctOpt(false)
+        .orderByOpt(""))
+        .rangeChecksum(
+            QueryParameter::builder().rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"*"})
+        .distinctOpt(false)
+        .orderByOpt(""))
+    };
+
+    EXPECT_EQ(registerConfig.config().dump(),
+              R"({"checksum_field":"checksum","component":"syscollector_osinfo","count_range_query_json":{"column_list":["count(*) AS count "],"count_field_name":"count","distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"decoder_type":"JSON_RANGE","index":"os_name","no_data_query_json":{"column_list":["*"],"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"range_checksum_query_json":{"column_list":["*"],"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"row_data_query_json":{"column_list":["*"],"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name ='?'"},"table":"dbsync_osinfo"})");
+}
+
+TEST(RSyncBuilderStartSyncConfigurationTest, TestExpectedHappyCase)
+{
+    auto startSyncConfig
+    {
+        StartSyncConfiguration::builder().component("syscollector_osinfo")
+        .table("dbsync_osinfo")
+        .index("os_name")
+        .checksumField("checksum")
+        .lastEvent("last_event")
+        .rangeChecksum(
+            QueryParameter::builder().rowFilter("WHERE os_name BETWEEN '?' and '?' ORDER BY os_name")
+        .columnList({"os_name", "checksum"})
+        .distinctOpt(false)
+        .orderByOpt("")
+        .countOpt(100))
+        .first(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"os_name"})
+        .distinctOpt(false)
+        .orderByOpt("os_name DESC")
+        .countOpt(1))
+        .last(
+            QueryParameter::builder().rowFilter(" ")
+        .columnList({"os_name"})
+        .distinctOpt(false)
+        .orderByOpt("os_name ASC")
+        .countOpt(1))
+    };
+    EXPECT_EQ(startSyncConfig.config().dump(),
+              R"({"checksum_field":"checksum","component":"syscollector_osinfo","first_query":{"column_list":["os_name"],"count_opt":1,"distinct_opt":false,"order_by_opt":"os_name DESC","row_filter":" "},"index":"os_name","last_event":"last_event","last_query":{"column_list":["os_name"],"count_opt":1,"distinct_opt":false,"order_by_opt":"os_name ASC","row_filter":" "},"range_checksum_query_json":{"column_list":["os_name","checksum"],"count_opt":100,"distinct_opt":false,"order_by_opt":"","row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name"},"table":"dbsync_osinfo"})");
+}

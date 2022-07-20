@@ -328,14 +328,6 @@ class EXPORTED StartSyncConfiguration final : public Configuration<StartSyncConf
          *
          */
         StartSyncConfiguration & rangeChecksum(QueryParameter& parameter);
-
-        /**
-         * @brief Set flag to indicate a sync is ondemand (Message controller is ommited).
-         *
-         * @param syncOnDemand Flag to indicate a sync is ondemand.
-         *
-         */
-        StartSyncConfiguration & syncOnDemand(const bool syncOnDemand);
 };
 
 

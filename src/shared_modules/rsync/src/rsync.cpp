@@ -262,13 +262,6 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
                                 const nlohmann::json& syncConfiguration,
                                 SyncCallbackData      callbackData)
 {
-    const auto callbackWrapper
-    {
-        [callbackData](const std::string & payload)
-        {
-            callbackData(payload);
-        }
-    };
     RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackData);
 }
 
@@ -358,11 +351,5 @@ StartSyncConfiguration& StartSyncConfiguration::last(QueryParameter& parameter)
 StartSyncConfiguration& StartSyncConfiguration::rangeChecksum(QueryParameter& parameter)
 {
     m_jsConfiguration["range_checksum_query_json"] = parameter.queryParameter();
-    return *this;
-}
-
-StartSyncConfiguration& StartSyncConfiguration::syncOnDemand(const bool syncOnDemand)
-{
-    m_jsConfiguration["sync_on_demand"] = syncOnDemand;
     return *this;
 }
