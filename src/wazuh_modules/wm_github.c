@@ -363,8 +363,10 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                     if (org_fail = wm_github_get_fail_by_org_and_type(github_config->fails,
                         current->org_name, event_types[event_types_it]), org_fail && org_fail->fails) {
+                        #ifndef __clang_analyzer__
                         mtinfo(WM_GITHUB_LOGTAG, "Github organization '%s' and event type '%s', connected successfully.",
                             current->org_name, event_types[event_types_it]);
+                        #endif
                         org_fail->fails = 0;
                     }
                 }
