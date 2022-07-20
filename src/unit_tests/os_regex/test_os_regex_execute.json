@@ -2586,6 +2586,15 @@
                 ]
             },
             {
+                "description": "This case matches.",
+                "pattern": "(\\d+)\\D* ",
+                "log": "123 ",
+                "end_match": " ",
+                "captured_groups": [
+                    "123"
+                ]
+            },
+            {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*",
@@ -2867,6 +2876,99 @@
                     "xyz5xyz5",
                     "xyz6"
                 ]
+            },
+            {
+                "description": "This case has 3 (non-optional) tokens but it is capturing only 2 characters.",
+                "__knownIssue": "Capture groups could be either '04T15' or '4T15', depending on the (unpredictable) behavior of the greediness.",
+                "ignore_result": true,
+                "pattern": "(\\d+\\w\\d+)",
+                "log": "04T15",
+                "end_match": "5",
+                "captured_groups": [
+                    "04T15"
+                ]
+            },
+            {
+                "description": "This case should match but it does not.",
+                "ignore_result": true,
+                "pattern": "(-\\d+\\w\\d+:)",
+                "log": "-04T15:",
+                "end_match": ":",
+                "captured_groups": [
+                    "-04T15:"
+                ]
+            },
+            {
+                "description": "This case should match but it does not.",
+                "ignore_result": true,
+                "pattern": "-(\\d+\\w\\d+):",
+                "log": "-04T15:",
+                "end_match": ":",
+                "captured_groups": [
+                    "04T15"
+                ]
+            },
+            {
+                "description": "This case should match but it does not.",
+                "ignore_result": true,
+                "pattern": "-\\d+\\w\\d+:",
+                "log": "-04T15:",
+                "end_match": ":",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "__knownIssue": "Wrong end_match value.",
+                "ignore_result": true,
+                "pattern": "\\d+\\w\\d+",
+                "log": "04T15",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "__knownIssue": "Wrong end_match value.",
+                "ignore_result": true,
+                "pattern": "(\\d+\\D\\d+)",
+                "log": "04T15",
+                "end_match": "5",
+                "captured_groups": [
+                    "04T15"
+                ]
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "(-\\d+\\D\\d+:)",
+                "log": "-04T15:",
+                "end_match": ":",
+                "captured_groups": [
+                    "-04T15:"
+                ]
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "-(\\d+\\D\\d+):",
+                "log": "-04T15:",
+                "end_match": ":",
+                "captured_groups": [
+                    "04T15"
+                ]
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "-\\d+\\D\\d+:",
+                "log": "-04T15:",
+                "end_match": ":",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "__knownIssue": "Wrong end_match value.",
+                "ignore_result": true,
+                "pattern": "\\d+\\D\\d+",
+                "log": "04T15",
+                "end_match": "5",
+                "captured_groups": []
             }
         ]
     }
