@@ -54,7 +54,7 @@ static int setup_syscheck_config(void **state) {
     syscheck_conf->sync_response_timeout     = 30;
     syscheck_conf->sync_max_interval         = 3600;
     syscheck_conf->sync_thread_pool          = 1;
-    syscheck_conf->sync_queue_size           = 30;
+    syscheck_conf->sync_queue_size           = 16384;
     syscheck_conf->file_entry_limit          = 100000;
 #ifdef WIN32
     syscheck_conf->db_entry_registry_limit   = 100000;
@@ -203,18 +203,10 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
     will_return(__wrap_Read_Syscheck_Config, -1);
     expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
-void expect_wrapper_fim_db_init(int storage,
-                                int sync_interval,
-                                uint32_t sync_max_interval,
-                                uint32_t sync_response_timeout,
-                                int file_limit,
-                                int value_limit,
-                                int sync_registry_enable,
-                                int sync_thread_pool,
-                                int sync_queue_size) {
+
     will_return(__wrap_rootcheck_init, 1);
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 30);
+    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
     expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
@@ -240,7 +232,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 30);
+    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
@@ -270,7 +262,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 30);
+    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
@@ -340,7 +332,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 30);
+    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
@@ -388,7 +380,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 30);
+    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);

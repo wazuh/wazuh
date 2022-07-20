@@ -125,7 +125,6 @@ class FIMDB
          * @param fileLimit Maximum number of file entries in database.
          * @param registryLimit Maximum number of registry values entries in database (only for Windows).
          * @param syncRegistryEnabled Flag to specify if the synchronization for registries is enabled (only for Windows).
-         * @param syncQueueSize Number to define the size of the queue to be synchronized.
          */
         void init(unsigned int syncInterval,
                   const uint32_t syncMaxInterval,
@@ -137,8 +136,7 @@ class FIMDB
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   int fileLimit,
                   int registryLimit = 0,
-                  bool syncRegistryEnabled = true,
-                  int syncQueueSize = 0);
+                  bool syncRegistryEnabled = true);
 
         /**
          * @brief Remove a given item from the database

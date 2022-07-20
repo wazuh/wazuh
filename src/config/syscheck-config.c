@@ -1258,7 +1258,6 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                     syscheck->sync_thread_pool = value;
                 }
             }
->>>>>>> Added new setting for fim sync, thread_pool
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }

@@ -92,8 +92,7 @@ void FIMDB::init(unsigned int syncInterval,
                  std::shared_ptr<RemoteSync> rsyncHandler,
                  const int fileLimit,
                  const int registryLimit,
-                 const bool syncRegistryEnabled,
-                 int syncQueueSize)
+                 const bool syncRegistryEnabled)
 {
     m_syncInterval = syncInterval;
     m_dbsyncHandler = dbsyncHandler;
