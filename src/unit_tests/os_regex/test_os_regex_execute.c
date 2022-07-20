@@ -248,15 +248,19 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
 // Load test cases from a JSON file
 cJSON * readFile() {
 
-    const size_t buffer_size = 65535*2;
-    char * raw_json_file = calloc(buffer_size, sizeof(char));
-
     // Open the file
     FILE * fp = fopen(JSON_PATH_TEST, "r");
     if (fp == NULL) {
         printf("Error: cannot open file  '%s'\n", JSON_PATH_TEST);
     }
     assert_non_null(fp);
+
+    // Calculate the file size for allocation of the buffer
+    assert_int_equal(fseek(fp, 0, SEEK_END), 0);
+    const size_t buffer_size = ftell(fp) + 1;
+    assert_int_equal(fseek(fp, 0, SEEK_SET), 0);
+
+    char * raw_json_file = calloc(buffer_size, sizeof(char));
 
     // Load test suite
     size_t read_bytes = fread(raw_json_file, sizeof(char), buffer_size, fp);
