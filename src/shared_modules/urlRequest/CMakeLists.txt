@@ -12,3 +12,4 @@ add_library(urlrequest ${URL_REQUEST_SRC})
 target_link_libraries(urlrequest curl)
 
 add_subdirectory(test_tool)
+add_subdirectory(test)

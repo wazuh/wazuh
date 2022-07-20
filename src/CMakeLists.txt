@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(Wazuh)
 
+enable_testing()
+
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)

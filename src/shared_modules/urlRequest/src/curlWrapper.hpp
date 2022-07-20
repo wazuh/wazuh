@@ -1,7 +1,7 @@
 /*
  * Wazuh shared modules utils
  * Copyright (C) 2015, Wazuh Inc.
- * July 11, 2022.
+ * July 18, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,129 +9,112 @@
  * Foundation.
  */
 
+#ifndef _CURL_WRAPPER_HPP
+#define _CURL_WRAPPER_HPP
 
-#ifndef _CURLWRAPPER_HPP
-#define _CURLWRAPPER_HPP
-
-#include <functional>
-#include <map>
-#include <memory>
-#include <string>
-#include "builder.hpp"
+#include "IRequestImplementator.hpp"
 #include "curl.h"
 #include "customDeleter.hpp"
-#include "json.hpp"
-#include "singleton.hpp"
+#include <map>
+#include <memory>
+#include <ostream>
+#include <stdexcept>
 
-enum CURL_METHOD_TYPE
+using deleterCurl = CustomDeleter<decltype(&curl_easy_cleanup),
+                                  curl_easy_cleanup>;
+static const std::unique_ptr<CURL, deleterCurl> m_curlHandle { curl_easy_init() };
+
+
+static const std::map<OPTION_REQUEST_TYPE, CURLoption> OPTION_REQUEST_TYPE_MAP =
 {
-    CURL_GET,
-    CURL_POST,
-    CURL_PUT,
-    CURL_DELETE
+    {OPT_URL, CURLOPT_URL},
+    {OPT_CAINFO, CURLOPT_CAINFO},
+    {OPT_TIMEOUT, CURLOPT_TIMEOUT},
+    {OPT_WRITEDATA, CURLOPT_WRITEDATA},
+    {OPT_USERAGENT, CURLOPT_USERAGENT},
+    {OPT_POSTFIELDS, CURLOPT_POSTFIELDS},
+    {OPT_WRITEFUNCTION, CURLOPT_WRITEFUNCTION},
+    {OPT_POSTFIELDSIZE, CURLOPT_POSTFIELDSIZE},
+    {OPT_CUSTOMREQUEST, CURLOPT_CUSTOMREQUEST},
+    {OPT_UNIX_SOCKET_PATH, CURLOPT_UNIX_SOCKET_PATH},
+    {OPT_FAILONERROR, CURLOPT_FAILONERROR}
 };
 
-static const std::map<CURL_METHOD_TYPE, std::string> CURL_METHOD_TYPE_MAP =
-{
-    {CURL_GET, "GET"},
-    {CURL_POST, "POST"},
-    {CURL_PUT, "PUT"},
-    {CURL_DELETE, "DELETE"}
-};
 
-using deleterCurl = CustomDeleter<decltype(&curl_easy_cleanup), curl_easy_cleanup>;
-
-template <typename T>
-class cURLRequest : public Utils::Builder<T>
+class cURLWrapper final : public IRequestImplementator
 {
     private:
-        static size_t cURLcallback(char* data, size_t size, size_t nmemb, void* userdata)
+        using deleterCurlStringList = CustomDeleter<decltype(&curl_slist_free_all), curl_slist_free_all>;
+        std::unique_ptr<curl_slist, deleterCurlStringList> m_curlHeaders;
+
+        static size_t writeData(char* data, size_t size, size_t nmemb, void* userdata)
         {
             const auto str { reinterpret_cast<std::string*>(userdata) };
             str->append(data, size * nmemb);
             return size * nmemb;
         }
-
-        using deleterCurlStringList = CustomDeleter<decltype(&curl_slist_free_all), curl_slist_free_all>;
-        std::unique_ptr<curl_slist, deleterCurlStringList> m_curlHeaders;
         std::string m_returnValue;
 
-        std::string m_unixSocketPath;
-        std::string m_url;
-        std::string m_userAgent;
-        std::string m_certificate;
-
-    protected:
-        const std::unique_ptr<CURL, deleterCurl> m_curlHandle;
-
     public:
-        cURLRequest() : m_curlHandle { curl_easy_init() }
+        cURLWrapper()
         {
             if (!m_curlHandle)
             {
                 throw std::runtime_error("cURL initialization failed");
             }
 
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_WRITEFUNCTION,
-                             cURLcallback);
+            setOption(OPT_WRITEFUNCTION, reinterpret_cast<void *>(cURLWrapper::writeData));
 
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_WRITEDATA,
-                             &m_returnValue);
+            setOption(OPT_WRITEDATA, &m_returnValue);
 
+            setOption(OPT_FAILONERROR, 1l);
         }
-        // LCOV_EXCL_START
-        virtual ~cURLRequest() = default;
-        // LCOV_EXCL_STOP
 
-        void execute()
+        virtual ~cURLWrapper() = default;
+
+        inline const std::string response() override
         {
-            if (m_curlHeaders)
+            return m_returnValue;
+        }
+
+        void setOption(const OPTION_REQUEST_TYPE optIndex, void *ptr) override
+        {
+            auto ret = curl_easy_setopt(m_curlHandle.get(),
+                             OPTION_REQUEST_TYPE_MAP.at(optIndex),
+                             ptr);
+
+            if (ret != CURLE_OK)
             {
-                curl_easy_setopt(m_curlHandle.get(), CURLOPT_HTTPHEADER, m_curlHeaders.get());
+                throw std::runtime_error("cURL set option failed");
+            }
+        }
+
+        void setOption(const OPTION_REQUEST_TYPE optIndex, const std::string &opt) override
+        {
+            auto ret = curl_easy_setopt(m_curlHandle.get(),
+                             OPTION_REQUEST_TYPE_MAP.at(optIndex),
+                             opt.c_str());
+
+            if (ret != CURLE_OK)
+            {
+                throw std::runtime_error("cURLWrapper::setOption() failed");
+            }
+        }
+
+        void setOption(const OPTION_REQUEST_TYPE optIndex, const long opt) override
+        {
+            auto ret = curl_easy_setopt(m_curlHandle.get(),
+                             OPTION_REQUEST_TYPE_MAP.at(optIndex),
+                             opt);
+
+            if (ret != CURLE_OK)
+            {
+                throw std::runtime_error("cURLWrapper::setOption() failed");
             }
 
-            const auto result { curl_easy_perform(m_curlHandle.get()) };
-            if (CURLE_OK != result)
-            {
-                throw std::runtime_error(curl_easy_strerror(result));
-            }
         }
 
-        std::string response() const { return m_returnValue; }
-
-        T & unixSocketPath(const std::string &sock)
-        {
-            m_unixSocketPath = sock;
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_UNIX_SOCKET_PATH,
-                             m_unixSocketPath.empty() ? nullptr : m_unixSocketPath.c_str());
-
-            return static_cast<T&>(*this);
-        }
-
-        T & url(const std::string &url)
-        {
-            m_url = url;
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_URL,
-                             m_url.c_str());
-
-            return static_cast<T&>(*this);
-        }
-
-        T & userAgent(const std::string &userAgent)
-        {
-            m_userAgent = userAgent;
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_USERAGENT,
-                             m_userAgent.c_str());
-
-            return static_cast<T&>(*this);
-        }
-
-        T & appendHeader(const std::string &header)
+        void appendHeader(const std::string &header) override
         {
             if (!m_curlHeaders)
             {
@@ -141,133 +124,19 @@ class cURLRequest : public Utils::Builder<T>
             {
                 curl_slist_append(m_curlHeaders.get(), header.c_str());
             }
-
-            return static_cast<T&>(*this);
         }
 
-        T & timeout(const int timeout)
+        void execute() override
         {
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_TIMEOUT,
-                             timeout);
+            curl_easy_setopt(m_curlHandle.get(), CURLOPT_HTTPHEADER, m_curlHeaders.get());
 
-            return static_cast<T&>(*this);
-        }
-
-        T & certificate(const std::string &cert)
-        {
-            m_certificate = cert;
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_CAINFO,
-                             m_certificate.c_str());
-
-            return static_cast<T&>(*this);
+            const auto result { curl_easy_perform(m_curlHandle.get())};
+            if (result != CURLE_OK)
+            {
+                throw std::runtime_error(curl_easy_strerror(result));
+            }
         }
 };
 
-template <typename T>
-class PostData
-{
-    private:
-        std::string m_postDataString;
-        const std::unique_ptr<CURL, deleterCurl> &m_curlHandleReference;
-    public:
-        PostData(const std::unique_ptr<CURL, deleterCurl> &curlHandle) : m_curlHandleReference { curlHandle }
-        { }
-        T & postData(const nlohmann::json &postData)
-        {
-            m_postDataString = postData.dump();
+#endif // _CURL_WRAPPER_HPP
 
-            curl_easy_setopt(m_curlHandleReference.get(),
-                             CURLOPT_POSTFIELDS,
-                             m_postDataString.c_str());
-
-            curl_easy_setopt(m_curlHandleReference.get(),
-                             CURLOPT_POSTFIELDSIZE,
-                             m_postDataString.size());
-
-            return static_cast<T&>(*this);
-        }
-
-};
-
-class PostRequest final : public cURLRequest<PostRequest>, public PostData<PostRequest>
-{
-    public:
-        PostRequest() : PostData<PostRequest>(cURLRequest<PostRequest>::m_curlHandle)
-        {
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_CUSTOMREQUEST,
-                             CURL_METHOD_TYPE_MAP.at(CURL_POST).c_str());
-
-        }
-        // LCOV_EXCL_START
-        virtual ~PostRequest() = default;
-        // LCOV_EXCL_STOP
- };
-
-class GetRequest final : public cURLRequest<GetRequest>
-{
-    using deleterFP = CustomDeleter<decltype(&fclose), fclose>;
-
-    protected:
-        std::unique_ptr<FILE, deleterFP> m_fpHandle;
-
-    public:
-        GetRequest()
-        {
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_CUSTOMREQUEST,
-                             CURL_METHOD_TYPE_MAP.at(CURL_GET).c_str());
-        }
-
-        GetRequest & outputFile(const std::string &outputFile)
-        {
-            m_fpHandle.reset(fopen(outputFile.c_str(), "wb"));
-
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_WRITEFUNCTION,
-                             NULL);
-
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_WRITEDATA,
-                             m_fpHandle.get());
-
-            return *this;
-        }
-        // LCOV_EXCL_START
-        virtual ~GetRequest() = default;
-        // LCOV_EXCL_STOP
-};
-
-class PutRequest final : public cURLRequest<PutRequest>, public PostData<PutRequest>
-{
-    public:
-        PutRequest() : PostData<PutRequest>(cURLRequest<PutRequest>::m_curlHandle)
-        {
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_CUSTOMREQUEST,
-                             CURL_METHOD_TYPE_MAP.at(CURL_PUT).c_str());
-
-        }
-        // LCOV_EXCL_START
-        virtual ~PutRequest() = default;
-        // LCOV_EXCL_STOP
-};
-
-class DeleteRequest final : public cURLRequest<DeleteRequest>
-{
-    public:
-        DeleteRequest()
-        {
-            curl_easy_setopt(m_curlHandle.get(),
-                             CURLOPT_CUSTOMREQUEST,
-                             CURL_METHOD_TYPE_MAP.at(CURL_DELETE).c_str());
-
-        }
-        // LCOV_EXCL_START
-        virtual ~DeleteRequest() = default;
-        // LCOV_EXCL_STOP
-};
-
-#endif // _CURLWRAPPER_HPP

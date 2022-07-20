@@ -9,9 +9,11 @@
  * Foundation.
  */
 
-
 #include "UNIXSocketRequest.hpp"
-#include "curlWrapper.hpp"
+#include "factoryRequestImplemetator.hpp"
+#include "urlRequest.hpp"
+
+using wrapperType = cURLWrapper;
 
 void UNIXSocketRequest::download(const URL &url,
                                  const std::string &outputFile,
@@ -19,7 +21,7 @@ void UNIXSocketRequest::download(const URL &url,
 {
     try
     {
-        GetRequest::builder()
+        GetRequest::builder(FactoryRequestWrapper<wrapperType>::create())
             .url(url.url())
             .unixSocketPath(url.unixSocketPath())
             .outputFile(outputFile)
@@ -38,7 +40,7 @@ void UNIXSocketRequest::post(const URL &url,
 {
     try
     {
-        auto req { PostRequest::builder() };
+        auto req { PostRequest::builder(FactoryRequestWrapper<wrapperType>::create()) };
         req.url(url.url())
             .unixSocketPath(url.unixSocketPath())
             .postData(data)
@@ -58,7 +60,7 @@ void UNIXSocketRequest::get(const URL &url,
 {
     try
     {
-        auto req { GetRequest::builder() };
+        auto req { GetRequest::builder(FactoryRequestWrapper<wrapperType>::create()) };
         req.url(url.url())
             .unixSocketPath(url.unixSocketPath())
             .execute();
@@ -78,7 +80,7 @@ void UNIXSocketRequest::update(const URL &url,
 {
     try
     {
-        auto req { PutRequest::builder() };
+        auto req { PutRequest::builder(FactoryRequestWrapper<wrapperType>::create()) };
         req.url(url.url())
             .unixSocketPath(url.unixSocketPath())
             .postData(data)
@@ -98,7 +100,7 @@ void UNIXSocketRequest::delete_(const URL &url,
 {
     try
     {
-        auto req { DeleteRequest::builder() };
+        auto req { DeleteRequest::builder(FactoryRequestWrapper<cURLWrapper>::create()) };
         req.url(url.url())
             .unixSocketPath(url.unixSocketPath())
             .execute();

@@ -17,13 +17,13 @@
 
 namespace Utils
 {
-    template <typename T>
+    template <typename T, class... Ts>
     class Builder
     {
         public:
-            static T builder()
+            static T builder(Ts... args)
             {
-                return {}; // Default constructor
+                return T(args...); // Default constructor
             }
 
             T & build()

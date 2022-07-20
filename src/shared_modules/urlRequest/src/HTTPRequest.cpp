@@ -11,7 +11,10 @@
 
 
 #include "HTTPRequest.hpp"
-#include "curlWrapper.hpp"
+#include "factoryRequestImplemetator.hpp"
+#include "urlRequest.hpp"
+
+using wrapperType = cURLWrapper;
 
 void HTTPRequest::download(const URL &url,
                            const std::string &outputFile,
@@ -19,7 +22,7 @@ void HTTPRequest::download(const URL &url,
 {
     try
     {
-        GetRequest::builder()
+        GetRequest::builder(FactoryRequestWrapper<wrapperType>::create())
             .url(url.url())
             .outputFile(outputFile)
             .execute();
@@ -37,7 +40,7 @@ void HTTPRequest::post(const URL &url,
 {
     try
     {
-        auto req { PostRequest::builder() };
+        auto req { PostRequest::builder(FactoryRequestWrapper<wrapperType>::create()) };
         req.url(url.url())
             .postData(data)
             .appendHeader("Content-Type: application/json")
@@ -59,7 +62,7 @@ void HTTPRequest::get(const URL &url,
 {
     try
     {
-        auto req { GetRequest::builder() };
+        auto req { GetRequest::builder(FactoryRequestWrapper<wrapperType>::create()) };
         req.url(url.url())
             .appendHeader("Content-Type: application/json")
             .appendHeader("Accept: application/json")
@@ -81,7 +84,7 @@ void HTTPRequest::update(const URL &url,
 {
     try
     {
-        auto req { PutRequest::builder() };
+        auto req { PutRequest::builder(FactoryRequestWrapper<wrapperType>::create()) };
         req.url(url.url())
             .postData(data)
             .appendHeader("Content-Type: application/json")
@@ -103,7 +106,7 @@ void HTTPRequest::delete_(const URL &url,
 {
     try
     {
-        auto req { DeleteRequest::builder() };
+        auto req { DeleteRequest::builder(FactoryRequestWrapper<cURLWrapper>::create()) };
         req.url(url.url())
             .appendHeader("Content-Type: application/json")
             .appendHeader("Accept: application/json")

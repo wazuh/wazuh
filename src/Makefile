@@ -35,6 +35,7 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
+EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
 EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
@@ -853,7 +854,7 @@ endif
 external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
-external: build_gtest
+external: build_gtest build_gbenchmark
 endif
 
 ifneq (${TARGET},winagent)
@@ -1199,7 +1200,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm benchmark cpp-httplib
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -2125,6 +2126,11 @@ endif
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
 
+### wazuh-gbenchmark ###
+
+build_gbenchmark:
+	cd $(EXTERNAL_GOOGLE_BENCHMARK) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_TESTING=OFF -DBENCHMARK_ENABLE_INSTALL=OFF -DBUILD_SHARED_LIBS=0 && ${MAKE}
+
 ### wazuh-gtest-gmock ###
 
 build_gtest:
@@ -2385,6 +2391,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
 	rm -rf ${POPT_BUILD_DIR}
 	rm -rf ${RPM_BUILD_DIR}
+	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
