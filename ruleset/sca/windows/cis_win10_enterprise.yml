@@ -4577,6 +4577,20 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
 
   - id: 15281
+    title: "Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'"
+    description: "This policy setting controls whether Microsoft Store apps with Windows Runtime API access directly from web content can be launched. The recommended state for this setting is: Enabled."
+    rationale: "Blocking apps from the web with direct access to the Windows API can prevent malicious apps from being run on a system. Only system administrators should be installing approved applications."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\App runtime\Block launching Universal Windows apps with Windows Runtime API access from hosted content. Note: A reboot may be required after the setting is applied. Note #2: This Group Policy path may not exist by default. It is provided by the Group Policy template AppXRuntime.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer). Note #3: In older Microsoft Windows Administrative Templates, this setting was initially named Block launching Windows Store apps with Windows Runtime API access from hosted content., but it was renamed starting with the Windows 10 Release 1803 Administrative Templates"
+    compliance:
+      - cis: ["18.9.6.2"]
+      - cis_csc: ["2.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT -> 1'
+
+  - id: 15282
     title: "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'"
     description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones. The recommended state for this setting is: Enabled."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
@@ -4595,7 +4609,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
 
-  - id: 15282
+  - id: 15283
     title: "Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'"
     description: "This policy setting sets the default behavior for Autorun commands. Autorun commands are generally stored in autorun.inf files. They often launch the installation program or other routines. The recommended state for this setting is: Enabled: Do not execute any autorun commands."
     rationale: "Prior to Windows Vista, when media containing an autorun command is inserted, the system will automatically execute the program without user intervention. This creates a major security concern as code may be executed without user's knowledge. The default behavior starting with Windows Vista is to prompt the user whether autorun command is to be run. The autorun command is represented as a handler in the Autoplay dialog."
@@ -4614,7 +4628,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> 1'
 
-  - id: 15283
+  - id: 15284
     title: "Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'"
     description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives. Note: You cannot use this policy setting to enable Autoplay on computer drives in which it is disabled by default, such as floppy disk and network drives. The recommended state for this setting is: Enabled: All drives."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
@@ -4633,7 +4647,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
 
-  - id: 15284
+  - id: 15285
     title: "Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'"
     description: "This policy setting determines whether enhanced anti-spoofing is configured for devices which support it. The recommended state for this setting is: Enabled."
     rationale: "Enterprise managed environments are now supporting a wider range of mobile devices, increasing the security on these devices will help protect against unauthorized access on your network."
@@ -4649,7 +4663,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing -> 1'
 
-  - id: 15285
+  - id: 15286
     title: "Ensure 'Allow Use of Camera' is set to 'Disabled'"
     description: "This policy setting controls whether the use of Camera devices on the machine are permitted. The recommended state for this setting is: Disabled."
     rationale: "Cameras in a high security environment can pose serious privacy and data exfiltration risks - they should be disabled to help mitigate that risk."
@@ -4664,7 +4678,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera -> 0'
 
-  - id: 15286
+  - id: 15287
     title: "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'"
     description: "This policy setting determines whether cloud consumer account state content is allowed in all Windows experiences. The recommended state for this setting is: Enabled."
     rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage."
@@ -4677,7 +4691,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent -> 1'
 
-  - id: 15287
+  - id: 15288
     title: "Ensure 'Turn off cloud optimized content' is set to 'Enabled'"
     description: "This policy setting turns off cloud optimized content in all Windows experiences. The recommended state for this setting is: Enabled."
     rationale: "Due to privacy concerns, data should never be sent to any 3rd party since this data could contain sensitive information."
@@ -4690,7 +4704,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableCloudOptimizedContent'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableCloudOptimizedContent -> 1'
 
-  - id: 15288
+  - id: 15289
     title: "Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'"
     description: "This policy setting turns off experiences that help consumers make the most of their devices and Microsoft account. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet, this policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions."
     rationale: "Having apps silently install in an enterprise managed environment is not good security practice - especially if the apps send data back to a 3rd party."
@@ -4708,7 +4722,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
-  - id: 15289
+  - id: 15290
     title: "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'"
     description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device. The recommended state for this setting is: Enabled: First Time OR Enabled: Always."
     rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
@@ -4726,7 +4740,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Connect -> RequirePinForPairing -> r:^1$|^2$'
 
-  - id: 15290
+  - id: 15291
     title: "Ensure 'Do not display the password reveal button' is set to 'Enabled'"
     description: "This policy setting allows you to configure the display of the password reveal button in password entry user experiences. The recommended state for this setting is: Enabled."
     rationale: "This is a useful feature when entering a long and complex password, especially when using a touchscreen. The potential risk is that someone else may see your password while surreptitiously observing your screen."
@@ -4743,7 +4757,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal -> 1'
 
-  - id: 15291
+  - id: 15292
     title: "Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'"
     description: "This policy setting controls whether administrator accounts are displayed when a user attempts to elevate a running application. The recommended state for this setting is: Disabled."
     rationale: "Users could see the list of administrator accounts, making it slightly easier for a malicious user who has logged onto a console session to try to crack the passwords of those accounts."
@@ -4760,7 +4774,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators -> 0'
 
-  - id: 15292
+  - id: 15293
     title: "Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'"
     description: "This policy setting controls whether security questions can be used to reset local account passwords. The security question feature does not apply to domain accounts, only local accounts on the workstation. The recommended state for this setting is: Enabled."
     rationale: "Users could establish security questions that are easily guessed or sleuthed by observing the user’s social media accounts, making it easier for a malicious actor to change the local user account password and gain access to the computer as that user account."
@@ -4775,7 +4789,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions -> 1'
 
-  - id: 15293
+  - id: 15294
     title: "Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'"
     description: "This policy setting determines the amount of diagnostic and usage data reported to Microsoft: - A value of (0) Diagnostic data off (not recommended). Using this value, no diagnostic data is sent from the device. This value is only supported on Enterprise,  Education, and Server editions. If you choose this setting, devices in your organization will still be secure. - A value of (1) Send required diagnostic data. This is the minimum diagnostic data necessary to keep Windows secure, up to date, and performing as expected. Using this value disables the Optional diagnostic data control in the  Settings app. - A value of (3)Send optional diagnostic data. Additional diagnostic data is collected that helps us to detect, diagnose and fix issues, as well as make product improvements. Required diagnostic data will always be included when you choose to send optional diagnostic data. Optional diagnostic data can also include diagnostic log files and crash dumps. Use the Limit Dump Collection and the Limit  Diagnostic Log Collection policies for more granular control of what optional diagnostic data is sent. Windows telemetry settings apply to the Windows operating system and some first party apps. This setting does not apply to third party apps running on Windows 10/11. The recommended state for this setting is: Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data. Note: If your organization relies on Windows Update, the minimum recommended setting is Required diagnostic data. Because no Windows Update information is collected when diagnostic data is off, important information about update failures is not sent. Microsoft uses this information to fix the causes of those failures and improve the quality of updates. Note #2: The Configure diagnostic data opt-in settings user interface group policy can be used to prevent end users from changing their data collection settings. Note #3: Enhanced diagnostic data setting is not available on Windows 11 and Windows Server 2022 and has been replaced with policies that can control the amount of optional diagnostic data that is sent. For more information on these settings visit Manage diagnostic data using Group Policy and MDM"
     rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
@@ -4795,7 +4809,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry -> r:^0$|^1$'
 
-  - id: 15294
+  - id: 15295
     title: "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'"
     description: "This policy setting controls whether the Connected User Experience and Telemetry service can automatically use an authenticated proxy to send data back to Microsoft. The recommended state for this setting is: Enabled: Disable Authenticated Proxy usage."
     rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
@@ -4813,7 +4827,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy -> 1'
 
-  - id: 15295
+  - id: 15296
     title: "Ensure 'Disable OneSettings Downloads' is set to 'Enabled'"
     description: "This policy setting controls whether Windows attempts to connect with the OneSettings service to download configuration settings. The recommended state for this setting is: Enabled."
     rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as-needed basis."
@@ -4826,7 +4840,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableOneSettingsDownloads -> 1'
 
-  - id: 15296
+  - id: 15297
     title: "Ensure 'Do not show feedback notifications' is set to 'Enabled'"
     description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft. The recommended state for this setting is: Enabled."
     rationale: "Users should not be sending any feedback to 3rd party vendors in an enterprise managed environment."
@@ -4844,7 +4858,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications -> 1'
 
-  - id: 15297
+  - id: 15298
     title: "Ensure 'Enable OneSettings Auditing' is set to 'Enabled'"
     description: "This policy setting controls whether Windows records attempts to connect with the OneSettings service to the Operational EventLog. The recommended state for this setting is: Enabled."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -4858,7 +4872,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> EnableOneSettingsAuditing -> 1'
 
-  - id: 15298
+  - id: 15299
     title: "Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'"
     description: "This policy setting controls whether additional diagnostic logs are collected when more information is needed to troubleshoot a problem on the device. The recommended state for this setting is: Enabled. Note: Diagnostic logs are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended)or Enabled: Send required diagnostic data to send only basic information."
     rationale: "Sending data to a 3rd-party vendor is a security concern and should only be done on an as-needed basis."
@@ -4871,7 +4885,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection -> 1'
 
-  - id: 15299
+  - id: 15300
     title: "Ensure 'Limit Dump Collection' is set to 'Enabled'"
     description: "This policy setting limits the type of dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Ensure Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information."
     rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
@@ -4884,7 +4898,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDumpCollection -> 1'
 
-  - id: 15300
+  - id: 15301
     title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'"
     description: 'This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under "Get Insider builds," and enable users to make their devices available for downloading and installing Windows preview software. The recommended state for this setting is: Disabled. Note: This policy setting applies only to devices running Windows 10 Pro or Windows 10 Enterprise, up until Release 1703. For Release 1709 or newer, Microsoft encourages using the Manage preview builds setting (recommendation title ‘Manage preview builds’). We have kept this setting in the benchmark to ensure that any older builds of Windows 10 in the environment are still enforced.'
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
@@ -4905,7 +4919,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview -> 0'
 
-  - id: 15301
+  - id: 15302
     title: "Ensure 'Download Mode' is NOT set to 'Enabled: Internet'"
     description: "This policy setting specifies the download method that Delivery Optimization can use in downloads of Windows Updates, Apps and App updates. The following methods are supported: - 0 = HTTP only, no peering. - 1 = HTTP blended with peering behind the same NAT. - 2 = HTTP blended with peering across a private group. Peering occurs on devices in the same Active Directory Site (if exist) or the same domain by default. When this option is selected, peering will cross NATs. To create a custom group use Group ID in combination with Mode 2. - 3 = HTTP blended with Internet Peering. - 99 = Simple download mode with no peering. Delivery Optimization downloads using HTTP only and does not attempt to contact the Delivery Optimization cloud services. - 100 = Bypass mode. Do not use Delivery Optimization and use BITS instead. The recommended state for this setting is any value EXCEPT: Enabled: Internet (3). Note: The default on all SKUs other than Enterprise, Enterprise LTSB or Education is Enabled: Internet (3), so on other SKUs, be sure to set this to a different value."
     rationale: "Due to privacy concerns and security risks, updates should only be downloaded directly from Microsoft, or from a trusted machine on the internal network that received its updates from a trusted source and approved by the network administrator."
@@ -4923,7 +4937,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -> DODownloadMode -> r:^3$'
 
-  - id: 15302
+  - id: 15303
     title: "Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -4945,7 +4959,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention -> 0'
 
-  - id: 15303
+  - id: 15304
     title: "Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -4967,7 +4981,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> n:^(\d+) compare >= 32768'
 
-  - id: 15304
+  - id: 15305
     title: "Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -4989,7 +5003,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention -> 0'
 
-  - id: 15305
+  - id: 15306
     title: "Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'"
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 196,608 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -5011,7 +5025,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> n:^(\d+) compare >= 196608'
 
-  - id: 15306
+  - id: 15307
     title: "Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -5033,7 +5047,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention -> 0'
 
-  - id: 15307
+  - id: 15308
     title: "Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users"
@@ -5055,7 +5069,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> n:^(\d+) compare >= 32768'
 
-  - id: 15308
+  - id: 15309
     title: "Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
     description: "This policy setting controls Event Log behavior when the log file reaches its maximum size. The recommended state for this setting is: Disabled. Note: Old events may or may not be retained according to the Backup log automatically when full policy setting."
     rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
@@ -5077,7 +5091,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention -> 0'
 
-  - id: 15309
+  - id: 15310
     title: "Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
     description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments. The recommended state for this setting is: Enabled: 32,768 or greater."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users"
@@ -5099,7 +5113,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> n:^(\d+) compare >= 32768'
 
-  - id: 15310
+  - id: 15311
     title: "Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'"
     description: "Disabling Data Execution Prevention can allow certain legacy plug-in applications to function without terminating Explorer. The recommended state for this setting is: Disabled. Note: Some legacy plug-in applications and other software may not function with Data Execution Prevention and will require an exception to be defined for that specific plug- in/software."
     rationale: "Data Execution Prevention is an important security feature supported by Explorer that helps to limit the impact of certain types of malware."
@@ -5121,7 +5135,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> 0'
 
-  - id: 15311
+  - id: 15312
     title: "Ensure 'Turn off heap termination on corruption' is set to 'Disabled'"
     description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this. The recommended state for this setting is: Disabled."
     rationale: "Allowing an application to function after its session has become corrupt increases the risk posture to the system."
@@ -5139,7 +5153,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> 0'
 
-  - id: 15312
+  - id: 15313
     title: "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'"
     description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows. The recommended state for this setting is: Disabled."
     rationale: "Limiting the opening of files and folders to a limited set reduces the attack surface of the system."
@@ -5157,7 +5171,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior -> 0'
 
-  - id: 15313
+  - id: 15314
     title: "Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'"
     description: "By default, users can add their computer to a HomeGroup on a home network. The recommended state for this setting is: Enabled. Note: The HomeGroup feature is available in all workstation releases of Windows from Windows 7 through Windows 10 Release 1709. Microsoft removed the feature completely starting with Windows 10 Release 1803. However, if your environment still contains any Windows 10 Release 1709 (or older) workstations, then this setting remains important to disable HomeGroup on those systems."
     rationale: "While resources on a domain-joined computer cannot be shared with a HomeGroup, information from the domain-joined computer can be leaked to other computers in the HomeGroup."
@@ -5174,7 +5188,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup -> 1'
 
-  - id: 15314
+  - id: 15315
     title: "Ensure 'Turn off location' is set to 'Enabled'"
     description: "This policy setting turns off the location feature for the computer. The recommended state for this setting is: Enabled."
     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it's not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
@@ -5191,7 +5205,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation -> 1'
 
-  - id: 15315
+  - id: 15316
     title: "Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'"
     description: "This policy setting allows backup and restore of cellular text messages to Microsoft's cloud services. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, data should never be sent to any 3rd party since this data could contain sensitive information."
@@ -5209,7 +5223,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync -> 0'
 
-  - id: 15316
+  - id: 15317
     title: "Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'"
     description: "This setting determines whether applications and services on the device can utilize new consumer Microsoft account authentication via the Windows OnlineID and WebAccountManager APIs. The recommended state for this setting is: Enabled."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used on their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
@@ -5225,7 +5239,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth -> 1'
 
-  - id: 15317
+  - id: 15318
     title: "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'"
     description: 'This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. This setting can only be set by Group Policy. The recommended state for this setting is: Disabled.'
     rationale: "The decision on whether or not to participate in Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
@@ -5242,7 +5256,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting -> 0'
 
-  - id: 15318
+  - id: 15319
     title: "Ensure 'Join Microsoft MAPS' is set to 'Disabled'"
     description: 'This policy setting allows you to join Microsoft Active Protection Service (MAPS), which Microsoft renamed to Windows Defender Antivirus Cloud Protection Service and then Microsoft Defender Antivirus Cloud Protection Service. Microsoft MAPS / Microsoft Defender Antivirus Cloud Protection Service is the online community that helps you choose how to respond to potential threats. The community also helps stop the spread of new malicious software infections. You can choose to send basic or additional information about detected software. Additional information helps Microsoft create new definitions and help it to protect your computer. Possible options are: - (0x0) Disabled (default) - (0x1) Basic membership - (0x2) Advanced membership Basic membership will send basic information to Microsoft about software that has been detected including where the software came from the actions that you apply or that are applied automatically and whether the actions were successful. Advanced membership in addition to basic information will send more information to Microsoft about malicious software spyware and potentially unwanted software including the location of the software file names how the software operates and how it has impacted your computer. The recommended state for this setting is: Disabled.'
     rationale: "The information that would be sent can include things like location of detected items on your computer if harmful software was removed. The information would be automatically collected and sent. In some instances personal information might unintentionally be sent to Microsoft. However, Microsoft states that it will not use this information to identify you or contact you. For privacy reasons in high security environments, it is best to prevent these data submissions altogether."
@@ -5256,7 +5270,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting'
 
-  - id: 15319
+  - id: 15320
     title: "Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'"
     description: "This policy setting controls the state for the Attack Surface Reduction (ASR) rules. The recommended state for this setting is: Enabled."
     rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
@@ -5273,7 +5287,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
 
-  - id: 15320
+  - id: 15321
     title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured"
     description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes) e6db77e5-3df2-4cf1-b95a-636979351e5b - 1 (Block persistence through WMI event subscription) Note: More information on ASR rules can be found at the following link: Use Attack surface reduction rules to prevent malware infection | Microsoft Docs"
     rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploit-seeking malware to infect machines."
@@ -5310,7 +5324,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2 -> 1'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4 -> 1'
 
-  - id: 15321
+  - id: 15322
     title: "Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'"
     description: "This policy setting controls Microsoft Defender Exploit Guard network protection. The recommended state for this setting is: Enabled: Block."
     rationale: "This setting can help prevent employees from using any application to access dangerous domains that may host phishing scams, exploit-hosting sites, and other malicious content on the Internet."
@@ -5330,7 +5344,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
 
-  - id: 15322
+  - id: 15323
     title: "Ensure 'Enable file hash computation feature' is set to 'Enabled'"
     description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled."
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny."
@@ -5344,7 +5358,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation -> 1'
 
-  - id: 15323
+  - id: 15324
     title: "Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'"
     description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled."
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
@@ -5357,7 +5371,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
-  - id: 15324
+  - id: 15325
     title: "Ensure 'Turn off real-time protection' is set to 'Disabled'"
     description: "This policy setting configures real-time protection prompts for known malware detection. Microsoft Defender Antivirus alerts you when malware or potentially unwanted software attempts to install itself or to run on your computer. The recommended state for this setting is: Disabled."
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
@@ -5370,7 +5384,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
-  - id: 15325
+  - id: 15326
     title: "Ensure 'Turn on behavior monitoring' is set to 'Enabled'"
     description: "This policy setting allows you to configure behavior monitoring for Microsoft Defender Antivirus. The recommended state for this setting is: Enabled."
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
@@ -5384,7 +5398,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
-  - id: 15326
+  - id: 15327
     title: "Ensure 'Turn on script scanning' is set to 'Enabled'"
     description: "This policy setting allows script scanning to be turned on/off. Script scanning intercepts scripts then scans them before they are executed on the system. The recommended state for this setting is: Enabled."
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
@@ -5398,7 +5412,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
-  - id: 15327
+  - id: 15328
     title: "Ensure 'Configure Watson events' is set to 'Disabled'"
     description: "This policy setting allows you to configure whether or not Watson events are sent. The recommended state for this setting is: Disabled."
     rationale: "Watson events are the reports that get sent to Microsoft when a program or service crashes or fails, including the possibility of automatic submission. Preventing this information from being sent can help reduce privacy concerns."
@@ -5415,7 +5429,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts -> 1'
 
-  - id: 15328
+  - id: 15329
     title: "Ensure 'Scan removable drives' is set to 'Enabled'"
     description: "This policy setting allows you to manage whether or not to scan for malicious software and unwanted software in the contents of removable drives, such as USB flash drives, when running a full scan. The recommended state for this setting is: Enabled."
     rationale: "It is important to ensure that any present removable drives are always included in any type of scan, as removable drives are more likely to contain malicious software brought in to the enterprise managed environment from an external, unmanaged computer."
@@ -5437,7 +5451,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning -> 0'
 
-  - id: 15329
+  - id: 15330
     title: "Ensure 'Turn on e-mail scanning' is set to 'Enabled'"
     description: "This policy setting allows you to configure e-mail scanning. When e-mail scanning is enabled, the engine will parse the mailbox and mail files, according to their specific format, in order to analyze the mail bodies and attachments. Several e-mail formats are currently supported, for example: pst (Outlook), dbx, mbx, mime (Outlook Express), binhex (Mac). The recommended state for this setting is: Enabled."
     rationale: "Incoming e-mails should be scanned by an antivirus solution such as Microsoft Defender Antivirus, as email attachments are a commonly used attack vector to infiltrate computers with malicious software."
@@ -5458,7 +5472,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning -> 0'
 
-  - id: 15330
+  - id: 15331
     title: "Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'"
     description: "This policy setting controls detection and action for Potentially Unwanted Applications (PUA), which are sneaky unwanted application bundlers or their bundled applications, that can deliver adware or malware. The recommended state for this setting is: Enabled: Block. For more information, see this link: Block potentially unwanted applications with Microsoft Defender Antivirus | Microsoft Docs"
     rationale: "Potentially unwanted applications can increase the risk of your network being infected with malware, cause malware infections to be harder to identify, and can waste IT resources in cleaning up the applications. They should be blocked from installation."
@@ -5472,7 +5486,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
-  - id: 15331
+  - id: 15332
     title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'"
     description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled."
     rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable 3rd-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative."
@@ -5486,7 +5500,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware -> 0'
 
-  - id: 15332
+  - id: 15333
     title: "Ensure 'Enable news and interests on the taskbar' is set to 'Disabled'"
     description: "This policy setting specifies whether the news and interests feature is allowed on the device. The recommended state for this setting is: Disabled."
     rationale: "Due to privacy concerns, apps and features such as news and interests on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to 3rd parties, such as Microsoft. In addition, the app may display inappropriate news and interests within the feed."
@@ -5499,7 +5513,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds -> EnableFeeds'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds -> EnableFeeds -> 0'
 
-  - id: 15333
+  - id: 15334
     title: "Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'"
     description: "This policy setting lets you prevent apps and features from working with files on OneDrive using the Next Generation Sync Client. The recommended state for this setting is: Enabled."
     rationale: "Enabling this setting prevents users from accidentally (or intentionally) uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client. Note: This security concern applies to any cloud-based file storage application installed on a workstation, not just the one supplied with Windows."
@@ -5519,7 +5533,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC -> 1'
 
-  - id: 15334
+  - id: 15335
     title: "Ensure 'Turn off Push To Install service' is set to 'Enabled'"
     description: "This policy setting controls whether users can push Apps to the device from the Microsoft Store App running on other devices or the web. The recommended state for this setting is: Enabled."
     rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
@@ -5534,7 +5548,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> 1'
 
-  - id: 15335
+  - id: 15336
     title: "Ensure 'Do not allow passwords to be saved' is set to 'Enabled'"
     description: "This policy setting helps prevent Remote Desktop clients from saving passwords on a computer. The recommended state for this setting is: Enabled. Note: If this policy setting was previously configured as Disabled or Not configured, any previously saved passwords will be deleted the first time a Remote Desktop client disconnects from any server."
     rationale: "An attacker with physical access to the computer may be able to break the protection guarding saved passwords. An attacker who compromises a user's account and connects to their computer could use saved passwords to gain access to additional hosts."
@@ -5550,7 +5564,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> 1'
 
-  - id: 15336
+  - id: 15337
     title: "Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'"
     description: "This policy setting allows you to configure remote access to computers by using Remote Desktop Services. The recommended state for this setting is: Disabled."
     rationale: "Any account with the Allow log on through Remote Desktop Services user right can log on to the remote console of the computer. If you do not restrict access to legitimate users who need to log on to the console of the computer, unauthorized users could download and execute malicious code to elevate their privileges."
@@ -5567,7 +5581,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections -> 1'
 
-  - id: 15337
+  - id: 15338
     title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled'"
     description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computers Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions dont currently support UI Automation redirection."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
@@ -5580,7 +5594,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
-  - id: 15338
+  - id: 15339
     title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
     description: "This policy setting specifies whether to prevent the redirection of data to client COM ports from the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for COM port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
@@ -5597,7 +5611,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> 1'
 
-  - id: 15339
+  - id: 15340
     title: "Ensure 'Do not allow drive redirection' is set to 'Enabled'"
     description: "This policy setting prevents users from sharing the local drives on their client computers to Remote Desktop Servers that they access. Mapped drives appear in the session folder tree in Windows Explorer in the following format: \\\\TSClient\\<driveletter>$ If local drives are shared they are left vulnerable to intruders who want to exploit the data that is stored on them. The recommended state for this setting is: Enabled."
     rationale: "Data could be forwarded from the user's Remote Desktop Services session to the user's local computer without any direct user interaction. Malicious software already present on a compromised server would have direct and stealthy disk access to the user's local computer during the Remote Desktop session."
@@ -5617,7 +5631,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> 1'
 
-  - id: 15340
+  - id: 15341
     title: "Ensure 'Do not allow location redirection' is set to 'Enabled'"
     description: "This policy setting controls the redirection of location data to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for location data redirection within a Remote Desktop session is rare, so it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
@@ -5630,7 +5644,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir -> 1'
 
-  - id: 15341
+  - id: 15342
     title: "Ensure 'Do not allow LPT port redirection' is set to 'Enabled'"
     description: "This policy setting specifies whether to prevent the redirection of data to client LPT ports during a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for LPT port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
@@ -5647,7 +5661,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> 1'
 
-  - id: 15342
+  - id: 15343
     title: "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'"
     description: "This policy setting allows you to control the redirection of supported Plug and Play devices, such as Windows Portable Devices, to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for Plug and Play device redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
@@ -5664,7 +5678,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> 1'
 
-  - id: 15343
+  - id: 15344
     title: "Ensure 'Always prompt for password upon connection' is set to 'Enabled'"
     description: "This policy setting specifies whether Remote Desktop Services always prompts the client computer for a password upon connection. You can use this policy setting to enforce a password prompt for users who log on to Remote Desktop Services, even if they already provided the password in the Remote Desktop Connection client. The recommended state for this setting is: Enabled."
     rationale: "Users have the option to store both their username and password when they create a new Remote Desktop Connection shortcut. If the server that runs Remote Desktop Services allows users who have used this feature to log on to the server but not enter their password, then it is possible that an attacker who has gained physical access to the user's computer could connect to a Remote Desktop Server through the Remote Desktop Connection shortcut, even though they may not know the user's password."
@@ -5681,7 +5695,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword -> 1'
 
-  - id: 15344
+  - id: 15345
     title: "Ensure 'Require secure RPC communication' is set to 'Enabled'"
     description: "This policy setting allows you to specify whether Remote Desktop Services requires secure Remote Procedure Call (RPC) communication with all clients or allows unsecured communication. You can use this policy setting to strengthen the security of RPC communication with clients by allowing only authenticated and encrypted requests. The recommended state for this setting is: Enabled."
     rationale: "Allowing unsecure RPC communication can exposes the server to man in the middle attacks and data disclosure attacks."
@@ -5698,7 +5712,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
-  - id: 15345
+  - id: 15346
     title: "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'"
     description: "This policy setting specifies whether to require the use of a specific security layer to secure communications between clients and RD Session Host servers during Remote Desktop Protocol (RDP) connections. The recommended state for this setting is: Enabled: SSL. Note: In spite of this setting being labeled SSL, it is actually enforcing Transport Layer Security (TLS) version 1.0, not the older (and less secure) SSL protocol."
     rationale: "The native Remote Desktop Protocol (RDP) encryption is now considered a weak protocol, so enforcing the use of stronger Transport Layer Security (TLS) encryption for all RDP communications between clients and RD Session Host servers is preferred."
@@ -5712,7 +5726,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
-  - id: 15346
+  - id: 15347
     title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
     description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled."
     rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security."
@@ -5726,7 +5740,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
-  - id: 15347
+  - id: 15348
     title: "Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'"
     description: "This policy setting specifies whether to require the use of a specific encryption level to secure communications between client computers and RD Session Host servers during Remote Desktop Protocol (RDP) connections. This policy only applies when you are using native RDP encryption. However, native RDP encryption (as opposed to SSL encryption) is not recommended. This policy does not apply to SSL encryption. The recommended state for this setting is: Enabled: High Level."
     rationale: "If Remote Desktop client connections that use low level encryption are allowed, it is more likely that an attacker will be able to decrypt any captured Remote Desktop Services network traffic."
@@ -5740,7 +5754,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 3'
 
-  - id: 15348
+  - id: 15349
     title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'"
     description: "This policy setting allows you to specify the maximum amount of time that an active Remote Desktop Services session can be idle (without user input) before it is automatically disconnected. The recommended state for this setting is: Enabled: 15 minutes or less, but not Never (0)."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of inactive sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service."
@@ -5759,7 +5773,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare <= 900000'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare != 0'
 
-  - id: 15349
+  - id: 15350
     title: "Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'"
     description: "This policy setting allows you to configure a time limit for disconnected Remote Desktop Services sessions. The recommended state for this setting is: Enabled: 1 minute."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of disconnected but still active sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service. This setting is important to ensure a disconnected session is properly terminated."
@@ -5776,7 +5790,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> 60000'
 
-  - id: 15350
+  - id: 15351
     title: "Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'"
     description: "This policy setting specifies whether Remote Desktop Services retains a user's per-session temporary folders at logoff. The recommended state for this setting is: Disabled."
     rationale: "Sensitive information could be contained inside the temporary folders and visible to other administrators that log into the system."
@@ -5793,7 +5807,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit -> 1'
 
-  - id: 15351
+  - id: 15352
     title: "Ensure 'Prevent downloading of enclosures' is set to 'Enabled'"
     description: "This policy setting prevents the user from having enclosures (file attachments) downloaded from an RSS feed to the user's computer. The recommended state for this setting is: Enabled."
     rationale: "Allowing attachments to be downloaded through the RSS feed can introduce files that could have malicious intent."
@@ -5812,7 +5826,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload -> 1'
 
-  - id: 15352
+  - id: 15353
     title: "Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'"
     description: "This policy setting allows search and Cortana to search cloud sources like OneDrive and SharePoint. The recommended state for this setting is: Enabled: Disable Cloud Search."
     rationale: "Due to privacy concerns, data should never be sent to any 3rd party since this data could contain sensitive information."
@@ -5828,7 +5842,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
 
-  - id: 15353
+  - id: 15354
     title: "Ensure 'Allow Cortana' is set to 'Disabled'"
     description: "This policy setting specifies whether Cortana is allowed on the device. The recommended state for this setting is: Disabled."
     rationale: "If Cortana is enabled, sensitive information could be contained in search history and sent out to Microsoft."
@@ -5849,7 +5863,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortana'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortana -> 0'
 
-  - id: 15354
+  - id: 15355
     title: "Ensure 'Allow Cortana above lock screen' is set to 'Disabled'"
     description: "This policy setting determines whether or not the user can interact with Cortana using speech while the system is locked. The recommended state for this setting is: Disabled."
     rationale: "Access to any computer resource should not be allowed when the device is locked."
@@ -5868,7 +5882,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortanaAboveLock'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortanaAboveLock -> 0'
 
-  - id: 15355
+  - id: 15356
     title: "Ensure 'Allow indexing of encrypted files' is set to 'Disabled'"
     description: "This policy setting controls whether encrypted items are allowed to be indexed. When this setting is changed, the index is rebuilt completely. Full volume encryption (such as BitLocker Drive Encryption or a non-Microsoft solution) must be used for the location of the index to maintain security for encrypted files. The recommended state for this setting is: Disabled."
     rationale: "Indexing and allowing users to search encrypted files could potentially reveal confidential data stored within the encrypted files."
@@ -5885,7 +5899,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> 0'
 
-  - id: 15356
+  - id: 15357
     title: "Ensure 'Allow search and Cortana to use location' is set to 'Disabled'"
     description: "This policy setting specifies whether search and Cortana can provide location aware search and Cortana results. The recommended state for this setting is: Disabled."
     rationale: "In an enterprise managed environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out."
@@ -5906,7 +5920,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowSearchToUseLocation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowSearchToUseLocation -> 0'
 
-  - id: 15357
+  - id: 15358
     title: "Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'"
     description: "The Key Management Service (KMS) is a Microsoft license activation method that entails setting up a local server to store the software licenses. The KMS server itself needs to connect to Microsoft to activate the KMS service, but subsequent on-network clients can activate Microsoft Windows OS and/or their Microsoft Office via the KMS server instead of connecting directly to Microsoft. This policy setting lets you opt-out of sending KMS client activation data to Microsoft automatically. The recommended state for this setting is: Enabled."
     rationale: "Even though the KMS licensing method does not require KMS clients to connect to Microsoft, they still send KMS client activation state data to Microsoft automatically. Preventing this information from being sent can help reduce privacy concerns in high security environments."
@@ -5921,7 +5935,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
 
-  - id: 15358
+  - id: 15359
     title: "Ensure 'Disable all apps from Microsoft Store' is set to 'Disabled'"
     description: "This setting configures the launch of all apps from the Microsoft Store that came pre- installed or were downloaded. The recommended state for this setting is: Disabled. Note: This policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions. Note #2: The name of this setting and the Enabled/Disabled values are incorrectly worded - logically, the title implies that configuring it to Enabled will disable all apps from the Microsoft Store, and configuring it to Disabled will enable all apps from the Microsoft Store. The opposite is true (and is consistent with the GPME help text). This is a logical wording mistake by Microsoft in the Administrative Template."
     rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
@@ -5935,7 +5949,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableStoreApps'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableStoreApps -> 1'
 
-  - id: 15359
+  - id: 15360
     title: "Ensure 'Only display the private store within the Microsoft Store' is set to 'Enabled'"
     description: "This policy setting denies access to the retail catalog in the Microsoft Store, but displays the private store. The recommended state for this setting is: Enabled."
     rationale: "Allowing the private store will allow an organization to control the apps that users have access to add to a system. This will help ensure that unapproved malicious apps are not running on a system."
@@ -5949,7 +5963,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RequirePrivateStoreOnly'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RequirePrivateStoreOnly -> 1'
 
-  - id: 15360
+  - id: 15361
     title: "Ensure 'Turn off Automatic Download and Install of updates' is set to 'Disabled'"
     description: "This setting enables or disables the automatic download and installation of Microsoft Store app updates. The recommended state for this setting is: Disabled."
     rationale: "Keeping your system properly patched can help protect against 0 day vulnerabilities."
@@ -5970,7 +5984,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> AutoDownload'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> AutoDownload -> 4'
 
-  - id: 15361
+  - id: 15362
     title: "Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled'"
     description: "Enables or disables the Microsoft Store offer to update to the latest version of Windows. The recommended state for this setting is: Enabled."
     rationale: "Unplanned OS upgrades can lead to more preventable support calls. The IT department should be managing and approving all upgrades and updates."
@@ -5991,7 +6005,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableOSUpgrade'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableOSUpgrade -> 1'
 
-  - id: 15362
+  - id: 15363
     title: "Ensure 'Turn off the Store application' is set to 'Enabled'"
     description: "This setting denies or allows access to the Store application. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet and MSKB 3135657, this policy setting does not apply to any Windows 10 editions other than Enterprise and Education."
     rationale: "Only applications approved by an IT department should be installed. Allowing users to install 3rd party applications can lead to missed patches and potential zero day vulnerabilities."
@@ -6011,7 +6025,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore -> 1'
 
-  - id: 15363
+  - id: 15364
     title: "Ensure 'Allow widgets' is set to 'Disabled'"
     description: "This policy setting specifies whether the widgets feature is allowed on the device. The widgets feature provides information such as, weather, news, sports, stocks, traffic, and entertainment (not an inclusive list). The recommended state for this setting is: Disabled."
     rationale: "Due to privacy concerns, apps and features such as widgets on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to 3rd parties, such as Microsoft."
@@ -6024,7 +6038,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Dsh -> AllowNewsAndInterests'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Dsh -> AllowNewsAndInterests -> 0'
 
-  - id: 15364
+  - id: 15365
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'"
     description: "This policy setting allows you to manage the behavior of Windows Defender SmartScreen. Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled. The recommended state for this setting is: Enabled: Warn and prevent bypass."
     rationale: "Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
@@ -6045,7 +6059,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
 
-  - id: 15365
+  - id: 15366
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'"
     description: "This setting lets you decide whether to turn on SmartScreen Filter. SmartScreen Filter provides warning messages to help protect your employees from potential phishing scams and malicious software. The recommended state for this setting is: Enabled."
     rationale: "SmartScreen serves an important purpose as it helps to warn users of possible malicious sites and files. Allowing users to turn off this setting can make the browser become more vulnerable to compromise."
@@ -6065,7 +6079,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> EnabledV9'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> EnabledV9 -> 1'
 
-  - id: 15366
+  - id: 15367
     title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'"
     description: "This setting lets you decide whether employees can override the SmartScreen Filter warnings about potentially malicious websites. The recommended state for this setting is: Enabled."
     rationale: "SmartScreen will warn an employee if a website is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
@@ -6085,7 +6099,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride -> 1'
 
-  - id: 15367
+  - id: 15368
     title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'"
     description: "This setting enables or disables the Windows Game Recording and Broadcasting features. The recommended state for this setting is: Disabled."
     rationale: "If this setting is allowed, users could record and broadcast session info to external sites, which is both a risk of accidentally exposing sensitive company data (on-screen) outside the company as well as a privacy concern."
@@ -6100,7 +6114,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR -> 0'
 
-  - id: 15368
+  - id: 15369
     title: "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'"
     description: "This policy setting determines whether suggested apps in Windows Ink Workspace are allowed. The recommended state for this setting is: Disabled."
     rationale: "This Microsoft feature is designed to collect data and suggest apps based on that data collected. Disabling this setting will help ensure your data is not shared with any third party."
@@ -6115,7 +6129,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
 
-  - id: 15369
+  - id: 15370
     title: "Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Disabled' but not 'Enabled: On'"
     description: "This policy setting determines whether Windows Ink items are allowed above the lock screen. The recommended state for this setting is: Enabled: On, but disallow access above lock OR Disabled."
     rationale: "Allowing any apps to be accessed while system is locked is not recommended. If this feature is permitted, it should only be accessible once a user authenticates with the proper credentials."
@@ -6130,7 +6144,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
 
-  - id: 15370
+  - id: 15371
     title: "Ensure 'Allow user control over installs' is set to 'Disabled'"
     description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user. The recommended state for this setting is: Disabled."
     rationale: "In an enterprise managed environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
@@ -6148,7 +6162,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
 
-  - id: 15371
+  - id: 15372
     title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'"
     description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure. The recommended state for this setting is: Disabled."
     rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that creates a new local account that belongs to the local built-in Administrators group, adds their current account to the local built-in Administrators group, installs malicious software, or performs other unauthorized activities."
@@ -6166,7 +6180,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
-  - id: 15372
+  - id: 15373
     title: "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'"
     description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user. The recommended state for this setting is: Disabled."
     rationale: "Suppressing the system warning can pose a security risk and increase the attack surface on the system."
@@ -6184,7 +6198,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
 
-  - id: 15373
+  - id: 15374
     title: "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'"
     description: "This policy setting controls whether a device will automatically sign-in the last interactive user after Windows Update restarts the system. The recommended state for this setting is: Disabled."
     rationale: "Disabling this feature will prevent the caching of user's credentials and unauthorized use of the device, and also ensure the user is aware of the restart."
@@ -6201,7 +6215,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
-  - id: 15374
+  - id: 15375
     title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
     description: "This policy setting enables logging of all PowerShell script input to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel. The recommended state for this setting is: Enabled. Note: If logging of Script Block Invocation Start/Stop Events is enabled (option box checked), PowerShell will log additional events when invocation of a command, script block, function, or script starts or stops. Enabling this option generates a high volume of event logs. CIS has intentionally chosen not to make a recommendation for this option, since it generates a large volume of events. If an organization chooses to enable the optional setting (checked), this also conforms to the benchmark."
     rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
@@ -6216,7 +6230,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
-  - id: 15375
+  - id: 15376
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
     description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts. The recommended state for this setting is: Disabled."
     rationale: "If this setting is enabled there is a risk that passwords could get stored in plain text in the PowerShell_transcript output file."
@@ -6230,7 +6244,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
 
-  - id: 15376
+  - id: 15377
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication. The recommended state for this setting is: Disabled. Note: Clients that use Microsoft's Exchange Online service (Office 365) will require an exception to this recommendation, to instead have this setting set to Enabled. Exchange Online uses Basic authentication over HTTPS, and so the Exchange Online authentication traffic will still be safely encrypted."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -6251,7 +6265,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
-  - id: 15377
+  - id: 15378
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -6272,7 +6286,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
 
-  - id: 15378
+  - id: 15379
     title: "Ensure 'Disallow Digest authentication' is set to 'Enabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication. The recommended state for this setting is: Enabled."
     rationale: "Digest authentication is less robust than other authentication methods available in WinRM, an attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -6293,7 +6307,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
 
-  - id: 15379
+  - id: 15380
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client. The recommended state for this setting is: Disabled."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -6314,7 +6328,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
 
-  - id: 15380
+  - id: 15381
     title: "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port. The recommended state for this setting is: Disabled."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
@@ -6334,7 +6348,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
 
-  - id: 15381
+  - id: 15382
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -6355,7 +6369,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
 
-  - id: 15382
+  - id: 15383
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service will allow RunAs credentials to be stored for any plug-ins. The recommended state for this setting is: Enabled. Note: If you enable and then disable this policy setting, any values that were previously configured for RunAsPassword will need to be reset."
     rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk of account compromise slightly. For example, if you forget to lock your desktop before leaving it unattended for a few minutes another person could access not only the desktop of your computer but also any hosts you manage via WinRM with cached RunAs credentials."
@@ -6371,7 +6385,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
 
-  - id: 15383
+  - id: 15384
     title: "Ensure 'Allow Remote Shell Access' is set to 'Disabled'"
     description: "This policy setting allows you to manage configuration of remote access to all supported shells to execute scripts and commands. The recommended state for this setting is: Disabled. Note: The GPME help text for this setting is incorrectly worded, implying that configuring it to Enabled will reject new Remote Shell connections, and setting it to Disabled will allow Remote Shell connections. The opposite is true (and is consistent with the title of the setting). This is a wording mistake by Microsoft in the Administrative Template."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Shell on trusted networks and when feasible employ additional controls such as IPsec."
@@ -6391,7 +6405,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
 
-  - id: 15384
+  - id: 15385
     title: "Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'"
     description: "This policy setting enables or disables clipboard sharing with the Windows sandbox. The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary \"clean install\" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host."
     rationale: "Disabling copy and paste decreases the attack surface exposed by the Windows Sandbox and possible exposure of untrusted applications to the internal network."
@@ -6404,7 +6418,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection -> 0'
 
-  - id: 15385
+  - id: 15386
     title: "Ensure 'Allow networking in Windows Sandbox' is set to 'Disabled'"
     description: "This policy setting enables or disables networking in the Windows Sandbox. Networking is achieved by creating a virtual switch on the host, and connecting the Windows Sandbox to it via a virtual Network Interface Card (NIC). The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary \"clean install\" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host."
     rationale: "Disabling network access decreases the attack surface exposed by the Windows Sandbox and exposure of untrusted applications to the internal network. Note: Per Microsoft, enabling networking in the Windows Sandbox can expose untrusted applications to the internal network."
@@ -6417,7 +6431,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowNetworking'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowNetworking -> 0'
 
-  - id: 15386
+  - id: 15387
     title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'"
     description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Security settings. The recommended state for this setting is: Enabled."
     rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
@@ -6433,7 +6447,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
 
-  - id: 15387
+  - id: 15388
     title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'"
     description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation. The recommended state for this setting is: Disabled. Note: This setting applies only when you configure Automatic Updates to perform scheduled update installations. If you configure the Configure Automatic Updates setting to Disabled, this setting has no effect."
     rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
@@ -6455,7 +6469,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
 
-  - id: 15388
+  - id: 15389
     title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'"
     description: "This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: 2 - Notify for download and auto install (Notify before downloading any updates) 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting \"Configure automatic updating:\" has 4 possible values - all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a 3rd-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the 3rd-party patching process."
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
@@ -6469,7 +6483,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate '
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
-  - id: 15389
+  - id: 15390
     title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
     description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected."
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
@@ -6482,7 +6496,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 4'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
-  - id: 15390
+  - id: 15391
     title: "Ensure 'Remove access to “Pause updates” feature' is set to 'Enabled'"
     description: "This policy removes access to \"Pause updates\" feature. The recommended state for this setting is: Enabled."
     rationale: "In order to ensure security and system updates are applied, system administrators should control when updates are applied to systems."
@@ -6496,7 +6510,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess -> 1'
 
-  - id: 15391
+  - id: 15392
     title: "Ensure 'Manage preview builds' is set to 'Disabled'"
     description: "This policy setting manage which updates that are receive prior to the update being released. Dev Channel: Ideal for highly technical users. Insiders in the Dev Channel will receive builds from our active development branch that is earliest in a development cycle. These builds are not matched to a specific Windows 10 release. Beta Channel: Ideal for feature explorers who want to see upcoming Windows 10 features. Your feedback will be especially important here as it will help our engineers ensure key issues are fixed before a major release. Release Preview Channel (default): Insiders in the Release Preview Channel will have access to the upcoming release of Windows 10 prior to it being released to the world. These builds are supported by Microsoft. The Release Preview Channel is where we recommend companies preview and validate upcoming Windows 10 releases before broad deployment within their organization. The recommended state for this setting is: Disabled. Note: Preview Build enrollment requires a telemetry level setting of 2 or higher and your domain registered on insider.windows.com. For additional information on Preview Builds, see: https://aka.ms/wipforbiz"
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
@@ -6515,7 +6529,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
-  - id: 15392
+  - id: 15393
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
     description: "This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered). Note: If the \"Allow Diagnostic Data\" (formerly \"Allow Telemetry\") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying \"Dual Scan\" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog Note #3: Prior to Windows 10 R1703, values above 180 days are not recognized by the OS. Starting with Windows 10 R1703, the maximum number of days you can defer is 365 days."
     rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
@@ -6536,7 +6550,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
 
-  - id: 15393
+  - id: 15394
     title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'"
     description: "This settings controls when Quality Updates are received. The recommended state for this setting is: Enabled: 0 days. Note: If the \"Allow Diagnostic Data\" (formerly \"Allow Telemetry\") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying “Dual Scan” - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog"
     rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
