@@ -1,5 +1,79 @@
 [
     {
+        "description": "[Coverage] Regex, only backslash without modifiers ('*', '+')",
+        "batch_test": [
+            {
+                "description": "Without capture group, match all",
+                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Without capture group, parcial match",
+                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
+                "log": "hi waz",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Without capture group, parcial match and then match all",
+                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
+                "log": "hi waz hi wazu.",
+                "end_match": ".",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all",
+                "pattern": "\\w(\\w\\s\\S)\\S(\\S\\S\\S)",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "i w",
+                    "zuh"
+                ]
+            },
+            {
+                "description": "With capture group, parcial match",
+                "pattern": "(\\w\\w)\\s\\S\\S\\S\\S\\S",
+                "log": "hi waz",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, parcial match and then match all",
+                "pattern": "(\\w\\w)\\s(\\S\\S\\S\\S\\S)",
+                "log": "hi waz hi wazuh.",
+                "end_match": "h.",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "With capture group, parcial match and then match all",
+                "__knownIssue:": "The capture groups cannot be adjacent to each other",
+                "ignore_result": true,
+                "pattern": "(\\w\\w\\s)(\\S\\S\\S\\S\\S)",
+                "log": "hi waz hi wazuh.",
+                "end_match": "h.",
+                "captured_groups": [
+                    "hi ",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "With capture group, parcial match and then match all (1 group)",
+                "pattern": "(\\w\\w\\s\\S\\S\\S\\S\\S)\\p$",
+                "log": "hi waz hi wazuh.",
+                "end_match": ".",
+                "captured_groups": [
+                    "hi wazuh"
+                ]
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Regex, only charmap without backslash",
         "batch_test": [
             {
