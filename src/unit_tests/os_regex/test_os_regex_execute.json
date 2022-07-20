@@ -1,5 +1,96 @@
 [
     {
+        "description": "[Coverage] Regex, only backslash with '+' modifier.",
+        "batch_test": [
+            {
+                "description": "Without capture group, match all",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "\\w+",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "(\\w+)",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Without capture group, match all (And flags)",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^\\w+$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^(\\w+)$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Without capture group, parcial match (And flags)",
+                "pattern": "^\\w+$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "pattern": "^(\\w+)$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Without capture group, match one character.",
+                "pattern": "\\w+",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match one character.",
+                "pattern": "(\\w+)",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Without capture group, match all (And flags), match one character.",
+                "pattern": "^\\w+$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags), match one character.",
+                "pattern": "^(\\w+)$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Regex, only backslash without modifiers ('*', '+')",
         "batch_test": [
             {
