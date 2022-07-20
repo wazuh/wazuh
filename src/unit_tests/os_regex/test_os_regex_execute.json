@@ -94,6 +94,20 @@
                 ]
             },
             {
+                "description": "Match pattern but fail because log dont ends.",
+                "pattern": "hi wazuh$",
+                "log": "hi wazuh 123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match pattern (with group) but fail because log dont ends.",
+                "pattern": "(hi) (wazuh)$",
+                "log": "hi wazuh 123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
                 "description": "Dont match at all .pattern[0] != '('.",
                 "pattern": "hi wazuh",
                 "log": "bye wazuh",
