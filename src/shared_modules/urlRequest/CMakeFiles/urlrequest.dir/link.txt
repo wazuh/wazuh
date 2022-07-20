@@ -1,0 +1,2 @@
+/usr/bin/ar qc liburlrequest.a CMakeFiles/urlrequest.dir/src/HTTPRequest.cpp.o CMakeFiles/urlrequest.dir/src/UNIXSocketRequest.cpp.o
+/usr/bin/ranlib liburlrequest.a

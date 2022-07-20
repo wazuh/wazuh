@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++17 -g CMakeFiles/urlrequest_testtool.dir/main.cpp.o -o urlrequest_testtool   -L/home/sebas/Documents/wazuh/wazuh/src/external/curl/lib/.libs  -Wl,-rpath,/home/sebas/Documents/wazuh/wazuh/src/external/curl/lib/.libs ../liburlrequest.a -lcurl 
