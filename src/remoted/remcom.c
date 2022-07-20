@@ -98,7 +98,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     cJSON *last_id_json = NULL;
     const char *json_err;
     int *agents_ids;
-    int count = 0;
+    int count;
     int sock = -1;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
@@ -113,7 +113,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
             if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
                 agents_json = cJSON_GetObjectItem(parameters_json, "agents");
                 if (cJSON_IsArray(agents_json)) {
-                    if (cJSON_GetArraySize(agents_json) <  MAX_NUM_AGENTS_STATS) {
+                    if (cJSON_GetArraySize(agents_json) <  REM_MAX_NUM_AGENTS_STATS) {
                         agents_ids = json_parse_agents(agents_json);
                         if (agents_ids != NULL) {
                             *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
@@ -127,9 +127,10 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                 } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
                     last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
                     if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
-                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, &count, MAX_NUM_AGENTS_STATS);
+                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, REM_MAX_NUM_AGENTS_STATS);
                         if (agents_ids != NULL) {
-                            if (count < MAX_NUM_AGENTS_STATS) {
+                            for (count = 0; agents_ids[count] != -1; count++);
+                            if (count < REM_MAX_NUM_AGENTS_STATS) {
                                 *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
                             } else {
                                 *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], rem_create_agents_state_json(agents_ids));

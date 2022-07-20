@@ -12,7 +12,7 @@
 #ifndef STATE_A_H
 #define STATE_A_H
 
-#define MAX_NUM_AGENTS_STATS 75
+#define ASYS_MAX_NUM_AGENTS_STATS 75
 
 #include <stdint.h>
 #include "wazuh_db/helpers/wdb_global_helpers.h"
@@ -464,6 +464,7 @@ cJSON* asys_create_state_json();
 
 /**
  * @brief Create a JSON object with all the analysisd agents state information
+ * @param agents_ids Ids of the requested agents
  * @return JSON object
  */
 cJSON* asys_create_agents_state_json(int* agents_ids);

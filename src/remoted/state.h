@@ -11,7 +11,7 @@
 #ifndef STATEREMOTE_H
 #define STATEREMOTE_H
 
-#define MAX_NUM_AGENTS_STATS 150
+#define REM_MAX_NUM_AGENTS_STATS 150
 
 #include <stdint.h>
 #include "wazuh_db/helpers/wdb_global_helpers.h"

@@ -116,13 +116,10 @@ void json_strip(char * json) {
 }
 
 int* json_parse_agents(const cJSON* agents) {
-    char *output = NULL;
     int *agent_ids = NULL;
     int agents_size = 0;
     int agent_index = 0;
     int error_flag = 0;
-
-    os_calloc(OS_MAXSTR, sizeof(char), output);
 
     agents_size = cJSON_GetArraySize(agents);
 
@@ -135,7 +132,6 @@ int* json_parse_agents(const cJSON* agents) {
             agent_ids[agent_index] = agent->valueint;
             agent_ids[agent_index + 1] = OS_INVALID;
         } else {
-            sprintf(output, "Agent id not recognized");
             error_flag = 1;
         }
         agent_index++;
@@ -145,8 +141,6 @@ int* json_parse_agents(const cJSON* agents) {
         os_free(agent_ids);
         return NULL;
     }
-
-    os_free(output);
 
     return agent_ids;
 }

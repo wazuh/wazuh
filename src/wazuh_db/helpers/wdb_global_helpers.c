@@ -1141,7 +1141,7 @@ time_t get_agent_date_added(int agent_id) {
     return 0;
 }
 
-int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int *count, int limit) {
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int *array = NULL;
@@ -1170,8 +1170,6 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
     if (!sock) {
         wdbc_close(&aux_sock);
     }
-
-    for (*count = 0; array[(*count)] != -1; (*count)++);
 
     return array;
 }
