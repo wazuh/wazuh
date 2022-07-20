@@ -13,11 +13,11 @@
 
 using namespace testing;
 
-class RequestWrapper: public IRequestImplementator
+class RequestWrapper final: public IRequestImplementator
 {
     public:
         RequestWrapper() = default;
-        ~RequestWrapper() override = default;
+        virtual ~RequestWrapper() = default;
 
         MOCK_METHOD(void, setOption, (const OPTION_REQUEST_TYPE optIndex, void *ptr), (override));
         MOCK_METHOD(void, setOption, (const OPTION_REQUEST_TYPE optIndex, const std::string &opt), (override));
@@ -33,18 +33,17 @@ void UrlRequestUnitTest::SetUp()
 void UrlRequestUnitTest::TearDown()
 { }
 
-const OPTION_REQUEST_TYPE optCustomRequest { OPT_CUSTOMREQUEST };
-const OPTION_REQUEST_TYPE optUnixSocketPath { OPT_UNIX_SOCKET_PATH };
-const OPTION_REQUEST_TYPE optFailOnError { OPT_FAILONERROR };
-const OPTION_REQUEST_TYPE optUrl { OPT_URL };
-const OPTION_REQUEST_TYPE optCainfo { OPT_CAINFO };
-const OPTION_REQUEST_TYPE optTimeout { OPT_TIMEOUT };
-const OPTION_REQUEST_TYPE optWriteData { OPT_WRITEDATA };
-const OPTION_REQUEST_TYPE optUserAgent { OPT_USERAGENT };
-const OPTION_REQUEST_TYPE optPostFields { OPT_POSTFIELDS };
-const OPTION_REQUEST_TYPE optWriteFunction { OPT_WRITEFUNCTION };
-const OPTION_REQUEST_TYPE optPostFieldSize { OPT_POSTFIELDSIZE };
-const long zero { 0 };
+constexpr OPTION_REQUEST_TYPE optCustomRequest { OPT_CUSTOMREQUEST };
+constexpr OPTION_REQUEST_TYPE optUnixSocketPath { OPT_UNIX_SOCKET_PATH };
+constexpr OPTION_REQUEST_TYPE optUrl { OPT_URL };
+constexpr OPTION_REQUEST_TYPE optCainfo { OPT_CAINFO };
+constexpr OPTION_REQUEST_TYPE optTimeout { OPT_TIMEOUT };
+constexpr OPTION_REQUEST_TYPE optWriteData { OPT_WRITEDATA };
+constexpr OPTION_REQUEST_TYPE optUserAgent { OPT_USERAGENT };
+constexpr OPTION_REQUEST_TYPE optPostFields { OPT_POSTFIELDS };
+constexpr OPTION_REQUEST_TYPE optWriteFunction { OPT_WRITEFUNCTION };
+constexpr OPTION_REQUEST_TYPE optPostFieldSize { OPT_POSTFIELDSIZE };
+constexpr long zero { 0 };
 
 TEST_F(UrlRequestUnitTest, GetFileHttp)
 {

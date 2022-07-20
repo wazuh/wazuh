@@ -23,17 +23,27 @@
 
 #include "HTTPRequest.hpp"
 
-class ComponentTest : public ::testing::Test
+class ComponentTestInterface : public ::testing::Test
 {
     protected:
 
-        ComponentTest() = default;
-        virtual ~ComponentTest() = default;
+        ComponentTestInterface() = default;
+        virtual ~ComponentTestInterface() = default;
 
         void SetUp() override;
         void TearDown() override;
 };
 
+class ComponentTestInternalParameters : public ::testing::Test
+{
+    protected:
+
+        ComponentTestInternalParameters() = default;
+        virtual ~ComponentTestInternalParameters() = default;
+
+        void SetUp() override;
+        void TearDown() override;
+};
 
 #endif // _COMPONENT_TEST_H
 
