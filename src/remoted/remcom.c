@@ -28,11 +28,11 @@ typedef enum _error_codes {
     ERROR_UNRECOGNIZED_COMMAND,
     ERROR_EMPTY_PARAMATERS,
     ERROR_EMPTY_SECTION,
+    ERROR_UNRECOGNIZED_SECTION,
     ERROR_INVALID_AGENTS,
     ERROR_EMPTY_AGENTS,
     ERROR_EMPTY_LASTID,
-    ERROR_TOO_MANY_AGENTS,
-    ERROR_UNRECOGNIZED_SECTION
+    ERROR_TOO_MANY_AGENTS
 } error_codes;
 
 const char * error_messages[] = {
@@ -43,11 +43,11 @@ const char * error_messages[] = {
     [ERROR_UNRECOGNIZED_COMMAND] = "Unrecognized command",
     [ERROR_EMPTY_PARAMATERS] = "Empty parameters",
     [ERROR_EMPTY_SECTION] = "Empty section",
+    [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section",
     [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
     [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
     [ERROR_EMPTY_LASTID] = "Empty last id",
-    [ERROR_TOO_MANY_AGENTS] = "Too many agents",
-    [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section"
+    [ERROR_TOO_MANY_AGENTS] = "Too many agents"
 };
 
 /**
@@ -98,7 +98,7 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     cJSON *last_id_json = NULL;
     const char *json_err;
     int *agents_ids;
-    int count;
+    int count = 0;
     int sock = -1;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
