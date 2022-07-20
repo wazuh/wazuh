@@ -326,32 +326,34 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     configPath = os.path.join(utils.currentPath(),
                               "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-    if target == "winagent":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-        build_tools.makeDeps(targetName="agent", srcOnly=False)
-        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
-        build_tools.cleanFolder(moduleName=moduleName,
-                                additionalFolder="build")
+    ### Uncomment after close https://github.com/wazuh/wazuh/issues/11025
+    # if target == "winagent":
+    #     build_tools.cleanAll()
+    #     build_tools.cleanExternals()
+    #     build_tools.makeDeps(targetName="agent", srcOnly=False)
+    #     build_tools.makeTarget(targetName="agent", tests=False, debug=True)
+    #     build_tools.cleanFolder(moduleName=moduleName,
+    #                             additionalFolder="build")
     if moduleName != "shared_modules/utils":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
-    if moduleName == "syscheckd":
-        runTestToolForWindows(moduleName=moduleName,
-                              testToolConfig=smokeTestConfig)
-        runTestToolCheck(moduleName=moduleName)
-    if moduleName != "syscheckd":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-    if target != "winagent":
-        utils.printHeader(moduleName=moduleName,
-                          headerKey="winagentTests")
-        build_tools.makeDeps(targetName="winagent",
-                             srcOnly=False)
-        build_tools.makeTarget(targetName="winagent",
-                               tests=True,
-                               debug=True)
-        runTests(moduleName=moduleName)
+    ### Uncomment after close https://github.com/wazuh/wazuh/issues/11025
+    # if moduleName == "syscheckd":
+    #     runTestToolForWindows(moduleName=moduleName,
+    #                           testToolConfig=smokeTestConfig)
+    #     runTestToolCheck(moduleName=moduleName)
+    # if moduleName != "syscheckd":
+    #     build_tools.cleanAll()
+    #     build_tools.cleanExternals()
+    # if target != "winagent":
+    #     utils.printHeader(moduleName=moduleName,
+    #                       headerKey="winagentTests")
+    #     build_tools.makeDeps(targetName="winagent",
+    #                          srcOnly=False)
+    #     build_tools.makeTarget(targetName="winagent",
+    #                            tests=True,
+    #                            debug=True)
+    #     runTests(moduleName=moduleName)
     if clean:
         utils.deleteLogs(moduleName=moduleName)
     utils.printGreen(msg="[RTR: PASSED]",
