@@ -1,5 +1,360 @@
 [
     {
+        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does not include the map characters of the current token and has no modifier.",
+        "batch_test": [
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character",
+                "pattern": "\\w+\\s",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all",
+                "pattern": "\\w+\\s",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture group.",
+                "pattern": "(\\w+)\\s",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all.",
+                "pattern": "(\\w+\\s)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. Parcial capture group case.",
+                "pattern": "(\\w+)\\s",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character",
+                "pattern": "\\w+ ",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all",
+                "pattern": "\\w+ ",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture group.",
+                "pattern": "(\\w+) ",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture all.",
+                "pattern": "(\\w+ )",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. Parcial capture group case.",
+                "pattern": "(\\w+) ",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all",
+                "pattern": "\\w+\\s1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture group.",
+                "pattern": "(\\w+)\\s1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture all.",
+                "pattern": "(\\w+\\s)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here ==  -1. Match all. Parcial capture group case.",
+                "pattern": "(\\w+)\\s1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match. 1 character",
+                "pattern": "\\w+\\s1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match",
+                "pattern": "\\w+ 1",
+                "log": "wazuh 123",
+                "end_match": "123",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match. 1 character + capture group.",
+                "pattern": "(\\w+) 1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match. 1 character + capture all.",
+                "pattern": "(\\w+ )1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match. Parcial capture group case.",
+                "pattern": "(\\w+) 1",
+                "log": "wazuh 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character (With flags).",
+                "pattern": "^\\w+\\s$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
+                "pattern": "^\\w+\\s$",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture group. (With flags).",
+                "pattern": "^(\\w+)\\s$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
+                "pattern": "^(\\w+\\s)$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all. Parcial capture group case. (With flags).",
+                "pattern": "^(\\w+)\\s$",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character (With flags).",
+                "pattern": "^\\w+ $",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all (With flags).",
+                "pattern": "^\\w+ $",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture group (With flags).",
+                "pattern": "^(\\w+) $",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture all (With flags).",
+                "pattern": "^(\\w+ )$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. Parcial capture group case (With flags).",
+                "pattern": "^(\\w+) $",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags) before log.",
+                "debug" : true,
+                "ignore_result": true,
+                "pattern": "^\\w+ $",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": [
+                ]
+            },
+            {
+                "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags and capture all) before log.",
+                "debug" : true,
+                "ignore_result": true,
+                "pattern": "^(\\w+ )$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": [
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Coverage] Regex, only backslash with '+' modifier.",
+        "batch_test": [
+            {
+                "description": "Without capture group, match all",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "\\w+",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "(\\w+)",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Without capture group, match all (And flags)",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^\\w+$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^(\\w+)$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Without capture group, parcial match (And flags)",
+                "pattern": "^\\w+$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "pattern": "^(\\w+)$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Without capture group, match one character.",
+                "pattern": "\\w+",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match one character.",
+                "pattern": "(\\w+)",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Without capture group, match all (And flags), match one character.",
+                "pattern": "^\\w+$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags), match one character.",
+                "pattern": "^(\\w+)$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Regex, only backslash with '+' modifier.",
         "batch_test": [
             {
