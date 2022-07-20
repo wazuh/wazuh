@@ -363,10 +363,8 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                     if (org_fail = wm_github_get_fail_by_org_and_type(github_config->fails,
                         current->org_name, event_types[event_types_it]), org_fail && org_fail->fails) {
-                        #ifndef __clang_analyzer__
                         mtinfo(WM_GITHUB_LOGTAG, "Github organization '%s' and event type '%s', connected successfully.",
                             current->org_name, event_types[event_types_it]);
-                        #endif
                         org_fail->fails = 0;
                     }
                 }
@@ -392,7 +390,7 @@ STATIC wm_github_fail* wm_github_get_fail_by_org_and_type(wm_github_fail *fails,
             continue;
         }
 
-        if (!strncmp(current->org_name, org_name, strlen(org_name)) && ((!event_type && !current->event_type) ||
+        if (!strncmp(current->org_name, org_name, strlen(org_name)) && (!current->event_type ||
             (event_type && current->event_type && !strncmp(current->event_type, event_type, strlen(event_type))))) {
             target_org = 1;
         } else {
