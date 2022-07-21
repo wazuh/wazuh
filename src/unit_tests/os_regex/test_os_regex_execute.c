@@ -113,6 +113,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         if (!test_case->ignore_result) {
             assert_false(true);
         }
+        free(regex);
         return;
     }
 
