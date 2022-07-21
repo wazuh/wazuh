@@ -3,12 +3,13 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+from wazuh.core import common
 from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
 from wazuh.core.exception import WazuhException, WazuhResourceNotFound
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.stats import get_daemons_stats_, get_daemons_stats_socket, hourly_, totals_, weekly_
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -83,7 +84,42 @@ def weekly():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_daemons_stats(filename):
+def get_daemons_stats(daemons_list: list = None):
+    """Get statistical information from the specified daemons.
+    If the list is empty, the stats from all daemons will be retrieved.
+
+    Parameters
+    ----------
+    daemons_list : list
+        List of the daemons to get statistical information from.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Dictionary with the stats of the input file.
+    """
+    available_daemons_stats = ['wazuh-remoted', 'wazuh-analysisd', 'wazuh-db']
+    daemon_socket_mapping = {'wazuh-remoted': common.REMOTED_SOCKET,
+                             'wazuh-analysisd': common.ANALYSISD_SOCKET,
+                             'wazuh-db': common.WDB_SOCKET}
+    daemons_list = daemons_list or available_daemons_stats
+    result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
+                                      some_msg='Could not read statistical information for some daemons',
+                                      none_msg='Could not read statistical information for any daemon')
+
+    for daemon in daemons_list:
+        try:
+            result.affected_items.append(get_daemons_stats_socket(daemon_socket_mapping[daemon]))
+        except WazuhException as e:
+            result.add_failed_item(id_=daemon, error=e)
+
+    result.total_affected_items = len(result.affected_items)
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def deprecated_get_daemons_stats(filename):
     """Get daemons stats from an input file.
 
     Parameters
@@ -100,7 +136,7 @@ def get_daemons_stats(filename):
         all_msg='Statistical information for each node was successfully read',
         some_msg='Could not read statistical information for some nodes',
         none_msg='Could not read statistical information for any node'
-        )
+    )
     result.affected_items = get_daemons_stats_(filename)
     result.total_affected_items = len(result.affected_items)
 

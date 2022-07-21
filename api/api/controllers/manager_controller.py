@@ -108,6 +108,33 @@ async def get_configuration(request, pretty=False, wait_for_complete=False, sect
     return response
 
 
+async def get_daemon_stats(request, pretty: bool = False, wait_for_complete: bool = False, daemons_list: list = None):
+    """Get Wazuh statistical information from the specified manager's daemons.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    daemons_list : list
+        List of the daemons to get statistical information from.
+    """
+    daemons_list = daemons_list or []
+    f_kwargs = {'daemons_list': daemons_list}
+
+    dapi = DistributedAPI(f=stats.get_daemons_stats,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'])
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
     """Get manager's or local_node's stats.
 
@@ -193,7 +220,7 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'filename': common.ANALYSISD_STATS}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -214,7 +241,7 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'filename': common.REMOTED_STATS}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,

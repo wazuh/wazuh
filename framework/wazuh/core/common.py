@@ -233,6 +233,7 @@ MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 
 
 # ================================================ Wazuh path - Sockets ================================================
+ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
 AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
 EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')

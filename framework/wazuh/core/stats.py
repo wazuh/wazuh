@@ -6,8 +6,8 @@ import os
 import re
 
 from wazuh.core import common, utils
+from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.wazuh_socket import WazuhSocket
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -117,6 +117,46 @@ def totals_(date=utils.get_utc_now()):
     return affected
 
 
+def get_daemons_stats_socket(socket: str) -> dict:
+    """Send message to Wazuh socket to get statistical information.
+
+    Parameters
+    ----------
+    socket : str
+        Full path of the socket to communicate with.
+
+    Raises
+    ------
+    WazuhInternalError (1121)
+        If there was an error when trying to connect to the socket.
+
+    Returns
+    -------
+    dict
+        Dictionary with daemon's statistical information.
+    """
+    # Create message
+    full_message = wazuh_socket.create_wazuh_socket_message(origin={'module': common.origin_module.get()},
+                                                            command='getstats', parameters={})
+
+    # Connect to socket
+    try:
+        s = wazuh_socket.WazuhSocketJSON(socket)
+    except Exception:
+        raise WazuhInternalError(1121, extra_message=socket)
+
+    # Send message and receive socket response
+    s.send(full_message)
+    response = s.receive()
+    s.close()
+    try:
+        response['timestamp'] = utils.get_date_from_timestamp(response['timestamp'])
+    except KeyError:
+        pass
+
+    return response
+
+
 def get_daemons_stats_(filename):
     """Get daemons stats from an input file.
 
@@ -183,7 +223,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
 
     # Socket connection
     try:
-        s = WazuhSocket(dest_socket)
+        s = wazuh_socket.WazuhSocket(dest_socket)
     except Exception:
         raise WazuhInternalError(1121)
 

@@ -18,6 +18,7 @@ _array_names = re.compile(r'^[\w\-.%]+(,[\w\-.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
+_daemon_names = re.compile(r'^wazuh-analysisd$|^wazuh-remoted$|^wazuh-db$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[\w.\-]+$')
 _group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[\w.\-]+$')
@@ -356,6 +357,11 @@ def format_wazuh_key(value):
 @draft4_format_checker.checks("wazuh_version")
 def format_wazuh_version(value):
     return check_exp(value, _wazuh_version)
+
+
+@draft4_format_checker.checks("daemon_names")
+def format_daemon_names(value):
+    return check_exp(value, _daemon_names)
 
 
 @draft4_format_checker.checks("date")

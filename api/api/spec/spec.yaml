@@ -1522,6 +1522,11 @@ components:
       description: "Agent ID|all"
       format: numbers_or_all
 
+    DaemonName:
+      type: string
+      description: "Daemon name"
+      format: daemon_names
+
     NodeID:
       type: string
       description: "Node ID"
@@ -3796,6 +3801,14 @@ components:
       schema:
         type: string
         format: alphanumeric
+    daemons_list:
+      in: query
+      name: daemons_list
+      description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/DaemonName'
     decoder_name:
       in: query
       name: decoder_names
@@ -8639,6 +8652,76 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /cluster/{node_id}/daemon_stats:
+    get:
+      tags:
+        - Cluster
+      summary: "Get Wazuh daemon stats from a cluster node"
+      description: "Return Wazuh statistical information from specified daemons in a specified cluster node"
+      operationId: api.controllers.cluster_controller.get_daemon_stats_node
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/daemons_list'
+      responses:
+        '200':
+          description: "Wazuh daemon stats"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhStats'
+              example:
+                data:
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: [ ]
+                  total_failed_items: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+
   /cluster/{node_id}/stats:
     get:
       tags:
@@ -10056,6 +10139,74 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /manager/daemon_stats:
+    get:
+      tags:
+      - Manager
+      summary: "Get Wazuh daemon stats"
+      description: "Return Wazuh statistical information from specified daemons"
+      operationId: api.controllers.manager_controller.get_daemon_stats
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/daemons_list'
+      responses:
+        '200':
+          description: "Wazuh daemon stats"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
+              example:
+                data:
+                  affected_items:
+                    - hour: 15
+                      alerts:
+                        - sigid: 5303
+                          level: 3
+                          times: 1
+                        - sigid: 5501
+                          level: 3
+                          times: 4
+                        - sigid: 221
+                          level: 0
+                          times: 653
+                      totalAlerts: 658
+                      events: 4387
+                      firewall: 0
+                    - hour: 16
+                      alerts:
+                        - sigid: 5521
+                          level: 0
+                          times: 1
+                        - sigid: 530
+                          level: 0
+                          times: 120
+                      totalAlerts: 121
+                      events: 4379
+                      syscheck: 0
+                      firewall: 0
+                  total_affected_items: 2
+                  failed_items: []
+                  total_failed_items: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
