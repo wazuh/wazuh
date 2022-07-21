@@ -6,9 +6,7 @@ include_directories(${SRC_FOLDER}/external/cpp-httplib/)
 
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 add_subdirectory(benchmark)
 add_subdirectory(component)
-add_subdirectory(fuzzing)
 add_subdirectory(unit)
