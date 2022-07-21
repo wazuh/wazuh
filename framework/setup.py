@@ -40,7 +40,7 @@ class InstallCommand(install):
 
 
 setup(name='wazuh',
-      version='4.3.6',
+      version='4.3.7',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',
