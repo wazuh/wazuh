@@ -320,9 +320,9 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             w_free_expression_t(&r_node->ruleinfo->dstip);
             r_node->ruleinfo->dstip = newrule->dstip;
 #ifdef LIBGEOIP_ENABLED
-            w_free_expression_t(&ruleinfo->srcgeoip);
+            w_free_expression_t(&r_node->ruleinfo->srcgeoip);
             r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
-            w_free_expression_t(&ruleinfo->dstgeoip);
+            w_free_expression_t(&r_node->ruleinfo->dstgeoip);
             r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
 #endif
             w_free_expression_t(&r_node->ruleinfo->srcport);

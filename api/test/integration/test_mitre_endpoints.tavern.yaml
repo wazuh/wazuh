@@ -951,7 +951,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        wait_for_complete: true
         limit: 1
         offset: 0
     response:
@@ -1560,7 +1559,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        wait_for_complete: true
         limit: 1
         offset: 0
     response:

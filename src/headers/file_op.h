@@ -396,16 +396,6 @@ FILE * wfopen(const char * pathname, const char * mode);
 
 
 /**
- * @brief Delete a line from a file.
- *
- * @param file Path of the file.
- * @param line Line to be removed.
- * @return 0 on success, -1 on error.
- */
-int w_remove_line_from_file(char *file, int line);
-
-
-/**
  * @brief Compress a file in GZIP.
  *
  * @param filesrc Source file.

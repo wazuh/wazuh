@@ -13,9 +13,6 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh-api')
 
-MITRE_TECHNIQUES_TIMEOUT = 30
-MITRE_SOFTWARE_TIMEOUT = 15
-
 
 async def get_metadata(request, pretty=False, wait_for_complete=False):
     """Return the metadata of the MITRE's database
@@ -212,8 +209,7 @@ async def get_techniques(request, technique_ids=None, pretty=False, wait_for_com
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          api_timeout=MITRE_TECHNIQUES_TIMEOUT)
+                          rbac_permissions=request['token_info']['rbac_policies'])
 
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -382,8 +378,7 @@ async def get_software(request, software_ids=None, pretty=False, wait_for_comple
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          api_timeout=MITRE_SOFTWARE_TIMEOUT)
+                          rbac_permissions=request['token_info']['rbac_policies'])
 
     data = raise_if_exc(await dapi.distribute_function())
 
