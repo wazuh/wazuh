@@ -451,7 +451,7 @@ class AgentsReconnect:
             max_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
             agents_to_reconnect = self.predict_distribution(nodes_info, max_assigns)['agents']
             self.logger.info(f'It will take {self.expected_rounds} rounds to reconnect {total_agents_to_reconnect} '
-                             f'agents. Starting a small test round for {len(agents_to_reconnect)} agents.')
+                             f'agents. Starting a test round for {len(agents_to_reconnect)} agents.')
 
         elif self.round_counter < self.expected_rounds:
             self.round_counter += 1

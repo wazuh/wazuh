@@ -1202,7 +1202,7 @@ class Master(server.AbstractServer):
             while not await self.agents_reconnect.check_nodes_stability():
                 if self.agents_reconnect.current_phase == agents_reconnect.AgentsReconnectionPhases.NOT_ENOUGH_NODES:
                     logger.info(
-                        f'There are no workers. Sleeping '
+                        f'Not enough nodes to check. Sleeping '
                         f'{self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"]} '
                         f'seconds.')
                     await asyncio.sleep(
