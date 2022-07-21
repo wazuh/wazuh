@@ -3,7 +3,7 @@
     "description": "RedHat JSON",
     "remotes": [
         {
-            "url": "https://access.redhat.com/labs/securitydataapi/cve.json",
+            "url": "https://access.redhat.com/labs/securitydataapi/cve.json?after={after}&per_page={per_page}&page={page}",
             "request": "api",
             "type": "json",
             "parameters": {
