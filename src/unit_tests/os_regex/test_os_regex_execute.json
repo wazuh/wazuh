@@ -1,5 +1,138 @@
 [
     {
+        "description": "[Coverage] Regex, only backslash with '*' modifier.",
+        "batch_test": [
+            {
+                "description": "Without capture group, match all",
+                "ignore_result": true,
+                "pattern": "\\w*",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Without capture group, match 0-0",
+                "ignore_result": true,
+                "__know_issue": "Return one byte before log starts ",
+                "skip_test": true,
+                "pattern": "\\d*",
+                "log": "wazuh",
+                "end_match": "wazuh",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all",
+                "ignore_result": true,
+                "pattern": "(\\w*)",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "With capture group, match 0-0",
+                "ignore_result": true,
+                "__know_issue": "Return one byte before log starts ",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "log": "wazuh",
+                "end_match": "wazuh",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Without capture group, match all (And flags)",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^\\w*$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "ignore_result": true,
+                "pattern": "^(\\w*)$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Without capture group, parcial match (And flags)",
+                "pattern": "^\\w*$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "pattern": "^(\\w*)$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Without capture group, match one character.",
+                "pattern": "\\w*",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match one character.",
+                "pattern": "(\\w*)",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Without capture group, match all (And flags), match one character.",
+                "pattern": "^\\w*$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags), match one character.",
+                "pattern": "^(\\w*)$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Without capture group, empty (And flags)",
+                "ignore_result": true,
+                "__know_issue": "Return one byte before log starts ",
+                "pattern": "^\\w*$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "With capture group, match 0-0. Empty string",
+                "ignore_result": true,
+                "__know_issue": "Return one byte before log starts ",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. st_error, error handling, parcial match and rewind.",
         "batch_test": [
             {
@@ -74,19 +207,19 @@
             },
             {
                 "description": "Save 6 token position, and restore the fifth. But the fifth should match with the next character.",
-                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+ \\w+6",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+ \\w+6",
                 "ignore_result": true,
-                "__knowIssue":"#XXXX The stacktrace has a static size",
+                "__knowIssue": "#XXXX The stacktrace has a static size",
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
                 "description": "Save 6 token position, and restore the sixth. But the sixth should match with the next character.",
-		"pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
                 "log": "z1 x2 x3 x4 x5 x6x6",
                 "ignore_result": true,
-                "__knowIssue":"#XXXX The stacktrace has a static size",
+                "__knowIssue": "#XXXX The stacktrace has a static size",
                 "end_match": "6",
                 "captured_groups": []
             }
@@ -114,14 +247,18 @@
                 "pattern": "(\\d+)\\w",
                 "log": "12",
                 "end_match": "2",
-                "captured_groups": ["1"]
+                "captured_groups": [
+                    "1"
+                ]
             },
             {
                 "description": "Min size: Minimum match with capture group",
                 "pattern": "\\d+(\\w)",
                 "log": "12",
                 "end_match": "2",
-                "captured_groups": ["2"]
+                "captured_groups": [
+                    "2"
+                ]
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern",
@@ -138,7 +275,9 @@
                 "pattern": "(\\d+)\\w",
                 "log": "12345",
                 "end_match": "5",
-                "captured_groups": ["1"]
+                "captured_groups": [
+                    "1"
+                ]
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern",
@@ -147,7 +286,9 @@
                 "pattern": "\\d+(\\w)",
                 "log": "12345",
                 "end_match": "5",
-                "captured_groups": ["5"]
+                "captured_groups": [
+                    "5"
+                ]
             },
             {
                 "description": "Min size: No match, no items in the log to consume (With flags).",
@@ -168,14 +309,18 @@
                 "pattern": "^(\\d+)\\w$",
                 "log": "12",
                 "end_match": "2",
-                "captured_groups": ["1"]
+                "captured_groups": [
+                    "1"
+                ]
             },
             {
                 "description": "Min size: Minimum match with capture group (With flags).",
                 "pattern": "^\\d+(\\w)$",
                 "log": "12",
                 "end_match": "2",
-                "captured_groups": ["2"]
+                "captured_groups": [
+                    "2"
+                ]
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
@@ -194,7 +339,9 @@
                 "pattern": "^(\\d+)\\w$",
                 "log": "12345",
                 "end_match": "5",
-                "captured_groups": ["1234"]
+                "captured_groups": [
+                    "1234"
+                ]
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
@@ -204,7 +351,9 @@
                 "pattern": "^\\d+(\\w)$",
                 "log": "12345",
                 "end_match": "5",
-                "captured_groups": ["5"]
+                "captured_groups": [
+                    "5"
+                ]
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
@@ -462,23 +611,21 @@
             },
             {
                 "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags) before log.",
-                "debug" : true,
+                "debug": true,
                 "ignore_result": true,
                 "pattern": "^\\w+ $",
                 "log": "wazuh -",
                 "end_match": null,
-                "captured_groups": [
-                ]
+                "captured_groups": []
             },
             {
                 "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags and capture all) before log.",
-                "debug" : true,
+                "debug": true,
                 "ignore_result": true,
                 "pattern": "^(\\w+ )$",
                 "log": "wazuh -",
                 "end_match": null,
-                "captured_groups": [
-                ]
+                "captured_groups": []
             }
         ]
     },
