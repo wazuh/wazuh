@@ -1,5 +1,98 @@
 [
     {
+        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. st_error, error handling, parcial match and rewind.",
+        "batch_test": [
+            {
+                "description": "Save 6 token position, and restore the first.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_11 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the second.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_22 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the third.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the fourth.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_3 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the fifth.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_3 wa_4 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the sixth.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_3 wa_4 wa_5 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the first. But the first should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1x1 x2 x3 x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the second. But the second should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2x2 x3 x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the third. But the third should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2x2 x3 x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the fourth. But the fourth should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2 x3 x4x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the fifth. But the fifth should match with the next character.",
+                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+ \\w+6",
+                "ignore_result": true,
+                "__knowIssue":"#XXXX The stacktrace has a static size",
+                "log": "z1 x2 x3 x4 x5x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Save 6 token position, and restore the sixth. But the sixth should match with the next character.",
+		"pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2 x3 x4 x5 x6x6",
+                "ignore_result": true,
+                "__knowIssue":"#XXXX The stacktrace has a static size",
+                "end_match": "6",
+                "captured_groups": []
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does include the map characters of the current token and has no modifier.",
         "batch_test": [
             {
