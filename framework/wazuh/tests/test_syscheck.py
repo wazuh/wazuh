@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,8 +12,8 @@ import pytest
 
 from wazuh.tests.util import InitWDBSocketMock
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -29,6 +29,7 @@ with patch('wazuh.core.common.ossec_uid'):
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_agent_data_path = os.path.join(test_data_path, 'agent')
 
 
 # Retrieve used parameters in mocked method
@@ -58,28 +59,36 @@ test_result = [
 ]
 
 
-@pytest.mark.parametrize('agent_list, status_list, expected_result', [
-    (['002', '001'], [{'status': status} for status in ['active', 'active']], test_result[0]),
-    (['003', '001', '008'], [{'status': status} for status in ['active', 'disconnected', 'active']], test_result[1]),
-    (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
-     test_result[2]),
+@pytest.mark.parametrize('agent_list, failed_items, status_list, expected_result', [
+    (['002', '001'], [{'items': []}], ['active', 'active'], test_result[0]),
+    (['003', '001', '008'], [{'items': [{'id': '001', 'status': ['disconnected']}]}],
+     ['active', 'disconnected', 'active'], test_result[1]),
+    (['001', '002', '003'], [{'items': [{'id': '002', 'status': ['disconnected']},
+                                        {'id': '003', 'status': ['disconnected']}]}],
+     ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_data_path, 'client.keys'))
+@patch('wazuh.syscheck.WazuhDBQueryAgents.__exit__')
+@patch('wazuh.syscheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')
 @patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
 @patch('wazuh.syscheck.WazuhQueue.close')
-def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
+def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agent_exit_mock,
+                      agent_list, failed_items, status_list, expected_result):
     """Test function `run` from syscheck module.
 
     Parameters
     ----------
     agent_list : list
         List of agent IDs.
+    agent_list : list
+        List of failed items.
     status_list : list
         List of agent statuses.
     expected_result : list
         List of dicts with expected results for every test.
     """
-    with patch('wazuh.syscheck.Agent.get_basic_information', side_effect=status_list):
+    with patch('wazuh.syscheck.WazuhDBQueryAgents.run', return_value=failed_items[0]):
         result = run(agent_list=agent_list)
         for args, kwargs in callable_list:
             assert (isinstance(a, str) for a in args)
@@ -94,41 +103,16 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_li
         assert result.total_failed_items == expected_result['total_failed_items']
 
 
-@pytest.mark.parametrize('agent_list, status_list, expected_result', [
-    (['001'], {'status': 'active'}, test_result[3])
-])
-@patch('wazuh.syscheck.WazuhQueue', side_effect=WazuhError(1000))
-def test_syscheck_run_exception(wazuh_queue_mock, agent_list, status_list, expected_result):
-    """Test function `run` from syscheck module.
-
-    It will force an exception.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agent IDs.
-    status_list : list
-        List of agent statuses.
-    expected_result : list
-        List of dicts with expected results for every test.
-    """
-    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=status_list):
-        result = run(agent_list=agent_list)
-        assert isinstance(result, AffectedItemsWazuhResult)
-        assert result.affected_items == expected_result['affected_items']
-        assert result.total_affected_items == expected_result['total_affected_items']
-        if result.failed_items:
-            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
-        assert result.total_failed_items == expected_result['total_failed_items']
-
-
+@pytest.mark.parametrize('agent_version', ('v3.11.9',))
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001', '002'], test_result[0], ['001', '002']),
     (['003', '001', '008'], test_result[1], ['003', '008'])
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
-def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+@patch('wazuh.core.wdb.WazuhDBConnection.close')
+def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list,
+                        agent_version):
     """Test function `clear` from syscheck module.
 
     Parameters
@@ -140,7 +124,11 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
     agent_info_list : list
         List of agent IDs that `syscheck.get_agents_info` will return when mocked.
     """
-    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+    with patch('wazuh.syscheck.get_agents_info', return_value=set(agent_info_list)), \
+            patch('wazuh.syscheck.WazuhDBQueryAgents') as mock_wdbqa:
+        mock_wdbqa.return_value.run.return_value = {
+            'items': [{'id': ag_id, 'version': agent_version} for ag_id in agent_info_list]}
+
         result = clear(agent_list=agent_list)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.affected_items == expected_result['affected_items']
@@ -150,14 +138,22 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
         else:
             assert result.failed_items == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
+        wdb_close_mock.assert_called()
 
 
+@pytest.mark.parametrize('agent_version, expected_version_errcode', [
+    ('v3.12.0', 1760),
+    ('Wazuh v4.2.0', 1760),
+    (None, 1015)
+])
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001'], test_result[3], ['001']),
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
-def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+@patch('wazuh.core.wdb.WazuhDBConnection.close')
+def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, agent_list, expected_result,
+                                  agent_info_list, agent_version, expected_version_errcode):
     """Test function `clear` from syscheck module.
 
     It will force an exception.
@@ -171,8 +167,15 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
     agent_info_list : list
         List of agent IDs that `syscheck.get_agents_info` will return when mocked.
     """
-    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+    with patch('wazuh.syscheck.get_agents_info', return_value=set(agent_info_list)), \
+            patch('wazuh.syscheck.WazuhDBQueryAgents') as mock_wdbqa:
+        mock_wdbqa.return_value.run.return_value = {
+            'items': [{'id': ag_id, 'version': agent_version} for ag_id in agent_info_list]}
+
         result = clear(agent_list=agent_list)
+
+        w_error = next(iter(result.failed_items))
+        assert expected_version_errcode == w_error.code
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.affected_items == expected_result['affected_items']
         assert result.total_affected_items == expected_result['total_affected_items']
@@ -188,11 +191,12 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
     (['006'], {'version': 'Wazuh v3.9.4'}),
     (['004'], {}),
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
-def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, agent_id, wazuh_version):
+def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, exists_mock, agent_id, wazuh_version):
     """Test function `last_scan` from syscheck module.
 
     Parameters
@@ -204,7 +208,7 @@ def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, a
     """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
         with patch('wazuh.syscheck.glob',
-                   return_value=[os.path.join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
+                   return_value=[os.path.join(common.DATABASE_PATH_AGENTS, '{}.db'.format(agent_id[0]))]):
             result = last_scan(agent_id)
             assert isinstance(result, AffectedItemsWazuhResult)
             assert isinstance(result.affected_items, list)
@@ -246,11 +250,13 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['008'], ['file', 'value.name'], None, True),
     (['009'], ['value.name'], None, True),
     (['000'], ['attributes'], None, True),
-    (['000'], None, {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
+    (['000'], None,
+     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('socket.socket.connect')
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
-def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
+def test_syscheck_files(socket_mock, exists_mock, agent_id, select, filters, distinct):
     """Test function `files` from syscheck module.
 
     Parameters

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -19,7 +19,8 @@ void jqueue_init(file_queue * queue) {
  * Returns 0 on success or -1 on error.
  */
 int jqueue_open(file_queue * queue, int tail) {
-    strncpy(queue->file_name, isChroot() ? ALERTSJSON_DAILY : DEFAULTDIR ALERTSJSON_DAILY, MAX_FQUEUE);
+
+    strncpy(queue->file_name, ALERTSJSON_DAILY, MAX_FQUEUE);
 
     if (queue->fp) {
         fclose(queue->fp);
@@ -86,10 +87,10 @@ cJSON * jqueue_next(file_queue * queue) {
                 return NULL;
             }
 
+            clearerr(queue->fp);
             return jqueue_parse_json(queue);
 
         } else {
-            sleep(1);
             return NULL;
         }
     }
@@ -107,43 +108,61 @@ void jqueue_close(file_queue * queue) {
  * @param queue pointer to the file_queue struct
  * @post The flag variable may be set to CRALERT_READ_FAILED if the read operation got no data.
  * @post The read position is restored if failed to get a JSON object.
- * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
+ * @retval NULL No data read or could not get a valid JSON object or read overlong alert. Pointer to the JSON object otherwise.
  */
 cJSON * jqueue_parse_json(file_queue * queue) {
     cJSON * object = NULL;
     char buffer[OS_MAXSTR + 1];
+    int64_t initial_pos;
     int64_t current_pos;
+    int64_t offset;
     const char * jsonErrPtr;
     char * end;
 
-    current_pos = w_ftell(queue->fp);
+    initial_pos = w_ftell(queue->fp);
 
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
 
-        if (end = strchr(buffer, '\n'), end) {
+        offset = w_ftell(queue->fp);
+
+        if (end = buffer + offset - initial_pos - 1, *end == '\n') {
             *end = '\0';
 
             if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
-                queue->read_attempts = 0;
                 return object;
             }
-        }
 
-        // The read JSON is invalid
-        if (object) {
+            // The read JSON is invalid
             cJSON_Delete(object);
+
+            mwarn("Invalid JSON alert read from '%s': '%s'", queue->file_name, buffer);
+            return NULL;
         }
 
-        queue->read_attempts++;
-        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
+        current_pos = initial_pos;
 
-        if (queue->read_attempts < MAX_READ_ATTEMPTS) {
-            if (current_pos >= 0) {
-                fseek(queue->fp, current_pos, SEEK_SET);
+        while ((offset-current_pos) == OS_MAXSTR) {
+            if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
+
+                current_pos = offset;
+                offset = w_ftell(queue->fp);
+
+                if (buffer[offset - current_pos - 1] == '\n') {
+                    mwarn("Overlong JSON alert read from '%s'", queue->file_name);
+                    return NULL;
+                }
+
+            } else {
+                break;
             }
-        } else {
-            queue->read_attempts = 0;
-            merror("Invalid JSON alert read from '%s'. Skipping it.", queue->file_name);
+        }
+
+        mdebug2("Can't read from '%s'. Trying again", queue->file_name);
+
+        if (initial_pos >= 0) {
+            if (fseek(queue->fp, initial_pos, SEEK_SET) != 0) {
+                queue->flags = CRALERT_READ_FAILED;
+            }
         }
     } else {
         // Force the queue reload when the read fails

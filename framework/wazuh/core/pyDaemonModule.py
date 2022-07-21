@@ -1,11 +1,16 @@
 
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import glob
 import os
 import sys
+from os import path
+
+import psutil
+
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
 
@@ -54,20 +59,40 @@ def pyDaemon():
 
 
 def create_pid(name, pid):
-    filename = "{0}/{1}/{2}-{3}.pid".format(common.wazuh_path, common.os_pidfile, name, pid)
+    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     with open(filename, 'a') as fp:
         try:
-            fp.write("{0}\n".format(pid))
+            fp.write(f'{pid}\n')
             os.chmod(filename, 0o640)
         except OSError as e:
             raise WazuhInternalError(3002, str(e))
 
 
 def delete_pid(name, pid):
-    filename = "{0}/{1}/{2}-{3}.pid".format(common.wazuh_path, common.os_pidfile, name, pid)
+    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
+
     try:
-        if os.path.exists(filename):
+        if path.exists(filename):
             os.unlink(filename)
-    except OSError as e:
-        raise WazuhInternalError(3003, str(e))
+    except OSError:
+        pass
+
+
+def delete_child_pids(name, ppid, logger):
+    filenames = glob.glob(path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}*.pid'))
+
+    for process in psutil.Process(ppid).children(recursive=True):
+        try:
+            process.kill()
+        except psutil.Error:
+            logger.error(f'Error while trying to terminate the process with ID {process.pid}.')
+        except Exception as exc:
+            logger.error(f'Unhandled exception while trying to terminate the process with ID {process.pid}: {exc}')
+        for filename in filenames[:]:
+            if str(process.pid) in filename:
+                try:
+                    path.exists(filename) and os.unlink(filename)
+                except OSError:
+                    pass
+                filenames.remove(filename)

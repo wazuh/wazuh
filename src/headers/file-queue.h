@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,7 +13,6 @@
 
 #define MAX_FQUEUE  256
 #define FQ_TIMEOUT  5
-#define MAX_READ_ATTEMPTS   3
 
 /* File queue */
 typedef struct _file_queue {
@@ -21,7 +20,6 @@ typedef struct _file_queue {
     int year;
     int day;
     int flags;
-    int read_attempts;
 
     char mon[4];
     char file_name[MAX_FQUEUE + 1];

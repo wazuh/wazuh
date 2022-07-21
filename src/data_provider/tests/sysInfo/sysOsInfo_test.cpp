@@ -1,6 +1,6 @@
 /*
  * Wazuh SysOsInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 5, 2020.
  *
  * This program is free software; you can redistribute it
@@ -21,18 +21,19 @@ using ::testing::Return;
 
 class SysOsInfoProviderWrapper : public ISysOsInfoProvider
 {
-public:
-    SysOsInfoProviderWrapper() = default;
-    ~SysOsInfoProviderWrapper() = default;
-    MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, version, (), (const override));
-    MOCK_METHOD(std::string, majorVersion, (), (const override));
-    MOCK_METHOD(std::string, minorVersion, (), (const override));
-    MOCK_METHOD(std::string, build, (), (const override));
-    MOCK_METHOD(std::string, release, (), (const override));
-    MOCK_METHOD(std::string, machine, (), (const override));
-    MOCK_METHOD(std::string, nodeName, (), (const override));
-    MOCK_METHOD(std::string, getSerialNumber, (), (const override));
+    public:
+        SysOsInfoProviderWrapper() = default;
+        ~SysOsInfoProviderWrapper() = default;
+        MOCK_METHOD(std::string, name, (), (const override));
+        MOCK_METHOD(std::string, version, (), (const override));
+        MOCK_METHOD(std::string, majorVersion, (), (const override));
+        MOCK_METHOD(std::string, minorVersion, (), (const override));
+        MOCK_METHOD(std::string, build, (), (const override));
+        MOCK_METHOD(std::string, release, (), (const override));
+        MOCK_METHOD(std::string, displayVersion, (), (const override));
+        MOCK_METHOD(std::string, machine, (), (const override));
+        MOCK_METHOD(std::string, nodeName, (), (const override));
+        MOCK_METHOD(std::string, getSerialNumber, (), (const override));
 };
 
 
@@ -50,6 +51,7 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_CALL(*pOsInfoProvider, minorVersion()).WillOnce(Return("0"));
     EXPECT_CALL(*pOsInfoProvider, build()).WillOnce(Return("18362"));
     EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return("1903"));
+    EXPECT_CALL(*pOsInfoProvider, displayVersion()).WillOnce(Return("19H1"));
     EXPECT_CALL(*pOsInfoProvider, machine()).WillOnce(Return("x86_64"));
     EXPECT_CALL(*pOsInfoProvider, nodeName()).WillOnce(Return("DESKTOP-U7Q6UQV"));
     SysOsInfo::setOsInfo(spOsInfoProvider, output);
@@ -60,5 +62,6 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_EQ("0", output.at("os_minor"));
     EXPECT_EQ("Microsoft Windows 10 Home", output.at("os_name"));
     EXPECT_EQ("1903", output.at("os_release"));
+    EXPECT_EQ("19H1", output.at("os_display_version"));
     EXPECT_EQ("10.0.18362", output.at("os_version"));
 }

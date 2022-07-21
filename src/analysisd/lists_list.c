@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -89,11 +89,16 @@ ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field,
     new_rulelist_pt->filename = strdup(listname);
     new_rulelist_pt->dfield = field == RULE_DYNAMIC ? strdup(dfield) : NULL;
     new_rulelist_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+
     if ((new_rulelist_pt->db = OS_FindList(listname, l_node)) == NULL) {
-        new_rulelist_pt->loaded = 0;
-    } else {
-        new_rulelist_pt->loaded = 1;
+        os_free(new_rulelist_pt->filename);
+        os_free(new_rulelist_pt->dfield);
+        os_free(new_rulelist_pt);
+        return NULL;
     }
+    
+    new_rulelist_pt->loaded = 1;
+
     if (first_rule_list == NULL) {
         mdebug1("Adding First rulelist item: filename: %s field: %d lookup_type: %d",
                new_rulelist_pt->filename,

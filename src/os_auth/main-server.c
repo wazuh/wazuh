@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -28,17 +28,20 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
-#include "os_crypto/md5/md5_op.h"
+#include "key_request.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
 
 /* Prototypes */
-static void help_authd(void) __attribute((noreturn));
+static void help_authd(char * home_path) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
 static void* run_dispatcher(void *arg);
+
+/* Thread for remote server */
+static void* run_remote_server(void *arg);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -70,7 +73,7 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 
 /* Print help statement */
-static void help_authd()
+static void help_authd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
@@ -80,48 +83,19 @@ static void help_authd()
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHDPASS_PATH);
+    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
-    print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
-    print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
+    print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
+    print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
+    os_free(home_path);
     exit(1);
-}
-
-/* Generates a random and temporary shared pass to be used by the agents. */
-char *__generatetmppass()
-{
-    int rand1;
-    int rand2;
-    char *rand3;
-    char *rand4;
-    os_md5 md1;
-    os_md5 md3;
-    os_md5 md4;
-    char *fstring = NULL;
-    char str1[STR_SIZE +1];
-
-    rand1 = os_random();
-    rand2 = os_random();
-
-    rand3 = GetRandomNoise();
-    rand4 = GetRandomNoise();
-
-    OS_MD5_Str(rand3, -1, md3);
-    OS_MD5_Str(rand4, -1, md4);
-
-    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
-    OS_MD5_Str(str1, -1, md1);
-    fstring = strdup(md1);
-    free(rand3);
-    free(rand4);
-    return(fstring);
 }
 
 /* Function to use with SSL on non blocking socket,
@@ -153,23 +127,23 @@ int main(int argc, char **argv)
     int status;
     int run_foreground = 0;
     gid_t gid;
-    int client_sock = 0;
-    const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
-    struct sockaddr_in _nc;
-    struct timeval timeout;
-    socklen_t _ncl;
-    pthread_t thread_dispatcher = 0;
-    pthread_t thread_writer = 0;
-    pthread_t thread_local_server = 0;
-    fd_set fdset;
 
-    /* Initialize some variables */
-    bio_err = 0;
+    pthread_t thread_local_server = 0;
+    pthread_t thread_dispatcher = 0;
+    pthread_t thread_remote_server = 0;
+    pthread_t thread_writer = 0;
+    pthread_t thread_key_request = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+
+    /* Initialize some variables */
+    bio_err = 0;
 
     // Get options
 
@@ -191,7 +165,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'h':
-                    help_authd();
+                    help_authd(home_path);
                     break;
 
                 case 'd':
@@ -200,7 +174,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN,"-i");
+                    mwarn(DEPRECATED_OPTION_WARN, "-i", OSSECCONF);
                     break;
 
                 case 'g':
@@ -214,7 +188,7 @@ int main(int argc, char **argv)
                     if (!optarg) {
                         merror_exit("-D needs an argument");
                     }
-                    dir = optarg;
+                    snprintf(home_path, PATH_MAX, "%s", optarg);
                     break;
 
                 case 't':
@@ -272,11 +246,11 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN,"-F");
+                    mwarn(DEPRECATED_OPTION_WARN, "-F", OSSECCONF);
                     break;
 
                 case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN,"-r");
+                    mwarn(DEPRECATED_OPTION_WARN, "-r", OSSECCONF);
                     break;
 
                 case 'a':
@@ -288,14 +262,29 @@ int main(int argc, char **argv)
                     break;
 
                 default:
-                    help_authd();
+                    help_authd(home_path);
                     break;
             }
         }
 
+        /* Change working directory */
+        if (chdir(home_path) == -1) {
+            merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+        }
+
+        /* Set the Debug level */
+        if (debug_level == 0 && test_config == 0) {
+            /* Get debug level */
+            debug_level = getDefine_Int("authd", "debug", 0, 2);
+            while (debug_level != 0) {
+                nowDebug();
+                debug_level--;
+            }
+        }
+
         // Return -1 if not configured
-        if (authd_read_config(DEFAULTCPATH) < 0) {
-            merror_exit(CONFIG_ERROR, DEFAULTCPATH);
+        if (authd_read_config(OSSECCONF) < 0) {
+            merror_exit(CONFIG_ERROR, OSSECCONF);
         }
 
         // Overwrite arguments
@@ -317,22 +306,22 @@ int main(int argc, char **argv)
         }
 
         if (ciphers) {
-            free(config.ciphers);
+            os_free(config.ciphers);
             config.ciphers = strdup(ciphers);
         }
 
         if (ca_cert) {
-            free(config.agent_ca);
+            os_free(config.agent_ca);
             config.agent_ca = strdup(ca_cert);
         }
 
         if (server_cert) {
-            free(config.manager_cert);
+            os_free(config.manager_cert);
             config.manager_cert = strdup(server_cert);
         }
 
         if (server_key) {
-            free(config.manager_key);
+            os_free(config.manager_key);
             config.manager_key = strdup(server_key);
         }
 
@@ -346,22 +335,15 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    /* Exit here if disabled */
+    /* Exit here if disabled */
     if (config.flags.disabled) {
-        minfo("Daemon is disabled. Closing.");
+        minfo("Daemon is disabled. Closing.");
         exit(0);
     }
 
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("authd", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
-    switch(w_is_worker()){
+    switch(w_is_worker()) {
     case -1:
         merror("Invalid option at cluster configuration");
         exit(0);
@@ -372,9 +354,6 @@ int main(int argc, char **argv)
         config.worker_node = FALSE;
         break;
     }
-
-    /* Start daemon -- NB: need to double fork and setsid */
-    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
@@ -392,125 +371,15 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* chroot -- TODO: this isn't a chroot. Should also close
-     * unneeded open file descriptors (like stdin/stdout)
-     */
-    if (chdir(dir) == -1) {
-        merror_exit(CHDIR_ERROR, dir, errno, strerror(errno));
-    }
-
     /* Signal manipulation */
-
     {
         struct sigaction action = { .sa_handler = handler, .sa_flags = SA_RESTART };
         sigaction(SIGTERM, &action, NULL);
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
-    }
 
-    /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
-
-    if (config.flags.use_password) {
-
-        /* Checking if there is a custom password file */
-        fp = fopen(AUTHDPASS_PATH, "r");
-        buf[0] = '\0';
-        if (fp) {
-            buf[4096] = '\0';
-            char *ret = fgets(buf, 4095, fp);
-
-            if (ret && strlen(buf) > 2) {
-                /* Remove newline */
-                if (buf[strlen(buf) - 1] == '\n')
-                    buf[strlen(buf) - 1] = '\0';
-
-                authpass = strdup(buf);
-            }
-
-            fclose(fp);
-        }
-
-        if (buf[0] != '\0')
-            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHDPASS_PATH);
-        else {
-            /* Getting temporary pass. */
-            authpass = __generatetmppass();
-            minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
-        }
-    } else
-        minfo("Accepting connections on port %hu. No password required.", config.port);
-
-    /* Getting SSL cert. */
-
-    fp = fopen(KEYSFILE_PATH, "a");
-    if (!fp) {
-        merror("Unable to open %s (key file)", KEYSFILE_PATH);
-        exit(1);
-    }
-    fclose(fp);
-
-    /* Start SSL */
-    ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
-    if (!ctx) {
-        merror("SSL error. Exiting.");
-        exit(1);
-    }
-
-    /* Connect via TCP */
-    remote_sock = OS_Bindporttcp(config.port, NULL, 0);
-    if (remote_sock <= 0) {
-        merror(BIND_ERROR, config.port, errno, strerror(errno));
-        exit(1);
-    }
-
-    /* Before chroot */
-    srandom_init();
-    getuname();
-
-    if (gethostname(shost, sizeof(shost) - 1) < 0) {
-        strncpy(shost, "localhost", sizeof(shost) - 1);
-        shost[sizeof(shost) - 1] = '\0';
-    }
-
-    /* Chroot */
-    if (Privsep_Chroot(dir) < 0)
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
-
-    nowChroot();
-
-    if (config.timeout_sec || config.timeout_usec) {
-        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
-    } else {
-        mdebug1("Network timeout is disabled.");
-    }
-
-    /* Initialize queues */
-    client_queue = queue_init(AUTH_POOL);
-    insert_tail = &queue_insert;
-    remove_tail = &queue_remove;
-
-    /* Start working threads */
-
-    status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL);
-
-    if (status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
-    }
-
-    if (!config.worker_node) {
-        status = pthread_create(&thread_writer, NULL, run_writer, NULL);
-
-        if (status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
-        }
-
-        if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
-        }
+        action.sa_handler = SIG_IGN;
+        sigaction(SIGPIPE, &action, NULL);
     }
 
     /* Create PID files */
@@ -520,67 +389,139 @@ int main(int argc, char **argv)
 
     atexit(cleanup);
 
-    /* Main loop */
+    /* Start up message */
+    minfo(STARTUP_MSG, (int)getpid());
 
-    while (running) {
-        memset(&_nc, 0, sizeof(_nc));
-        _ncl = sizeof(_nc);
+    /* Checking client keys file */
+    fp = fopen(KEYS_FILE, "a");
+    if (!fp) {
+        merror("Unable to open %s (key file)", KEYS_FILE);
+        exit(1);
+    }
+    fclose(fp);
 
-        // Wait for socket
-        FD_ZERO(&fdset);
-        FD_SET(remote_sock, &fdset);
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
-
-        switch (select(remote_sock + 1, &fdset, NULL, NULL, &timeout)) {
-        case -1:
-            if (errno != EINTR) {
-                merror_exit("at main(): select(): %s", strerror(errno));
-            }
-
-            continue;
-
-        case 0:
-            continue;
+    if (config.flags.remote_enrollment) {
+        /* Start SSL */
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
+            merror("SSL error. Exiting.");
+            exit(1);
         }
 
-        if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
-            if (config.timeout_sec || config.timeout_usec) {
-                if (OS_SetRecvTimeout(client_sock, config.timeout_sec, config.timeout_usec) < 0) {
-                    static int reported = 0;
+        /* Connect via TCP */
+        if (remote_sock = OS_Bindporttcp(config.port, NULL, config.ipv6), remote_sock <= 0) {
+            merror(BIND_ERROR, config.port, errno, strerror(errno));
+            exit(1);
+        }
 
-                    if (!reported) {
-                        int error = errno;
-                        merror("Could not set timeout to network socket: %s (%d)", strerror(error), error);
-                        reported = 1;
+        /* Check if password is enabled */
+        if (config.flags.use_password) {
+            fp = fopen(AUTHD_PASS, "r");
+            buf[0] = '\0';
+
+            /* Checking if there is a custom password file */
+            if (fp) {
+                buf[4096] = '\0';
+                char *ret = fgets(buf, 4095, fp);
+
+                if (ret && strlen(buf) > 2) {
+                    /* Remove newline */
+                    if (buf[strlen(buf) - 1] == '\n') {
+                        buf[strlen(buf) - 1] = '\0';
                     }
+                    authpass = strdup(buf);
+                }
+
+                fclose(fp);
+            }
+
+            if (buf[0] != '\0') {
+                minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
+            } else {
+                /* Getting temporary pass. */
+                if (authpass = w_generate_random_pass(), authpass) {
+                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                } else {
+                    merror_exit("Unable to generate random password. Exiting.");
                 }
             }
-            struct client *new_client;
-            os_malloc(sizeof(struct client), new_client);
-            new_client->socket = client_sock;
-            new_client->addr = _nc.sin_addr;
-
-            if (queue_push_ex(client_queue, new_client) == -1) {
-                merror("Too many connections. Rejecting.");
-                close(client_sock);
-            }
-        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
-            merror("at main(): accept(): %s", strerror(errno));
+        } else {
+            minfo("Accepting connections on port %hu. No password required.", config.port);
+        }
     }
 
-    close(remote_sock);
+    srandom_init();
+    getuname();
+
+    if (gethostname(shost, sizeof(shost) - 1) < 0) {
+        strncpy(shost, "localhost", sizeof(shost) - 1);
+        shost[sizeof(shost) - 1] = '\0';
+    }
+
+    os_free(home_path);
+
+    /* Initialize queues */
+    insert_tail = &queue_insert;
+    remove_tail = &queue_remove;
+
+    /* Load client keys in master node */
+    if (!config.worker_node) {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
+        OS_ReadTimestamps(&keys);
+    }
+
+    /* Start working threads */
+
+    if (status = pthread_create(&thread_local_server, NULL, (void *)&run_local_server, NULL), status != 0) {
+        merror("Couldn't create thread: %s", strerror(status));
+        return EXIT_FAILURE;
+    }
+
+    if (config.flags.remote_enrollment) {
+        client_queue = queue_init(AUTH_POOL);
+
+        if (status = pthread_create(&thread_dispatcher, NULL, (void *)&run_dispatcher, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+
+        if (status = pthread_create(&thread_remote_server, NULL, (void *)&run_remote_server, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    } else {
+        minfo("Port %hu was set as disabled.", config.port);
+    }
+
+    if (!config.worker_node) {
+        if (status = pthread_create(&thread_writer, NULL, (void *)&run_writer, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (config.key_request.enabled) {
+        if (status = pthread_create(&thread_key_request, NULL, (void *)&run_key_request_main, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    }
 
     /* Join threads */
-    w_mutex_lock(&mutex_keys);
-    w_cond_signal(&cond_pending);
-    w_mutex_unlock(&mutex_keys);
-
-
-    pthread_join(thread_dispatcher, NULL);
+    pthread_join(thread_local_server, NULL);
+    if (config.flags.remote_enrollment) {
+        pthread_join(thread_dispatcher, NULL);
+        pthread_join(thread_remote_server, NULL);
+    }
     if (!config.worker_node) {
+        /* Send signal to writer thread */
+        w_mutex_lock(&mutex_keys);
+        w_cond_signal(&cond_pending);
+        w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
-        pthread_join(thread_local_server, NULL);
+    }
+    if (config.key_request.enabled) {
+        pthread_join(thread_key_request, NULL);
     }
 
     queue_free(client_queue);
@@ -602,21 +543,21 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
 
-    if (!config.worker_node) {
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-    }
-    mdebug1("Dispatch thread ready");
+    mdebug1("Dispatch thread ready.");
 
     while (running) {
         const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
         struct client *client = queue_pop_ex_timedwait(client_queue, &timeout);
 
-
-        if (!client)
+        if (!client) {
             continue;
+        }
 
-        strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
+        if (client->is_ipv6) {
+            get_ipv6_string(*client->addr6, ip, IPSIZE);
+        } else {
+            get_ipv4_string(*client->addr4, ip, IPSIZE);
+        }
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client->socket);
         ret = SSL_accept(ssl);
@@ -625,6 +566,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
             close(client->socket);
+            if (client->is_ipv6) {
+                os_free(client->addr6);
+            } else {
+                os_free(client->addr4);
+            }
             os_free(client);
             continue;
         }
@@ -638,6 +584,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
                 close(client->socket);
+                if (client->is_ipv6) {
+                    os_free(client->addr6);
+                } else {
+                    os_free(client->addr4);
+                }
                 os_free(client);
                 continue;
             }
@@ -656,8 +607,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
             SSL_free(ssl);
             close(client->socket);
+            if (client->is_ipv6) {
+                os_free(client->addr6);
+            } else {
+                os_free(client->addr4);
+            }
             os_free(client);
-            free(buf);
+            os_free(buf);
             continue;
         }
         buf[ret] = '\0';
@@ -666,19 +622,22 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         bool enrollment_ok = FALSE;
         char *agentname = NULL;
         char *centralized_group = NULL;
+        char* key_hash = NULL;
         char* new_id = NULL;
         char* new_key = NULL;
-        if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
+
+        if (OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group, &key_hash)) {
             if (config.worker_node) {
                 minfo("Dispatching request to master node");
-                if( 0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, NULL) ) {
+                // The force registration settings are ignored for workers. The master decides.
+                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, NULL, NULL)) {
                     enrollment_ok = TRUE;
                 }
             }
             else {
                 w_mutex_lock(&mutex_keys);
-                if(OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)){
-                    if(OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)){
+                if (OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group, key_hash)) {
+                    if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, &new_id, &new_key)) {
                         enrollment_ok = TRUE;
                     }
                 }
@@ -686,7 +645,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
         }
 
-        if(enrollment_ok)
+        if (enrollment_ok)
         {
             snprintf(response, 2048, "OSSEC K:'%s %s %s %s'", new_id, agentname, ip, new_key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
@@ -705,7 +664,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
                 }
             }
-            else{
+            else {
                 if (ret < 0) {
                     merror("SSL write error (%d)", ret);
                     merror("Agent key not saved for %s", agentname);
@@ -731,19 +690,112 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         SSL_free(ssl);
         close(client->socket);
+        if (client->is_ipv6) {
+            os_free(client->addr6);
+        } else {
+            os_free(client->addr4);
+        }
         os_free(client);
         os_free(buf);
         os_free(agentname);
         os_free(centralized_group);
+        os_free(key_hash);
         os_free(new_id);
         os_free(new_key);
     }
 
-    SSL_CTX_free(ctx);
     mdebug1("Dispatch thread finished");
+
+    SSL_CTX_free(ctx);
     return NULL;
 }
 
+/* Thread for remote server */
+void* run_remote_server(__attribute__((unused)) void *arg) {
+    int client_sock = 0;
+    struct sockaddr_storage _nc;
+    socklen_t _ncl;
+    fd_set fdset;
+    struct timeval timeout;
+
+    authd_sigblock();
+
+    if (config.timeout_sec || config.timeout_usec) {
+        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
+    } else {
+        mdebug1("Network timeout is disabled.");
+    }
+
+    mdebug1("Remote server ready.");
+
+    while (running) {
+        memset(&_nc, 0, sizeof(_nc));
+        _ncl = sizeof(_nc);
+
+        // Wait for socket
+        FD_ZERO(&fdset);
+        FD_SET(remote_sock, &fdset);
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+
+        switch (select(remote_sock + 1, &fdset, NULL, NULL, &timeout)) {
+        case -1:
+            if (errno != EINTR) {
+                merror_exit("at main(): select(): %s", strerror(errno));
+            }
+            continue;
+        case 0:
+            continue;
+        }
+
+        if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
+            if (config.timeout_sec || config.timeout_usec) {
+                if (OS_SetRecvTimeout(client_sock, config.timeout_sec, config.timeout_usec) < 0) {
+                    static int reported = 0;
+
+                    if (!reported) {
+                        int error = errno;
+                        merror("Could not set timeout to network socket: %s (%d)", strerror(error), error);
+                        reported = 1;
+                    }
+                }
+            }
+            struct client *new_client;
+            os_malloc(sizeof(struct client), new_client);
+            new_client->socket = client_sock;
+
+            switch (_nc.ss_family) {
+            case AF_INET:
+                new_client->is_ipv6 = FALSE;
+                os_calloc(1, sizeof(struct in_addr), new_client->addr4);
+                memcpy(new_client->addr4, &((struct sockaddr_in *)&_nc)->sin_addr, sizeof(struct in_addr));
+                break;
+            case AF_INET6:
+                new_client->is_ipv6 = TRUE;
+                os_calloc(1, sizeof(struct in6_addr), new_client->addr6);
+                memcpy(new_client->addr6, &((struct sockaddr_in6 *)&_nc)->sin6_addr, sizeof(struct in6_addr));
+                break;
+            default:
+                merror("IP address family not supported. Rejecting.");
+                os_free(new_client);
+                close(client_sock);
+            }
+
+            if (queue_push_ex(client_queue, new_client) == -1) {
+                merror("Too many connections. Rejecting.");
+                os_free(new_client);
+                close(client_sock);
+            }
+        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
+            merror("at main(): accept(): %s", strerror(errno));
+        }
+    }
+
+    mdebug1("Remote server thread finished");
+
+    close(remote_sock);
+    return NULL;
+}
 
 /* Thread for writing keystore onto disk */
 void* run_writer(__attribute__((unused)) void *arg) {
@@ -752,18 +804,30 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
-    time_t cur_time;
     char wdbquery[OS_SIZE_128];
     char wdboutput[128];
     int wdb_sock = -1;
 
     authd_sigblock();
 
+    mdebug1("Writer thread ready.");
+
+    struct timespec global_t0, global_t1;
+    struct timespec t0, t1;
+
     while (running) {
+        int inserted_agents = 0;
+        int removed_agents = 0;
+
         w_mutex_lock(&mutex_keys);
 
-        while (!write_pending && running)
+        while (!write_pending && running) {
             w_cond_wait(&cond_pending, &mutex_keys);
+        }
+
+        mdebug1("Dumping changes into disk.");
+
+        gettime(&global_t0);
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
@@ -775,53 +839,115 @@ void* run_writer(__attribute__((unused)) void *arg) {
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
 
-        if (OS_WriteKeys(copy_keys) < 0)
+        gettime(&t0);
+
+        if (OS_WriteKeys(copy_keys) < 0) {
             merror("Couldn't write file client.keys");
+            sleep(1);
+        }
+
+        gettime(&t1);
+        mdebug2("[Writer] OS_WriteKeys(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+        gettime(&t0);
+
+        if (OS_WriteTimestamps(copy_keys) < 0) {
+            merror("Couldn't write file agents-timestamp.");
+            sleep(1);
+        }
+
+        gettime(&t1);
+        mdebug2("[Writer] OS_WriteTimestamps(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
         OS_FreeKeys(copy_keys);
-        free(copy_keys);
-        cur_time = time(0);
+        os_free(copy_keys);
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
-            OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
 
-            if(cur->group){
-                if(set_agent_group(cur->id,cur->group) == -1){
+            mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+
+            gettime(&t0);
+            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->group, 1, &wdb_sock)) {
+                mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
+            }
+            gettime(&t1);
+            mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
+            if (cur->group) {
+                if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                             cur->group,
+                                             WDB_GROUP_MODE_OVERRIDE,
+                                             w_is_single_node(NULL) ? "synced" : "syncreq",
+                                             &wdb_sock)) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
 
-                set_agent_multigroup(cur->group);
             }
 
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur->group);
-            free(cur);
+            gettime(&t1);
+            mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            os_free(cur->id);
+            os_free(cur->name);
+            os_free(cur->ip);
+            os_free(cur->group);
+            os_free(cur->raw_key);
+            os_free(cur);
+
+            inserted_agents++;
         }
 
         for (cur = copy_remove; cur; cur = next) {
             char full_name[FILE_SIZE + 1];
             next = cur->next;
             snprintf(full_name, sizeof(full_name), "%s-%s", cur->name, cur->ip);
-            delete_agentinfo(cur->id, full_name);
-            OS_RemoveCounter(cur->id);
-            OS_RemoveAgentTimestamp(cur->id);
-            OS_RemoveAgentGroup(cur->id);
 
+            mdebug1("[Writer] Performing delete([%s] %s).", cur->id, cur->name);
+
+            gettime(&t0);
+            delete_agentinfo(cur->id, full_name);
+            gettime(&t1);
+            mdebug2("[Writer] delete_agentinfo(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
+            OS_RemoveCounter(cur->id);
+            gettime(&t1);
+            mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
+            OS_RemoveAgentTimestamp(cur->id);
+            gettime(&t1);
+            mdebug2("[Writer] OS_RemoveAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
             if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
                 mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
             }
+            gettime(&t1);
+            mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
+            gettime(&t0);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+            gettime(&t1);
+            mdebug2("[Writer] wdbc_query_ex(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur);
+            os_free(cur->id);
+            os_free(cur->name);
+            os_free(cur->ip);
+            os_free(cur->group);
+            os_free(cur->raw_key);
+            os_free(cur);
+
+            removed_agents++;
         }
+
+        gettime(&global_t1);
+        mdebug2("[Writer] Inserted agents: %d", inserted_agents);
+        mdebug2("[Writer] Removed agents: %d", removed_agents);
+        mdebug2("[Writer] Loop: %d ms.", (int)(1000. * (double)time_diff(&global_t0, &global_t1)));
     }
 
     return NULL;

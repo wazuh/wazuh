@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "shared.h"
 #include "os_err.h"
 #include "sym_load.h"
 #include "../../data_provider/include/sysInfo.h"
@@ -22,12 +23,21 @@
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
 #define PORT 4321
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
+
+int __wrap_getuid(void) {
+    return mock();
+}
+
+int __wrap_getgid(void) {
+    return mock();
+}
 
 // Structs
 
@@ -36,10 +46,11 @@ typedef struct test_struct {
     int server_client_socket;
     int client_socket;
     int server_socket;
+    int timeout;
     char *ret;
     char *msg;
     char socket_path[256];
-    struct hostent *h;
+    struct addrinfo *addr;
 } test_struct_t;
 
 // Setup / Teardown
@@ -48,8 +59,9 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
 
-    os_calloc(1, sizeof(struct hostent), init_data->h);
-    os_calloc(1, sizeof(char*), init_data->h->h_addr_list);
+    os_calloc(1, sizeof(struct addrinfo), init_data->addr);
+    os_calloc(1, sizeof(struct sockaddr), init_data->addr->ai_addr);
+    init_data->timeout = 1;
 
     strncpy(init_data->socket_path, "/tmp/tmp_file-XXXXXX", 256);
 
@@ -65,8 +77,8 @@ static int test_teardown(void **state) {
 
     unlink(data->socket_path);
 
-    os_free(data->h->h_addr_list)
-    os_free(data->h)
+    os_free(data->addr->ai_addr);
+    os_free(data->addr);
 
     os_free(data->msg);
     os_free(data->ret);
@@ -144,6 +156,7 @@ void test_accept_TCP(void **state) {
     char ipbuffer[BUFFERSIZE];
 
     data->server_root_socket = 0;
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, 0);
 
     data->server_client_socket = OS_AcceptTCP(data->server_root_socket, ipbuffer, BUFFERSIZE);
@@ -155,6 +168,7 @@ void test_accept_TCP(void **state) {
 void test_invalid_accept_TCP(void **state) {
     char buffer[BUFFERSIZE];
 
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, -1);
 
     assert_int_equal(OS_AcceptTCP(-1, buffer, BUFFERSIZE), -1);
@@ -249,6 +263,7 @@ void test_recv_secure_TCP(void **state) {
 
 void test_tcp_invalid_sockets(void **state) {
     char buffer[BUFFERSIZE];
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, -1);
 
     assert_int_equal(OS_AcceptTCP(-1, buffer, BUFFERSIZE), -1);
@@ -309,7 +324,7 @@ void test_send_UDP_by_size(void **state) {
 
 void test_recv_conn_UDP(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE + 1];
 
     data->server_client_socket = 4;
     will_return(__wrap_recv, 13);
@@ -330,7 +345,7 @@ void test_recv_UDP(void **state) {
 }
 
 void test_udp_recv_conn_invalid_sockets(void **state) {
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE + 1];
     will_return(__wrap_recv, -1);
 
     assert_int_equal(OS_RecvConnUDP(-1, buffer, BUFFERSIZE), 0);
@@ -360,12 +375,17 @@ void test_send_unix_invalid_sockets(void **state) {
 
 void test_gethost_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
+    char *hostname = "google-public-dns-a.google.com";
 
-    data->h->h_addr_list[0] = "\b\b\b\b";
+    data->addr->ai_family = AF_INET;
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)data->addr->ai_addr;
+    ipv4->sin_addr.s_addr = 134744072;
 
-    will_return(__wrap_gethostbyname, data->h);
+    expect_string(__wrap_getaddrinfo, node, hostname);
+    will_return(__wrap_getaddrinfo, data->addr);
+    will_return(__wrap_getaddrinfo, 0);
 
-    data->ret = OS_GetHost("google-public-dns-a.google.com", 2);
+    data->ret = OS_GetHost(hostname, 2);
 
     assert_non_null(data->ret);
     assert_string_equal(data->ret, "8.8.8.8");
@@ -376,24 +396,38 @@ void test_gethost_null(void **state) {
 }
 
 void test_gethost_not_exists(void **state) {
-    will_return(__wrap_gethostbyname, NULL);
-    will_return(__wrap_gethostbyname, NULL);
-    will_return(__wrap_gethostbyname, NULL);
+    char *hostname = "this.should.not.exist";
 
-    assert_null(OS_GetHost("this.should.not.exist", 2));
+    expect_string_count(__wrap_getaddrinfo, node, hostname, 3);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+
+    expect_value_count(__wrap_sleep, seconds, 1, 3);
+
+    assert_null(OS_GetHost(hostname, 2));
 }
 
 void test_bind_unix_domain(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     const int msg_size = 1;
 
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
     will_return(__wrap_socket, 3);
     will_return(__wrap_bind, 1);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_fcntl, 0);
 
     expect_string(__wrap_chmod, path, data->socket_path);
-    will_return(__wrap_chmod, 1);
+    will_return(__wrap_chmod, 0);
+    expect_string(__wrap_chown, __file, data->socket_path);
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 995);
+    will_return(__wrap_chown, 0);
 
     data->server_socket = OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, msg_size);
     assert_return_code(data->server_socket, 0);
@@ -524,6 +558,337 @@ void test_recv_secure_cluster_TCP_cmd_error(void **state) {
 	assert_int_equal(OS_RecvSecureClusterTCP(data->client_socket, ret, sizeof(ret)), -2);
 }
 
+void test_resolve_hostname_success(void ** state){
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    data->addr->ai_family = AF_INET;
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)data->addr->ai_addr;
+    ipv4->sin_addr.s_addr = 134744072;
+
+    os_strdup("localhost", data->ret);
+
+    expect_string(__wrap_getaddrinfo, node, "localhost");
+    will_return(__wrap_getaddrinfo, data->addr);
+    will_return(__wrap_getaddrinfo, 0);
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, data->ret);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 0);
+
+    resolve_hostname(&data->ret, 5);
+
+    assert_string_equal(data->ret, "localhost/8.8.8.8");
+}
+
+void test_resolve_hostname_valid_ip(void ** state){
+    char *hostname = "8.8.8.8";
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, hostname);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
+
+    resolve_hostname(&hostname, 5);
+}
+
+void test_resolve_hostname_not_resolved(void ** state){
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    os_strdup("localhost", data->ret);
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, data->ret);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 0);
+
+    expect_string_count(__wrap_getaddrinfo, node, "localhost", 6);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+
+    expect_value_count(__wrap_sleep, seconds, 1, 6);
+
+    resolve_hostname(&data->ret, 5);
+
+    assert_string_equal(data->ret, "localhost/");
+}
+
+void test_get_ip_from_resolved_hostname_ip(void ** state){
+    const char *resolved_hostname = "localhost/8.8.8.8";
+
+    const char *ret = get_ip_from_resolved_hostname(resolved_hostname);
+
+    assert_string_equal(ret, "8.8.8.8");
+}
+
+void test_get_ip_from_resolved_hostname_no_ip(void ** state){
+    const char *resolved_hostname = "localhost/";
+
+    const char *ret = get_ip_from_resolved_hostname(resolved_hostname);
+
+    assert_string_equal(ret, "");
+}
+
+// Tests external_socket_connect
+
+void test_external_socket_connect_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int msg_size = 1;
+
+    will_return(__wrap_socket, 4);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_setsockopt, 0);
+
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, 4);
+}
+
+
+void test_external_socket_connect_failed_sent_timeout(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int msg_size = 1;
+
+    will_return(__wrap_socket, 4);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_setsockopt, -1);
+
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, -1);
+}
+
+void test_external_socket_connect_failed_receive_timeout(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int msg_size = 1;
+
+    will_return(__wrap_socket, 4);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_setsockopt, -1);
+
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, -1);
+}
+
+void get_ipv4_string_fail_size(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0x0F0F0F0F;
+#else
+    addr.u.Byte = 0x0F0F0F0F;
+#endif
+
+    int ret = get_ipv4_string(addr, address, 1);
+
+    assert_string_equal(address, "");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void get_ipv4_string_success(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0x0F0F0F0F;
+#else
+    addr.u.Byte = 0x0F0F0F0F;
+#endif
+
+    int ret = get_ipv4_string(addr, address, IPSIZE);
+
+    assert_string_equal(address, "15.15.15.15");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void get_ipv6_string_fail_size(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0x00;
+#else
+        addr6.u.Byte[i] = 0x00;
+#endif
+    }
+
+    int ret = get_ipv6_string(addr6, address, 1);
+
+    assert_string_equal(address, "");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void get_ipv6_string_success(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0x10;
+#else
+        addr6.u.Byte[i] = 0x10;
+#endif
+
+    }
+
+    expect_string(__wrap_OS_GetIPv4FromIPv6, ip_address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    expect_value(__wrap_OS_GetIPv4FromIPv6, size, IPSIZE);
+    will_return(__wrap_OS_GetIPv4FromIPv6, 0);
+
+    expect_string(__wrap_OS_ExpandIPv6, ip_address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    expect_value(__wrap_OS_ExpandIPv6, size, IPSIZE);
+    will_return(__wrap_OS_ExpandIPv6, 0);
+
+    int ret = get_ipv6_string(addr6, address, IPSIZE);
+
+    assert_string_equal(address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void get_ipv4_numeric_fail(void ** state) {
+
+    const char *address = "Not a valid IP";
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0;
+#else
+    addr.u.Byte = 0;
+#endif
+
+    int ret = get_ipv4_numeric(address, &addr);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void get_ipv4_numeric_success(void ** state) {
+
+    const char *address = "15.15.15.15";
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0;
+#else
+    addr.u.Byte = 0;
+#endif
+
+    int ret = get_ipv4_numeric(address, &addr);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+#ifndef WIN32
+    assert_int_equal(addr.s_addr, 0x0F0F0F0F);
+#else
+    assert_int_equal(addr.u.Byte, 0x0F0F0F0F);
+#endif
+}
+
+void get_ipv6_numeric_fail(void ** state) {
+
+    const char *address = "Not a valid IP";
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0;
+#else
+        addr6.u.Byte[i] = 0;
+#endif
+    }
+
+    int ret = get_ipv6_numeric(address, &addr6);
+
+    assert_int_equal(ret, OS_INVALID);
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        assert_int_equal(addr6.s6_addr[i], 0);
+#else
+        assert_int_equal(addr6.u.Byte[i], 0);
+#endif
+    }
+}
+
+void get_ipv6_numeric_success(void ** state) {
+
+    const char *address = "1010:1010:1010:1010:1010:1010:1010:1010";
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0;
+#else
+        addr6.u.Byte[i] = 0;
+#endif
+    }
+
+    int ret = get_ipv6_numeric(address, &addr6);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        assert_int_equal(addr6.s6_addr[i], 0x10);
+#else
+        assert_int_equal(addr6.u.Byte[i], 0x10);
+#endif
+    }
+}
+
+void get_ipv6_numeric_compare_compres_ipv6(void ** state) {
+
+    const char *address = "fd17:625c:f037::45ea:97eb";
+    const char *address2 = "fd17:625c:f037:0:0:0:45ea:97eb";
+
+    struct in6_addr addr6;
+    struct in6_addr addr6_2;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0;
+        addr6_2.s6_addr[i] = 0;
+#else
+        addr6.u.Byte[i] = 0;
+        addr6_2.u.Byte[i] = 0;
+#endif
+    }
+
+    int ret = get_ipv6_numeric(address, &addr6);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    ret = get_ipv6_numeric(address2, &addr6_2);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        assert_int_equal(addr6.s6_addr[i], addr6_2.s6_addr[i]);
+#else
+        assert_int_equal(addr6.u.Byte[i], addr6_2.u.Byte[i]);
+#endif
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* Bind a TCP port */
@@ -594,7 +959,7 @@ int main(void) {
         /* Receive a message using a Unix socket */
         cmocka_unit_test_setup_teardown(test_recv_unix, test_setup, test_teardown),
 
-        /* Calls gethostbyname */
+        /* Call OS_GetHost */
         cmocka_unit_test(test_gethost_null),
         cmocka_unit_test(test_gethost_not_exists),
         cmocka_unit_test_setup_teardown(test_gethost_success, test_setup, test_teardown),
@@ -610,6 +975,37 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_socket_disconected_or_timeout, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_wrong_header, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_cmd_error, test_setup, test_teardown),
+
+        /* Test for resolve_hostname */
+        cmocka_unit_test_setup_teardown(test_resolve_hostname_success, test_setup, test_teardown),
+        cmocka_unit_test(test_resolve_hostname_valid_ip),
+        cmocka_unit_test_setup_teardown(test_resolve_hostname_not_resolved, test_setup, test_teardown),
+
+        /* Test for get_ip_from_resolved_hostname */
+        cmocka_unit_test(test_get_ip_from_resolved_hostname_ip),
+        cmocka_unit_test(test_get_ip_from_resolved_hostname_no_ip),
+
+        /* Test for external_socket_connect */
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_failed_sent_timeout, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_failed_receive_timeout, test_setup, test_teardown),
+
+        /* Test get_ipv4_string */
+        cmocka_unit_test(get_ipv4_string_fail_size),
+        cmocka_unit_test(get_ipv4_string_success),
+
+        /* Test get_ipv6_string */
+        cmocka_unit_test(get_ipv6_string_fail_size),
+        cmocka_unit_test(get_ipv6_string_success),
+
+        /* Test get_ipv4_numeric */
+        cmocka_unit_test(get_ipv4_numeric_fail),
+        cmocka_unit_test(get_ipv4_numeric_success),
+
+        /* Test get_ipv6_numeric */
+        cmocka_unit_test(get_ipv6_numeric_fail),
+        cmocka_unit_test(get_ipv6_numeric_success),
+        cmocka_unit_test(get_ipv6_numeric_compare_compres_ipv6),
 
     };
 

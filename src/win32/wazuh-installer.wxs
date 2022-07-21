@@ -1,281 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="4.2.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="4.5.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
-        <Property Id="WAZUH_MANAGER" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_MANAGER_PORT" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_PROTOCOL" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_SERVER" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_PORT" Secure="yes">1515</Property>
-        <Property Id="WAZUH_REGISTRATION_PASSWORD" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_KEEP_ALIVE_INTERVAL" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_TIME_RECONNECT" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_CA" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_CERTIFICATE" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRARTION_KEY" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_AGENT_NAME" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_AGENT_GROUP" Secure="yes">
-        </Property>
+        <Property Id="WAZUH_MANAGER" Secure="yes"/>
+        <Property Id="WAZUH_MANAGER_PORT" Secure="yes"/>
+        <Property Id="WAZUH_PROTOCOL" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_SERVER" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_PORT" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_PASSWORD" Secure="yes"/>
+        <Property Id="WAZUH_KEEP_ALIVE_INTERVAL" Secure="yes"/>
+        <Property Id="WAZUH_TIME_RECONNECT" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_CA" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_CERTIFICATE" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_KEY" Secure="yes"/>
+        <Property Id="WAZUH_AGENT_NAME" Secure="yes"/>
+        <Property Id="WAZUH_AGENT_GROUP" Secure="yes"/>
         <!-- Deprecated options -->
-        <Property Id="ADDRESS" Secure="yes">
-        </Property>
-        <Property Id="GROUP" Secure="yes">
-        </Property>
-        <Property Id="SERVER_PORT" Secure="yes">
-        </Property>
-        <Property Id="NOTIFY_TIME" Secure="yes">
-        </Property>
-        <Property Id="TIME_RECONNECT" Secure="yes">
-        </Property>
-        <Property Id="AUTHD_SERVER" Secure="yes">
-        </Property>
-        <Property Id="AUTHD_PORT" Secure="yes">1515</Property>
-        <Property Id="PROTOCOL" Secure="yes">
-        </Property>
-        <Property Id="PASSWORD" Secure="yes">
-        </Property>
-        <Property Id="CERTIFICATE" Secure="yes">
-        </Property>
-        <Property Id="PEM" Secure="yes">
-        </Property>
-        <Property Id="KEY" Secure="yes">
-        </Property>
-        <Property Id="AGENT_NAME" Secure="yes">
-        </Property>
+        <Property Id="ADDRESS" Secure="yes"/>
+        <Property Id="GROUP" Secure="yes"/>
+        <Property Id="SERVER_PORT" Secure="yes"/>
+        <Property Id="NOTIFY_TIME" Secure="yes"/>
+        <Property Id="TIME_RECONNECT" Secure="yes"/>
+        <Property Id="AUTHD_SERVER" Secure="yes"/>
+        <Property Id="AUTHD_PORT" Secure="yes"/>
+        <Property Id="PROTOCOL" Secure="yes"/>
+        <Property Id="PASSWORD" Secure="yes"/>
+        <Property Id="CERTIFICATE" Secure="yes"/>
+        <Property Id="PEM" Secure="yes"/>
+        <Property Id="KEY" Secure="yes"/>
+        <Property Id="AGENT_NAME" Secure="yes"/>
+
         <Property Id="MsiLogging" Value="v" />
         <Icon Id="icon.ico" SourceFile="ui\favicon.ico" />
         <Property Id="ARPPRODUCTICON" Value="icon.ico" />
         <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
         <WixVariable Id="WixUISupportPerUser" Value="0" />
         <Property Id="ALLUSERS" Value="1" />
+        <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
         <WixVariable Id="WixUIBannerBmp" Value="ui\bannrbmp.jpg" />
         <WixVariable Id="WixUIDialogBmp" Value="ui\dlgbmp.jpg" />
         <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Run Agent configuration interface" />
-        <Property Id="WixShellExecTarget" Value="[#WIN32UI.EXE]" />
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
+        <Property Id="MAJORVERSION" Value="0">
+            <RegistrySearch Id="CurrentMajorVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentMajorVersionNumber" />
+        </Property>
+        <Property Id="BUILDVERSION" Value="0">
+            <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
+        </Property>
+
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
         </Property>
 
+        <CustomAction Id="LaunchUI" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]win32ui.exe" Return="asyncNoWait" />
+
         <Property Id="OSSECINSTALLED">
             <RegistrySearch Id="OssecInstalled" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Services\OssecSvc" Name="DisplayName" />
+        </Property>
+
+        <Property Id="WAZUHINSTALLED">
+            <RegistrySearch Id="WazuhInstalled" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Services\WazuhSvc" Name="DisplayName" />
         </Property>
 
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
 
+        <CustomAction Id="SetWazuhManager" Property="WAZUH_MANAGER" Value="&quot;[ADDRESS]&quot;" />
+        <CustomAction Id="SetWazuhManagerPort" Property="WAZUH_MANAGER_PORT" Value="&quot;[SERVER_PORT]&quot;" />
+        <CustomAction Id="SetWazuhManagerProtocol" Property="WAZUH_PROTOCOL" Value="&quot;[PROTOCOL]&quot;" />
+        <CustomAction Id="SetRegistrationServer" Property="WAZUH_REGISTRATION_SERVER" Value="&quot;[AUTHD_SERVER]&quot;" />
+        <CustomAction Id="SetRegistrationPort" Property="WAZUH_REGISTRATION_PORT" Value="&quot;[AUTHD_PORT]&quot;" />
+        <CustomAction Id="SetRegistrationPassword" Property="WAZUH_REGISTRATION_PASSWORD" Value="&quot;[PASSWORD]&quot;" />
+        <CustomAction Id="SetWazuhKeepAlive" Property="WAZUH_KEEP_ALIVE_INTERVAL" Value="&quot;[NOTIFY_TIME]&quot;" />
+        <CustomAction Id="SetWazuhTimeReconnect" Property="WAZUH_TIME_RECONNECT" Value="&quot;[TIME_RECONNECT]&quot;" />
+        <CustomAction Id="SetRegistrationCA" Property="WAZUH_REGISTRATION_CA" Value="&quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="SetRegistrationCertificate" Property="WAZUH_REGISTRATION_CERTIFICATE" Value="&quot;[PEM]&quot;" />
+        <CustomAction Id="SetRegistrationKet" Property="WAZUH_REGISTRATION_KEY" Value="&quot;[KEY]&quot;" />
+        <CustomAction Id="SetAgentName" Property="WAZUH_AGENT_NAME" Value="&quot;[AGENT_NAME]&quot;" />
+        <CustomAction Id="SetAgentGroup" Property="WAZUH_AGENT_GROUP" Value="&quot;[GROUP]&quot;" />
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
-        <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
+        <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
-        <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
+        <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT]" />
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD]" />
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT]" />
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD]" />
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot;" />
-
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -A [WAZUH_AGENT_NAME] -p [WAZUH_REGISTRATION_PORT] -P [WAZUH_REGISTRATION_PASSWORD] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot; -v &quot;[WAZUH_REGISTRATION_CA]&quot; -G [WAZUH_AGENT_GROUP]" />
-
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT]" />
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
-
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD]" />
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
-
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" />
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
-
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" />
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot;" />
-        <CustomAction Id="DepCustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
-
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_NoName_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-        <CustomAction Id="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
-
-        <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
-        <CustomAction Id="DepStartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
-
-        <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
-        <!-- Otherwise, the locked files and directories will not be deleted. -->
-        <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
+        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
+        <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
             <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
-            <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+            <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchUI">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
+            <!-- Set deployment values -->
+            <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
+            <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
+            <Custom Action="SetWazuhManagerProtocol" Before="SetCustomActionDataValue">PROTOCOL &lt;&gt; "" AND WAZUH_PROTOCOL = ""</Custom>
+            <Custom Action="SetRegistrationServer" Before="SetCustomActionDataValue">AUTHD_SERVER &lt;&gt; "" AND WAZUH_REGISTRATION_SERVER = ""</Custom>
+            <Custom Action="SetRegistrationPort" Before="SetCustomActionDataValue">AUTHD_PORT &lt;&gt; "" AND WAZUH_REGISTRATION_PORT = ""</Custom>
+            <Custom Action="SetRegistrationPassword" Before="SetCustomActionDataValue">PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = ""</Custom>
+            <Custom Action="SetWazuhKeepAlive" Before="SetCustomActionDataValue">NOTIFY_TIME &lt;&gt; "" AND WAZUH_KEEP_ALIVE_INTERVAL = ""</Custom>
+            <Custom Action="SetWazuhTimeReconnect" Before="SetCustomActionDataValue">TIME_RECONNECT &lt;&gt; "" AND WAZUH_TIME_RECONNECT = ""</Custom>
+            <Custom Action="SetRegistrationCA" Before="SetCustomActionDataValue">CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_CA = ""</Custom>
+            <Custom Action="SetRegistrationCertificate" Before="SetCustomActionDataValue">PEM &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = ""</Custom>
+            <Custom Action="SetRegistrationKet" Before="SetCustomActionDataValue">KEY &lt;&gt; "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
+            <Custom Action="SetAgentName" Before="SetCustomActionDataValue">AGENT_NAME &lt;&gt; "" AND WAZUH_AGENT_NAME = ""</Custom>
+            <Custom Action="SetAgentGroup" Before="SetCustomActionDataValue">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
+
             <!-- Delete OSSEC service if it exist -->
+            <Custom Action="CheckSvcRunning_OssecSvc" After="AppSearch">OSSECINSTALLED</Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
             <!-- Install functions -->
-            <Custom Action="SetCustomActionDataValue" After="DeleteOssecService">NOT Installed</Custom>
+            <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="DeleteOssecService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_Group_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_Group_Name_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="CustomAction_Group_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP &lt;&gt; "" AND WAZUH_AGENT_NAME &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_CA &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
-
-            <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; ""</Custom>
-
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_NoName_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            <Custom Action="DepStartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
         </InstallExecuteSequence>
+
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
@@ -283,12 +141,14 @@
                         <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
                     </Component>
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
-                        <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" >
-                         </File>
+                        <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
                         <File Id="AGENT_AUTH.EXE.MANIFEST" Name="agent-auth.exe.manifest" Source="agent-auth.exe.manifest" />
                     </Component>
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
+                    </Component>
+                    <Component Id="LIBWAZUHSHARED_DLL" DiskId="1" Guid="A40D7FB4-8D7B-440E-B7CB-1D8CB1E277E6">
+                        <File Id="LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
                     </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
@@ -307,14 +167,10 @@
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-
-                    <Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes" />
-                        <Condition>VersionNT &lt; 600</Condition>
-                    </Component>
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes" />
-                        <Condition>VersionNT &gt;= 600</Condition>
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
+                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
+                        </File>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
                         <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
@@ -324,6 +180,9 @@
                     </Component>
                     <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
                         <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
+                    </Component>
+                    <Component Id="LIBGCC_S_SJLJ_1.DLL" DiskId="1" Guid="27BDCB9A-F89F-4009-A789-1F779EB05697">
+                        <File Id="LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" Source="libgcc_s_sjlj-1.dll" />
                     </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
@@ -337,15 +196,26 @@
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
                         <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
-                        <ServiceControl Id="svc_uninstall" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
+                        <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
                         <Condition>VersionNT &lt; 600</Condition>
+                    </Component>
+                    <Component Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" DiskId="1" Guid="FB49A2F0-3433-47D4-A668-4139718AFDAC">
+                        <File Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
+                        <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec" />
+                        <ServiceControl Id="ServiceControl_ossec_upgrade" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
+                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR (WAZUHINSTALLED = "Wazuh")) AND (VersionNT &gt;= 600)</Condition>
+                    </Component>
+                    <Component Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" DiskId="1" Guid="B19AF43F-43AD-40D2-95B7-512E429DF099">
+                        <File Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
+                        <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec_noec" />
+                        <ServiceControl Id="ServiceControl_ossec_upgrade_noec" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
+                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR (WAZUHINSTALLED = "Wazuh")) AND (VersionNT &lt; 600)</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
                     </Component>
                     <Component Id="WIN32UI.EXE" DiskId="1" Guid="E7ACBC6F-D8A0-410B-B8D2-2AD9F5152BA0">
-                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe">
-                        </File>
+                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe"/>
                         <File Id="WIN32UI.EXE.MANIFEST" Name="win32ui.exe.manifest" Source="win32ui.exe.manifest" />
                     </Component>
                     <Component Id="REMOVE_OLD_NSIS" Guid="3536239B-022D-4A9B-A7F8-2F64132115ED">
@@ -363,6 +233,7 @@
                         <RemoveFile Id="NSIS_WIN32UI_EXE" Name="win32ui.exe" On="install" />
                         <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
+                        <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
@@ -382,6 +253,74 @@
                     </Component>
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
+                    </Component>
+                    <Component Id="WXP_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
+                        <File Id="WXP_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\xp\localfile-events.template"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
+                    </Component>
+                    <Component Id="WXP_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
+                        <File Id="WXP_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\xp\profile.template"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
+                    </Component>
+                    <Component Id="WXP_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
+                        <File Id="WXP_SYSCHECK.TEMPLATE" Name="syscheck.template" Source="..\..\etc\templates\config\windows\xp\syscheck.template"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
+                    </Component>
+                    <Component Id="W2003_CONF_LOCALFILE" DiskId="1" Guid="D0CCDE58-2593-48FF-85CC-E681B78DCEFE">
+                        <File Id="W2003_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\2003\localfile-events.template"/>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
+                    </Component>
+                    <Component Id="W2003_CONF_PROFILE" DiskId="1" Guid="5F70333D-BA3F-4722-BE78-3FF67FE216F9">
+                        <File Id="W2003_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2003\profile.template"/>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
+                    </Component>
+                    <Component Id="W2003_CONF_SYSCHECK" DiskId="1" Guid="B89F2D95-F0FA-4B51-B680-42F430F2EB82">
+                        <File Id="W2003_SYSCHECK.TEMPLATE" Name="syscheck.template" Source="..\..\etc\templates\config\windows\2003\syscheck.template"/>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
+                    </Component>
+                    <Component Id="WVISTA_CONF_PROFILE" DiskId="1" Guid="06CBBBCB-0D20-4EEA-9E5A-854A9A34DEFE">
+                        <File Id="WVISTA_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\Vista\profile.template"/>
+                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="W2008_CONF_PROFILE" DiskId="1" Guid="89BC9CB1-065E-4808-8B8F-70C22F500B4A">
+                        <File Id="W2008_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2008\profile.template"/>
+                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W7_CONF_PROFILE" DiskId="1" Guid="6D58D297-5AAD-4B44-BBE0-D8691998267A">
+                        <File Id="W7_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\7\profile.template"/>
+                        <Condition>( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="W2008R2_CONF_PROFILE" DiskId="1" Guid="6EF6AD1F-B740-48E4-BDFD-7B396E2CB3E0">
+                        <File Id="W2008R2_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2008R2\profile.template"/>
+                        <Condition>( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W8_CONF_PROFILE" DiskId="1" Guid="A23E9242-A5CC-4171-8A25-791AB93D8DE0">
+                        <File Id="W8_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\8\profile.template"/>
+                        <Condition>( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="W2012_CONF_PROFILE" DiskId="1" Guid="757D2306-1821-462F-B4CC-1ED947FC8AA2">
+                        <File Id="W2012_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2012\profile.template"/>
+                        <Condition>VersionNT64 = 602 AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W8.1_CONF_PROFILE" DiskId="1" Guid="AF637857-14A3-437E-9D23-CDFB4453CFA8">
+                        <File Id="W8.1_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\8.1\profile.template"/>
+                        <Condition>( VersionNT = 603 OR VersionNT64 = 603) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="W2012R2_CONF_PROFILE" DiskId="1" Guid="D1E8FBD0-3382-43E4-81FD-EE168402DF94">
+                        <File Id="W2012R2_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2012R2\profile.template"/>
+                        <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W10_CONF_PROFILE" DiskId="1" Guid="5FD334C9-8EA1-4575-826C-C18804A2BEA7">
+                        <File Id="W10_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\10\profile.template"/>
+                        <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="W2016_CONF_PROFILE" DiskId="1" Guid="CDE13E2B-04F7-435A-9CDB-894FA55F932E">
+                        <File Id="W2016_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2016\profile.template"/>
+                        <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W2019_CONF_PROFILE" DiskId="1" Guid="7D21C1E6-7307-43C8-9EA8-47202379DF37">
+                        <File Id="W2019_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2019\profile.template"/>
+                        <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
@@ -424,14 +363,30 @@
                         </Component>
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
-                      <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
-                        <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
-                          <RemoveFile Id="remove_policies" Name="*" On="install"/>
-                        </Component>
-                        <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
-                          <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
-                        </Component>
-                      </Directory>
+                        <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
+                            <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
+                                <RemoveFile Id="remove_policies" Name="*" On="install"/>
+                            </Component>
+                            <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
+                                <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
+                            </Component>
+                            <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
+                                <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
+                                <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                                <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
+                                <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2016" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
+                                <File Id="SCA_WIN2016" Name="cis_win2016.yml" Source="..\..\ruleset\sca\windows\cis_win2016.yml" />
+                                <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2019" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C706">
+                                <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
+                                <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                        </Directory>
                     </Directory>
                     <Directory Id="TMP" Name="tmp" />
                     <Directory Id="QUEUE" Name="queue">
@@ -477,7 +432,6 @@
         <DirectoryRef Id="TMP">
             <Component Id="CMP_TMP" Guid="EC4352C1-4110-4E6A-9A5E-E31F22702705" KeyPath="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_tmp" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_tmp_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
@@ -606,18 +560,21 @@
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
+            <ComponentRef Id="LIBWAZUHSHARED_DLL" />
             <ComponentRef Id="RSYNC_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
-            <ComponentRef Id="OSSEC_PRE6.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
+            <ComponentRef Id="LIBGCC_S_SJLJ_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_WAZUH.EXE" />
             <ComponentRef Id="ROUTE_NULL.EXE" />
@@ -643,6 +600,10 @@
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
             <ComponentRef Id="SCA_WIN_AUDIT.YML" />
+            <ComponentRef Id="SCA_WIN10" />
+            <ComponentRef Id="SCA_WIN2012R2" />
+            <ComponentRef Id="SCA_WIN2016" />
+            <ComponentRef Id="SCA_WIN2019" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
@@ -657,6 +618,23 @@
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
+            <ComponentRef Id="WXP_CONF_SYSCHECK" />
+            <ComponentRef Id="WXP_CONF_LOCALFILE" />
+            <ComponentRef Id="WXP_CONF_PROFILE" />
+            <ComponentRef Id="W2003_CONF_PROFILE" />
+            <ComponentRef Id="W2003_CONF_LOCALFILE" />
+            <ComponentRef Id="W2003_CONF_SYSCHECK" />
+            <ComponentRef Id="WVISTA_CONF_PROFILE" />
+            <ComponentRef Id="W2008_CONF_PROFILE" />
+            <ComponentRef Id="W7_CONF_PROFILE" />
+            <ComponentRef Id="W2008R2_CONF_PROFILE" />
+            <ComponentRef Id="W8_CONF_PROFILE" />
+            <ComponentRef Id="W2012_CONF_PROFILE" />
+            <ComponentRef Id="W8.1_CONF_PROFILE" />
+            <ComponentRef Id="W2012R2_CONF_PROFILE" />
+            <ComponentRef Id="W10_CONF_PROFILE" />
+            <ComponentRef Id="W2016_CONF_PROFILE" />
+            <ComponentRef Id="W2019_CONF_PROFILE" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>

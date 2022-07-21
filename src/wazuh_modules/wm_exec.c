@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -80,8 +80,10 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         }
 
         char *new_env = getenv("PATH");
-        mdebug1("New 'PATH' environment variable set: '%s'", new_env);
-        free(new_path);
+        if (new_env != NULL) {
+            mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+        }
+        os_free(new_path);
     }
 
     sinfo.cb = sizeof(STARTUPINFO);
@@ -331,7 +333,14 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             } else if (strlen(env_path) >= OS_SIZE_6144) {
                 merror("at wm_exec(): PATH environment variable too large.");
             } else {
-                snprintf(new_path, OS_SIZE_6144 - 1, "%s:%s", add_path, env_path);
+                const int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
+
+                if (bytes_written >= OS_SIZE_6144) {
+                    merror("at wm_exec(): New environment variable too large.");
+                }
+                else if (bytes_written < 0) {
+                    merror("at wm_exec(): New environment variable error: %d (%s).", errno, strerror(errno));
+                }
             }
 
             if (setenv("PATH", new_path, 1) < 0) {
@@ -339,8 +348,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             }
 
             char *new_env = getenv("PATH");
-            mdebug1("New 'PATH' environment variable set: '%s'", new_env);
-            free(new_path);
+            if (new_env != NULL) {
+                mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+            }
+            os_free(new_path);
         }
 
         argv = w_strtok(command);

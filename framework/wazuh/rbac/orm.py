@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -23,6 +23,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
+from wazuh.core.common import wazuh_uid, wazuh_gid
+from wazuh.rbac.utils import clear_cache
+from wazuh.core.utils import get_utc_now
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -105,7 +108,7 @@ class RolesRules(_Base):
     id = Column('id', Integer, primary_key=True)
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     rule_id = Column('rule_id', Integer, ForeignKey("rules.id", ondelete='CASCADE'))
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
@@ -131,7 +134,7 @@ class RolesPolicies(_Base):
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     policy_id = Column('policy_id', Integer, ForeignKey("policies.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
@@ -156,7 +159,7 @@ class UserRoles(_Base):
     user_id = Column('user_id', Integer, ForeignKey("users.id", ondelete='CASCADE'))
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
 
@@ -268,7 +271,7 @@ class User(_Base):
     username = Column(String(32), nullable=False)
     password = Column(String(256), nullable=False)
     allow_run_as = Column(Boolean, default=False, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
     # Relations
@@ -279,7 +282,7 @@ class User(_Base):
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def __repr__(self):
         return f"<User(user={self.username})"
@@ -331,7 +334,7 @@ class Roles(_Base):
     # Schema
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='name_role'),)
 
     # Relations
@@ -343,7 +346,7 @@ class Roles(_Base):
     def __init__(self, name, role_id=None):
         self.id = role_id
         self.name = name
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def get_role(self):
         """Role's getter
@@ -386,7 +389,7 @@ class Rules(_Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
     rule = Column('rule', TEXT, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
@@ -396,7 +399,7 @@ class Rules(_Base):
         self.id = rule_id
         self.name = name
         self.rule = rule
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def get_rule(self):
         """Rule getter
@@ -433,7 +436,7 @@ class Policies(_Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
     policy = Column('policy', TEXT, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='name_policy'),
                       UniqueConstraint('policy', name='policy_definition'))
 
@@ -445,7 +448,7 @@ class Policies(_Base):
         self.id = policy_id
         self.name = name
         self.policy = policy
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def get_policy(self):
         """Policy's getter
@@ -563,6 +566,7 @@ class TokenManager:
                 self.session.add(RunAsTokenBlacklist())
                 self.session.commit()
 
+            clear_cache()
             return True
         except IntegrityError:
             self.session.rollback()
@@ -1269,6 +1273,8 @@ class PoliciesManager:
     This class is the manager of the Policies, this class provided
     all the methods needed for the policies administration.
     """
+    action_regex = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
+    resource_regex = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
 
     def get_policy(self, name: str):
         """Get the information about one policy specified by name
@@ -1350,13 +1356,11 @@ class PoliciesManager:
                     # The keys actions and resources must be lists and the key effect must be str
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
-                        # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
                         for action in policy['actions']:
-                            if not re.match(regex, action):
+                            if not re.match(self.action_regex, action):
                                 return SecurityError.INVALID
                         for resource in policy['resources']:
-                            if not re.match(regex, resource):
+                            if not all(re.match(self.resource_regex, res) for res in resource.split('&')):
                                 return SecurityError.INVALID
 
                         policy_id = None
@@ -1364,7 +1368,7 @@ class PoliciesManager:
                         try:
                             if not check_default:
                                 policies = sorted([p.id for p in self.get_policies()]) or [0]
-                                policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
+                                policy_id = max(filter(lambda x: not (x > cloud_reserved_range), policies)) + 1
 
                             elif check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
@@ -1484,13 +1488,11 @@ class PoliciesManager:
                         policy_to_update.name = name
                     if policy is not None and 'actions' in policy.keys() and \
                             'resources' in policy.keys() and 'effect' in policy.keys():
-                        # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
                         for action in policy['actions']:
-                            if not re.match(regex, action):
+                            if not re.match(self.action_regex, action):
                                 return SecurityError.INVALID
                         for resource in policy['resources']:
-                            if not re.match(regex, resource):
+                            if not all(re.match(self.resource_regex, res) for res in resource.split('&')):
                                 return SecurityError.INVALID
                         policy_to_update.policy = json.dumps(policy)
                     self.session.commit()
@@ -2442,95 +2444,105 @@ class RolesRulesManager:
         self.session.close()
 
 
-# This is the actual sqlite database creation
-_Base.metadata.create_all(_engine)
-# Only if executing as root
-chown(_auth_db_file, 'ossec', 'ossec')
-os.chmod(_auth_db_file, 0o640)
+def create_rbac_db():
+    """Create RBAC database.
 
-default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
+    Create RBAC database if it does not exist. It also includes the default
+    users, roles and policies and the relationships between them.
+    """
+    # This is the actual sqlite database creation
+    _Base.metadata.create_all(_engine)
+    # Only if executing as root
+    chown(_auth_db_file, wazuh_uid(), wazuh_gid())
+    os.chmod(_auth_db_file, 0o640)
 
-# Create default users if they don't exist yet
-with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
-    default_users = yaml.safe_load(stream)
+    default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
 
-    with AuthenticationManager() as auth:
-        for d_username, payload in default_users[next(iter(default_users))].items():
-            auth.add_user(username=d_username, password=payload['password'], check_default=False)
-            auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'], allow_run_as=payload['allow_run_as'])
+    # Create default users if they don't exist yet
+    with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
+        default_users = yaml.safe_load(stream)
 
-# Create default roles if they don't exist yet
-with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
-    default_roles = yaml.safe_load(stream)
+        with AuthenticationManager() as auth:
+            for d_username, payload in default_users[next(iter(default_users))].items():
+                auth.add_user(username=d_username, password=payload['password'], check_default=False)
+                auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'], allow_run_as=payload['allow_run_as'])
 
-    with RolesManager() as rm:
-        for d_role_name, payload in default_roles[next(iter(default_roles))].items():
-            rm.add_role(name=d_role_name, check_default=False)
+    # Create default roles if they don't exist yet
+    with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
+        default_roles = yaml.safe_load(stream)
 
-with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
-    default_rules = yaml.safe_load(stream)
+        with RolesManager() as rm:
+            for d_role_name, payload in default_roles[next(iter(default_roles))].items():
+                rm.add_role(name=d_role_name, check_default=False)
 
-    with RulesManager() as rum:
-        for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
-            rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
+    with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
+        default_rules = yaml.safe_load(stream)
 
-# Create default policies if they don't exist yet
-with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
-    default_policies = yaml.safe_load(stream)
+        with RulesManager() as rum:
+            for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
+                rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
 
-    with PoliciesManager() as pm:
-        for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
-            for name, policy in payload['policies'].items():
-                policy_name = f'{d_policy_name}_{name}'
-                policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
-                # Update policy if it exists
-                if policy_result == SecurityError.ALREADY_EXIST:
-                    try:
-                        policy_id = pm.get_policy(policy_name)['id']
-                        if policy_id < max_id_reserved:
-                            pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
-                        else:
-                            with RolesPoliciesManager() as rpm:
-                                linked_roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy_id)]
-                                new_positions = dict()
-                                for role in linked_roles:
-                                    new_positions[role] = [p.id for p in rpm.get_all_policies_from_role(role_id=role)]\
-                                        .index(policy_id)
+    # Create default policies if they don't exist yet
+    with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
+        default_policies = yaml.safe_load(stream)
 
-                                pm.delete_policy(policy_id=policy_id)
-                                pm.add_policy(name=policy_name, policy=policy, check_default=False)
-                                policy_id = pm.get_policy(policy_name)['id']
-                                for role, position in new_positions.items():
-                                    rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
-                                                           force_admin=True)
+        with PoliciesManager() as pm:
+            for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
+                for name, policy in payload['policies'].items():
+                    policy_name = f'{d_policy_name}_{name}'
+                    policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                    # Update policy if it exists
+                    if policy_result == SecurityError.ALREADY_EXIST:
+                        try:
+                            policy_id = pm.get_policy(policy_name)['id']
+                            if policy_id < max_id_reserved:
+                                pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy,
+                                                 check_default=False)
+                            else:
+                                with RolesPoliciesManager() as rpm:
+                                    linked_roles = [role.id for role in
+                                                    rpm.get_all_roles_from_policy(policy_id=policy_id)]
+                                    new_positions = dict()
+                                    for role in linked_roles:
+                                        new_positions[role] = [
+                                            p.id for p in rpm.get_all_policies_from_role(role_id=role)
+                                        ].index(policy_id)
 
-                    except (KeyError, TypeError):
-                        pass
+                                    pm.delete_policy(policy_id=policy_id)
+                                    pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                                    policy_id = pm.get_policy(policy_name)['id']
+                                    for role, position in new_positions.items():
+                                        rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
+                                                               force_admin=True)
 
-# Create the relationships
-with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
-    default_relationships = yaml.safe_load(stream)
+                        except (KeyError, TypeError):
+                            pass
 
-    # User-Roles relationships
-    with UserRolesManager() as urm:
-        for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
-            with AuthenticationManager() as am:
-                d_user_id = am.get_user(username=d_username)['id']
-            for d_role_name in payload['role_ids']:
-                urm.add_role_to_user(user_id=d_user_id, role_id=rm.get_role(name=d_role_name)['id'], force_admin=True)
+    # Create the relationships
+    with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
+        default_relationships = yaml.safe_load(stream)
 
-    # Role-Policies relationships
-    with RolesPoliciesManager() as rpm:
-        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
-            for d_policy_name in payload['policy_ids']:
-                for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
-                    rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                           policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
-                                           force_admin=True)
+        # User-Roles relationships
+        with UserRolesManager() as urm:
+            for d_username, payload in default_relationships[next(iter(default_relationships))]['users'].items():
+                with AuthenticationManager() as am:
+                    d_user_id = am.get_user(username=d_username)['id']
+                for d_role_name in payload['role_ids']:
+                    urm.add_role_to_user(user_id=d_user_id, role_id=rm.get_role(name=d_role_name)['id'],
+                                         force_admin=True)
 
-    # Role-Rules relationships
-    with RolesRulesManager() as rrum:
-        for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
-            for d_rule_name in payload['rule_ids']:
-                rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                      rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
+        # Role-Policies relationships
+        with RolesPoliciesManager() as rpm:
+            for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+                for d_policy_name in payload['policy_ids']:
+                    for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
+                        rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                               policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
+                                               force_admin=True)
+
+        # Role-Rules relationships
+        with RolesRulesManager() as rrum:
+            for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
+                for d_rule_name in payload['rule_ids']:
+                    rrum.add_rule_to_role(role_id=rm.get_role(name=d_role_name)['id'],
+                                          rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,6 +16,7 @@
 
 /* Global variables */
 time_t available_server;
+time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
@@ -40,6 +41,11 @@ int ClientConf(const char *cfgfile)
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
+    agt->notify_time = 0;
+    agt->max_time_reconnect_try = 0;
+    agt->force_reconnect_interval = 0;
+    agt->main_ip_update_interval = 0;
+    agt->server_count = 0;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
@@ -48,8 +54,8 @@ int ClientConf(const char *cfgfile)
     w_enrollment_target *target_cfg = w_enrollment_target_init();
 
     // Initialize enrollment_cfg
-    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
-    agt->enrollment_cfg->allow_localhost = 0; // Localhost not allowed in auto-enrollment
+    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg, &keys);
+    agt->enrollment_cfg->allow_localhost = false; // Localhost not allowed in auto-enrollment
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
         ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
@@ -60,6 +66,7 @@ int ClientConf(const char *cfgfile)
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
+        ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
     }
 #endif
 
@@ -85,6 +92,7 @@ cJSON *getClientConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
     cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
+    cJSON_AddNumberToObject(client,"force_reconnect_interval",agt->force_reconnect_interval);
     cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
@@ -237,34 +245,4 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
-}
-
-
-void resolveHostname(char **hostname, int attempts) {
-
-    char *tmp_str;
-    char *f_ip;
-
-    if (OS_IsValidIP(*hostname, NULL) == 1) {
-        return;
-    }
-
-    tmp_str = strchr(*hostname, '/');
-    if (tmp_str) {
-        *tmp_str = '\0';
-    }
-
-    f_ip = OS_GetHost(*hostname, attempts);
-    if (f_ip) {
-        char ip_str[128] = {0};
-        snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);
-        free(f_ip);
-        free(*hostname);
-        os_strdup(ip_str, *hostname);
-    } else {
-        char ip_str[128] = {0};
-        snprintf(ip_str, 127, "%s/", *hostname);
-        free(*hostname);
-        os_strdup(ip_str, *hostname);
-    }
 }

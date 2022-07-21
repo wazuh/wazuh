@@ -1,23 +1,111 @@
 ---
-test_name: POST /agents
-
-marks:
-  - base_tests
+test_name: POST /agents (IPV6)
 
 stages:
 
     # POST /agents
-  - name: Try to create a new agent without body
+  - name: Create a new agent with a valid IPV6
     request: &agent_request
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 406
       json:
-        error: 6002
+        name: "NewIPV6Agent"
+        ip: "fdb9:8d4a:1fc2:12a0:11aa:22ff:33eb:99cd"
+    response:
+      status_code: 200
+      json: &agent_create_response
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+      save:
+        json:
+          agent1_id_ipv6: data.id
+
+    # POST /agents
+  - name: Create a new agent with a compressed IPV6
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewCompressedIPV6Agent"
+        ip: "fdb9::99cd"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+      save:
+        json:
+          agent2_id_ipv6: data.id
+
+    # POST /agents
+  - name: Create a new agent with an invalid IPV6
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "InvalidIPV6Agent"
+        ip: "fdb9:8d4a:1fc2:12a0:11aa:22ff:33eb:99gh"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents
+  - name: Create a new agent with an invalid compressed IPV6
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "InvalidIPV6Agent"
+        ip: "fdb9::99gh"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+    delay_after: !float "{global_db_delay}"
+
+    # GET /agents
+  - name: Check all registered IPV6 agents
+    request: &agent_list_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "{agent1_id_ipv6:s},{agent2_id_ipv6:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{agent1_id_ipv6:s}"
+              registerIP: !anystr
+              ip: !anystr
+            - id: "{agent2_id_ipv6:s}"
+              registerIP: !anystr
+              ip: !anystr
+
+---
+test_name: POST /agents
+
+stages:
+
+    # POST /agents
+  - name: Try to create a new agent without body
+    request:
+      verify: False
+      <<: *agent_request
+    response:
+      status_code: 400
+      json: &error_spec
+        detail: !anystr
+        title: !anystr
 
     # POST /agents
   - name: Create a new agent
@@ -29,11 +117,8 @@ stages:
         ip: "any"
     response:
       status_code: 200
-      json: &agent_create_response
-        error: !anyint
-        data:
-          id: !anystr
-          key: !anystr
+      json:
+        <<: *agent_create_response
     delay_after: !float "{global_db_delay}"
 
     # POST /agents
@@ -58,7 +143,12 @@ stages:
       json:
         name: "IhavetoolongofanamebecauseireallywantthisframeworktostopmeireallyhopeitdoesstopmeotherwiseiwillcauserealpainintheAPIandidontwantto"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 400
       json:
@@ -73,9 +163,8 @@ stages:
         ip: "any"
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        title: !anystr
+      json:
+        <<: *error_spec
 
     # POST /agents
   - name: Create agent without assigning an specific IP
@@ -88,7 +177,6 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
     # POST /agents
   - name: Create agent with an specific IP
@@ -154,12 +242,16 @@ stages:
       json:
         name: "NewAgentPost3"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: POST /agents (no IP)
@@ -185,16 +277,13 @@ stages:
   - name: Check that this agent has the IP 'any'
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *agent_list_request
       params:
         agents_list: "{agent_id_no_ip:s}"
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: "{agent_id_no_ip:s}"
@@ -202,9 +291,22 @@ stages:
               ip: 'any'
 
 ---
-test_name: POST /groups/{group_id}
+test_name: POST /groups
 
 stages:
+
+    # POST /groups
+  - name: Try to create a group without body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
 
     # POST /groups
   - name: Create a group called group4
@@ -220,7 +322,6 @@ stages:
       status_code: 200
       json:
         message: !anystr
-    delay_after: !float "{global_db_delay}"
 
     # POST /groups
   - name: Try to create a group that already exists
@@ -252,6 +353,21 @@ stages:
       json:
         <<: *error_spec
 
+    # POST /groups
+  - name: Try to create a group with a forbidden name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        group_id: "ar.conf"
+    response:
+      status_code: 400
+      json:
+        error: 1713
+
 ---
 test_name: POST /agents/insert
 
@@ -266,9 +382,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 406
-      json:
-        error: 6002
+      status_code: 400
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name
@@ -361,7 +475,6 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
     # POST /agents/insert
   - name: Create a new agent using a manual IP
@@ -425,19 +538,60 @@ stages:
         error: 1706
 
     # POST /agents/insert
-  - name: Create an agent using force time
+  - name: Create an agent using force
     request:
       verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
+
+    # POST /agents/insert
+  - name: Create an agent using force (requirements are not met)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+    response:
+      status_code: 400
+      json:
+        error: 1705
+
+    # POST /agents/insert
+  - name: Create an agent using force (invalid parameters)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+            invalid: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
 
 ---
 test_name: POST /agents/insert/quick
@@ -457,7 +611,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           id: !anystr
           key: !anystr

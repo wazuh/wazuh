@@ -2,7 +2,7 @@
   -  Microsoft Windows rules
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -177,8 +177,7 @@
     <id>^517$|^1102$</id>
     <description>Windows audit log was cleared.</description>
     <mitre>
-      <id>T1070</id>
-      <id>T1107</id>
+      <id>T1070.001</id>
     </mitre>
     <group>logs_cleared,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -1094,7 +1093,7 @@
     <description>Windows DC - Possible replay attack.</description>
     <info type="link">https://web.mit.edu/kerberos/</info>
     <mitre>
-      <id>T1075</id>
+      <id>T1550</id>
     </mitre>
     <group>authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -1203,7 +1202,7 @@
       <match>chromoting</match>
       <regex>: chromoting: \.* Access denied for client: </regex>
       <description>Chrome Remote Desktop attempt - access denied</description>
-      <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="18159" level="5">
@@ -1211,7 +1210,7 @@
       <match>chromoting</match>
       <regex>: chromoting: \.* Client connected:</regex>
       <description>Chrome Remote Desktop attempt - connected</description>
-      <group>gdpr_IV_32.2,</group>
+      <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="18160" level="5">
@@ -1219,7 +1218,7 @@
       <match>chromoting</match>
       <regex>: chromoting: \.* Client disconnected:</regex>
       <description>Chrome Remote Desktop attempt - disconnected</description>
-      <group>gdpr_IV_32.2,</group>
+      <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
   </rule>
 
 </group>

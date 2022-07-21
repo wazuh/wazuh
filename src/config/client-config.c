@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -31,6 +31,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
     const char *xml_max_time_reconnect_try = "time-reconnect";
+    const char *xml_force_reconnect_interval = "force_reconnect_interval";
     const char *xml_main_ip_update_interval = "ip_update_interval";
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
@@ -44,11 +45,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_protocol = "protocol";
 
     agent * logr = (agent *)d1;
-    logr->notify_time = 0;
-    logr->max_time_reconnect_try = 0;
-    logr->main_ip_update_interval = 0;
-    logr->rip_id = 0;
-    logr->server_count = 0;
 
     for (i = 0; node[i]; i++) {
         rip = NULL;
@@ -66,6 +62,9 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (OS_IsValidIP(logr->lip, NULL) != 1) {
                 merror(INVALID_IP, logr->lip);
                 return (OS_INVALID);
+            } else if (strchr(logr->lip, ':') != NULL) {
+                os_realloc(logr->lip, IPSIZE + 1, logr->lip);
+                OS_ExpandIPv6(logr->lip, IPSIZE);
             }
         }
         /* Get server IP */
@@ -141,6 +140,13 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             if (logr->max_time_reconnect_try < 0) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
+            long t = w_parse_time(node[i]->content);
+            if (t < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                logr->force_reconnect_interval = t;
             }
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
@@ -224,6 +230,39 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             logr->server[i].protocol = protocol;
         }
     }
+    return (0);
+}
+
+int Read_Client_Shared(XML_NODE node, void *d1)
+{
+    int i = 0;
+
+    /* XML definitions */
+    const char *xml_force_reconnect_interval = "force_reconnect_interval";
+
+    agent * logr = (agent *)d1;
+    logr->force_reconnect_interval = 0;
+
+    for (i = 0; node[i]; i++) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
+            long t = w_parse_time(node[i]->content);
+            if (t < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                logr->force_reconnect_interval = t;
+            }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+    }
+
     return (0);
 }
 
@@ -318,6 +357,10 @@ int Read_Client_Server(XML_NODE node, agent * logr)
 
     os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
     os_strdup(rip, logr->server[logr->server_count].rip);
+    if (strchr(logr->server[logr->server_count].rip, ':') != NULL) {
+        os_realloc(logr->server[logr->server_count].rip, IPSIZE + 1, logr->server[logr->server_count].rip);
+        OS_ExpandIPv6(logr->server[logr->server_count].rip, IPSIZE);
+    }
     logr->server[logr->server_count].port = port;
     logr->server[logr->server_count].protocol = protocol;
     logr->server[logr->server_count].max_retries = max_retries;
@@ -366,9 +409,9 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         } else if (!strcmp(node[j]->element, xml_enabled)) {
             if (!strcmp(node[j]->content, "yes"))
-                logr->enrollment_cfg->enabled = 1;
+                logr->enrollment_cfg->enabled = true;
             else if (!strcmp(node[j]->content, "no")) {
-                logr->enrollment_cfg->enabled = 0;
+                logr->enrollment_cfg->enabled = false;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
                 w_enrollment_target_destroy(target_cfg);
@@ -390,6 +433,10 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             }
             os_free(target_cfg->manager_name);
             os_strdup(remote_ip, target_cfg->manager_name);
+            if (strchr(target_cfg->manager_name, ':') != NULL) {
+                os_realloc(target_cfg->manager_name, IPSIZE + 1, target_cfg->manager_name);
+                OS_ExpandIPv6(target_cfg->manager_name, IPSIZE);
+            }
         } else if (strcmp(node[j]->element, xml_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
@@ -414,6 +461,10 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             if (OS_IsValidIP(node[j]->content, NULL) != 0) {
                 os_free(target_cfg->sender_ip);
                 os_strdup(node[j]->content, target_cfg->sender_ip);
+                if (strchr(target_cfg->sender_ip, ':') != NULL) {
+                    os_realloc(target_cfg->sender_ip, IPSIZE + 1, target_cfg->sender_ip);
+                    OS_ExpandIPv6(target_cfg->sender_ip, IPSIZE);
+                }
             } else {
                 merror(AG_INV_HOST, node[j]->content);
                 w_enrollment_target_destroy(target_cfg);

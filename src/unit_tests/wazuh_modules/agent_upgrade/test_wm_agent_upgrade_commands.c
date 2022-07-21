@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -185,6 +185,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, wazuh_version);
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, platform);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
@@ -241,6 +242,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, wazuh_version);
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, platform);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
@@ -296,6 +298,7 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, wazuh_version);
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, platform);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, "");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_GLOBAL_DB_FAILURE);
@@ -487,6 +490,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, version);
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, platform);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
@@ -563,6 +567,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, version);
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, platform);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
@@ -639,6 +644,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, version);
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, platform);
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
@@ -1334,6 +1340,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, "v3.13.1");
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, "ubuntu");
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
@@ -1582,6 +1589,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     // wm_agent_upgrade_validate_version
 
     expect_string(__wrap_wm_agent_upgrade_validate_version, wazuh_version, "v3.13.1");
+    expect_string(__wrap_wm_agent_upgrade_validate_version, platform, "ubuntu");
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE);
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);

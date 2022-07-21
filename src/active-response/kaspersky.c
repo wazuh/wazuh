@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -11,29 +11,18 @@
 
 #define PYTHON2             "/usr/bin/python"
 #define PYTHON3             "/usr/bin/python3"
-#define PATH_TO_KASPERSKY   DEFAULTDIR "/active-response/bin/kaspersky.py"
+#define PATH_TO_KASPERSKY   "active-response/bin/kaspersky.py"
 
 int main (int argc, char **argv) {
     (void)argc;
-    char input[BUFFERSIZE];
-    char log_msg[LOGSIZE];
-    char *extra_args;
+    char log_msg[OS_MAXSTR];
+    char *extra_args = NULL;
+    int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct stat file_status;
 
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -49,8 +38,8 @@ int main (int argc, char **argv) {
         char *exec_cmd[4] = {"python", PATH_TO_KASPERSKY, extra_args, NULL};
         wfd_t *wfd = wpopenv(exec_cmd[0], exec_cmd, W_BIND_STDOUT);
         if (!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error executing 'python' : %s", strerror(errno));
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error executing 'python' : %s", strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(extra_args);
@@ -62,8 +51,8 @@ int main (int argc, char **argv) {
         char *exec_cmd[4] = {"python3", PATH_TO_KASPERSKY, extra_args, NULL};
         wfd_t *wfd = wpopenv(exec_cmd[0], exec_cmd, W_BIND_STDOUT);
         if (!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error executing 'python3' : %s", strerror(errno));
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error executing 'python3' : %s", strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(extra_args);
@@ -72,15 +61,15 @@ int main (int argc, char **argv) {
         wpclose(wfd);
 
     } else {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE - 1, "Python binary not found");
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Python binary not found");
         write_debug_file(argv[0], log_msg);
     }
 
+    write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
     os_free(extra_args);
-
-    write_debug_file(argv[0], "Ended");
 
     return OS_SUCCESS;
 }

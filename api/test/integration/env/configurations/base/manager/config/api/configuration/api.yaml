@@ -5,16 +5,16 @@ port: 55000
 
 https:
  enabled: yes
- key: "api/configuration/ssl/server.key"
- cert: "api/configuration/ssl/server.crt"
+ key: "server.key"
+ cert: "server.crt"
  use_ca: False
- ca: "api/configuration/ssl/ca.crt"
+ ca: "ca.crt"
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
 logs:
  level: "info"
- path: "logs/api.log"
+ format: "plain"
 
 # Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
 cors:
@@ -34,10 +34,7 @@ access:
   max_login_attempts: 10000
   max_request_per_minute: 10000
 
-# Force the use of authd when adding and removing agents. Values: yes, no
-use_only_authd: no
-
-# Drop privileges (Run as ossec user)
+# Drop privileges (Run as wazuh user)
 drop_privileges: yes
 
 # Enable features under development

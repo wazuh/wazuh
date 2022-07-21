@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * Contributed by Gael Muller (@gaelmuller)
  *
  * This program is free software; you can redistribute it
@@ -8,6 +8,7 @@
  * Foundation.
  */
 
+#include <string.h>
 #define SECURITY_WIN32
 #include <windef.h>
 #include <sspi.h>
@@ -76,9 +77,9 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         merror_exit("Could not resolve manager's hostname");
 
     // Connect via TCP
-    *socket = OS_ConnectTCP(port, manager, 0);
+    *socket = OS_ConnectTCP(port, manager, strchr(manager, ':') != NULL);
     if (*socket < 0)
-        merror_exit("Unable to connect to %s:%d", manager, port);
+        merror_exit("Unable to connect to [%s]:%d", manager, port);
 
     // Setting authentication credentials
     ZeroMemory(&auth_cred, sizeof (auth_cred));
@@ -165,7 +166,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
     // Send remaining tokens if any
     SendSecurityToken(*socket, OutBuffers);
 
-    printf("INFO: Connected to %s:%d\n", manager, port);
+    printf("INFO: Connected to [%s]:%d\n", manager, port);
     LocalFree(buffer);
 }
 
@@ -313,10 +314,11 @@ void InstallAuthKeys(char *msg)
             !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
             merror_exit("Invalid key received (2). Closing connection.");
 
-        fp = fopen(KEYSFILE_PATH, "w");
+        fp = fopen(KEYS_FILE, "w");
 
-        if (!fp)
-            merror_exit("Unable to open key file: %s", KEYSFILE_PATH);
+        if (!fp) {
+            merror_exit("Unable to open key file: %s", KEYS_FILE);
+        }
 
         fprintf(fp, "%s\n", key);
         fclose(fp);
@@ -446,7 +448,7 @@ int main(int argc, char **argv)
     /* Checking if there is a custom password file */
     if (authpass == NULL) {
         FILE *fp;
-        fp = fopen(AUTHDPASS_PATH, "r");
+        fp = fopen(AUTHD_PASS, "r");
         buf[0] = '\0';
 
         if (fp) {
@@ -458,7 +460,8 @@ int main(int argc, char **argv)
             }
 
             fclose(fp);
-            printf("INFO: Using password specified on file: %s\n", AUTHDPASS_PATH);
+
+            printf("INFO: Using password specified on file: %s\n", AUTHD_PASS);
         }
     }
     if (!authpass) {
@@ -471,11 +474,26 @@ int main(int argc, char **argv)
     printf("INFO: Using agent name as: %s\n", agentname);
 
     // Send request
+    char *enrollment_msg = NULL;
+    os_calloc(OS_SIZE_65536, sizeof(char), enrollment_msg);
+    if (authpass) {
+        snprintf(enrollment_msg, OS_SIZE_65536, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+    }
+    else {
+        snprintf(enrollment_msg, OS_SIZE_65536, "OSSEC A:'%s'\n", agentname);
+    }
 
-    if (authpass)
-        SendSecureMessage(socket, &context, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
-    else
-        SendSecureMessage(socket, &context, "OSSEC A:'%s'\n", agentname);
+    // Reading agent's key (if any) to send its hash to the manager
+    keystore agent_keys = KEYSTORE_INITIALIZER;
+    OS_PassEmptyKeyfile();
+    OS_ReadKeys(&agent_keys, W_RAW_KEY, 0);
+    if (agent_keys.keysize > 0) {
+        w_enrollment_concat_key(enrollment_msg, agent_keys.keyentries[0]);
+    }
+
+    SendSecureMessage(socket, &context, enrollment_msg);
+    os_free(enrollment_msg);
+    OS_FreeKeys(&agent_keys);
 
     printf("INFO: Sent request to manager. Waiting for reply.\n");
 

@@ -33,10 +33,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         psapi
         iphlpapi
         ws2_32
-        -static-libgcc -static-libstdc++
+        -static-libstdc++
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(sysinfo_test_tool
+        sysinfo
         pthread)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "AIX")
     target_link_libraries(sysinfo_test_tool

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,9 +15,11 @@
 #define ARGV0 "wazuh-execd"
 #endif
 
-/* Add/delete arguments for the commands */
+/* Arguments for the commands */
 #define ADD_ENTRY       "add"
 #define DELETE_ENTRY    "delete"
+#define CONTINUE_ENTRY  "continue"
+#define ABORT_ENTRY     "abort"
 
 /* Maximum number of active responses active */
 #define MAX_AR      64
@@ -36,7 +38,6 @@ extern int max_restart_lock;
 
 /** Function prototypes **/
 
-void WinExecdRun(char *exec_msg);
 int ReadExecConfig(void);
 cJSON *getARConfig(void);
 cJSON *getExecdInternalOptions(void);
@@ -45,8 +46,22 @@ char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
 int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
-int WinExecd_Start(void);
-void WinTimeoutRun(void);
+
+#ifdef WIN32
+int WinExecdStart(void);
+void ExecdRun(char *exec_msg);
+void ExecdTimeoutRun();
+void ExecdShutdown();
+#else
+#ifdef WAZUH_UNIT_TESTING
+void ExecdStart(int q);
+#else
+void ExecdStart(int q) __attribute__((noreturn));
+#endif
+void ExecdRun(char *exec_msg, int *childcount);
+void ExecdTimeoutRun(int *childcount);
+void ExecdShutdown(int sig) __attribute__((noreturn));
+#endif
 
 size_t wcom_unmerge(const char *file_path, char **output);
 size_t wcom_uncompress(const char * source, const char * target, char ** output);
@@ -54,6 +69,7 @@ size_t wcom_restart(char **output);
 size_t wcom_dispatch(char *command, char **output);
 size_t lock_restart(int timeout);
 size_t wcom_getconfig(const char * section, char ** output);
+size_t wcom_check_manager_config(char **output);
 
 #ifndef WIN32
 // Com request thread dispatcher
@@ -66,8 +82,10 @@ typedef struct _timeout_data {
     int time_to_block;
     char **command;
     char *parameters;
+    char *rkey;
 } timeout_data;
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
+void FreeTimeoutList();
 
 #endif /* EXECD_H */

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_list}'])
-def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=None, search=None, sort=None, filters=None,
+def get_item_agent(agent_list, offset=0, limit=common.DATABASE_LIMIT, select=None, search=None, sort=None, filters=None,
                    q='', array=True, nested=True, element_type='os'):
     """ Get syscollector information about a list of agents.
 
@@ -37,22 +37,36 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
         sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']
     )
 
+    system_agents = get_agents_info()
     for agent in agent_list:
         try:
-            if agent not in get_agents_info():
+            if agent not in system_agents:
                 raise WazuhResourceNotFound(1701)
             table, valid_select_fields = get_valid_fields(Type(element_type), agent_id=agent)
-            db_query = WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
-                                                search=search,
-                                                sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                                array=array, nested=nested, query=q)
-            data = db_query.run()
+            with WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
+                                          search=search,
+                                          sort=sort, filters=filters, fields=valid_select_fields, table=table,
+                                          array=array, nested=nested, query=q) as db_query:
+                data = db_query.run()
+
             for item in data['items']:
                 item['agent_id'] = agent
                 result.affected_items.append(item)
             result.total_affected_items += data['totalItems']
         except WazuhResourceNotFound as e:
             result.add_failed_item(id_=agent, error=e)
+
+    # Avoid that integer type fields are casted to string, this prevents sort parameter malfunctioning
+    try:
+        if len(result.affected_items) and sort and len(sort['fields']) == 1:
+            fields = sort['fields'][0].split('.')
+            element = result.affected_items[0][fields.pop(0)]
+            for field in fields:
+                element = element[field]
+            element_type = type(element).__name__
+            result.sort_casting = [element_type] if element_type not in ['str', 'datetime'] else ['str']
+    except KeyError:
+        pass
 
     result.affected_items = merge(*[[res] for res in result.affected_items],
                                   criteria=result.sort_fields,

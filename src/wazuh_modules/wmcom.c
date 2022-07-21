@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * Mar 14, 2018.
  *
  * This program is free software; you can redistribute it
@@ -94,7 +94,7 @@ void wmcom_send(char * message)
 void wmcom_send(char * message)
 {
     int sock;
-    if (sock = OS_ConnectUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
             case ECONNREFUSED:
                 mdebug1("Target wmodules refused connection. The component might be disabled");
@@ -121,7 +121,7 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomainWithPerms(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }

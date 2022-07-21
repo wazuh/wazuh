@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
@@ -6,8 +6,7 @@ from json import dumps, loads
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
-from wazuh.core.utils import WazuhDBQuery, \
-    WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 from wazuh.core.wazuh_socket import WazuhSocket
 
 tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'module': 'module',
@@ -17,7 +16,7 @@ tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'm
 
 class WazuhDBQueryTask(WazuhDBQuery):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
+    def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, query: str = '', count: bool = True,
                  get_data: bool = True, table: str = 'tasks', sort: dict = None, default_sort_field: str = 'task_id',
                  fields=None, search: dict = None, select: dict = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryTasks query."""
@@ -25,13 +24,14 @@ class WazuhDBQueryTask(WazuhDBQuery):
         if filters is None:
             filters = {}
         if min_select_fields is None:
-            min_select_fields = {'task_id', 'agent_id', 'status', 'command', 'create_time'}
+            min_select_fields = {'task_id'}
         if fields is None:
             fields = tasks_fields
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table=table, sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='ASC',
                               filters=filters, query=query, count=count, get_data=get_data,
+                              date_fields={'create_time', 'last_update_time'},
                               min_select_fields=min_select_fields, backend=WazuhDBBackend(query_format='task'))
 
     def _final_query(self):
@@ -49,6 +49,13 @@ class WazuhDBQueryTask(WazuhDBQuery):
             self.request[field_filter] = q_filter['value']
         else:
             super()._process_filter(field_name, field_filter, q_filter)
+
+    def _format_data_into_dictionary(self):
+        """Standardization of dates to the ISO 8601 format."""
+        [t.update((k, get_date_from_timestamp(v).strftime(common.DATE_FORMAT))
+                  for k, v in t.items() if k in self.date_fields) for t in self._data]
+
+        return {'items': self._data, 'totalItems': self.total_items}
 
 
 def send_to_tasks_socket(command):

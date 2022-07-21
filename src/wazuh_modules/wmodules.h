@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is free software; you can redistribute it
@@ -17,8 +17,7 @@
 #include "config/config.h"
 #include "wmodules_def.h"
 
-#define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.
-#define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
+#define WM_STATE_DIR    "var/wodles"               // Default directory for states.
 #define WM_DIR_WIN      "wodles"                    // Default directory for states (Windows)
 #define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
@@ -32,12 +31,15 @@
 #define WM_HEADER_SIZE  OS_SIZE_2048
 #define VU_WM_NAME "vulnerability-detector"
 #define AZ_WM_NAME "azure-logs"
-#define KEY_WM_NAME "agent-key-polling"
+#define KEY_WM_NAME "agent-key-polling"             // Deprecated key-polling module
 #define SCA_WM_NAME "sca"
-#define GCP_WM_NAME "gcp-pubsub"
+#define GCP_PUBSUB_WM_NAME "gcp-pubsub"
+#define GCP_BUCKET_WM_NAME "gcp-bucket"
 #define FLUENT_WM_NAME "fluent-forward"
 #define AGENT_UPGRADE_WM_NAME "agent-upgrade"
 #define TASK_MANAGER_WM_NAME "task-manager"
+#define GITHUB_WM_NAME "github"
+#define OFFICE365_WM_NAME "office365"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -70,7 +72,6 @@ typedef enum crypto_type {
 #include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
-#include "wm_keyrequest.h"
 #include "wm_sca.h"
 #include "wm_fluent.h"
 #include "wm_control.h"
@@ -78,13 +79,14 @@ typedef enum crypto_type {
 #include "wm_task_general.h"
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
+#include "wm_github.h"
+#include "wm_office365.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
-
 
 // Read XML configuration and internal options
 int wm_config();
@@ -94,6 +96,20 @@ int modulesSync(char* args);
 
 // Add module to the global list
 void wm_add(wmodule *module);
+
+/*
+ * @brief Get ID group of Wazuh user.
+ *
+ * @return ID group.
+ */
+gid_t wm_getGroupID(void);
+
+/*
+ * @brief Set ID group of wazuh modules
+ *
+ * @param[in] gid ID group.
+ */
+void wm_setGroupID(const gid_t gid);
 
 // Check general configuration
 int wm_check();
@@ -138,6 +154,9 @@ void wm_kill_children();
 // Reads an HTTP header and extracts the size of the response
 long int wm_read_http_size(char *header);
 
+// Reads an HTTP header and extracts an element from a regex
+char* wm_read_http_header_element(char *header, char *regex);
+
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE
  * Returns 0 if success, or 1 if fail.
@@ -149,6 +168,9 @@ void wm_free(wmodule * c);
 
 // Send message to a queue with a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
+
+// Send message to a queue with a specific delay, and the option to stop the wait process.
+int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) __attribute__((nonnull));
 
 // Check if a path is relative or absolute.
 // Returns 0 if absolute, 1 if relative or -1 on error.

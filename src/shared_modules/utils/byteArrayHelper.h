@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * March 15, 2021.
  *
  * This program is free software; you can redistribute it
@@ -19,20 +19,20 @@
 
 namespace Utils
 {
-    static int32_t toInt32BE(uint8_t const * bytes)
+    static int32_t toInt32BE(uint8_t const* bytes)
     {
         return static_cast<int32_t>(bytes[3]) |
-            static_cast<int32_t>(bytes[2]) << 8 |
-            static_cast<int32_t>(bytes[1]) << 16 |
-            static_cast<int32_t>(bytes[0]) << 24;
+               static_cast<int32_t>(bytes[2]) << 8 |
+               static_cast<int32_t>(bytes[1]) << 16 |
+               static_cast<int32_t>(bytes[0]) << 24;
     }
 
-    static int32_t toInt32LE(uint8_t const * bytes)
+    static int32_t toInt32LE(uint8_t const* bytes)
     {
         return static_cast<int32_t>(bytes[0]) |
-            static_cast<int32_t>(bytes[1]) << 8 |
-            static_cast<int32_t>(bytes[2]) << 16 |
-            static_cast<int32_t>(bytes[3]) << 24;
+               static_cast<int32_t>(bytes[1]) << 8 |
+               static_cast<int32_t>(bytes[2]) << 16 |
+               static_cast<int32_t>(bytes[3]) << 24;
     }
 }
 

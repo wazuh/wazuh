@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
@@ -10,7 +10,7 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
+from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
@@ -20,7 +20,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,
-                 limit=common.database_limit, select=None, sort_by=None, sort_ascending=True, search_text=None,
+                 limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True, search_text=None,
                  complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of available decoders.
 
@@ -80,7 +80,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
-                         required_fields=REQUIRED_FIELDS)
+                         required_fields=REQUIRED_FIELDS, allowed_select_fields=DECODER_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -88,7 +88,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
 
 @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
-def get_decoders_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.database_limit,
+def get_decoders_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
                        sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
                        search_in_fields=None):
     """Gets a list of the available decoder files.
@@ -157,7 +157,7 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
     if len(decoders) > 0:
         decoder_path = decoders[0]['relative_dirname']
         try:
-            full_path = join(common.wazuh_path, decoder_path, filename)
+            full_path = join(common.WAZUH_PATH, decoder_path, filename)
             with open(full_path) as f:
                 file_content = f.read()
             if raw:
@@ -200,7 +200,7 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
                                       )
-    full_path = join(common.user_decoders_path, filename)
+    full_path = join(common.USER_DECODERS_PATH, filename)
     backup_file = ''
     try:
         if len(content) == 0:
@@ -221,7 +221,7 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     except WazuhError as e:
         result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o0660)
+        exists(backup_file) and safe_move(backup_file, full_path)
 
     return result
 
@@ -243,7 +243,7 @@ def delete_decoder_file(filename: str) -> AffectedItemsWazuhResult:
                                       none_msg='Could not delete decoder file'
                                       )
 
-    full_path = join(common.user_decoders_path, filename[0])
+    full_path = join(common.USER_DECODERS_PATH, filename[0])
 
     try:
         if exists(full_path):

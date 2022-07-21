@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -18,12 +18,24 @@
 #include "../config/syscheck-config.h"
 
 #include "../wrappers/common.h"
+#include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /* redefinitons/wrapping */
+typedef struct entry_struct_s {
+    directory_t *dir1;
+    directory_t *dir2;
+    char *filerestrict;
+} entry_struct_t;
 
 static int restart_syscheck(void **state)
 {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     cJSON *data = *state;
     if (data) {
         cJSON_Delete(data);
@@ -33,7 +45,48 @@ static int restart_syscheck(void **state)
     return 0;
 }
 
+/* setup and teardown */
 
+static int setup_group(void **state) {
+    test_mode = 1;
+
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    test_mode = 0;
+
+    return 0;
+}
+
+static int setup_entry(void **state) {
+    entry_struct_t *entries = calloc(1, sizeof(entry_struct_t));
+    if (entries == NULL) {
+        return 1;
+    }
+
+    *state = entries;
+    return 0;
+}
+
+static int teardown_entry(void **state) {
+    entry_struct_t *entries = *state;
+
+    if (entries->dir1) {
+        free_directory(entries->dir1);
+    }
+
+    if (entries->dir2) {
+        free_directory(entries->dir2);
+    }
+
+    if (entries->filerestrict) {
+        free(entries->filerestrict);
+    }
+
+    free(entries);
+    return 0;
+}
 /* tests */
 
 void test_Read_Syscheck_Config_success(void **state)
@@ -41,12 +94,15 @@ void test_Read_Syscheck_Config_success(void **state)
     (void) state;
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
 
@@ -66,14 +122,13 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-    assert_non_null(syscheck.dir);
+    assert_non_null(syscheck.directories);
     // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
     // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
     for (int i = 0; i < 74; i++){
-        assert_non_null(syscheck.dir[i]);
+        assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, i)));
     }
-    assert_null(syscheck.dir[74]);
-    assert_non_null(syscheck.opts);
+    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 74)));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 1);
@@ -91,7 +146,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_invalid(void **state)
@@ -101,6 +155,14 @@ void test_Read_Syscheck_Config_invalid(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
+
+ /* expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+*/
+
     ret = Read_Syscheck_Config("invalid.conf");
 
     assert_int_equal(ret, OS_INVALID);
@@ -111,10 +173,14 @@ void test_Read_Syscheck_Config_undefined(void **state)
     (void) state;
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
+
 
     ret = Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -134,8 +200,7 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-    assert_non_null(syscheck.dir);
-    assert_non_null(syscheck.opts);
+    assert_non_null(syscheck.directories);
     assert_int_equal(syscheck.enable_synchronization, 0);
     assert_int_equal(syscheck.restart_audit, 0);
     assert_int_equal(syscheck.enable_whodata, 1);
@@ -153,7 +218,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 5);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_unparsed(void **state)
@@ -161,10 +225,10 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     (void) state;
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     ret = Read_Syscheck_Config("test_empty_config.conf");
 
@@ -185,12 +249,8 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-#ifndef TEST_WINAGENT
-    assert_null(syscheck.dir);
-#else
-    assert_non_null(syscheck.dir);
-#endif
-    assert_null(syscheck.opts);
+    assert_non_null(syscheck.directories);
+    assert_null(OSList_GetFirstNode(syscheck.directories));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 0);
@@ -208,7 +268,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_null(syscheck.diff_size_limit);
 }
 
 void test_getSyscheckConfig(void **state)
@@ -216,9 +275,15 @@ void test_getSyscheckConfig(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "Duplicated registration entry: HKEY_SOME_KEY\\the_key9");
 #endif
 
     Read_Syscheck_Config("test_syscheck_config.conf");
@@ -354,10 +419,14 @@ void test_getSyscheckConfig_no_audit(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
+
 
     Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -469,10 +538,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     Read_Syscheck_Config("test_empty_config.conf");
 
@@ -486,11 +556,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
+    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     Read_Syscheck_Config("test_empty_config.conf");
 
@@ -501,7 +571,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
@@ -537,8 +607,6 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
     cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
-    cJSON *directories = cJSON_GetObjectItem(sys_items, "directories");
-    assert_int_equal(cJSON_GetArraySize(directories), 0);
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
@@ -571,23 +639,25 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     (void) state;
     int ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
+    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     ret = Read_Syscheck_Config("test_syscheck3.conf");
     assert_int_equal(ret, 0);
 
     #ifdef WIN32
-    assert_string_equal(syscheck.dir[0], "c:\\,testcommas");
-    assert_string_equal(syscheck.dir[1], "c:\\test,commas");
-    assert_string_equal(syscheck.dir[2], "c:\\testcommas,");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "c:\\,testcommas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "c:\\test,commas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "c:\\testcommas,");
     #else
-    assert_string_equal(syscheck.dir[0], "/,testcommas");
-    assert_string_equal(syscheck.dir[1], "/test,commas");
-    assert_string_equal(syscheck.dir[2], "/testcommas,");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "/,testcommas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "/test,commas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "/testcommas,");
     #endif
 }
 
@@ -596,10 +666,13 @@ void test_getSyscheckInternalOptions(void **state)
     (void) state;
     cJSON * ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_any_always(__wrap__mdebug1, formatted_msg);
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -616,6 +689,169 @@ void test_getSyscheckInternalOptions(void **state)
     assert_int_equal(cJSON_GetArraySize(root_items), 1);
 }
 
+void test_fim_create_directory_add_new_entry(void **state) {
+    const char *path = "./mock_path";
+    int options = CHECK_FOLLOW;
+    const char *filerestrict = "restrict";
+    int recursion_level = 0;
+    const char *tag = "mock_tag";
+    int diff_size_limit = 0;
+    unsigned int is_wildcard = 0;
+    directory_t *new_entry;
+    entry_struct_t *test_struct = *state;
+
+    new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
+    test_struct->dir1 = new_entry;
+
+    assert_non_null(new_entry);
+    assert_string_equal(tag, new_entry->tag);
+    assert_string_equal(path, new_entry->path);
+    assert_int_equal(is_wildcard, new_entry->is_wildcard);
+}
+
+void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
+    const char *path = "./mock_path";
+    int recursion_level = 0;
+    const char *tag = "mock_tag";
+    int options = CHECK_FOLLOW;
+    int diff_size_limit = 0;
+    unsigned int is_wildcard = 0;
+    directory_t *new_entry;
+    char error_msg[OS_MAXSTR + 1];
+    entry_struct_t *test_struct = *state;
+
+    test_struct->filerestrict = calloc(OS_PATTERN_MAXSIZE + 2, sizeof(char));
+    memset(test_struct->filerestrict, 'a', OS_PATTERN_MAXSIZE + 1);
+
+    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, test_struct->filerestrict, OS_REGEX_MAXSIZE);
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    new_entry = fim_create_directory(path, options, test_struct->filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
+    test_struct->dir1 = new_entry;
+    assert_non_null(new_entry);
+    assert_string_equal(tag, new_entry->tag);
+}
+
+void test_fim_insert_directory_duplicate_entry(void **state) {
+    OSList list;
+    OSListNode first_list_node;
+    entry_struct_t *test_struct = *state;
+
+    test_struct->dir1 = calloc(1, sizeof(directory_t));
+    test_struct->dir2 = calloc(1, sizeof(directory_t));
+
+    test_struct->dir2->path = strdup("same_path");
+    test_struct->dir2->tag = strdup("new_entry_tag");
+    first_list_node.data = test_struct->dir1;
+    list.first_node = &first_list_node;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    test_struct->dir1->path = strdup(test_struct->dir2->path);
+    fim_insert_directory(&list, test_struct->dir2);
+
+    assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.first_node->data))->tag);
+    // test_struct->dir1 is already freed.
+    test_struct->dir1 = NULL;
+    *state = test_struct;
+}
+
+void test_fim_insert_directory_insert_entry_before(void **state) {
+    OSList list = {0};
+    OSList_SetFreeDataPointer(&list, (void (*)(void *))free_directory);
+    OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
+    entry_struct_t *test_struct= *state;
+
+    test_struct->dir1 = calloc(1, sizeof(directory_t));
+    test_struct->dir2 = calloc(1, sizeof(directory_t));
+
+    test_struct->dir1->path = strdup("BPath");
+    test_struct->dir2->path = strdup("APath");
+    test_struct->dir2->tag = strdup("new_entry_tag");
+
+    first_list_node->data = test_struct->dir1;
+    list.first_node = first_list_node;
+    list.last_node = list.first_node;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    fim_insert_directory(&list, test_struct->dir2);
+    assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.first_node->data))->tag);
+
+    OSList_CleanNodes(&list);
+    test_struct->dir1 = NULL;
+    test_struct->dir2 = NULL;
+}
+
+void test_fim_insert_directory_insert_entry_last(void **state) {
+    OSList list = {0};
+
+    OSList_SetFreeDataPointer(&list, (void (*)(void *))free_directory);
+    OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
+
+    entry_struct_t *test_struct = *state;
+
+    test_struct->dir1 = calloc(1, sizeof(directory_t));
+    test_struct->dir2 = calloc(1, sizeof(directory_t));
+
+    test_struct->dir1->path = strdup("APath");
+    test_struct->dir2->path = strdup("BPath");
+    test_struct->dir2->tag = strdup("new_entry_tag");
+
+    first_list_node->data = test_struct->dir1;
+    list.first_node = first_list_node;
+    list.last_node = list.first_node;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    fim_insert_directory(&list, test_struct->dir2);
+    assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.last_node->data))->tag);
+
+    OSList_CleanNodes(&list);
+
+    test_struct->dir1 = NULL;
+    test_struct->dir2 = NULL;
+}
+
+void test_fim_copy_directory_null(void **state) {
+    directory_t *dir = NULL;
+    directory_t *return_dir;
+
+    return_dir = fim_copy_directory(dir);
+
+    assert_null(return_dir);
+
+}
+
+void test_fim_copy_directory_return_dir_copied(void **state) {
+    directory_t directory_copied;
+    directory_t *new_entry;
+    directory_copied.filerestrict = NULL;
+    directory_copied.path = "mock_path";
+    directory_copied.options = 0;
+    directory_copied.recursion_level = 3;
+    directory_copied.tag = "mock_tag";
+    directory_copied.diff_size_limit = 10;
+    directory_copied.is_wildcard = 0;
+    entry_struct_t *test_struct = *state;
+
+    new_entry = fim_copy_directory(&directory_copied);
+
+    assert_non_null(new_entry);
+    assert_string_equal(directory_copied.tag, new_entry->tag);
+    assert_string_equal(directory_copied.path, new_entry->path);
+    assert_int_equal(directory_copied.is_wildcard, new_entry->is_wildcard);
+    test_struct->dir1 = new_entry;
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -628,7 +864,14 @@ int main(void) {
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
         cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_fim_create_directory_add_new_entry, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_create_directory_OSMatch_Compile_fail_maxsize, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_insert_directory_duplicate_entry, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_before, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_last, setup_entry, teardown_entry),
+        cmocka_unit_test(test_fim_copy_directory_null),
+        cmocka_unit_test_setup_teardown(test_fim_copy_directory_return_dir_copied, setup_entry, teardown_entry)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

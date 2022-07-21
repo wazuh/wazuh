@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -16,6 +16,12 @@
 #include "../sha256/sha256_op.h"
 
 
-int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size) __attribute((nonnull(1, 3, 4)));
+int OS_MD5_SHA1_SHA256_File(const char *fname,
+                            char **prefilter_cmd,
+                            os_md5 md5output,
+                            os_sha1 sha1output,
+                            os_sha256 sha256output,
+                            int mode,
+                            size_t max_size) __attribute((nonnull(1, 3, 4)));
 
 #endif /* MD5SHA1SHA256_OP_H */

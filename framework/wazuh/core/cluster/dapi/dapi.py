@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -8,17 +8,17 @@ import json
 import logging
 import operator
 import os
-import random
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import process
 from copy import copy, deepcopy
-from functools import reduce
+from functools import reduce, partial
 from operator import or_
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
+import api.configuration as aconf
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -31,6 +31,10 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
+pools = common.mp_pools.get()
+
+authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
+
 
 class DistributedAPI:
     """Represents a distributed API request."""
@@ -39,7 +43,7 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None):
+                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None):
         """Class constructor.
 
         Parameters
@@ -74,6 +78,8 @@ class DistributedAPI:
             Default `None`, list of system nodes
         current_user : str
             User who started the request
+        api_timeout : int
+            Timeout set in source API for the request
         """
         self.logger = logger
         self.f = f
@@ -82,7 +88,6 @@ class DistributedAPI:
         self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
-        self.request_id = str(random.randint(0, 2 ** 10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster
@@ -90,17 +95,19 @@ class DistributedAPI:
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
+        self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
-            if common.install_type != "local":
+            if common.WAZUH_INSTALL_TYPE != "local":
                 self.basic_services += ('wazuh-remoted',)
         else:
             self.basic_services = basic_services
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
-        self.threadpool = ThreadPoolExecutor(max_workers=1)
+        self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
+            if api_timeout else aconf.api_conf['intervals']['request_timeout']
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -166,14 +173,21 @@ class DistributedAPI:
             return response if isinstance(response, (wresults.AbstractWazuhResult, exception.WazuhException)) \
                 else wresults.WazuhResult(response)
 
-        except exception.WazuhError as e:
+        except json.decoder.JSONDecodeError:
+            e = exception.WazuhInternalError(3036)
             e.dapi_errors = self.get_error_info(e)
+            if self.debug:
+                raise
+            self.logger.error(f"{e.message}")
             return e
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
-            self.logger.error(f'{e.message}', exc_info=True)
+            self.logger.error(f"{e.message}", exc_info=not isinstance(e, exception.WazuhClusterError))
+            return e
+        except exception.WazuhError as e:
+            e.dapi_errors = self.get_error_info(e)
             return e
         except Exception as e:
             if self.debug:
@@ -211,6 +225,26 @@ class DistributedAPI:
             }
             raise exception.WazuhError(1017, extra_message=extra_info)
 
+    @staticmethod
+    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
+        """Run framework SDK function locally in another process."""
+
+        def debug_log(logger, message):
+            if logger.name == 'wazuh-api':
+                logger.debug2(message)
+            else:
+                logger.debug(message)
+
+        debug_log(logger, "Starting to execute request locally")
+        common.rbac.set(rbac_permissions)
+        common.broadcast.set(broadcasting)
+        common.cluster_nodes.set(nodes)
+        common.current_user.set(current_user)
+        data = f(**f_kwargs)
+        common.reset_context_cache()
+        debug_log(logger, "Finished executing request locally")
+        return data
+
     async def execute_local_request(self) -> str:
         """Execute an API request locally.
 
@@ -219,55 +253,64 @@ class DistributedAPI:
         str
             JSON response.
         """
-
-        def run_local():
-            self.debug_log("Starting to execute request locally")
-            common.rbac.set(self.rbac_permissions)
-            common.broadcast.set(self.broadcasting)
-            common.cluster_nodes.set(self.nodes)
-            common.current_user.set(self.current_user)
-            data = self.f(**self.f_kwargs)
-            common.reset_context_cache()
-            self.debug_log("Finished executing request locally")
-            return data
-
         try:
+            if self.f_kwargs.get('agent_list') == '*':
+                del self.f_kwargs['agent_list']
+
             before = time.time()
             self.check_wazuh_status()
 
-            timeout = None if self.wait_for_complete \
-                else self.cluster_items['intervals']['communication']['timeout_api_exe']
+            timeout = self.api_request_timeout if not self.wait_for_complete else None
 
             # LocalClient only for control functions
             if self.local_client_arg is not None:
                 lc = local_client.LocalClient()
                 self.f_kwargs[self.local_client_arg] = lc
-            else:
-                lc = None
-
-            if self.is_async:
-                task = run_local()
-            else:
-                loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(self.threadpool, run_local)
-
             try:
-                data = await asyncio.wait_for(task, timeout=timeout)
-            except asyncio.TimeoutError:
-                raise exception.WazuhInternalError(3021)
-            except OperationalError:
-                raise exception.WazuhInternalError(2008)
+                if self.is_async:
+                    task = self.run_local(self.f, self.f_kwargs, self.logger, self.rbac_permissions, self.broadcasting,
+                                          self.nodes, self.current_user)
+
+                else:
+                    loop = asyncio.get_event_loop()
+                    if 'thread_pool' in pools:
+                        pool = pools.get('thread_pool')
+                    elif self.f.__name__ in authentication_funcs:
+                        pool = pools.get('authentication_pool')
+                    else:
+                        pool = pools.get('process_pool')
+
+                    task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
+                                                              self.logger, self.rbac_permissions,
+                                                              self.broadcasting, self.nodes,
+                                                              self.current_user))
+                try:
+                    data = await asyncio.wait_for(task, timeout=timeout)
+                except asyncio.TimeoutError:
+                    raise exception.WazuhInternalError(3021)
+                except OperationalError:
+                    raise exception.WazuhInternalError(2008)
+                except process.BrokenProcessPool:
+                    raise exception.WazuhInternalError(901)
+            except json.decoder.JSONDecodeError:
+                raise exception.WazuhInternalError(3036)
+            except process.BrokenProcessPool:
+                raise exception.WazuhInternalError(900)
 
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
-        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
+        except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
+            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError, /proc availability error or
+            # WazuhClusterError
+            self.logger.error(f"{e.message}",
+                              exc_info=e.code not in {3021, 3036, 1913} and not isinstance(e,
+                                                                                           exception.WazuhClusterError))
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
-        except exception.WazuhInternalError as e:
+        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
-            self.logger.error(f"{e.message}", exc_info=True)
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -305,7 +348,8 @@ class DistributedAPI:
                 "rbac_permissions": self.rbac_permissions,
                 "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
-                "nodes": self.nodes
+                "nodes": self.nodes,
+                "api_timeout": self.api_request_timeout
                 }
 
     def get_error_info(self, e) -> Dict:
@@ -337,11 +381,11 @@ class DistributedAPI:
                   }
 
         # Give log path only in case of WazuhInternalError
-        if not isinstance(e, exception.WazuhError):
+        if isinstance(e, exception.WazuhInternalError):
             log_filename = None
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
-                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.wazuh_path))
+                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.WAZUH_PATH))
             result[node]['logfile'] = log_filename
 
         return result
@@ -350,11 +394,11 @@ class DistributedAPI:
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
-        res = json.loads(await client.send_file(os.path.join(common.wazuh_path,
+        res = json.loads(await client.send_file(os.path.join(common.WAZUH_PATH,
                                                              self.f_kwargs['tmp_file']),
                                                 node_name),
                          object_hook=c_common.as_wazuh_object)
-        os.remove(os.path.join(common.wazuh_path, self.f_kwargs['tmp_file']))
+        os.remove(os.path.join(common.WAZUH_PATH, self.f_kwargs['tmp_file']))
 
     async def execute_remote_request(self) -> Dict:
         """Execute a remote request. This function is used by worker nodes to execute master_only API requests.
@@ -372,7 +416,6 @@ class DistributedAPI:
                                              data=json.dumps(self.to_dict(),
                                                              cls=c_common.WazuhJSONEncoder).encode(),
                                              wait_for_complete=self.wait_for_complete)
-
         return json.loads(node_response,
                           object_hook=c_common.as_wazuh_object)
 
@@ -400,20 +443,24 @@ class DistributedAPI:
             wresults.AbstractWazuhResult or exception.WazuhException
             """
             node_name, agent_list = node_name
-            if agent_list:
-                self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
-            if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
+            if node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
+                if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
+                    self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
                 result = await self.distribute_function()
             else:
                 if 'tmp_file' in self.f_kwargs:
                     await self.send_tmp_file(node_name)
                 client = self.get_client()
                 try:
-                    result = json.loads(await client.execute(b'dapi_forward',
+                    kcopy = deepcopy(self.to_dict())
+                    if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
+                        kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
+
+                    result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,
-                                                                            json.dumps(self.to_dict(),
+                                                                            json.dumps(kcopy,
                                                                                        cls=c_common.WazuhJSONEncoder)
                                                                             ).encode(),
                                                              self.wait_for_complete),
@@ -438,6 +485,39 @@ class DistributedAPI:
 
             return result if isinstance(result, (wresults.AbstractWazuhResult, exception.WazuhException)) \
                 else wresults.WazuhResult(result)
+
+        async def clean_valid_nodes(nodes_to_clean: List[Tuple]) -> List[Tuple]:
+            """Clean nodes response to forward only to real nodes in a single petition for each one.
+
+            Parameters
+            ----------
+            nodes_to_clean : list
+                List of nodes to clean.
+
+            Returns
+            -------
+            list
+                Cleaned list of nodes.
+            """
+            # We run through the list of nodes to find unknown and '' entries
+            indexes_to_delete = set()
+            myself_index = None
+            for i, node in enumerate(nodes_to_clean):
+                if node[0] == 'unknown' or node[0] == '' or node[0] is None:
+                    indexes_to_delete.add(i)
+                if node[0] == self.node_info['node']:
+                    myself_index = i
+
+            # We add found entries to local node and remove them from the list of tuples
+            if myself_index is None and indexes_to_delete:
+                nodes_to_clean.append((self.node_info['node'], list()))
+                for index in indexes_to_delete:
+                    nodes_to_clean[-1][1].extend(nodes_to_clean[index][1])
+            elif myself_index is not None and indexes_to_delete:
+                for index in indexes_to_delete:
+                    nodes_to_clean[myself_index][1].extend(nodes_to_clean[index][1])
+
+            return [node for i, node in enumerate(nodes_to_clean) if i not in indexes_to_delete]
 
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
@@ -466,12 +546,15 @@ class DistributedAPI:
             allowed_nodes = wresults.AffectedItemsWazuhResult()
             allowed_nodes.affected_items = list(nodes)
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
-        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in valid_nodes]))
+
+        cleaned_valid_nodes = await clean_valid_nodes(valid_nodes)
+
+        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in cleaned_valid_nodes]))
 
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)
             if isinstance(response, wresults.AbstractWazuhResult):
-                response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
+                response = response.limit(limit=self.f_kwargs.get('limit', common.DATABASE_LIMIT),
                                           offset=self.f_kwargs.get('offset', 0)) \
                     .sort(fields=self.f_kwargs.get('fields', []),
                           order=self.f_kwargs.get('order', 'asc'))
@@ -541,18 +624,6 @@ class DistributedAPI:
             requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
             return {node_id: [] for node_id in requested_nodes}
 
-        elif 'group_id' in self.f_kwargs:
-            common.rbac.set(self.rbac_permissions)
-            agents = agent.get_agents_in_group(group_list=[self.f_kwargs['group_id']], select=select_node,
-                                               sort={'fields': ['node_name'], 'order': 'desc'}).affected_items
-            if len(agents) == 0:
-                raise WazuhError(1755)
-            del self.f_kwargs['group_id']
-            node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
-                         itertools.groupby(agents, key=operator.itemgetter('node_name'))}
-
-            return node_name
-
         else:
             if self.broadcasting:
                 node_name = {}
@@ -571,7 +642,6 @@ class WazuhRequestQueue:
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server
-        self.pending_requests = {}
 
     def add_request(self, request: bytes):
         """Add a request to the queue.
@@ -626,15 +696,15 @@ class APIRequestQueue(WazuhRequestQueue):
                 task_id = b'Error in distributed API: ' + str(e).encode()
 
             if task_id.startswith(b'Error'):
-                self.logger.error(task_id.decode())
+                self.logger.error(task_id.decode(), exc_info=False)
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
             else:
                 result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
             if not isinstance(result, WazuhException):
                 if result.startswith(b'Error'):
-                    self.logger.error(result.decode())
+                    self.logger.error(result.decode(), exc_info=False)
             else:
-                self.logger.error(result.message)
+                self.logger.error(result.message, exc_info=False)
 
 
 class SendSyncRequestQueue(WazuhRequestQueue):
@@ -669,13 +739,12 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
             except Exception as e:
-                self.logger.error(f"Error in SendSync: {e}", exc_info=True)
-                task_id = b'Error in SendSync: ' + str(e).encode()
+                task_id = f'Error in SendSync (parameters {request}): {str(e)}'.encode()
 
             if task_id.startswith(b'Error'):
-                self.logger.error(task_id.decode())
-                result = await node.send_request(b'sendsync_err', name_2.encode() + task_id)
+                self.logger.error(task_id.decode(), exc_info=False)
+                result = await node.send_request(b'sendsyn_err', name_2.encode() + task_id)
             else:
-                result = await node.send_request(b'sendsync_res', name_2.encode() + task_id)
+                result = await node.send_request(b'sendsyn_res', name_2.encode() + task_id)
             if isinstance(result, WazuhException):
                 self.logger.error(result.message)

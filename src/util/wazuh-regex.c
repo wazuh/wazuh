@@ -1,5 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it

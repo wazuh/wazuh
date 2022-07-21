@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,13 +14,21 @@
 #include <time.h>
 #include <pthread.h>
 #include "shared.h"
+#include "os_crypto/sha1/sha1_op.h"
 
-typedef enum _crypt_method{
-    W_METH_BLOWFISH,W_METH_AES
+typedef enum _crypt_method {
+    W_METH_BLOWFISH, W_METH_AES
 } crypt_method;
 
+/**
+ * @brief Enumerator that defines the key initialization modes.
+ */
+typedef enum _key_mode {
+    W_RAW_KEY, W_ENCRYPTION_KEY, W_DUAL_KEY
+} key_mode_t;
+
 typedef struct keystore_flags_t {
-    unsigned int rehash_keys:1;     // Flag: rehash keys on adding
+    unsigned int key_mode:2;        // Type of key to be initialized
     unsigned int save_removed:1;    // Save removed keys into list
 } keystore_flags_t;
 
@@ -33,16 +41,18 @@ typedef struct _keyentry {
     time_t updating_time;
 
     char *id;
-    char *key;
+    char *raw_key;
+    char *encryption_key;
     char *name;
 
     ino_t inode;
 
     os_ip *ip;
-    int sock;                           ///< File descriptor of client's TCP socket 
+    int sock;                           ///< File descriptor of client's TCP socket
     int net_protocol;                   ///< Client current protocol
+    time_t time_added;
     pthread_mutex_t mutex;
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     FILE *fp;
     crypt_method crypto_method;
 
@@ -55,9 +65,9 @@ typedef struct _keystore {
     keyentry **keyentries;
 
     /* Hashes, based on the ID/IP to look up the keys */
-    OSHash *keyhash_id;
-    OSHash *keyhash_ip;
-    OSHash *keyhash_sock;
+    rb_tree *keytree_id;
+    rb_tree *keytree_ip;
+    rb_tree *keytree_sock;
 
     /* Total key size */
     unsigned int keysize;
@@ -76,6 +86,9 @@ typedef struct _keystore {
     size_t removed_keys_size;
 
     w_linked_queue_t *opened_fp_queue;
+
+    /* Mutexes */
+    pthread_mutex_t keytree_sock_mutex;
 } keystore;
 
 typedef enum key_states {
@@ -85,7 +98,7 @@ typedef enum key_states {
     KS_ENCKEY
 } key_states;
 
-#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0, NULL }
+#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0, NULL, PTHREAD_MUTEX_INITIALIZER }
 
 /** Function prototypes -- key management **/
 
@@ -93,7 +106,7 @@ typedef enum key_states {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed) __attribute((nonnull));
 
 void OS_FreeKey(keyentry *key);
 
@@ -116,7 +129,7 @@ void OS_RemoveCounter(const char *id) __attribute((nonnull));
 void OS_PassEmptyKeyfile();
 
 /* Add new key */
-int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key) __attribute((nonnull));
+int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, time_t time_added) __attribute((nonnull));
 
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id, int purge);
@@ -144,6 +157,25 @@ int OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnul
 /* Check if the id is valid and dynamic */
 int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __attribute((nonnull(1)));
 
+/**
+ * @brief Parse the agent timestamps file into the keystore structure
+ *
+ * @param keys Pointer to a keystore structure.
+ * @return Status of the operation.
+ * @retval 0 On success.
+ * @retval -1 On failure.
+ */
+int OS_ReadTimestamps(keystore * keys);
+
+/**
+ * @brief  Write the agent timestamp data into the timestamps file
+ *
+ * @param keys Pointer to a keystore structure.
+ * @return Status of the operation.
+ * @retval 0 On success.
+ * @retval -1 On failure.
+ */
+int OS_WriteTimestamps(keystore * keys);
 
 /** Function prototypes -- send/recv messages **/
 
@@ -161,7 +193,7 @@ int OS_DeleteSocket(keystore * keys, int sock);
 
 /**
  * @brief Get agent's network protocol from keystore given its agent id
- * 
+ *
  * @param keys Contains information related with the agents
  * @param agent_id This variable is used to index the keys array
  * @retval -1 if protocol could not be found
@@ -170,16 +202,23 @@ int OS_DeleteSocket(keystore * keys, int sock);
  */
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
 
+/**
+ * @brief Receives a keyentry structure and returns the SHA1 value of the agent's key.
+ *
+ * @param key_entry The agent's key structure
+ * @param output The variable where the hashed key will be stored
+ * @retval Returns OS_SUCCESS on success or OS_INVALID on error.
+ **/
+int w_get_key_hash(keyentry *key_entry, os_sha1 output);
+
 /* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32
-#define RIDS_DIR        "/queue/rids"
-#define RIDS_DIR_PATH   DEFAULTDIR RIDS_DIR
+#define RIDS_DIR        "queue/rids"
 #else
 #define RIDS_DIR        "rids"
-#define RIDS_DIR_PATH   RIDS_DIR
 #endif
 
 #define SENDER_COUNTER  "sender_counter"

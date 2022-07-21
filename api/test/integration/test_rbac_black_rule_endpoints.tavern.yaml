@@ -1,9 +1,6 @@
 ---
 test_name: GET RULES RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Try to show the rules of the system
@@ -118,13 +115,13 @@ stages:
               relative_dirname: ruleset/rules
               status: enabled
             - <<: *full_item_rules_files
+              filename: 0017-wazuh-api_rules.xml
+            - <<: *full_item_rules_files
               filename: 0020-syslog_rules.xml
             - <<: *full_item_rules_files
               filename: 0025-sendmail_rules.xml
             - <<: *full_item_rules_files
               filename: 0030-postfix_rules.xml
-            - <<: *full_item_rules_files
-              filename: 0035-spamd_rules.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -327,7 +324,7 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET MITRE ATTACK IDS RBAC
+test_name: GET MITRE TECHNIQUE IDS RBAC
 
 stages:
 

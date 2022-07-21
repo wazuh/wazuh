@@ -1,7 +1,7 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+import asyncio
 from datetime import datetime, date
 from unittest.mock import patch, ANY
 
@@ -215,3 +215,58 @@ def test_raise_if_exc(mock_create_problem, obj, code):
         mock_create_problem.assert_called_once_with(obj, code)
     else:
         assert result == obj
+
+
+@pytest.mark.parametrize("dikt, f_kwargs, invalid_keys", [
+    ({"key1": 0, "key2": 0}, {"key1": 0}, {"key2"}),
+    ({
+         "key1": 0,
+         "key2": {
+             "key21": 0,
+             "key22": {
+                 "key221": 0,
+                 "key222": {
+                     "key2221": 0
+                 }
+             }
+         }
+     },
+     {
+         "key2": {
+             "key22": {
+                 "key221": 0
+             }
+         }
+     },
+     {"key1", "key21", "key222"}),
+    ({"key1": 0}, {"key1": 0, "key2": 0}, set())
+])
+def test_get_invalid_keys(dikt, f_kwargs, invalid_keys):
+    """Check that `get_invalid_keys` return the correct invalid keys when comparing two dictionaries with more
+    than one nesting level."""
+    invalid = util.get_invalid_keys(dikt, f_kwargs)
+    assert invalid == invalid_keys
+
+
+@pytest.mark.parametrize('link', [
+    '',
+    'https://documentation.wazuh.com/current/user-manual/api/reference.html'
+])
+@pytest.mark.asyncio
+async def test_deprecate_endpoint(link):
+    """Check that `deprecate_endpoint` decorator adds valid deprecation headers."""
+    class DummyObject:
+        headers = {}
+
+    @util.deprecate_endpoint(link=link)
+    def dummy_func():
+        future_response = asyncio.Future()
+        future_response.set_result(DummyObject())
+        return future_response
+
+    response = await dummy_func()
+    assert response.headers.pop('Deprecated') == 'true', 'No deprecation key in header'
+    if link:
+        assert response.headers.pop('Link') == f'<{link}>; rel="Deprecated"', 'No link was found'
+
+    assert response.headers == {}, f'Unexpected deprecation headers were found: {response.headers}'

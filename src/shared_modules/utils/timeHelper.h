@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -15,6 +15,7 @@
 #include <string>
 #include <ctime>
 #include <iomanip>
+#include <sstream>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -48,5 +49,7 @@ namespace Utils
         return getTimestamp(std::time(nullptr));
     }
 };
+
+#pragma GCC diagnostic pop
 
 #endif // _TIME_HELPER_H

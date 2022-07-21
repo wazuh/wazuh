@@ -1,8 +1,11 @@
 <!--
   -  Windows Event Channel ruleset for the System channel
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
   -  ID range: 61100 - 61599
 -->
 
@@ -245,7 +248,7 @@
     <description>The value for the parameter to the browser service was illegal</description>
     <mitre>
       <id>T1203</id>
-      <id>T1503</id>
+      <id>T1555.003</id>
     </mitre>
     <options>no_full_log</options>
   </rule>
@@ -314,7 +317,7 @@
     <field name="win.system.eventID">^7045$</field>
     <description>New Windows Service Created</description>
     <mitre>
-      <id>T1050</id>
+      <id>T1543.003</id>
     </mitre>
     <options>no_full_log</options>
     <options>no_email_alert</options>

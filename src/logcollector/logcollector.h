@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -25,10 +25,9 @@
 
 ///< JSON path wich contains the files position of last read
 #ifdef WIN32
-#define LOCALFILE_STATUS_PATH   "queue\\logcollector\\file_status.json"
+#define LOCALFILE_STATUS   "queue\\logcollector\\file_status.json"
 #else
-#define LOCALFILE_STATUS        "/queue/logcollector/file_status.json"
-#define LOCALFILE_STATUS_PATH   DEFAULTDIR LOCALFILE_STATUS
+#define LOCALFILE_STATUS        "queue/logcollector/file_status.json"
 #endif
 
 ///< JSON fields for file_status
@@ -37,10 +36,12 @@
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
 
+
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "macos_log.h"
 
 
 /*** Function prototypes ***/
@@ -106,6 +107,19 @@ void *read_multiline(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
+
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+/**
+ * @brief Read macOS log process output
+ *
+ * @param lf status and configuration of the macOS instance
+ * @param rc output parameter, returns zero
+ * @param drop_it if drop_it is different from 0, the logs will be read and discarded
+ * @return NULL
+ */
+void *read_macos(logreader *lf, int *rc, int drop_it);
+
+#endif
 
 /* Read DJB multilog format */
 /* Initializes multilog */
@@ -250,11 +264,12 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
 
 /**
  * @brief Get SHA1 context or initialize it
- * @param path the path is the hash key
+ * @param lf Structure that contains file information, with `fd` and `file` non-null.
  * @param context SHA1 context.
  * @param position end file position.
+ * @return true if returns a valid context, false in otherwise.
  */
-void w_get_hash_context(const char * path, SHA_CTX *context, int64_t position);
+bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;
@@ -263,6 +278,23 @@ extern int N_INPUT_THREADS;
 extern int OUTPUT_QUEUE_SIZE;
 #ifndef WIN32
 extern rlim_t nofile;
+#endif
+
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+/**
+ * @brief This function is called to release macOS log's "show" and/or "stream" resources
+ */
+void w_macos_release_log_execution(void);
+
+/**
+ * @brief This function is called to release macOS log's "show" resources
+ */
+void w_macos_release_log_show(void);
+
+/**
+ * @brief This function is called to release macOS log's "stream" resources
+ */
+void w_macos_release_log_stream(void);
 #endif
 
 #endif /* LOGREADER_H */

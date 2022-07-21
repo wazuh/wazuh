@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -24,8 +24,9 @@ static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
-
-// TODO: Remove calls for WIN32
+#ifdef WIN32
+w_queue_t * winexec_queue;
+#endif
 
 /* Receive events from the server */
 int receive_msg()
@@ -60,11 +61,15 @@ int receive_msg()
                     break;
 
                 case -1:
+#ifndef WIN32
                     if (errno == ENOTCONN) {
                         mdebug1("Manager disconnected (ENOTCONN).");
                     } else {
                         merror("Connection socket: %s (%d)", strerror(errno), errno);
                     }
+#else
+                    merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+#endif
                     break;
 
                 case 0:
@@ -84,7 +89,7 @@ int receive_msg()
 
         buffer[recv_b] = '\0';
 
-        if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+        if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID || tmp_msg == NULL) {
             mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
             continue;
         }
@@ -98,13 +103,6 @@ int receive_msg()
             available_server = (int)time(NULL);
             w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
 
-#ifdef WIN32
-            /* Run timeout commands */
-            if (agt->execdq >= 0) {
-                WinTimeoutRun();
-            }
-#endif
-
             /* If it is an active response message */
             if (strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0) {
                 tmp_msg += strlen(EXECD_HEADER);
@@ -114,14 +112,26 @@ int receive_msg()
                         merror("Error communicating with execd");
                     }
                 }
-
 #else
-                /* Run on Windows */
                 if (agt->execdq >= 0) {
-                    WinExecdRun(tmp_msg);
+                    queue_push_ex(winexec_queue, strdup(tmp_msg));
                 }
 #endif
+                continue;
+            }
 
+            /* Force reconnect agent to the manager */
+            else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
+                /* Set lock and wait for it */
+                minfo("Wazuh Agent will be reconnected because a reconnect message was received");
+                os_setwait();
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+
+                /* Send sync message */
+                start_agent(0);
+
+                os_delwait();
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
                 continue;
             }
 
@@ -139,7 +149,7 @@ int receive_msg()
                 continue;
             }
 
-            /* syscollector */
+            /* Syscollector */
             else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
                 wmcom_send(tmp_msg);
                 continue;
@@ -157,7 +167,7 @@ int receive_msg()
             }
 
             /* Security configuration assessment DB request */
-            else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+            else if (strncmp(tmp_msg, CFGA_DB_DUMP, strlen(CFGA_DB_DUMP)) == 0) {
 #ifndef WIN32
                 /* Connect to the Security configuration assessment queue */
                 if (agt->cfgadq >= 0) {
@@ -165,7 +175,7 @@ int receive_msg()
                         mwarn("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
-                        if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE, 1)) < 0) {
+                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
                             mwarn("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
@@ -176,7 +186,7 @@ int receive_msg()
                         }
                     }
                 } else {
-                    if ((agt->cfgadq = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE, 1)) < 0) {
+                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
                         mwarn("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
@@ -235,7 +245,7 @@ int receive_msg()
                 }
 
                 snprintf(file, OS_SIZE_1024, "%s/%s",
-                         SHAREDCFG_DIRPATH,
+                         SHAREDCFG_DIR,
                          tmp_msg);
 
                 fp = fopen(file, "w");
@@ -248,12 +258,6 @@ int receive_msg()
                              strlen(FILE_CLOSE_HEADER)) == 0) {
                 /* No error */
                 os_md5 currently_md5;
-
-                /* Close for the rename to work */
-                if (fp) {
-                    fclose(fp);
-                    fp = NULL;
-                }
 
                 if (file[0] == '\0') {
                     /* Nothing to be done */
@@ -275,22 +279,25 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                if (cldir_ex_ignore(SHAREDCFG_DIRPATH, IGNORE_LIST)) {
+                                if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
                                     mwarn("Could not clean up shared directory.");
                                 }
 
-                                if(!UnmergeFiles(file, SHAREDCFG_DIRPATH, OS_TEXT)){
+                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
-                                else if (agt->flags.remote_conf && !verifyRemoteConf()) {
-                                    if (agt->flags.auto_restart) {
-                                        minfo("Agent is restarting due to shared configuration changes.");
-                                        restartAgent();
-                                    } else {
-                                        minfo("Shared agent configuration has been updated.");
+                                else {
+                                    clear_merged_hash_cache();
+                                    if (agt->flags.remote_conf && !verifyRemoteConf()) {
+                                        if (agt->flags.auto_restart) {
+                                            minfo("Agent is restarting due to shared configuration changes.");
+                                            restartAgent();
+                                        } else {
+                                            minfo("Shared agent configuration has been updated.");
+                                        }
                                     }
                                 }
                             }
@@ -323,3 +330,58 @@ int receive_msg()
 
     return 0;
 }
+
+#ifdef WIN32
+/* Receive events from the server */
+DWORD WINAPI receiver_thread(__attribute__((unused)) LPVOID none)
+{
+    int rc = 0;
+
+    fd_set fdset;
+    struct timeval selecttime;
+
+    while (1) {
+        /* Run timeout commands */
+        if (agt->execdq >= 0) {
+            ExecdTimeoutRun();
+        }
+
+        /* sock must be set */
+        if (agt->sock == -1) {
+            sleep(5);
+            continue;
+        }
+
+        run_notify();
+
+        FD_ZERO(&fdset);
+        FD_SET(agt->sock, &fdset);
+
+        /* Wait for 1 second */
+        selecttime.tv_sec = 1;
+        selecttime.tv_usec = 0;
+
+        /* Wait with a timeout for any descriptor */
+        rc = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
+        if (rc == -1) {
+            merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
+            sleep(30);
+            continue;
+        } else if (rc == 0) {
+            continue;
+        }
+
+        if (receive_msg() < 0) {
+            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+            merror(LOST_ERROR);
+            os_setwait();
+            start_agent(0);
+            minfo(SERVER_UP);
+            os_delwait();
+            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+        }
+    }
+
+    return 0;
+}
+#endif

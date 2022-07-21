@@ -1,0 +1,65 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml syscollector
+
+database "<agent-id>.db" as agent.db
+actor "wazuh-manager" as manager
+participant syscollector as sysco
+participant sysinfo as info
+participant rsync
+participant dbsync
+database local.db as ldb
+
+activate sysco
+activate manager
+activate agent.db
+
+
+sysco -> dbsync ++: reset DB
+dbsync -> ldb --
+
+loop every ""interval"" seconds
+    note across: Supported scans: osinfo, hwinfo, packages, processes, netaddr, netproto, netiface, ports, hotfixes
+    group for each [scan enabled]
+        sysco -> info ++: scan
+        sysco <-- info --: info
+        sysco -> dbsync++ : update DB with new info
+        dbsync -> ldb
+        alt not first set of scans
+            note over manager, sysco
+                delta synchronization
+            end note
+            dbsync --> sysco --: delta changes
+            sysco ->> manager : send delta data
+            manager -> agent.db: update DB
+            alt syscollector rules?
+            manager -> manager: generate alert
+            end
+        end
+    end
+    group for each [scan enabled]
+        note over manager, sysco
+            rsync synchronization
+        end note
+        loop until DB table is mirrored
+            sysco -> rsync++ : get sync data
+            rsync -> dbsync++ : get DB data
+            dbsync -> ldb
+            rsync <-- dbsync-- : DB data
+            rsync -> rsync : build sync data
+            rsync --> sysco --: sync data
+            sysco ->> manager : send current table hash
+            manager -> agent.db: compare hash
+            manager <- agent.db
+            alt more datailed info needed ?
+                sysco <<- manager : request detailed table hash
+            else
+                sysco <<- manager : sync finished
+            end
+        end
+    end
+end
+
+@enduml

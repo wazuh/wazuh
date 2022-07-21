@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -82,8 +82,14 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode,
-                                        whodata_evt * w_evt);
+                                        event_data_t *evt_data);
+
+int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                        fim_tmp_file *file,
+                                        pthread_mutex_t *mutex,
+                                        int storage,
+                                        event_data_t *evt_data,
+                                        directory_t *configuration);
 
 int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
 
@@ -160,5 +166,22 @@ void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_remove_path
  */
 void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val);
+
+int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path);
+
+int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
+
+int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
+                                          unsigned long int inode,
+                                          unsigned long int dev,
+                                          OSList *list,
+                                          rb_tree *tree);
+
+int __wrap_fim_db_file_update(fdb_t *fim_sql,
+                              const char *path,
+                              const __attribute__((unused)) fim_file_data *data,
+                              fim_entry **saved);
+
+int __wrap_fim_db_is_full(fdb_t *fim_sql);
 
 #endif

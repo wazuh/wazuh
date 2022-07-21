@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -20,10 +20,15 @@
 #include <external/cJSON/cJSON.h>
 
 #ifdef WIN32
+#include <winsock2.h>
 #include <windows.h>
 #endif
 
-#define OS_PIDFILE  "/var/run"
+#ifdef __MACH__
+#include <libproc.h>
+#endif
+
+#define OS_PIDFILE  "var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
 
@@ -391,16 +396,6 @@ FILE * wfopen(const char * pathname, const char * mode);
 
 
 /**
- * @brief Delete a line from a file.
- *
- * @param file Path of the file.
- * @param line Line to be removed.
- * @return 0 on success, -1 on error.
- */
-int w_remove_line_from_file(char *file, int line);
-
-
-/**
  * @brief Compress a file in GZIP.
  *
  * @param filesrc Source file.
@@ -533,9 +528,18 @@ DWORD FileSizeWin(const char * file);
  * This mode of opening the file allows reading \r\n instead of \n.
  *
  * @param file pathfile to open
+ * @param[out] lpFileInformation  pointer to a BY_HANDLE_FILE_INFORMATION structure that receives the file information
  * @return file descriptor on success, otherwise null.
  */
-FILE * w_fopen_r(const char *file, const char * mode);
+FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION * lpFileInformation);
+
+/**
+ * @brief Expands wildcards for Windows (using FindFirstFile and FindNexFile)
+ *
+ * @param path Path containing the wildcards to expand.
+ * @return char** Vector with the expanded paths.
+ */
+char **expand_win32_wildcards(const char *path);
 
 #endif // Windows
 
@@ -625,4 +629,14 @@ int w_is_compressed_bz2_file(const char * path);
  */
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
+
+/**
+ * @brief Get the Wazuh installation directory
+ *
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ *
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
+ */
+char *w_homedir(char *arg);
 #endif /* FILE_OP_H */

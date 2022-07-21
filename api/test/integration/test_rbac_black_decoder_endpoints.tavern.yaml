@@ -1,9 +1,6 @@
 ---
 test_name: GET DECODERS RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Try to show the decoders of the system
@@ -29,13 +26,13 @@ stages:
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -109,6 +106,9 @@ stages:
             - filename: 0006-json_decoders.xml
               relative_dirname: ruleset/decoders
               status: enabled
+            - filename: 0007-wazuh-api_decoders.xml
+              relative_dirname: ruleset/decoders
+              status: enabled
             - filename: 0010-active-response_decoders.xml
               relative_dirname: ruleset/decoders
               status: enabled
@@ -116,9 +116,6 @@ stages:
               relative_dirname: ruleset/decoders
               status: enabled
             - filename: 0025-apache_decoders.xml
-              relative_dirname: ruleset/decoders
-              status: enabled
-            - filename: 0030-arpwatch_decoders.xml
               relative_dirname: ruleset/decoders
               status: enabled
           failed_items: []
@@ -262,13 +259,13 @@ stages:
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders_parent
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
+            - <<: *full_item_decoders_parent
+              filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders_parent
               filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders_parent
-              filename: 0015-aix-ipsec_decoders.xml
-            - <<: *full_item_decoders_parent
-              filename: 0025-apache_decoders.xml
+              filename: 0010-active-response_decoders.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0

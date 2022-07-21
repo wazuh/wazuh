@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * June 12, 2017.
  *
  * This program is free software; you can redistribute it
@@ -75,11 +75,11 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     strcpy(base_dir, "logs");
 #else
     // /var/ossec/logs/ossec.log
-    snprintf(old_path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(old_path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
-    snprintf(old_path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
-    // /var/ossec/logs/wazuh
-    snprintf(base_dir, PATH_MAX, "%s/logs/wazuh", isChroot() ? "" : DEFAULTDIR);
+    snprintf(old_path_json, PATH_MAX, "%s", LOGJSONFILE);
+    // /var/ossec/logs/ossec
+    snprintf(base_dir, PATH_MAX, "logs/wazuh");
 #endif
 
     os_snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
@@ -208,8 +208,11 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
         }
 
         if (sscanf(dirent->d_name, "%d", &year) > 0) {
-            snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-            remove_old_logs_y(path, year, threshold);
+            const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+
+            if (size >= 0 && (size_t)size < sizeof(path)) {
+                remove_old_logs_y(path, year, threshold);
+            }
         }
     }
 
@@ -241,12 +244,14 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
             }
         }
 
-        snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+        const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-        if (month < 12) {
-            remove_old_logs_m(path, year, month, threshold);
-        } else {
-            mwarn("Unexpected folder '%s'", path);
+        if (size >= 0 && (size_t)size < sizeof(path)) {
+            if (month < 12) {
+                remove_old_logs_m(path, year, month, threshold);
+            } else {
+                mwarn("Unexpected folder '%s'", path);
+            }
         }
     }
 
@@ -261,7 +266,6 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     time_t now = time(NULL);
     struct tm tm = { .tm_sec = 0 };
     int counter;
-
     localtime_r(&now, &tm);
 
     tm.tm_year = year - 1900;
@@ -285,9 +289,12 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+
+                if (size >= 0 && (size_t)size < sizeof(path)) {
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                }
             }
         }
 
@@ -295,9 +302,12 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+
+                if (size >= 0 && (size_t)size < sizeof(path)) {
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                }
             }
         }
 
@@ -305,9 +315,12 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+
+                if (size >= 0 && (size_t)size < sizeof(path)) {
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                }
             }
         }
 
@@ -315,9 +328,12 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
-                unlink(path);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+
+                if (size >= 0 && (size_t)size < sizeof(path)) {
+                    mdebug2("Removing old log '%s'", path);
+                    unlink(path);
+                }
             }
         }
 

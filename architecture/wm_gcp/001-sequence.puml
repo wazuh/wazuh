@@ -1,0 +1,40 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml
+title Google Cloud Module
+
+participant Config_file
+actor Google_Cloud_module
+participant Google_Cloud_script
+participant Google_Cloud_API
+participant AgentD
+
+Google_Cloud_module->Config_file: Get_parameters
+Config_file --> Google_Cloud_module: return parameters
+
+Google_Cloud_module -> Google_Cloud_script: send_parameters
+note left 
+paramenters:
+project_id
+subscription_id
+credentials_file
+max_messages
+log_level
+end note
+
+Google_Cloud_script -> Google_Cloud_API: Request_events
+Google_Cloud_API --> Google_Cloud_script: return events
+
+loop each event
+    Google_Cloud_script -> Google_Cloud_script: format_event
+    Google_Cloud_script -> AgentD: send_event
+
+    alt Number_of_events_receive < Maximum_number_of_events
+        Google_Cloud_script -> Google_Cloud_API: Request_events
+        Google_Cloud_API --> Google_Cloud_script: return events
+    end
+end
+
+@enduml

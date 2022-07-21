@@ -70,6 +70,8 @@ class LocalClientHandler(client.AbstractClient):
                 return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
             self.response = self.in_str[data].payload
             self.response_available.set()
+            # Remove the string after using it
+            self.in_str.pop(data, None)
             return b'ok', b'Distributed api response received'
         elif command == b'ok':
             if data.startswith(b'Error'):
@@ -144,7 +146,7 @@ class LocalClient(client.AbstractClientManager):
                                                                                          name=self.name, logger=self.logger,
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
-                                             path=os.path.join(common.wazuh_path, 'queue', 'cluster', 'c-internal.sock'))
+                                             path=os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)
         except MemoryError:
@@ -175,11 +177,11 @@ class LocalClient(client.AbstractClientManager):
         else:
             # Wait for expected data if it is not returned by send_request(),
             # which occurs when the following commands are used.
-            if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or command == b'sendasync' \
+            if command == b'dapi' or command == b'dapi_fwd' or command == b'send_file' or command == b'sendasync' \
                     or result == 'Sent request to master node':
                 try:
                     timeout = None if wait_for_complete \
-                        else self.cluster_items['intervals']['communication']['timeout_api_request']
+                        else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                     await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:

@@ -1,5 +1,5 @@
 /* Remote request manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * June 2, 2017.
  *
  * This program is free software; you can redistribute it
@@ -149,7 +149,7 @@ int req_push(char * buffer, size_t length) {
 
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
-            snprintf(sockname, PATH_MAX, DEFAULTDIR "/queue/sockets/%s", target);
+            snprintf(sockname, PATH_MAX, "queue/sockets/%s", target);
 
             if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                 switch (errno) {
@@ -172,10 +172,9 @@ int req_push(char * buffer, size_t length) {
 #endif
 
         // Send ACK, only in UDP mode
-
         if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-            mdebug2("req_push(): Sending ack (%s).", counter);
             // Example: #!-req 16 ack
+            mdebug2("req_push(): Sending ack (%s).", counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
             send_msg(response, -1);
         }
@@ -211,6 +210,8 @@ int req_push(char * buffer, size_t length) {
                 OSHash_Delete(req_table, counter);
                 w_mutex_unlock(&mutex_table);
 
+                snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err Too many requests", counter);
+                send_msg(response, -1);
                 req_free(node);
                 return -1;
             } else {
@@ -227,7 +228,11 @@ int req_push(char * buffer, size_t length) {
 }
 
 // Request receiver thread start
+#ifdef WIN32
+DWORD WINAPI req_receiver(__attribute__((unused)) LPVOID arg) {
+#else
 void * req_receiver(__attribute__((unused)) void * arg) {
+#endif
     int attempts;
     long nsec;
     ssize_t length = 0;
@@ -235,8 +240,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
     char *buffer = NULL;
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
-
-
 
     while (1) {
 
@@ -379,6 +382,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         req_free(node);
     }
 
-
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }

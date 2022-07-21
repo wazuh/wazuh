@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 15, 2019.
  *
  * This program is free software; you can redistribute it
@@ -17,6 +17,7 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 #define FIELD_SEPARATOR_DBSYNC "|"
+#define FIELD_SEPARATOR_DBSYNC_ESCAPE "\uffff"
 
 /// Enumeration of communication with Wazuh DB status.
 typedef enum wdbc_result {

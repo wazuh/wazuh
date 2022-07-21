@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 27, 2016.
  *
  * This program is free software; you can redistribute it
@@ -13,9 +13,11 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include <sys/types.h>
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
+static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
@@ -45,6 +47,16 @@ static int wm_initialize_default_modules(wmodule **wmodules);
 
 // Read XML configuration and internal options
 
+gid_t wm_getGroupID(void)
+{
+    return wm_gid;
+}
+
+void wm_setGroupID(const gid_t gid)
+{
+    wm_gid = gid;
+}
+
 int wm_config() {
 
     int agent_cfg = 0;
@@ -62,7 +74,7 @@ int wm_config() {
 
     // Read configuration: ossec.conf
 
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
+    if (ReadConfig(CWMODULE, OSSECCONF, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 
@@ -84,7 +96,7 @@ int wm_config() {
 
 #endif
 
-#if defined (__linux__) || (__MACH__) || defined (sun)
+#if defined (__linux__) || (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);
@@ -216,6 +228,38 @@ long int wm_read_http_size(char *header) {
     return size;
 }
 
+char* wm_read_http_header_element(char *header, char *regex) {
+    char *element = NULL;
+    OSRegex os_regex;
+
+    if (!header || !regex) {
+        merror("Missing parameters.");
+        return NULL;
+    }
+
+    if (!OSRegex_Compile(regex, &os_regex, OS_RETURN_SUBSTRING)) {
+        mwarn("Cannot compile regex.");
+        return NULL;
+    }
+
+    if (!OSRegex_Execute(header, &os_regex)) {
+        mdebug1("No match regex.");
+        OSRegex_FreePattern(&os_regex);
+        return NULL;
+    }
+
+    if (!os_regex.d_sub_strings[0]) {
+        mdebug1("No element was captured.");
+        OSRegex_FreePattern(&os_regex);
+        return NULL;
+    }
+
+    os_strdup(os_regex.d_sub_strings[0], element);
+
+    OSRegex_FreePattern(&os_regex);
+    return element;
+}
+
 void wm_free(wmodule * config) {
     wmodule *cur_module;
     wmodule *next_module;
@@ -306,6 +350,25 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 #endif
 
     if (SendMSG(queue, message, locmsg, loc) < 0) {
+        merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+// Send message to a queue waiting for a specific delay
+int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) {
+
+#ifdef WIN32
+    int msec = usec / 1000;
+    Sleep(msec);
+#else
+    struct timeval timeout = {0, usec};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+
+    if (SendMSGPredicated(queue, message, locmsg, loc, fn_prd) < 0) {
         merror("At wm_sendmsg(): Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }

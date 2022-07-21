@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
@@ -19,23 +19,21 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
-    char str[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char buffer[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
+    int size = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
 
-    buffer[0] = '\0';
-    buffer[OS_MAXSTR] = '\0';
-    str[OS_MAXSTR] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, current_position);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAX_LOG_SIZE, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
@@ -47,7 +45,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
-            OS_SHA1_Stream(&context, NULL, str);
+            if (is_valid_context_file) {
+                OS_SHA1_Stream(&context, NULL, str);
+            }
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
@@ -60,9 +60,11 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
+        else if (rbytes == OS_MAX_LOG_SIZE - 1) {
             /* Message size > maximum allowed */
-            OS_SHA1_Stream(&context, NULL, str);
+            if (is_valid_context_file) {
+                OS_SHA1_Stream(&context, NULL, str);
+            }
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
@@ -89,7 +91,11 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             buffer_size++;
         }
 
-        strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size - 2);
+        size = snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
+
+        if ((size_t)size >= sizeof(buffer) - buffer_size) {
+            __ms = 1;
+        }
 
         if (linesgot < lf->linecount) {
             continue;
@@ -114,7 +120,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
             }
 
-            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+            for (offset += rbytes; fgets(str, sizeof(str), lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Flow control */
@@ -122,7 +128,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
-                OS_SHA1_Stream(&context, NULL, str);
+                if (is_valid_context_file) {
+                    OS_SHA1_Stream(&context, NULL, str);
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {
@@ -135,7 +143,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         current_position = w_ftell(lf->fp);
     }
 
-    w_update_file_status(lf->file, current_position, &context);
+    if (is_valid_context_file) {
+        w_update_file_status(lf->file, current_position, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

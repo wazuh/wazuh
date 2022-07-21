@@ -47,7 +47,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ssl
         ws2_32
         crypt32
-        -static-libgcc -static-libstdc++
+        -static-libstdc++
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(syscollector_test_tool

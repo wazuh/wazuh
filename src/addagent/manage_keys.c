@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
+#include "config/authd-config.h"
+
 #ifdef WIN32
   #include <wincrypt.h>
 #endif
@@ -56,7 +58,7 @@ int k_import(const char *cmdimport)
 {
     FILE *fp;
     const char *user_input;
-    char auth_file[] = AUTH_FILE;
+    char auth_file[] = KEYS_FILE;
     char *keys_file = basename_ex(auth_file);
     char *b64_dec;
 
@@ -241,17 +243,17 @@ int k_extract(const char *cmdextract, int json_output)
     }
 
     /* Try to open the auth file */
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         if (json_output) {
             char buffer[1024];
-            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
             cJSON_AddNumberToObject(json_root, "error", 71);
             cJSON_AddStringToObject(json_root, "message", buffer);
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
-            merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+            merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
 
     if (fsetpos(fp, &fp_pos)) {
@@ -342,15 +344,13 @@ int k_bulkload(const char *cmdbulk)
     }
 
     /* Check if we can open the auth_file */
-    fp = fopen(AUTH_FILE, "a");
+    fp = fopen(KEYS_FILE, "a");
     if (!fp) {
-        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
     while (fgets(line, FILE_SIZE - 1, infp) != NULL) {
-        os_ip c_ip;
-        c_ip.ip = NULL;
 
         if (1 >= strlen(trimwhitespace(line))) {
             continue;
@@ -369,8 +369,8 @@ int k_bulkload(const char *cmdbulk)
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
-        if (chmod(AUTH_FILE, 0640) == -1) {
-            merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
+        if (chmod(KEYS_FILE, 0640) == -1) {
+            merror_exit(CHMOD_ERROR, KEYS_FILE, errno, strerror(errno));
         }
 #endif
 
@@ -391,10 +391,16 @@ int k_bulkload(const char *cmdbulk)
             continue;
         }
 
-        if (!OS_IsValidIP(ip, &c_ip)) {
+        os_ip *aux_ip;
+        os_calloc(1, sizeof(os_ip), aux_ip);
+        if (!OS_IsValidIP(ip, aux_ip)) {
             printf(IP_ERROR, ip);
+            w_free_os_ip(aux_ip);
             continue;
         }
+
+        strncpy(ip, aux_ip->ip, FILE_SIZE - 1);
+        w_free_os_ip(aux_ip);
 
         char *ip_exist = NULL;
         if (sock < 0 && (ip_exist = IPExist(ip))) {
@@ -425,13 +431,13 @@ int k_bulkload(const char *cmdbulk)
 
             if (!OS_IsValidID(id)) {
                 printf(INVALID_ID, id);
-                goto cleanup;
+                continue;
             }
 
             /* Search for ID KEY  -- no duplicates */
             if (sock < 0 && IDExist(id, 0)) {
                 printf(NO_DEFAULT, i + 1);
-                goto cleanup;
+                continue;
             }
 
             printf(AGENT_INFO, id, name, ip);
@@ -440,13 +446,13 @@ int k_bulkload(const char *cmdbulk)
             time3 = time(0);
             rand2 = os_random();
 
-            fp = fopen(AUTH_FILE, "a");
+            fp = fopen(KEYS_FILE, "a");
             if (!fp) {
                 merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #ifndef WIN32
-            if (chmod(AUTH_FILE, 0640) == -1) {
-                merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
+            if (chmod(KEYS_FILE, 0640) == -1) {
+                merror_exit(CHMOD_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #endif
 
@@ -466,18 +472,16 @@ int k_bulkload(const char *cmdbulk)
             snprintf(str1, STR_SIZE, "%s%d%d%d", md1, (int)getpid(), os_random(), (int)time3);
             OS_MD5_Str(str1, -1, md1);
 
-            fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
+            fprintf(fp, "%s %s %s %s%s\n", id, name, ip, md1, md2);
             fclose(fp);
         } else {
-            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, -1, 0,NULL,1) < 0) {
-                goto cleanup;
+            authd_force_options_t force_options = {0};
+            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, &force_options, 0, NULL, 1) < 0) {
+                continue;
             }
         }
 
         printf(AGENT_ADD, id);
-
-cleanup:
-        free(c_ip.ip);
     };
 
     fclose(infp);

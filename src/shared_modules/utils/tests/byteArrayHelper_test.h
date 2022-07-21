@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * March 16, 2021.
  *
  * This program is free software; you can redistribute it
@@ -15,12 +15,12 @@
 
 class ByteArrayHelperTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    ByteArrayHelperTest() = default;
-    virtual ~ByteArrayHelperTest() = default;
+        ByteArrayHelperTest() = default;
+        virtual ~ByteArrayHelperTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //BYTE_ARRAY_TESTS_H

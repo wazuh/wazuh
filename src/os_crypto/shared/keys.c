@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -39,10 +39,10 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
         if (keyid >= 0 && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
-            memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
+            memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_storage));
 
             snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[keyid]->sock);
-            OSHash_Add(keys->keyhash_sock, strsock, keys->keyentries[keyid]);
+            rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[keyid]);
         }
     }
 }
@@ -53,7 +53,7 @@ static void save_removed_key(keystore *keys, const char *key) {
 }
 
 /* Create the final key */
-int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
+int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, time_t time_added)
 {
     os_md5 filesum1;
     os_md5 filesum2;
@@ -73,7 +73,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
 
     /* Set configured values for id */
     os_strdup(id, keys->keyentries[keys->keysize]->id);
-    OSHash_Add(keys->keyhash_id,
+    rbtree_insert(keys->keytree_id,
                keys->keyentries[keys->keysize]->id,
                keys->keyentries[keys->keysize]);
 
@@ -87,7 +87,8 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     if ((tmp_str = strchr(keys->keyentries[keys->keysize]->ip->ip, '/')) != NULL) {
         *tmp_str = '\0';
     }
-    OSHash_Add(keys->keyhash_ip,
+
+    rbtree_insert(keys->keytree_ip,
                keys->keyentries[keys->keysize]->ip->ip,
                keys->keyentries[keys->keysize]);
 
@@ -102,11 +103,16 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->time_added = time_added;
     keys->keyentries[keys->keysize]->updating_time = 0;
     keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
-    if (keys->flags.rehash_keys) {
+    if (keys->flags.key_mode == W_RAW_KEY || keys->flags.key_mode == W_DUAL_KEY) {
+        os_strdup(key, keys->keyentries[keys->keysize]->raw_key);
+    }
+
+    if (keys->flags.key_mode == W_ENCRYPTION_KEY || keys->flags.key_mode == W_DUAL_KEY) {
         /** Generate final symmetric key **/
 
         /* MD5 from name, id and key */
@@ -128,12 +134,11 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum2, filesum1);
 
         /* Final key is 48 * 4 = 192bits */
-        os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
+        os_strdup(_finalstr, keys->keyentries[keys->keysize]->encryption_key);
 
         /* Clean final string from memory */
         memset_secure(_finalstr, '\0', sizeof(_finalstr));
-    } else
-        os_strdup(key, keys->keyentries[keys->keysize]->key);
+    }
 
     /* Ready for next */
     return keys->keysize++;
@@ -144,17 +149,17 @@ int OS_CheckKeys()
 {
     FILE *fp;
 
-    if (File_DateofChange(KEYSFILE_PATH) < 0) {
-        merror(NO_AUTHFILE, KEYSFILE_PATH);
+    if (File_DateofChange(KEYS_FILE) < 0) {
+        merror(NO_AUTHFILE, KEYS_FILE);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
 
-    fp = fopen(KEYSFILE_PATH, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
-        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
-        merror(NO_AUTHFILE, KEYSFILE_PATH);
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
+        merror(NO_AUTHFILE, KEYS_FILE);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
@@ -166,11 +171,11 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
+void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 {
     FILE *fp;
 
-    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
+    const char *keys_file = KEYS_FILE;
     char buffer[OS_BUFFER_SIZE + 1];
     char name[KEYSIZE + 1];
     char ip[KEYSIZE + 1];
@@ -200,11 +205,11 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     }
 
     /* Initialize hashes */
-    keys->keyhash_id = OSHash_Create();
-    keys->keyhash_ip = OSHash_Create();
-    keys->keyhash_sock = OSHash_Create();
+    keys->keytree_id = rbtree_init();
+    keys->keytree_ip = rbtree_init();
+    keys->keytree_sock = rbtree_init();
 
-    if (!(keys->keyhash_id && keys->keyhash_ip && keys->keyhash_sock)) {
+    if (!(keys->keytree_id && keys->keytree_ip && keys->keytree_sock)) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
@@ -212,8 +217,9 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->flags.rehash_keys = rehash_keys;
+    keys->flags.key_mode = key_mode;
     keys->flags.save_removed = save_removed;
+    w_mutex_init(&keys->keytree_sock_mutex, NULL);
 
     /* Zero the buffers */
     __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -243,7 +249,14 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 
             *tmp_str = '\0';
             tmp_str++;
-            strncpy(id, valid_str, KEYSIZE - 1);
+            const int bytes_written = snprintf(id, sizeof(id), "%s", valid_str);
+
+            if (bytes_written < 0) {
+                merror(INVALID_KEY " Error %d (%s).", id, errno, strerror(errno));
+            }
+            else if ((size_t)bytes_written >= sizeof(id)) {
+                merror(INVALID_KEY, id);
+            }
 
             /* Update counter */
 
@@ -302,7 +315,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
             strncpy(key, valid_str, KEYSIZE - 1);
 
             /* Generate the key hash */
-            OS_AddKey(keys, id, name, ip, key);
+            OS_AddKey(keys, id, name, ip, key, 0);
 
             /* Clear the memory */
             __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -331,16 +344,19 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 
 void OS_FreeKey(keyentry *key) {
     if (key->ip) {
-        free(key->ip->ip);
-        free(key->ip);
+        w_free_os_ip(key->ip);
     }
 
     if (key->id) {
         free(key->id);
     }
 
-    if (key->key) {
-        free(key->key);
+    if (key->raw_key) {
+        free(key->raw_key);
+    }
+
+    if (key->encryption_key) {
+        free(key->encryption_key);
     }
 
     if (key->name) {
@@ -367,14 +383,9 @@ void OS_FreeKeys(keystore *keys)
 
     /* Free the hashes */
 
-    if (keys->keyhash_id)
-        OSHash_Free(keys->keyhash_id);
-
-    if (keys->keyhash_ip)
-        OSHash_Free(keys->keyhash_ip);
-
-    if (keys->keyhash_sock)
-        OSHash_Free(keys->keyhash_sock);
+    rbtree_destroy(keys->keytree_id);
+    rbtree_destroy(keys->keytree_ip);
+    rbtree_destroy(keys->keytree_sock);
 
     for (i = 0; i <= keys->keysize; i++) {
         if (keys->keyentries[i]) {
@@ -385,9 +396,9 @@ void OS_FreeKeys(keystore *keys)
 
     /* Zero the entries */
     keys->keysize = 0;
-    keys->keyhash_id = NULL;
-    keys->keyhash_ip = NULL;
-    keys->keyhash_sock = NULL;
+    keys->keytree_id = NULL;
+    keys->keytree_ip = NULL;
+    keys->keytree_sock = NULL;
 
     if (keys->removed_keys) {
         for (i = 0; i < keys->removed_keys_size; i++)
@@ -404,6 +415,7 @@ void OS_FreeKeys(keystore *keys)
     free(keys->keyentries);
     keys->keyentries = NULL;
     keys->keysize = 0;
+    w_mutex_destroy(&keys->keytree_sock_mutex);
 }
 
 /* Check if key changed */
@@ -428,7 +440,7 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
+    OS_ReadKeys(keys, keys->flags.key_mode, keys->flags.save_removed);
 
     mdebug2("OS_StartCounter");
     OS_StartCounter(keys);
@@ -451,7 +463,7 @@ int OS_IsAllowedIP(keystore *keys, const char *srcip)
         return (-1);
     }
 
-    entry = (keyentry *) OSHash_Get(keys->keyhash_ip, srcip);
+    entry = (keyentry *) rbtree_get(keys->keytree_ip, srcip);
     if (entry) {
         return ((int)entry->keyid);
     }
@@ -481,7 +493,7 @@ int OS_IsAllowedID(keystore *keys, const char *id)
         return (-1);
     }
 
-    entry = (keyentry *) OSHash_Get(keys->keyhash_id, id);
+    entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
         return ((int)entry->keyid);
     }
@@ -498,7 +510,7 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
         return (-1);
     }
 
-    entry = (keyentry *) OSHash_Get(keys->keyhash_id, id);
+    entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
         if (OS_IPFound(srcip, entry->ip)) {
             return ((int)entry->keyid);
@@ -515,8 +527,12 @@ void OS_PassEmptyKeyfile() {
 
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id, int purge) {
-    int i = OS_IsAllowedID(keys, id);
+    if (keys->flags.key_mode != W_RAW_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in RAW or DUAL mode");
+        return -1;
+    }
 
+    int i = OS_IsAllowedID(keys, id);
 
     if (i < 0)
         return -1;
@@ -526,17 +542,19 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     if (keys->flags.save_removed && !purge) {
         char buffer[OS_BUFFER_SIZE + 1];
         keyentry *entry = keys->keyentries[i];
-        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->key);
+        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->raw_key);
         save_removed_key(keys, buffer);
     }
 
-    OSHash_Delete(keys->keyhash_id, id);
-    OSHash_Delete(keys->keyhash_ip, keys->keyentries[i]->ip->ip);
+    rbtree_delete(keys->keytree_id, id);
+    rbtree_delete(keys->keytree_ip, keys->keyentries[i]->ip->ip);
 
     if (keys->keyentries[i]->sock >= 0) {
         char strsock[16] = "";
         snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[i]->sock);
-        OSHash_Delete_ex(keys->keyhash_sock, strsock);
+        w_mutex_lock(&keys->keytree_sock_mutex);
+        rbtree_delete(keys->keytree_sock, strsock);
+        w_mutex_unlock(&keys->keytree_sock_mutex);
     }
 
     OS_FreeKey(keys->keyentries[i]);
@@ -553,33 +571,54 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
 
 /* Write keystore on client keys file */
 int OS_WriteKeys(const keystore *keys) {
+    if (keys->flags.key_mode != W_RAW_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in RAW or DUAL mode");
+        return -1;
+    }
+
     unsigned int i;
     File file;
-    char cidr[20];
+    char cidr[IPSIZE + 1];
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
+    if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
 
-    for (i = 0; i < keys->keysize; i++) {
+   for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key);
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ? entry->ip->ip : cidr, entry->raw_key) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
     /* Write saved removed keys */
 
     for (i = 0; i < keys->removed_keys_size; i++) {
-        fprintf(file.fp, "%s\n", keys->removed_keys[i]);
+        if (fprintf(file.fp, "%s\n", keys->removed_keys[i]) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
-    fclose(file.fp);
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        goto error;
+    }
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
-        free(file.name);
-        return -1;
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
+        goto error;
     }
 
     free(file.name);
     return 0;
+
+error:
+    unlink(file.name);
+    free(file.name);
+    return -1;
 }
 
 /* Duplicate keystore except key hashes and file pointer */
@@ -594,6 +633,7 @@ keystore* OS_DupKeys(const keystore *keys) {
     copy->file_change = keys->file_change;
     copy->inode = keys->inode;
     copy->id_counter = keys->id_counter;
+    w_mutex_init(&copy->keytree_sock_mutex, NULL);
 
     for (i = 0; i <= keys->keysize; i++) {
         copy->keyentries[i] = OS_DupKeyEntry(keys->keyentries[i]);
@@ -624,8 +664,11 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     if (key->id)
         copy->id = strdup(key->id);
 
-    if (key->key)
-        copy->key = strdup(key->key);
+    if (key->raw_key)
+        copy->raw_key = strdup(key->raw_key);
+
+    if (key->encryption_key)
+        copy->encryption_key = strdup(key->encryption_key);
 
     if (key->name)
         copy->name = strdup(key->name);
@@ -633,11 +676,21 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     if (key->ip) {
         os_calloc(1, sizeof(os_ip), copy->ip);
         copy->ip->ip = strdup(key->ip->ip);
-        copy->ip->ip_address = key->ip->ip_address;
-        copy->ip->netmask = key->ip->netmask;
+        copy->ip->is_ipv6 = key->ip->is_ipv6;
+        if (key->ip->is_ipv6) {
+            os_calloc(1, sizeof(os_ipv6), copy->ip->ipv6);
+            memcpy(copy->ip->ipv6->ip_address, key->ip->ipv6->ip_address, sizeof(copy->ip->ipv6->ip_address));
+            memcpy(copy->ip->ipv6->netmask, key->ip->ipv6->netmask, sizeof(copy->ip->ipv6->netmask));
+
+        } else {
+            os_calloc(1, sizeof(os_ipv4), copy->ip->ipv4);
+            copy->ip->ipv4->ip_address = key->ip->ipv4->ip_address;
+            copy->ip->ipv4->netmask = key->ip->ipv4->netmask;
+        }
     }
 
     copy->sock = key->sock;
+    copy->time_added = key->time_added;
     w_mutex_init(&copy->mutex, NULL);
     copy->peer_info = key->peer_info;
 
@@ -650,29 +703,160 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     keys->keyentries[i]->sock = sock;
-    return OSHash_Set_ex(keys->keyhash_sock, strsock, keys->keyentries[i]);
+
+    w_mutex_lock(&keys->keytree_sock_mutex);
+    int r = rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[i]) ? 2 : rbtree_replace(keys->keytree_sock, strsock, keys->keyentries[i]) ? 1 : 0;
+    w_mutex_unlock(&keys->keytree_sock_mutex);
+
+    return r;
 }
 
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock) {
     char strsock[16] = "";
     keyentry * entry;
+    int retval = 0;
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
+    w_mutex_lock(&keys->keytree_sock_mutex);
 
-    if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
+    if (entry = rbtree_get(keys->keytree_sock, strsock), entry) {
+        w_mutex_lock(&entry->mutex);
+
         if (sock == entry->sock) {
             entry->sock = -1;
         }
-        return 0;
+
+        w_mutex_unlock(&entry->mutex);
+        rbtree_delete(keys->keytree_sock, strsock);
     } else {
-        return -1;
+        retval = -1;
     }
+
+    w_mutex_unlock(&keys->keytree_sock_mutex);
+    return retval;
 }
 
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
 
     const int key_id = OS_IsAllowedID(keys, agent_id);
-    
+
     return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
+}
+
+// Parse the agent timestamps file into the keystore structure
+
+int OS_ReadTimestamps(keystore * keys) {
+    char line[OS_BUFFER_SIZE];
+
+    FILE * fp = fopen(TIMESTAMP_FILE, "r");
+
+    if (fp == NULL) {
+        return errno == ENOENT ? 0 : -1;
+    }
+
+    while (fgets(line, OS_BUFFER_SIZE, fp) != NULL) {
+        char * sep;
+        char * date = line;
+
+        /*
+         * Forward to the next character after the third whitespace
+         * Example:
+         * 001 my-agent any 2021-08-03 10:32:34
+         */
+
+        for (int i = 0; i < 3; i++) {
+            sep = strchr(date, ' ');
+
+            if (sep != NULL) {
+                *sep = '\0';
+                date = sep + 1;
+            } else {
+                break;
+            }
+        }
+
+        if (sep == NULL) {
+            continue;
+        }
+
+        int keyid = OS_IsAllowedID(keys, line);
+
+        if (keyid != -1) {
+            struct tm tm = { .tm_isdst = -1 };
+
+            if (sscanf(date, "%d-%d-%d %d:%d:%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
+                tm.tm_year -= 1900;
+                tm.tm_mon -= 1;
+                keys->keyentries[keyid]->time_added = mktime(&tm);
+            }
+        }
+    }
+
+    fclose(fp);
+    return 0;
+}
+
+// Write the agent timestamp data into the timestamps file
+
+int OS_WriteTimestamps(keystore * keys) {
+    File file;
+    int r = 0;
+
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("Couldn't open timestamp file for writing.");
+        return -1;
+    }
+
+    for (unsigned i = 0; i < keys->keysize; i++) {
+        keyentry *entry = keys->keyentries[i];
+
+        if (entry->time_added == 0) {
+            continue;
+        }
+
+        char timestamp[40];
+        char cidr[IPSIZE + 1];
+        struct tm tm_result = { .tm_sec = 0 };
+
+        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ? entry->ip->ip : cidr, timestamp) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            r = -1;
+            break;
+        }
+    }
+
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        r = -1;
+    }
+
+    if (r == 0) {
+        r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    }
+
+    if (r != 0) {
+        unlink(file.name);
+    }
+
+    free(file.name);
+
+    return r;
+}
+
+int w_get_key_hash(keyentry *key_entry, os_sha1 output) {
+    if (!key_entry || !output) {
+        mdebug2("Unable to hash agent's key due to empty parameters.");
+        return OS_INVALID;
+    }
+
+    if (!key_entry->id || !key_entry->name || !key_entry->raw_key) {
+        mdebug2("Unable to hash agent's key due to empty value.");
+        return OS_INVALID;
+    }
+
+    OS_SHA1_strings(output, key_entry->id, key_entry->name, key_entry->raw_key, NULL);
+    return OS_SUCCESS;
 }

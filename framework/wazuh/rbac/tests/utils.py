@@ -16,12 +16,13 @@ def create_memory_db(sql_file, session, test_data_path):
 
 
 def init_db(schema, test_data_path):
-    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
                     reload(orm)
+                    orm.create_rbac_db()
     try:
         create_memory_db(schema, orm._Session(), test_data_path)
     except OperationalError:

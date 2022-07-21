@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 18, 2018.
  *
  * This program is free software; you can redistribute it
@@ -223,7 +223,7 @@ int audit_restart(void) {
     }
 
     // Print stderr
-    while (fgets(buffer, sizeof(buffer), wfd->file)) {
+    while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
         mdebug1("auditd: %s", buffer);
     }
 

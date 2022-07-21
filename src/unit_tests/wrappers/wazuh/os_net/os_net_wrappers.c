@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -7,11 +7,23 @@
  * Foundation
  */
 
-#include "os_net_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../headers/shared.h"
+#include "os_net_wrappers.h"
+
+int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {
+    check_expected(path);
+    check_expected(type);
+    check_expected(max_msg_size);
+    check_expected(uid);
+    check_expected(gid);
+    check_expected(perm);
+
+    return mock();
+}
 
 int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);
@@ -51,6 +63,13 @@ int __wrap_OS_SendUnix(int socket, const char *msg, int size) {
     check_expected(size);
 
     return mock();
+}
+
+void expect_OS_SendUnix_call(int socket, const char *msg, int size, int ret) {
+    expect_value(__wrap_OS_SendUnix, socket, socket);
+    expect_string(__wrap_OS_SendUnix, msg, msg);
+    expect_value(__wrap_OS_SendUnix, size, size);
+    will_return(__wrap_OS_SendUnix, ret);
 }
 
 int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
@@ -95,8 +114,72 @@ int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
     return mock();
 }
 
+int __wrap_OS_SetSendTimeout(__attribute__((unused)) int socket,
+                             __attribute__((unused)) int seconds) {
+    return mock();
+}
+
 
 int __wrap_wnet_select(__attribute__((unused)) int sock,
                        __attribute__((unused)) int timeout) {
     return (int)mock();
+}
+
+int __wrap_OS_CloseSocket(int sock) {
+    check_expected(sock);
+    return mock();
+}
+
+uint32_t __wrap_wnet_order(uint32_t value) {
+    check_expected(value);
+    return mock();
+}
+
+int __wrap_external_socket_connect(__attribute__((unused)) char *socket_path,
+                                   __attribute__((unused)) int response_timeout) {
+
+    return (int)mock();
+}
+
+int __wrap_get_ipv4_numeric(__attribute__((unused)) const char *address,
+                            __attribute__((unused)) struct in_addr *addr) {
+    int ret = mock();
+    if(ret > 0) {
+        ret = 0;
+        addr->s_addr = mock();
+    }
+
+    return ret;
+}
+
+int __wrap_get_ipv6_numeric(__attribute__((unused)) const char *address,
+                            __attribute__((unused)) struct in6_addr *addr6) {
+    int ret = mock();
+    if(ret > 0) {
+        ret = 0;
+        int value = mock();
+        for(unsigned int a = 0; a < 16; a++) {
+#ifndef WIN32
+            addr6->s6_addr[a] = value;
+#else
+            addr6->u.Byte[a] = value;
+#endif
+        }
+    }
+
+    return ret;
+}
+
+int __wrap_get_ipv4_string(__attribute__((unused)) struct in_addr addr,
+                            char *address, size_t address_size) {
+    check_expected(address);
+    check_expected(address_size);
+    return mock();
+}
+
+int __wrap_get_ipv6_string(__attribute__((unused)) struct in6_addr addr6,
+                            char *address, size_t address_size) {
+    check_expected(address);
+    check_expected(address_size);
+    return mock();
 }

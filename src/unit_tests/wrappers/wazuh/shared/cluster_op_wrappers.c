@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -14,5 +14,13 @@
 #include <cmocka.h>
 
 int __wrap_w_is_worker(void) {
+    return mock();
+}
+
+int __wrap_w_is_single_node(int* is_worker) {
+    if(is_worker) {
+        *is_worker = mock();
+    }
+
     return mock();
 }

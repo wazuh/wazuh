@@ -233,14 +233,13 @@ class AccessModel(Model):
 
 class APIConfigurationModel(Body):
     """API configuration model. Deprecated since v4.0.4, we maintain Model"""
-    def __init__(self, https=None, logs=None, cors=None, cache=None, use_only_authd=None, drop_privileges=None,
+    def __init__(self, https=None, logs=None, cors=None, cache=None, drop_privileges=None,
                  experimental_features=None, access=None):
         self.swagger_types = {
             'https': HTTPSModel,
             'logs': LogsModel,
             'cors': CORSModel,
             'cache': CacheModel,
-            'use_only_authd': bool,
             'drop_privileges': bool,
             'experimental_features': bool,
             'access': AccessModel
@@ -251,7 +250,6 @@ class APIConfigurationModel(Body):
             'logs': 'logs',
             'cors': 'cors',
             'cache': 'cache',
-            'use_only_authd': 'use_only_authd',
             'drop_privileges': 'drop_privileges',
             'experimental_features': 'experimental_features',
             'access': 'access'
@@ -261,7 +259,6 @@ class APIConfigurationModel(Body):
         self._logs = logs
         self._cors = cors
         self._cache = cache
-        self._use_only_authd = use_only_authd
         self._drop_privileges = drop_privileges
         self._experimental_features = experimental_features
         self._access = access
@@ -297,14 +294,6 @@ class APIConfigurationModel(Body):
     @cache.setter
     def cache(self, cache):
         self._cache = cache
-
-    @property
-    def use_only_authd(self):
-        return self._use_only_authd
-
-    @use_only_authd.setter
-    def use_only_authd(self, use_only_authd):
-        self._use_only_authd = use_only_authd
 
     @property
     def drop_privileges(self):

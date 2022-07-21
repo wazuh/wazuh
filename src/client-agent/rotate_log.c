@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * June 13, 2017.
  *
  * This program is free software; you can redistribute it
@@ -22,7 +22,11 @@ int daily_rotations;
 int size_rotate_read;
 
 // Thread to rotate internal log
+#ifdef WIN32
+DWORD WINAPI w_rotate_log_thread(__attribute__((unused)) LPVOID arg) {
+#else
 void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
+#endif
     char path[PATH_MAX];
     char path_json[PATH_MAX];
     struct stat buf;
@@ -49,9 +53,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     // /var/ossec/logs/ossec.log
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
     while (1) {

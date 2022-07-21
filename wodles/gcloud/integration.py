@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 #
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
@@ -10,134 +10,91 @@
 
 import logging
 import socket
-
-from google.api_core import exceptions as google_exceptions
-from google.cloud import pubsub_v1 as pubsub
-from wazuh.core import common
-
-import tools
-
-logger = logging.getLogger(tools.logger_name)
+from sys import path
+from os.path import dirname, abspath
+path.insert(0, dirname(dirname(abspath(__file__))))
+import exceptions
+from utils import ANALYSISD
 
 
-class WazuhGCloudSubscriber:
+class WazuhGCloudIntegration:
     """Class for sending events from Google Cloud to Wazuh."""
 
     header = '1:Wazuh-GCloud:'
     key_name = 'gcp'
 
-    def __init__(self, credentials_file: str, project: str,
-                 subscription_id: str):
-        """Instantiate a WazuhGCloudSubscriber object.
-        :params credentials_file: Path to credentials file
-        :params project: Project name
-        :params subscription_id: Subscription ID
-        """
-        # get Wazuh paths
-        self.wazuh_path = common.find_wazuh_path()
-        self.wazuh_queue = tools.get_wazuh_queue()
-        self.wazuh_version = common.get_wazuh_version()
-        # get subscriber
-        self.subscriber = self.get_subscriber_client(credentials_file).api
-        self.subscription_path = self.get_subscription_path(project,
-                                                            subscription_id)
+    def __init__(self, logger: logging.Logger):
+        """Instantiate a WazuhGCloudIntegration object.
 
-    def get_subscriber_client(self, credentials_file: str) \
-            -> pubsub.subscriber.Client:
-        """Get a subscriber client.
-        :param credentials_file: Path to credentials file
-        :return: Instance of subscriber client object created with the
-            provided key
+        Parameters
+        ----------
+        logger: logging.Logger
+            The logger that will be used to send messages to stdout.
         """
-        return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
+        self.logger = logger
+        self.socket = None
 
-    def get_subscription_path(self, project: str, subscription_id: str) \
-            -> str:
-        """Get the subscription path.
-        :param project: Project name
-        :param subscription_id: Subscription ID
-        :return: String with the subscription path
-        """
-        return self.subscriber.subscription_path(project, subscription_id)
-
-    def send_msg(self, msg: str):
-        """Send an event to the Wazuh queue.
-        :param msg: Event to be sent
-        """
-        event_json = f'{self.header}{msg}'.encode(errors='replace')  # noqa: E501
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            s.send(event_json)
-            s.close()
-        except socket.error as e:
-            if e.errno == 111:
-                logger.critical('Wazuh must be running')
-                raise e
-            else:
-                logger.critical('Error sending event to Wazuh')
-                raise e
+    def check_permissions(self):
+        raise NotImplementedError
 
     def format_msg(self, msg: str) -> str:
         """Format a message.
-        :param msg: Message to be formatted
+
+        Parameters
+        ----------
+        msg : str
+            Message to be formatted.
+
+        Returns
+        -------
+        str
+            The formatted message.
         """
         # Insert msg as value of self.key_name key.
         return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
 
-    def process_message(self, ack_id: str, data: bytes):
-        """Send a message to Wazuh queue.
-        :param ack_id: ACK_ID from event
-        :param data: Data to be sent to Wazuh
-        """
-        formatted_msg = self.format_msg(data.decode(errors='replace'))
-        self.send_msg(formatted_msg)
-        self.subscriber.acknowledge(self.subscription_path, [ack_id])
+    def initialize_socket(self):
+        """Initialize a socket and connect it to an address.
 
-    def check_permissions(self):
-        """Check if permissions are OK for executing the wodle."""
-        required_permissions = {'pubsub.subscriptions.consume'}
-        response = self.subscriber.test_iam_permissions(self.subscription_path,
-                                                        required_permissions)
-        if required_permissions.difference(response.permissions) != set():
-            error_message = 'ERROR: No permissions for executing the ' \
-                'wodle from this subscription'
-            raise Exception(error_message)
+        Returns
+        -------
+        socket
+            The initialized socket to be able to use it as a context manager.
 
-    def pull_request(self, max_messages: int = 100) \
-            -> pubsub.types.PullResponse:
-        """Make request for pulling messages from the subscription.
-        :param max_messages: Maximum number of messages to retrieve
-        :return: Response of pull request. If the deadline is exceeded,
-            the method will return an empty PullResponse object
+        Raises
+        ------
+        exceptions.WazuhIntegrationInternalError
+            If the socket is unable to establish a connection or send a message
+             to analysisd.
         """
         try:
-            response = self.subscriber.pull(self.subscription_path,
-                                            max_messages=max_messages,
-                                            return_immediately=True)
-        except google_exceptions.DeadlineExceeded:
-            logger.warning('Deadline exceeded when pulling messages. '
-                           'No more messages will be retrieved on this '
-                           'execution')
-            response = pubsub.types.PullResponse()
+            self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            self.socket.connect(ANALYSISD)
+            return self.socket
+        except ConnectionRefusedError:
+            raise exceptions.WazuhIntegrationInternalError(1)
+        except OSError:
+            raise exceptions.WazuhIntegrationInternalError(2, socket_path=ANALYSISD)
 
-        return response
+    def process_data(self):
+        raise NotImplementedError
 
-    def process_messages(self, max_messages: int = 100) -> int:
-        """Process the available messages in the subscription.
-        :param max_messages: Maximum number of messages to retrieve
-        :return: Number of processed messages
+    def send_msg(self, msg: str):
+        """Send an event to the Wazuh queue.
+
+        Parameters
+        ----------
+        msg : str
+            Event to be sent.
+
+        Raises
+        ------
+        exceptions.WazuhIntegrationInternalError
+            If the socket is unable to send the message to analysisd.
         """
-        processed_messages = 0
-        response = self.pull_request(max_messages)
-        while len(response.received_messages) > 0 and processed_messages < max_messages:
-            for message in response.received_messages:
-                message_data: bytes = message.message.data
-                if logger.getEffectiveLevel() == logging.DEBUG:
-                    logger.debug(f'Processing event:\n{self.format_msg(message_data.decode(errors="replace"))}')
-                self.process_message(message.ack_id, message_data)
-                processed_messages += 1  # increment processed_messages counter
-            # get more messages
-            if processed_messages < max_messages:
-                response = self.pull_request(max_messages - processed_messages)
-        return processed_messages
+        event_json = f'{self.header}{msg}'.encode(errors='replace')
+        self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
+        try:
+            self.socket.send(event_json)
+        except OSError:
+            raise exceptions.WazuhIntegrationInternalError(3)

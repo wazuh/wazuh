@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -737,7 +737,7 @@ void config_free(_Config *config) {
     if (config->white_list) {
         int i = 0;
         while (config->white_list[i]) {
-            free(config->white_list[i]->ip);
+            w_free_os_ip(config->white_list[i]);
             i++;
         }
         free(config->white_list);

@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * October 13, 2020.
  *
  * This program is free software; you can redistribute it
@@ -221,6 +221,7 @@ public:
 
 private:
     TXN_HANDLE m_txn;
+    bool m_shouldBeRemoved;
 };
 
 

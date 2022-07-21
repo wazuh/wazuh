@@ -1,7 +1,7 @@
 <!--
   -  MongoDB rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -136,7 +136,7 @@ D	Debug, for All Verbosity Levels > 0
         <field name="mongodb.component">ACCESS</field>
         <regex>Unauthorized not authorized on \S+ to execute command</regex>
         <description>MongoDB: Execute commands without the necessary privileges</description>
-        <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
 </group>

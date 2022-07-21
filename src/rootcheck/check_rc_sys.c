@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -36,12 +36,24 @@ static int read_sys_file(const char *file_name, int do_read)
 #endif
     if (lstat(file_name, &statbuf) < 0) {
 #ifndef WIN32
+        const char op_msg_fmt[] = "Anomaly detected in file '%*s'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.";
         char op_msg[OS_SIZE_1024 + 1];
-        snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file '%s'. "
-                 "Hidden from stats, but showing up on readdir. "
-                 "Possible kernel level rootkit.",
-                 file_name);
-        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+
+        const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+        if (size >= 0) {
+            if ((size_t)size < sizeof(op_msg)) {
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+            } else {
+                const unsigned int surplus = size - sizeof(op_msg) + 1;
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
+            }
+
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+        } else {
+            mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
+        }
+
         _sys_errors++;
 #endif
         return (-1);
@@ -89,12 +101,24 @@ static int read_sys_file(const char *file_name, int do_read)
                 if ((lstat(file_name, &statbuf2) == 0) &&
                         (total != statbuf2.st_size) &&
                         (statbuf.st_size == statbuf2.st_size)) {
+                    const char op_msg_fmt[] = "Anomaly detected in file '%*s'. File size doesn't match what we found. Possible kernel level rootkit.";
                     char op_msg[OS_SIZE_1024 + 1];
-                    snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file "
-                             "'%s'. File size doesn't match what we found. "
-                             "Possible kernel level rootkit.",
-                             file_name);
-                    notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+
+                    const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+                    if (size >= 0) {
+                        if ((size_t)size < sizeof(op_msg)) {
+                            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+                        } else {
+                            const unsigned int surplus = size - sizeof(op_msg) + 1;
+                            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
+                        }
+
+                        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                    } else {
+                        mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
+                    }
+
                     _sys_errors++;
                 }
             }
@@ -119,18 +143,46 @@ static int read_sys_file(const char *file_name, int do_read)
         if (statbuf.st_uid == 0) {
             char op_msg[OS_SIZE_1024 + 1];
 #ifdef OSSECHIDS
-            snprintf(op_msg, OS_SIZE_1024, "File '%s' is owned by root "
-                     "and has written permissions to anyone.", file_name);
-#else
-            snprintf(op_msg, OS_SIZE_1024, "File '%s' is: \n"
-                     "          - owned by root,\n"
-                     "          - has write permissions to anyone.",
-                     file_name);
-#endif
-            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+            const char op_msg_fmt[] = "File '%*s' is owned by root and has written permissions to anyone.";
 
+            const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+            if (size >= 0) {
+                if ((size_t)size < sizeof(op_msg)) {
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+                } else {
+                    const unsigned int surplus = size - sizeof(op_msg) + 1;
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
+                }
+
+                notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+            } else {
+                mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
+            }
+
+            _sys_errors++;
+
+#else
+            const char op_msg_fmt[] = "File '%*s' is: \n          - owned by root,\n          - has write permissions to anyone.";
+
+            const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+            if (size >= 0) {
+                if ((size_t)size < sizeof(op_msg)) {
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+                } else {
+                    const unsigned int surplus = size - sizeof(op_msg) + 1;
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
+                }
+
+                notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+            } else {
+                mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
+            }
+
+            _sys_errors++;
+#endif
         }
-        _sys_errors++;
     } else if ((statbuf.st_mode & S_ISUID) == S_ISUID) {
         if (_suid) {
             fprintf(_suid, "%s\n", file_name);

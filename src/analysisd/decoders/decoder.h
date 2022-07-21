@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -92,6 +92,23 @@ typedef struct dbsync_context_t {
 } dbsync_context_t;
 
 /**
+ * @brief Struct used to have a 1:1 matching between upcoming agent syscollector
+ *  data fields and their corresponding table
+ */
+struct deltas_fields_match {
+    char key[OS_SIZE_32];
+    char value[OS_SIZE_32];
+};
+
+/**
+ * @brief Linked list of deltas fields match
+ */
+struct deltas_fields_match_list {
+    struct deltas_fields_match current;
+    const struct deltas_fields_match_list *next;
+};
+
+/**
  * @brief Structure to save decoders which have program_name or parent with program_name
  */
 extern OSDecoderNode *os_analysisd_decoderlist_pn;
@@ -136,7 +153,7 @@ void OS_CreateOSDecoderList(void);
  * @param npn_osdecodernode decoder list for events without program name
  * @return 1 on success, otherwise 0
  */
-int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode, 
+int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
                     OSDecoderNode **npn_osdecodernode, OSList* log_msg);
 
 OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);

@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -18,11 +18,11 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
 {
     std::shared_ptr<IPackage> ret;
 
-    if(ctx.second == BREW)
+    if (ctx.second == BREW)
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<BrewWrapper>(ctx.first));
     }
-    else if(ctx.second == PKG)
+    else if (ctx.second == PKG)
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<PKGWrapper>(ctx.first));
     }
@@ -30,11 +30,12 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     {
         throw std::runtime_error { "Error creating BSD package data retriever." };
     }
+
     return ret;
 }
 
 BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
-: m_packageWrapper(packageWrapper)
+    : m_packageWrapper(packageWrapper)
 { }
 
 void BSDPackageImpl::buildPackageData(nlohmann::json& package)
@@ -47,4 +48,10 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["format"] = m_packageWrapper->format();
     package["source"] = m_packageWrapper->source();
     package["location"] = m_packageWrapper->location();
+    package["priority"] = m_packageWrapper->priority();
+    package["size"] = m_packageWrapper->size();
+    package["vendor"] = m_packageWrapper->vendor();
+    package["install_time"] = m_packageWrapper->install_time();
+    package["multiarch"] = m_packageWrapper->multiarch();
 }
+

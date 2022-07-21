@@ -3,7 +3,7 @@
  * @brief Database synchronization decoder
  * @date 2019-09-03
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 /*
@@ -144,7 +144,9 @@ static void dispatch_check(dbsync_context_t * ctx, const char * command) {
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("dbsync: Bad response from database: %s", arg);
+        if (strcmp(arg, "Agent not found") != 0) {
+            merror("dbsync: Bad response from database: %s", arg);
+        }
         // Fallthrough
     default:
         goto end;
@@ -192,7 +194,9 @@ static void dispatch_state(dbsync_context_t * ctx) {
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("dbsync: Bad response from database: %s", arg);
+        if (strcmp(arg, "Agent not found") != 0) {
+            merror("dbsync: Bad response from database: %s", arg);
+        }
         // Fallthrough
     default:
         goto end;
@@ -236,7 +240,9 @@ static void dispatch_clear(dbsync_context_t * ctx) {
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("dbsync: Bad response from database: %s", arg);
+        if (strcmp(arg, "Agent not found") != 0) {
+            merror("dbsync: Bad response from database: %s", arg);
+        }
         // Fallthrough
     default:
         goto end;

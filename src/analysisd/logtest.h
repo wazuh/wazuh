@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -50,6 +50,9 @@
 #define W_LOGTEST_JSON_MESSAGES              "messages"   ///< Message format field name of json output
 #define W_LOGTEST_JSON_CODE                   "codemsg"   ///< Code of message field name of json output (number)
 #define W_LOGTEST_JSON_OUTPUT                  "output"   ///< Output field name of json output
+#define W_LOGTEST_JSON_OPT                    "options"   ///< Requests options
+#define W_LOGTEST_JSON_OPT_RULES_DEBUG    "rules_debug"   ///< Enables rules debug option
+
 
 /* Commands allowed */
 #define W_LOGTEST_COMMAND_REMOVE_SESSION   "remove_session"    ///< Command used to remove a session
@@ -99,8 +102,17 @@ typedef struct w_logtest_session_t {
     time_t acm_purge_ts;                    ///< Counter of the time interval of last purge. Option accumulate
     regex_matching decoder_match;           ///< Used for decoding phase
     regex_matching rule_match;              ///< Used for rules matching phase
+    u_int8_t logbylevel;                    ///< Custom severity level for generate alerts 
 
 } w_logtest_session_t;
+
+/**
+ * @brief This structure encapsulates extra data used as input; output and control for processing logs
+ */
+typedef struct {
+    bool alert_generated;         ///< It is set to true when an alert is generated
+    cJSON * rules_debug_list;     ///< It contains a list of the processed rules messages if the verbose mode is enabled
+} w_logtest_extra_data_t;
 
 /**
  * @brief List of client actives
@@ -144,11 +156,13 @@ void *w_logtest_clients_handler();
  * @brief Process client's request
  * @param request client input
  * @param session client session
- * @param alert_generated returns true if the alert should be generated
+ * @param extra_data it stores input; output and control data
  * @param list_msg list of error/warn/info messages
  * @return NULL on failure, otherwise the alert generated
  */
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg);
+cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
+                              w_logtest_extra_data_t * extra_data,
+                              OSList * list_msg);
 
 /**
  * @brief Preprocessing phase
@@ -178,13 +192,15 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
  *
  * @param lf struct to save the event processed
  * @param session client session
+ * @param rules_debug_list it is filled with a list of the processed rules messages if it is a non-null pointer
  * @param list_msg list of error/warn/info messages
  * @retval -1 on error
  * @retval  0 on success
  * @retval  1 on success and the event lf is added to the event list
 
  */
-int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg);
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
+                                  cJSON * rules_debug_list, OSList * list_msg);
 
 /**
  * @brief Create resources necessary to service client
@@ -194,7 +210,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 w_logtest_session_t *w_logtest_initialize_session(OSList * list_msg);
 
 /**
- * @brief Free resources after client closes connection
+ * @brief Frees resources after client closes connection
  * @param token client identifier
  */
 void w_logtest_remove_session(char * token);
@@ -261,7 +277,7 @@ int w_logtest_check_input_remove_session(cJSON * root, char ** msg);
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
  * @param error_code Actual level error
  */
-void w_logtest_add_msg_response(cJSON* response, OSList* list_msg, int* error_code);
+void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error_code);
 
 /**
  * @brief Generate a new hexa-token
@@ -321,11 +337,38 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
  */
 int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_response, OSList * list_msg,
                                              w_logtest_connection_t * connection);
-/*
+/**
  * @brief Generate failure response with \ref W_LOGTEST_JSON_CODE =  \ref W_LOGTEST_RCODE_ERROR_INPUT
  * @param msg string error description at \ref W_LOGTEST_JSON_MESSAGES field
  * @return string (json format) with the response
  */
 char * w_logtest_generate_error_response(char * msg);
+
+/**
+ * @brief Load the list of ruleset files and the minimum level to generate an alert in `ruleset_config`.
+ * 
+ * @param ruleset_config Structure for storing the configuration
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @return true on success, otherwise return false
+ */
+bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg);
+
+/**
+ * @brief Read the list of ruleset files and the minimum level to generate an alert in `ruleset_config`.
+ * 
+ * @param xml Main XML
+ * @param conf_section_nodes xml array of configuration sections
+ * @param ruleset_config Structure for storing the configuration
+ * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
+ * @return true on success, otherwise return false
+ */
+bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _Config * ruleset_config, OSList * list_msg);
+
+/**
+ * @brief Frees ruleset config
+ * 
+ * @param ruleset_config List files of ruleset
+ */
+void w_logtest_ruleset_free_config(_Config * ruleset_config);
 
 #endif

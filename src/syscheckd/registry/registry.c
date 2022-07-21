@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -416,6 +416,24 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BY
 }
 
 /**
+ * @brief Free all memory associated with a registry key.
+ *
+ * @param data A fim_registry_key object to be free'd.
+ */
+void fim_registry_free_key(fim_registry_key *key) {
+    if (key) {
+        os_free(key->path);
+        os_free(key->perm);
+        cJSON_Delete(key->perm_json);
+        os_free(key->uid);
+        os_free(key->gid);
+        os_free(key->user_name);
+        os_free(key->group_name);
+        free(key);
+    }
+}
+
+/**
  * @brief Gets all information from a given registry key.
  *
  * @param key_handle A handle to the key whose information we want.
@@ -441,17 +459,18 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
     }
 
     if (configuration->opts & CHECK_PERM) {
-        char permissions[OS_SIZE_6144 + 1];
-        int retval = 0;
+        int error;
 
-        retval = get_registry_permissions(key_handle, permissions);
-
-        if (retval != ERROR_SUCCESS) {
-            mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
-            os_strdup("", key->perm);
-        } else {
-            key->perm = decode_win_permissions(permissions);
+        key->perm_json = NULL;
+        error = get_registry_permissions(key_handle, &(key->perm_json));
+        if (error) {
+            mdebug1(FIM_EXTRACT_PERM_FAIL, path, error);
+            fim_registry_free_key(key);
+            return NULL;
         }
+
+        decode_win_acl_json(key->perm_json);
+        key->perm = cJSON_PrintUnformatted(key->perm_json);
     }
 
     if (configuration->opts & CHECK_MTIME) {
@@ -463,23 +482,6 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
     fim_registry_get_checksum_key(key);
 
     return key;
-}
-
-/**
- * @brief Free all memory associated with a registry key.
- *
- * @param data A fim_registry_key object to be free'd.
- */
-void fim_registry_free_key(fim_registry_key *key) {
-    if (key) {
-        os_free(key->path);
-        os_free(key->perm);
-        os_free(key->uid);
-        os_free(key->gid);
-        os_free(key->user_name);
-        os_free(key->group_name);
-        free(key);
-    }
 }
 
 /**
@@ -531,10 +533,7 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
         cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
 
         if (json_event) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-
+            send_syscheck_msg(json_event);
             cJSON_Delete(json_event);
         }
     }
@@ -578,26 +577,19 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
         cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
 
         if (json_event) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-
+            send_syscheck_msg(json_event);
             cJSON_Delete(json_event);
         }
     }
 
-    w_mutex_lock(mutex);
     result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
-    w_mutex_unlock(mutex);
 
     if (result == FIMDB_OK && file && file->elements) {
         fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
                                                syscheck.database_store, _alert, _ev_mode, _w_evt);
     }
 
-    w_mutex_lock(mutex);
     fim_db_remove_registry_key(fim_sql, data);
-    w_mutex_unlock(mutex);
 
     if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
@@ -612,9 +604,7 @@ void fim_registry_process_unscanned_entries() {
     fim_event_mode event_mode = FIM_SCHEDULED;
     int result;
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
@@ -624,9 +614,7 @@ void fim_registry_process_unscanned_entries() {
                                  &event_mode, NULL);
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
@@ -704,9 +692,7 @@ void fim_registry_process_value_event(fim_entry *new,
         }
 
         if (_base_line) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
+            send_syscheck_msg(json_event);
         }
 
         cJSON_Delete(json_event);
@@ -762,12 +748,6 @@ void fim_read_values(HKEY key_handle,
         if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
             break;
-        }
-
-        /* Check if no value name is specified */
-        if (value_buffer[0] == '\0') {
-            value_buffer[0] = '@';
-            value_buffer[1] = '\0';
         }
 
         new->registry_entry.value->name = value_buffer;
@@ -911,9 +891,7 @@ void fim_open_key(HKEY root_key_handle,
             }
 
             if (_base_line) {
-                char *json_formated = cJSON_PrintUnformatted(json_event);
-                send_syscheck_msg(json_formated);
-                os_free(json_formated);
+                send_syscheck_msg(json_event);
             }
 
             cJSON_Delete(json_event);

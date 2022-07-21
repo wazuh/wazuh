@@ -322,7 +322,7 @@ merged.mg\n#\"_agent_ip\":192.168.0.143\n";
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
     int result = parse_agent_update_msg(msg, agent_data);
-    
+
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("Wazuh v3.13.0", agent_data->version);
     assert_string_equal("Debian GNU/Linux", agent_data->osd->os_name);
@@ -370,6 +370,35 @@ merged.mg\n#\"_agent_ip\":192.168.0.133\n";
     wdb_free_agent_info_data(agent_data);
 }
 
+void test_parse_agent_update_msg_ok_archlinux(void **state)
+{
+    char *msg = "Linux |archlinux |5.15.2-arch1-1 |#1 SMP PREEMPT Fri, 12 Nov 2021 19:22:10 +0000 |x86_64 \
+[Arch Linux|arch: ] - Wazuh v4.3.0 / ab73af41699f13fdd81903b5f23d8d00\n4a8724b20dee0124ff9656783c490c4e \
+merged.mg\n#\"_agent_ip\":192.168.33.18\n";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_agent_update_msg(msg, agent_data);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("Wazuh v4.3.0", agent_data->version);
+    assert_string_equal("Arch Linux", agent_data->osd->os_name);
+    assert_null(agent_data->osd->os_major);
+    assert_null(agent_data->osd->os_minor);
+    assert_null(agent_data->osd->os_build);
+    assert_string_equal("", agent_data->osd->os_version);
+    assert_null(agent_data->osd->os_codename);
+    assert_string_equal("arch", agent_data->osd->os_platform);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("Linux |archlinux |5.15.2-arch1-1 |#1 SMP PREEMPT Fri, 12 Nov 2021 19:22:10 +0000 |x86_64", agent_data->osd->os_uname);
+    assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
+    assert_string_equal("4a8724b20dee0124ff9656783c490c4e", agent_data->merged_sum);
+    assert_string_equal("192.168.33.18", agent_data->agent_ip);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
 void test_parse_agent_update_msg_ok_solaris(void **state)
 {
     char *msg = "SunOS |solaris10 |5.10 |Generic_147148-26 |i86pc [SunOS|sunos: 10] - \
@@ -409,7 +438,7 @@ ab73af41699f13fdd81903b5f23d8d00\nfd756ba04d9c32c8848d4608bec41251 merged.mg\n#\
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
     int result = parse_agent_update_msg(msg, agent_data);
-    
+
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("Wazuh v3.13.1", agent_data->version);
     assert_string_equal("Mac OS X", agent_data->osd->os_name);
@@ -438,7 +467,7 @@ merged.mg\n#\"_agent_ip\":192.168.0.164\n";
     os_calloc(1, sizeof(agent_info_data), agent_data);
 
     int result = parse_agent_update_msg(msg, agent_data);
-    
+
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("Wazuh v3.13.1", agent_data->version);
     assert_string_equal("Microsoft Windows 10 Enterprise", agent_data->osd->os_name);
@@ -490,7 +519,7 @@ void test_parse_agent_update_msg_ok_labels(void **state)
 
 int main()
 {
-    const struct CMUnitTest tests[] = 
+    const struct CMUnitTest tests[] =
     {
         // Tests get_os_arch
         cmocka_unit_test_setup_teardown(test_get_os_arch_x86_64, setup_remoted_op, teardown_remoted_op),
@@ -512,6 +541,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_merged_sum, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_debian, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_ubuntu, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_archlinux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_solaris, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_macos, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op),

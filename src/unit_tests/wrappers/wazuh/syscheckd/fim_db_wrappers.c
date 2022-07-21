@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -186,12 +186,23 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         __attribute__((unused)) pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode,
-                                        __attribute__((unused)) whodata_evt * w_evt) {
+                                        __attribute__((unused)) event_data_t *evt_data) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(file);
     check_expected_ptr(storage);
-    check_expected_ptr(mode);
+
+    return mock();
+}
+
+int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 __attribute__((unused)) pthread_mutex_t *mutex,
+                                 int storage,
+                                 __attribute__((unused)) event_data_t *evt_data,
+                                 __attribute__((unused)) directory_t *configuration) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(file);
+    check_expected_ptr(storage);
 
     return mock();
 }
@@ -330,4 +341,36 @@ void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
     expect_value(__wrap_fim_db_remove_path, fim_sql, fim_sql);
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);
+}
+
+void expect_fim_db_insert(fdb_t *db, const char *file_path, int ret) {
+    expect_value(__wrap_fim_db_insert, fim_sql, db);
+    expect_string(__wrap_fim_db_insert, file_path, file_path);
+    will_return(__wrap_fim_db_insert, ret);
+}
+
+void expect_fim_db_set_scanned(fdb_t *db, const char *file_path, int ret) {
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, db);
+    expect_string(__wrap_fim_db_set_scanned, path, file_path);
+    will_return(__wrap_fim_db_set_scanned, ret);
+}
+
+int __wrap_fim_db_file_update(fdb_t *fim_sql,
+                              const char *path,
+                              const __attribute__((unused)) fim_file_data *data,
+                              fim_entry **saved) {
+    check_expected_ptr(fim_sql);
+    check_expected(path);
+
+    if (saved != NULL) {
+        *saved = mock_type(fim_entry *);
+    }
+
+    return mock();
+}
+
+int __wrap_fim_db_is_full(fdb_t *fim_sql) {
+    check_expected_ptr(fim_sql);
+
+    return mock();
 }

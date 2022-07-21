@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -55,33 +55,25 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
     /* Read private keys  */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
-
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->server_count) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
-            int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        }
-        rc++;
-    }
+    OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+    if (agt->force_reconnect_interval) {
+        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
+    }
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
-    } else
+    } else {
         minfo("Version detected -> %s", getuname());
+    }
 
     /* Try to connect to server */
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
+    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
+        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
 #ifdef HPUX
@@ -109,7 +101,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     signal(SIGPIPE, SIG_IGN);
 
     /* Launch rotation thread */
-
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
     if (rotate_log) {
         w_create_thread(w_rotate_log_thread, (void *)NULL);
@@ -121,15 +112,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         buffer_init();
 
         w_create_thread(dispatch_buffer, (void *)NULL);
-    }else{
+    } else {
         minfo(DISABLED_BUFFER);
-    }
-    /* Connect remote */
-    rc = 0;
-    while (rc < agt->server_count) {
-        int rip_l = strlen(agt->server[rc].rip);
-        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        rc++;
     }
 
     /* Configure and start statistics */
@@ -143,7 +127,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE, 1)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;
@@ -164,6 +148,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     // Start request module
     req_init();
     w_create_thread(req_receiver, NULL);
+
+    /* Send agent stopped message at exit */
+    atexit(send_agent_stopped_message);
 
     /* Send first notification */
     run_notify();

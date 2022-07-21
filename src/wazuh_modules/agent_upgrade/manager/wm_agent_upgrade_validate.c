@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 20, 2020.
  *
  * This program is free software; you can redistribute it
@@ -23,11 +23,15 @@
 pthread_mutex_t download_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char* invalid_platforms[] = {
-    "darwin",
-    "solaris",
+    "sunos",
     "aix",
-    "hpux",
+    "hp-ux",
     "bsd"
+};
+
+static const char* rolling_platforms[] = {
+    "opensuse-tumbleweed",
+    "arch"
 };
 
 int wm_agent_upgrade_validate_id(int agent_id) {
@@ -52,16 +56,18 @@ int wm_agent_upgrade_validate_status(const char* connection_status) {
 
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
     int invalid_platforms_len = 0;
-    int invalid_platforms_it = 0;
+    int rolling_platforms_len = 0;
+    int platforms_it = 0;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     if (platform) {
         if (!strcmp(platform, "windows") || (os_major && arch && (strcmp(platform, "ubuntu") || os_minor))) {
             return_code = WM_UPGRADE_SUCCESS;
-            invalid_platforms_len = sizeof(invalid_platforms) / sizeof(invalid_platforms[0]);
 
-            for(invalid_platforms_it = 0; invalid_platforms_it < invalid_platforms_len; ++invalid_platforms_it) {
-                if(!strcmp(invalid_platforms[invalid_platforms_it], platform)) {
+            // Blacklist for invalid OS platforms
+            invalid_platforms_len = array_size(invalid_platforms);
+            for(platforms_it = 0; platforms_it < invalid_platforms_len; ++platforms_it) {
+                if(!strcmp(invalid_platforms[platforms_it], platform)) {
                     return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
                     break;
                 }
@@ -75,12 +81,21 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
                 }
             }
         }
+
+        // Whitelist for OS platforms with 'rolling' version
+        rolling_platforms_len = array_size(rolling_platforms);
+        for(platforms_it = 0; platforms_it < rolling_platforms_len; ++platforms_it) {
+            if(!strcmp(rolling_platforms[platforms_it], platform)) {
+                return_code = WM_UPGRADE_SUCCESS;
+                break;
+            }
+        }
     }
 
     return return_code;
 }
 
-int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task) {
+int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task) {
     char *tmp_agent_version = NULL;
     char *manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -89,6 +104,8 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_comm
         if (tmp_agent_version = strchr(wazuh_version, 'v'), tmp_agent_version) {
 
             if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
+                return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
+            } else if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS) < 0 && !strcmp(platform, "darwin")) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
                 wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
@@ -116,6 +133,8 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_comm
 }
 
 int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) {
+
+    char repository[OS_BUFFER_SIZE] = "";
     const char *http_tag = "http://";
     const char *https_tag = "https://";
     char *repository_url = NULL;
@@ -124,15 +143,11 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     char *versions_url = NULL;
     char *versions = NULL;
     int return_code = WM_UPGRADE_SUCCESS;
+    int ver = 0;
 
     if (!task->wpk_version) {
         return WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
     }
-
-    os_calloc(OS_SIZE_1024, sizeof(char), repository_url);
-    os_calloc(OS_SIZE_2048, sizeof(char), path_url);
-    os_calloc(OS_SIZE_2048, sizeof(char), file_url);
-    os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     if (!task->wpk_repository) {
         if (wpk_repository_config) {
@@ -140,9 +155,19 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         } else if (wm_agent_upgrade_compare_versions(task->wpk_version, "v4.0.0") < 0) {
             os_strdup(WM_UPGRADE_WPK_REPO_URL_3_X, task->wpk_repository);
         } else {
-            os_strdup(WM_UPGRADE_WPK_REPO_URL_4_X, task->wpk_repository);
+            if (sscanf(task->wpk_version, "v%d.%*d.%*d", &ver) != 1 &&
+                    sscanf(task->wpk_version, "%d.%*d.%*d", &ver) != 1) {
+                return WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
+            }
+            snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, ver);
+            os_strdup(repository, task->wpk_repository);
         }
     }
+
+    os_calloc(OS_SIZE_1024, sizeof(char), repository_url);
+    os_calloc(OS_SIZE_2048, sizeof(char), path_url);
+    os_calloc(OS_SIZE_2048, sizeof(char), file_url);
+    os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     // Set protocol
     if (!strstr(task->wpk_repository, http_tag) && !strstr(task->wpk_repository, https_tag)) {
@@ -165,6 +190,11 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
                  repository_url);
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_windows.wpk",
                  task->wpk_version);
+    } else if (!strcmp(agent_info->platform, "darwin")) {
+        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/pkg/",
+                 repository_url, agent_info->architecture);
+        snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
+                 task->wpk_version, agent_info->architecture);
     } else {
         if (wm_agent_upgrade_compare_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) {
             snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
@@ -187,7 +217,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     // Set versions respository
     snprintf(versions_url, OS_SIZE_4096, "%sversions", path_url);
 
-    versions = wurl_http_get(versions_url);
+    versions = wurl_http_get(versions_url, WM_UPGRADE_MAX_RESPONSE_SIZE, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
 
     if (versions) {
         char *version = versions;

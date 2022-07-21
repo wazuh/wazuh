@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020
+ * Copyright (C) 2015
  * January 17
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,9 @@
 
 #ifndef INFO_MESSAGES_H
 #define INFO_MESSAGES_H
+
+/* Vulnerability-Detector info messages*/
+#define VU_NO_OSINFO_AG       "(5700): Unable to get the OS information for agent '%.3d'. Inventory data may not yet be synchronized."
 
 /* File integrity monitoring info messages*/
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
@@ -58,6 +61,7 @@
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
 #define FIM_NO_DIFF_REGISTRY                "(6044): Option nodiff enabled for %s '%s'."
+#define FIM_AUDIT_CREATED_RULE_FILE         "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
@@ -67,5 +71,9 @@
 #define LOGTEST_INFO_LOG_NOALERT            "(7204): Output without rule"
 #define LOGTEST_INFO_LOG_NOLEVEL            "(7205): Rule without alert level"
 #define LOGTEST_INFO_SESSION_REMOVE         "(7206): The session '%s' was closed successfully"
+
+/* Logcollector info messages */
+#define LOGCOLLECTOR_INVALID_HANDLE_VALUE   "(9200): File '%s' can not be handled."
+#define LOGCOLLECTOR_ONLY_MACOS             "(9201): 'macos' log format is only supported on macOS."
 
 #endif /* INFO_MESSAGES_H */

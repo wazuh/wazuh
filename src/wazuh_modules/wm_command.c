@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for custom command execution
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is free software; you can redistribute it
@@ -11,8 +11,13 @@
 
 #include "wmodules.h"
 
+#ifdef WIN32
+static DWORD WINAPI wm_command_main(void *arg);             // Module main function. It won't return
+static DWORD WINAPI wm_command_destroy(void *command);      // Destroy data
+#else
 static void * wm_command_main(wm_command_t * command);    // Module main function. It won't return
 static void wm_command_destroy(wm_command_t * command);   // Destroy data
+#endif
 cJSON *wm_command_dump(const wm_command_t * command);
 
 // Command module context definition
@@ -22,12 +27,18 @@ const wm_context WM_COMMAND_CONTEXT = {
     (wm_routine)wm_command_main,
     (wm_routine)(void *)wm_command_destroy,
     (cJSON * (*)(const void *))wm_command_dump,
+    NULL,
     NULL
 };
 
 // Module module main function. It won't return.
 
+#ifdef WIN32
+DWORD WINAPI wm_command_main(void *arg) {
+    wm_command_t * command = (wm_command_t *)arg;
+#else
 void * wm_command_main(wm_command_t * command) {
+#endif
     size_t extag_len;
     char * extag;
     int usec = 1000000 / wm_max_eps;
@@ -154,7 +165,7 @@ void * wm_command_main(wm_command_t * command) {
 #ifndef WIN32
     if (!command->ignore_output) {
 
-        command->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        command->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
         if (command->queue_fd < 0) {
             mterror(WM_COMMAND_LOGTAG, "Can't connect to queue.");
@@ -220,7 +231,11 @@ void * wm_command_main(wm_command_t * command) {
     } while (FOREVER());
 
     free(extag);
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 
@@ -250,10 +265,17 @@ cJSON *wm_command_dump(const wm_command_t * command) {
 
 
 // Destroy data
-
+#ifdef WIN32
+DWORD WINAPI wm_command_destroy(void *ptr_command) {
+    wm_command_t * command = (wm_command_t *)ptr_command;
+#else
 void wm_command_destroy(wm_command_t * command) {
+#endif
     free(command->tag);
     free(command->command);
     free(command->full_command);
     free(command);
+    #ifdef WIN32
+    return 0;
+    #endif
 }

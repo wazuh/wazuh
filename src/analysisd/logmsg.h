@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -41,7 +41,8 @@ typedef struct os_analysisd_log_msg_t {
  *                   resulting string replacing their respective specifiers.
  */
 void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func, 
-                                const char * file, char * msg, ...) __attribute__((nonnull));
+                                const char * file, char * msg, ...) __attribute__ ((format (_PRINTF_FORMAT, 6, 7))) 
+                                                                    __attribute__((nonnull (4, 5, 6)));
 
 /**
  * @brief Create string message with the information from \ref os_analysisd_log_msg_t.

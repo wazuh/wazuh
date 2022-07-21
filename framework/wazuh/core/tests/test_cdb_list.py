@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,8 +9,8 @@ import shutil
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, iterate_lists, \
             split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
@@ -142,7 +142,7 @@ def test_get_list_from_file(raw):
 
     `get_list_from_file` must retrieve the content of a CDB file.
     """
-    full_path = os.path.join(common.wazuh_path, PATH_FILE)
+    full_path = os.path.join(common.WAZUH_PATH, PATH_FILE)
     if raw:
         with open(full_path) as f:
             assert get_list_from_file(full_path, raw) == f.read()
@@ -183,7 +183,7 @@ def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
 
 def test_validate_cdb_list():
     """Test validate_cdb function"""
-    with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
+    with open(os.path.join(common.WAZUH_PATH, PATH_FILE)) as f:
         wazuh_cdb_list = f.read()
 
     try:
@@ -208,8 +208,8 @@ def test_validate_cdb_list_ko():
 def test_create_list_file(mock_delete, mock_chmod):
     """Test that create_list_file function works as expected"""
 
-    with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
-        with patch('wazuh.core.cdb_list.common.wazuh_path', new='/var/ossec'):
+    with open(os.path.join(common.WAZUH_PATH, PATH_FILE)) as f:
+        with patch('wazuh.core.cdb_list.common.WAZUH_PATH', new='/var/ossec'):
             with patch('builtins.open') as mock_open:
                 wazuh_cdb_list = f.read()
                 result = create_list_file('/test/path', wazuh_cdb_list, permissions=0o660)
@@ -230,8 +230,8 @@ def test_delete_list(mock_delete_wazuh_file, mock_remove):
     """Check that delete_list function uses expected params."""
     path = 'etc/list/test_list'
     delete_list(path)
-    mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.wazuh_path, path))
-    mock_remove.assert_called_once_with(os.path.join(common.wazuh_path, path + '.cdb'))
+    mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.WAZUH_PATH, path))
+    mock_remove.assert_called_once_with(os.path.join(common.WAZUH_PATH, path + '.cdb'))
 
 
 def test_get_filenames_paths():

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -23,7 +23,7 @@ case ${DIR_NAME} in
             WAZUH_PATH="$(cd ${DIR_NAME}/..; pwd)"
         fi
 
-        PYTHON_SCRIPT="${WAZUH_PATH}/framework/scripts/${SCRIPT_NAME}.py"
+        PYTHON_SCRIPT="${WAZUH_PATH}/framework/scripts/$(echo ${SCRIPT_NAME} | sed 's/\-/_/g').py"
     ;;
      */integrations)
         if [ -z "${WAZUH_PATH}" ]; then

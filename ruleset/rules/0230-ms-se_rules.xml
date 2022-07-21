@@ -2,7 +2,7 @@
   -  Microsoft Security Essentials rules
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -147,7 +147,7 @@
 
   <rule id="7719" level="10" frequency="8" timeframe="240">
     <if_matched_sid>7702</if_matched_sid>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     <description>Multiple Microsoft Security Essentials AV warnings detected.</description>
   </rule>
 

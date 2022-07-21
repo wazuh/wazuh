@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 30, 2020.
  *
  * This program is free software; you can redistribute it
@@ -13,14 +13,17 @@
 #define WM_AGENT_UPGRADE_MANAGER_H
 
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
+#define WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS "v4.3.0"
 #define WM_UPGRADE_NEW_VERSION_REPOSITORY "v3.4.0"
 #define WM_UPGRADE_NEW_UPGRADE_MECHANISM "v4.1.0"
 #define WM_UPGRADE_WPK_DEFAULT_PATH "var/upgrade/"
 #define WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT 60000
 #define WM_UPGRADE_WPK_DOWNLOAD_ATTEMPTS 5
 #define WM_UPGRADE_WPK_OPEN_ATTEMPTS 10
+#define WM_UPGRADE_MAX_RESPONSE_SIZE 1048576L
 #define MANAGER_ID 0
 #define WM_AGENT_UPGRADE_START_WAIT_TIME 30
+#define WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT 20L
 
 typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SUCCESS = 0,

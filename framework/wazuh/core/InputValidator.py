@@ -1,12 +1,13 @@
 
-
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import re
 import operator
+import re
 from functools import reduce
+
+from api.validator import _group_names
 
 
 class InputValidator:
@@ -28,7 +29,6 @@ class InputValidator:
         else:
             return False
 
-
     def check_length(self, name, length=255, func=operator.le):
         """
         Function to compare the length of a string.
@@ -39,7 +39,6 @@ class InputValidator:
         """
         return func(len(name), length)
 
-
     def group(self, group_name):
         """
         function to validate the name of a group. Returns True if the
@@ -48,7 +47,7 @@ class InputValidator:
         group_name: name of the group to be validated
         """
         def check_single_group_name(group_name):
-            return self.check_length(group_name) and self.check_name(group_name, regex_str=r'[A-Za-z0-9.\-_]+')
+            return self.check_length(group_name) and self.check_name(group_name, regex_str=_group_names)
 
         if isinstance(group_name, list):
             return reduce(operator.mul, map(lambda x: check_single_group_name(x), group_name))

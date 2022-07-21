@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -77,7 +77,7 @@ static int teardown_dbsync_context(void **state) {
 static int setup_send_local(void **state) {
     test_dbsync_t *data = *state;
 
-    data->ctx->component = calloc(OS_SIZE_16, sizeof(char));
+    data->ctx->component = calloc(OS_SIZE_32, sizeof(char));
 
     if(data->ctx->component == NULL) return -1;
 

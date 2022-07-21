@@ -1,8 +1,93 @@
 ---
-test_name: DELETE /experimental/syscheck
+test_name: DELETE /experimental/rootcheck
 
-marks:
-  - rbac_tests
+stages:
+
+  - name: Delete rootcheck scans in agent 002 (Allow)
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "002"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Try to delete rootcheck scans in agent 001 (Deny)
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+    response: &permission_denied
+      status_code: 403
+      json:
+        error: 4000
+
+  - name: Request all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '000'
+            - '002'
+            - '004'
+            - '006'
+            - '008'
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Request a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002,005,006'
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '002'
+            - '006'
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - '001'
+                - '005'
+          total_affected_items: 2
+          total_failed_items: 2
+
+---
+test_name: DELETE /experimental/syscheck
 
 stages:
 
@@ -18,16 +103,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
-          affected_items:
-            - '000'
-            - '002'
-            - '004'
-            - '006'
-            - '008'
+          affected_items: []  # Some agents are allowed but they raise error 1706, which is excluded as the agents newer than 3.12 are not affected.
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Request a list of agents (Partially allowed, user aware)
@@ -42,19 +122,22 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
-          affected_items:
-            - '002'
-            - '006'
+          affected_items: []
           failed_items:
+            - error:
+                code: 1760
+              id:
+                - '002'
+                - '006'
             - error:
                 code: 4000
               id:
                 - '001'
                 - '005'
-          total_affected_items: 2
-          total_failed_items: 2
+          total_affected_items: 0
+          total_failed_items: 4
 
 ---
 test_name: GET /experimental/ciscat/results
@@ -90,7 +173,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -117,7 +200,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data: &even_affected_agent_list
           affected_items:
             - agent_id: '000'
@@ -141,7 +224,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - agent_id: '002'
@@ -170,7 +253,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *even_affected_agent_list
 
@@ -186,7 +269,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - agent_id: '006'
@@ -215,7 +298,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *even_affected_agent_list
 
@@ -231,7 +314,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - agent_id: '008'
@@ -260,7 +343,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *even_affected_agent_list
 
@@ -276,7 +359,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - agent_id: '002'
@@ -305,7 +388,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *even_affected_agent_list
 
@@ -321,7 +404,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - agent_id: '002'
@@ -350,7 +433,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -367,9 +450,7 @@ stages:
       params:
         agents_list: '001,003,005,007'
     response:
-      status_code: 403
-      json:
-        error: 4000
+      <<: *permission_denied
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -386,7 +467,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             # The answer must include at least one item whose agent is shown below
@@ -411,15 +492,17 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - agent_id: '002'
+            - agent_id: '002'
+            - agent_id: '004'
             - agent_id: '004'
             - agent_id: '006'
             - agent_id: '008'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 6
           total_failed_items: 0
 
 ---
@@ -437,7 +520,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -485,7 +568,7 @@ stages:
       verify_response_with:
         function: tavern_utils:test_validate_syscollector_hotfix
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []

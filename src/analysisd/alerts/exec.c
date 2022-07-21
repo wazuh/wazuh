@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -19,21 +19,26 @@
 #include "eventinfo.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "labels.h"
+#include "exec.h"
 
-static const char* get_ip(const Eventinfo *lf);
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
 
-void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
-{
-    char exec_msg[OS_SIZE_8192 + 1];
-    char msg[OS_SIZE_8192 + 1];
+STATIC const char *get_ip(const Eventinfo *lf);
+int conn_error_sent = 0;
+
+void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_response *ar) {
+    char * exec_msg = NULL;
+    char * msg = NULL;
     const char *ip;
     const char *user;
     char *filename = NULL;
+
     char *extra_args = NULL;
-
-    memset(exec_msg, 0, OS_SIZE_8192 + 1);
-    memset(msg, 0, OS_SIZE_8192 + 1);
-
     /* Clean the IP */
     ip = "-";
     if (lf->srcip) {
@@ -43,6 +48,9 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
         }
     }
 
+    os_calloc(OS_MAXSTR + 1, sizeof(char), exec_msg);
+    os_calloc(OS_MAXSTR + 1, sizeof(char), msg);
+
     /* Get username */
     user = "-";
     if (lf->dstuser) {
@@ -50,8 +58,8 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
     }
 
     /* Get filename */
-    if (lf->filename) {
-        filename = os_shell_escape(lf->filename);
+    if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) == 0) {
+        filename = os_shell_escape(lf->fields[FIM_FILE].value);
     }
 
     /* Get extra_args */
@@ -69,11 +77,8 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             goto cleanup;
         }
 
-        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, exec_msg);
-
-        if (OS_SendUnix(execq, exec_msg, 0) < 0) {
-            merror("Error communicating with execd.");
-        }
+        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, exec_msg, false);
+        send_exec_msg(execq, EXECQUEUE, exec_msg);
     }
 
     /* Active Response to the forwarder */
@@ -86,13 +91,11 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
         if (ar->location & ALL_AGENTS) {
 
-            int sock = -1;
             int *id_array = NULL;
 
-            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
+            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, sock);
             if(!id_array) {
                 merror("Unable to get agent's ID array.");
-                wdbc_close(&sock);
                 goto cleanup;
             }
 
@@ -103,19 +106,23 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 wlabel_t *agt_labels = NULL;
                 char *agt_version = NULL;
 
-                memset(exec_msg, 0, OS_SIZE_8192 + 1);
-                memset(msg, 0, OS_SIZE_8192 + 1);
+                memset(exec_msg, 0, OS_MAXSTR + 1);
+                memset(msg, 0, OS_MAXSTR + 1);
 
                 snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
 
-                agt_labels = labels_find(c_agent_id, &sock);
+                agt_labels = labels_find(c_agent_id, sock);
                 agt_version = labels_get(agt_labels, "_wazuh_version");
 
                 if (!agt_version) {
-                    json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+                    json_agt_info = wdb_get_agent_info(id_array[i], sock);
                     if (!json_agt_info) {
                         merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
-                        labels_free(agt_labels);
+
+                        if (agt_labels != Config.labels) {
+                            labels_free(agt_labels);
+                        }
+
                         continue;
                     }
 
@@ -124,8 +131,12 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                         agt_version = json_agt_version->valuestring;
                     } else {
-                        merror("Failed to get agent '%d' version.", id_array[i]);
-                        labels_free(agt_labels);
+                        mdebug2("Failed to get agent '%d' version.", id_array[i]);
+
+                        if (agt_labels != Config.labels) {
+                            labels_free(agt_labels);
+                        }
+
                         cJSON_Delete(json_agt_info);
                         continue;
                     }
@@ -136,35 +147,39 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 strtok_r(agt_version, "v", &save_ptr);
                 char *major = strtok_r(NULL, ".", &save_ptr);
                 char *minor = strtok_r(NULL, ".", &save_ptr);
-                if (!major || !minor) {
+                char *patch = strtok_r(NULL, ".", &save_ptr);
+                if (!major || !minor || !patch) {
                     merror("Unable to read agent version.");
-                    labels_free(agt_labels);
+
+                    if (agt_labels != Config.labels) {
+                        labels_free(agt_labels);
+                    }
+
                     cJSON_Delete(json_agt_info);
                     continue;
                 } else {
                     if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
                         getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                     } else {
-                        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg);
+                        bool escape = atoi(major) == 4 && atoi(minor) == 2 && atoi(patch) < 5;
+                        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg, escape);
                     }
                 }
 
-                labels_free(agt_labels);
+                if (agt_labels != Config.labels) {
+                    labels_free(agt_labels);
+                }
+
                 cJSON_Delete(json_agt_info);
 
                 get_exec_msg(ar, c_agent_id, msg, exec_msg);
-
-                if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
-                    merror("Error communicating with ar queue.");
-                }
+                send_exec_msg(arq, ARQUEUE, exec_msg);
             }
 
             os_free(id_array);
-            wdbc_close(&sock);
 
         } else {
 
-            int sock = -1;
             cJSON *json_agt_info = NULL;
             cJSON *json_agt_version = NULL;
             char c_agent_id[OS_SIZE_16];
@@ -186,15 +201,18 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
             snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
 
-            agt_labels = labels_find(c_agent_id, &sock);
+            agt_labels = labels_find(c_agent_id, sock);
             agt_version = labels_get(agt_labels, "_wazuh_version");
 
             if (!agt_version) {
-                json_agt_info = wdb_get_agent_info(agt_id, &sock);
-                wdbc_close(&sock);
+                json_agt_info = wdb_get_agent_info(agt_id, sock);
                 if (!json_agt_info) {
                     merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
-                    labels_free(agt_labels);
+
+                    if (agt_labels != Config.labels) {
+                        labels_free(agt_labels);
+                    }
+
                     goto cleanup;
                 }
 
@@ -203,8 +221,12 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                     agt_version = json_agt_version->valuestring;
                 } else {
-                    merror("Failed to get agent '%d' version.", agt_id);
-                    labels_free(agt_labels);
+                    mdebug2("Failed to get agent '%d' version.", agt_id);
+
+                    if (agt_labels != Config.labels) {
+                        labels_free(agt_labels);
+                    }
+
                     cJSON_Delete(json_agt_info);
                     goto cleanup;
                 }
@@ -215,27 +237,33 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             strtok_r(agt_version, "v", &save_ptr);
             char *major = strtok_r(NULL, ".", &save_ptr);
             char *minor = strtok_r(NULL, ".", &save_ptr);
-            if (!major || !minor) {
+            char *patch = strtok_r(NULL, ".", &save_ptr);
+            if (!major || !minor || !patch) {
                 merror("Unable to read agent version.");
-                labels_free(agt_labels);
+
+                if (agt_labels != Config.labels) {
+                    labels_free(agt_labels);
+                }
+
                 cJSON_Delete(json_agt_info);
                 goto cleanup;
             } else {
                 if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 } else {
-                    getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg);
+                    bool escape = atoi(major) == 4 && atoi(minor) == 2 && atoi(patch) < 5;
+                    getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg, escape);
                 }
             }
 
-            labels_free(agt_labels);
+            if (agt_labels != Config.labels) {
+                labels_free(agt_labels);
+            }
+
             cJSON_Delete(json_agt_info);
 
             get_exec_msg(ar, c_agent_id, msg, exec_msg);
-
-            if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
-                merror("Error communicating with ar queue.");
-            }
+            send_exec_msg(arq, ARQUEUE, exec_msg);
         }
     }
 
@@ -244,6 +272,8 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
     /* Clean up Memory */
     os_free(filename);
     os_free(extra_args);
+    os_free(exec_msg);
+    os_free(msg);
 
     return;
 }
@@ -254,7 +284,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
  * @param[in] lf Event information.
  * @return const char* on success or NULL on failure.
  */
-static const char* get_ip(const Eventinfo *lf)
+STATIC const char* get_ip(const Eventinfo *lf)
 {
     const char *ip;
 
@@ -329,10 +359,10 @@ void getActiveResponseInString( const Eventinfo *lf,
  * @param[in] agent_id Agent ID to identify where the AR will be executed.
  * @param[in] msg Message that can be in JSON or string format
  * @param[out] exec_msg Complete massage containing the message and the header.
+ * @pre exec_msg is OS_MAXSTR + 1 or more bytes long.
  * @return void.
  */
-void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, char *exec_msg)
-{
+void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, char *exec_msg) {
     char temp_msg[OS_SIZE_1024 + 1] = "\0";
 
     /* As now there are 2 different message formats (the JSON and the string)
@@ -345,7 +375,40 @@ void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, ch
             (ar->location & SPECIFIC_AGENT || ar->location & ALL_AGENTS) ? SPECIFIC_AGENT_C : NONE_C,
             agent_id);
 
-    strcpy(exec_msg, temp_msg);
-    strcat(exec_msg, " ");
-    strcat(exec_msg, msg);
+    os_snprintf(exec_msg, OS_MAXSTR + 1, "%s %s", temp_msg, msg);
+}
+
+/**
+ * @brief Send the message to the socket. Tries to reconnect one time if the socket is not valid.
+ *
+ * @param socket Socket where the message will be sent.
+ * @param queue_path Queue in case it is necessary to reconnect the socket
+ * @param exec_msg Complete massage to be sent.
+ * @return void.
+ */
+void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg) {
+    static int conn_error_sent = 0;
+
+    if (*socket < 0) {
+        if ((*socket = StartMQ(queue_path, WRITE, 1)) < 0) {
+            if (conn_error_sent == 0){
+                merror(QUEUE_ERROR, queue_path, strerror(errno));
+                conn_error_sent = 1;
+            }
+
+            return;
+        } else {
+            conn_error_sent = 0;
+        }
+    }
+
+    int rc = 0;
+    if ((rc = OS_SendUnix(*socket, exec_msg, 0)) < 0) {
+        if (rc == OS_SOCKBUSY) {
+            merror(EXEC_QUEUE_BUSY);
+        }
+        OS_CloseSocket(*socket);
+        *socket = -1;
+        merror(EXEC_QUEUE_CONNECTION_ERROR, queue_path);
+    }
 }

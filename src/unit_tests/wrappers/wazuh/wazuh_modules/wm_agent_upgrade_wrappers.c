@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -174,8 +174,9 @@ int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task) {
+int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task) {
     check_expected(wazuh_version);
+    check_expected(platform);
     check_expected(command);
 
     if (command == WM_UPGRADE_UPGRADE) {

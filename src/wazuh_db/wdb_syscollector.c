@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * August 30, 2017.
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wdb_agents.h"
 
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
@@ -348,53 +349,72 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
-int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("at wdb_set_hotfix_metadata(): cannot begin transaction");
-        return -1;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SET_HOTFIX_MET) < 0) {
-        mdebug1("at wdb_set_hotfix_metadata(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SET_HOTFIX_MET];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Could not set the hotfix metadata: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    return 0;
-}
-
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
-
-    sqlite3_stmt *stmt = NULL;
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace) {
+    int triaged = 0;
+    char *reference = NULL;
+    cJSON *j_osinfo = NULL;
+    sqlite3_stmt *stmt_del = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_osinfo_save(): cannot begin transaction");
         return -1;
     }
 
+    // Getting old data to preserve triaged value
+    if (j_osinfo = wdb_agents_get_sys_osinfo(wdb), !j_osinfo) {
+        merror("Retrieving old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+    else {
+        cJSON *j_triaged = cJSON_GetObjectItem(j_osinfo->child, "triaged");
+        cJSON *j_reference = cJSON_GetObjectItem(j_osinfo->child, "reference");
+        if (!cJSON_IsNumber(j_triaged) || !cJSON_IsString(j_reference)) {
+            mdebug2("No previous data related to the triaged status and reference of the OS");
+        }
+        else {
+            triaged = j_triaged->valueint;
+            os_strdup(j_reference->valuestring, reference);
+        }
+        cJSON_Delete(j_osinfo);
+    }
+
     /* Delete old OS information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
-        mdebug1("at wdb_osinfo_save(): cannot cache statement");
+        mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_DEL);
+        os_free(reference);
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
+    stmt_del = wdb->stmt[WDB_STMT_OSINFO_DEL];
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (sqlite3_step(stmt_del) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
+        os_free(reference);
         return -1;
     }
+
+    // Calculating OS reference
+    os_sha1 hexdigest;
+    wdbi_strings_hash(hexdigest,
+                      architecture ? architecture : "",
+                      os_name ? os_name : "",
+                      os_version ? os_version : "",
+                      os_codename ? os_codename : "",
+                      os_major ? os_major : "",
+                      os_minor ? os_minor : "",
+                      os_patch ? os_patch : "",
+                      os_build ? os_build : "",
+                      os_platform ? os_platform : "",
+                      sysname ? sysname : "",
+                      release ? release : "",
+                      version ? version : "",
+                      os_release ? os_release : "",
+                      NULL);
+
+    // If there is a change in the OS, the triaged is set to 0
+    triaged = reference && strcmp(hexdigest, reference) == 0 ? triaged : 0;
+    os_free(reference);
 
     if (wdb_osinfo_insert(wdb,
         scan_id,
@@ -413,8 +433,11 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         release,
         version,
         os_release,
+        os_display_version,
         checksum,
-        replace) < 0) {
+        replace,
+        hexdigest,
+        triaged) < 0) {
 
         return -1;
     }
@@ -423,7 +446,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT) < 0) {
@@ -449,7 +472,10 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 14, release, -1, NULL);
     sqlite3_bind_text(stmt, 15, version, -1, NULL);
     sqlite3_bind_text(stmt, 16, os_release, -1, NULL);
-    sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 17, os_display_version, -1, NULL);
+    sqlite3_bind_text(stmt, 18, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 19, hexdigest, -1, NULL);
+    sqlite3_bind_int(stmt, 20, triaged);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -772,7 +798,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 }
 
 // Function to save Port info into the DB. Return 0 on success or -1 on error.
-int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
+int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_port_save(): cannot begin transaction");
@@ -804,7 +830,7 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 }
 
 // Insert port info tuple. Return 0 on success or -1 on error.
-int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
+int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PORT_INSERT2 : WDB_STMT_PORT_INSERT) < 0) {
@@ -846,7 +872,7 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     }
 
     if (inode >= 0) {
-        sqlite3_bind_int(stmt, 10, inode);
+        sqlite3_bind_int64(stmt, 10, (sqlite_int64) inode);
     } else {
         sqlite3_bind_null(stmt, 10);
     }
@@ -898,7 +924,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save process info into the DB. Return 0 on success or -1 on error.
-int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace) {
+int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_process_save(): cannot begin transaction");
@@ -946,7 +972,7 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert process info tuple. Return 0 on success or -1 on error.
-int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace) {
+int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROC_INSERT2 : WDB_STMT_PROC_INSERT) < 0) {
@@ -1008,7 +1034,7 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     else
         sqlite3_bind_null(stmt, 23);
     if (start_time >= 0)
-        sqlite3_bind_int(stmt, 24, start_time);
+        sqlite3_bind_int64(stmt, 24, (sqlite_int64) start_time);
     else
         sqlite3_bind_null(stmt, 24);
     if (pgrp >= 0)
@@ -1099,7 +1125,7 @@ int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
     const int vm_size = cJSON_GetObjectItem(attributes, "vm_size") ? cJSON_GetObjectItem(attributes, "vm_size")->valueint : 0;
     const int resident = cJSON_GetObjectItem(attributes, "resident") ? cJSON_GetObjectItem(attributes, "resident")->valueint : 0;
     const int share = cJSON_GetObjectItem(attributes, "share") ? cJSON_GetObjectItem(attributes, "share")->valueint : 0;
-    const int start_time = cJSON_GetObjectItem(attributes, "start_time") ? cJSON_GetObjectItem(attributes, "start_time")->valueint : 0;
+    const long long start_time = cJSON_GetObjectItem(attributes, "start_time") ? (long long) cJSON_GetObjectItem(attributes, "start_time")->valuedouble : 0;
     const int pgrp = cJSON_GetObjectItem(attributes, "pgrp") ? cJSON_GetObjectItem(attributes, "pgrp")->valueint : 0;
     const int session = cJSON_GetObjectItem(attributes, "session") ? cJSON_GetObjectItem(attributes, "session")->valueint : 0;
     const int nlwp = cJSON_GetObjectItem(attributes, "nlwp") ? cJSON_GetObjectItem(attributes, "nlwp")->valueint : 0;
@@ -1153,7 +1179,7 @@ int wdb_syscollector_port_save2(wdb_t * wdb, const cJSON * attributes)
     const int remote_port = cJSON_GetObjectItem(attributes, "remote_port") ? cJSON_GetObjectItem(attributes, "remote_port")->valueint : 0;
     const int tx_queue = cJSON_GetObjectItem(attributes, "tx_queue") ? cJSON_GetObjectItem(attributes, "tx_queue")->valueint : 0;
     const int rx_queue = cJSON_GetObjectItem(attributes, "rx_queue") ? cJSON_GetObjectItem(attributes, "rx_queue")->valueint : 0;
-    const int inode = cJSON_GetObjectItem(attributes, "inode") ? cJSON_GetObjectItem(attributes, "inode")->valueint : 0;
+    const long long inode = cJSON_GetObjectItem(attributes, "inode") ? (long long) cJSON_GetObjectItem(attributes, "inode")->valuedouble: 0;
     const char * state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "state"));
     const int pid = cJSON_GetObjectItem(attributes, "pid") ? cJSON_GetObjectItem(attributes, "pid")->valueint : 0;
     const char * process = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process"));
@@ -1166,7 +1192,8 @@ int wdb_syscollector_netproto_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * iface = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "iface"));
-    const int type = cJSON_GetObjectItem(attributes, "type") ? cJSON_GetObjectItem(attributes, "type")->valueint : 0;
+    const char * type_string = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
+    const int type = type_string ? (strcmp(type_string, "ipv6") == 0 ? 1 : 0) : 0;
     const char * gateway = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gateway"));
     const char * dhcp = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "dhcp"));
     const int metric = cJSON_GetObjectItem(attributes, "metric") ? cJSON_GetObjectItem(attributes, "metric")->valueint : 0;
@@ -1244,8 +1271,9 @@ int wdb_syscollector_osinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const char * release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "release"));
     const char * version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "version"));
     const char * os_release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_release"));
+    const char * os_display_version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_display_version"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, checksum, TRUE);
+    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, TRUE);
 }
 
 

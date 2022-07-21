@@ -1,0 +1,44 @@
+<!--
+  Copyright (C) 2015, Wazuh Inc.
+-->
+
+<!-- 
+  Sysmon Event ID 7 rules: 92151 - 92199
+-->
+
+<group name="sysmon_eid7_detections,">
+
+  <rule id="92151" level="12">
+    <if_group>sysmon_event7</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)System.Management.Automation.dll</field>
+    <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]\:\\\\Windows\\\\Microsoft.NET\\.+\\csc\\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(devenv|node|SSMS|VSLauncher)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(sdiagnhost|SmartAudio3)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(pwsh\.dll|powershell(_ise)?\.exe)$</field>
+    <description>Binary loaded PowerShell automation library - Possible unmanaged Powershell execution by suspicious process</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92152" level="6">
+    <if_group>sysmon_event7</if_group>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers</field>
+    <field name="win.eventdata.image" type="pcre2">spoolsv\.exe$</field>
+    <description>Printer spooler service loaded a dll file. Possible PrintNightmare exploit: CVE-2021-34527</description>
+    <mitre>
+      <id>T1210</id>
+    </mitre>
+  </rule>
+
+  <rule id="92153" level="10">
+    <if_group>sysmon_event7</if_group>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)vaultcli.dll</field>
+    <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)VaultCmd\.exe$</field>
+    <description>Suspicious process loaded VaultCli.dll module. Possible use to dump stored passwords.</description>
+    <mitre>
+      <id>T1555</id>
+    </mitre>
+  </rule>
+
+</group>

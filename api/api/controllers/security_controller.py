@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -6,19 +6,21 @@ import logging
 import re
 
 from aiohttp import web
-
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
-from api.models.security_model import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
+from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
+                                       RuleModel, UpdateUserModel)
 from api.models.security_token_response_model import TokenResponseModel
-from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
+from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
+                      remove_nones_to_dict)
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException
+from wazuh.core.common import WAZUH_VERSION
+from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
@@ -27,9 +29,47 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
+@deprecate_endpoint(link=f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#'
+                         f'operation/api.controllers.security_controller.login_user')
+async def deprecated_login_user(user: str, raw: bool = False) -> web.Response:
+    """User/password authentication to get an access token.
+    This method should be called to get an API token. This token will expire at some time.
+
+    Parameters
+    ----------
+    user : str
+        Name of the user who wants to be authenticated.
+    raw : bool, optional
+        Respond in raw format. Default `False`
+
+    Returns
+    -------
+    web.Response
+        Raw or JSON response with the generated access token.
+    """
+    f_kwargs = {'user_id': user}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    token = None
+    try:
+        token = generate_token(user_id=user, data=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+
+
 async def login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
-    This method should be called to get an API token. This token will expire at some time. # noqa: E501
+    This method should be called to get an API token. This token will expire at some time.
 
     Parameters
     ----------
@@ -179,7 +219,7 @@ async def logout_user(request, pretty=False, wait_for_complete=False):
 
 
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
-                    offset=0, limit=None, search=None, sort=None):
+                    offset=0, limit=None, search=None, select=None, sort=None):
     """Returns information from all system roles.
 
     Parameters
@@ -197,6 +237,8 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
         Maximum number of items to return
     search : str
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -205,7 +247,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
     -------
     Users information
     """
-    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -359,7 +401,7 @@ async def delete_users(request, user_ids: list = None, pretty=False, wait_for_co
 
 
 async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                    offset: int = 0, limit: int = None, search: str = None, select: str = None, sort: str = None):
     """
 
     Parameters
@@ -377,6 +419,8 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
         Maximum number of items to return
     search : str, optional
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -385,7 +429,7 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
     -------
     Roles information
     """
-    f_kwargs = {'role_ids': role_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'role_ids': role_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -506,7 +550,7 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
 
 
 async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                    offset: int = 0, limit: int = None, search: str = None, select: str = None, sort: str = None):
     """Get information about the security rules in the system.
 
     Parameters
@@ -524,6 +568,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
         Maximum number of items to return
     search : str, optional
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -532,7 +578,7 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
     -------
     Rules information
     """
-    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -653,7 +699,7 @@ async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wai
 
 
 async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                       offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                       offset: int = 0, limit: int = None, search: str = None, select: str = None, sort: str = None):
     """Returns information from all system policies.
 
     Parameters
@@ -671,6 +717,8 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
         Maximum number of items to return
     search : str, optional
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -679,7 +727,7 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
     -------
     Policies information
     """
-    f_kwargs = {'policy_ids': policy_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'policy_ids': policy_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

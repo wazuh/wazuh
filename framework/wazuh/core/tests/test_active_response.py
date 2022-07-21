@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
 
@@ -20,7 +20,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 # Functions
 
 def agent_info(expected_exception: int = None) -> dict:
-    """Return dict to cause or not a exception code 1651 on active_response.send_command().
+    """Return dict to cause or not a exception code 1707 on active_response.send_command().
 
     Parameters
     ----------
@@ -32,14 +32,14 @@ def agent_info(expected_exception: int = None) -> dict:
     dict
         Agent basic information with status depending on the expected_exception.
     """
-    if expected_exception == 1651:
+    if expected_exception == 1707:
         return {'status': 'random'}
     else:
         return {'status': 'active'}
 
 
 def agent_info_exception_and_version(expected_exception: int = None, version: str = '') -> dict:
-    """Return dict with status and version to cause or not a exception code 1651 on active_response.send_command().
+    """Return dict with status and version to cause or not a exception code 1707 on active_response.send_command().
 
     Parameters
     ----------
@@ -53,7 +53,7 @@ def agent_info_exception_and_version(expected_exception: int = None, version: st
     dict
         Agent basic information with status depending on the expected_exception.
     """
-    if expected_exception == 1651:
+    if expected_exception == 1707:
         return {'status': 'random', 'version': version} if version else {'status': 'random'}
     else:
         return {'status': 'active', 'version': version} if version else {'status': 'active'}
@@ -77,7 +77,7 @@ def agent_config(expected_exception):
     (None, 'restart-wazuh0', [], True),
     (None, 'restart-wazuh0', ["arg1", "arg2"], False)
 ])
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
     """Check if the returned message is correct.
 
@@ -114,7 +114,7 @@ def test_create_message(expected_exception, command, arguments, custom):
     (None, 'restart-wazuh0', ["arg1", "arg2"], None),
     (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
 ])
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
     """Check if the returned json message is correct.
 
@@ -145,7 +145,7 @@ def test_create_json_message(expected_exception, command, arguments, alert):
             assert alert == ret["parameters"]["alert"], f'Alert information not being added'
 
 
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_get_commands():
     """
     Checks if get_commands method returns a list

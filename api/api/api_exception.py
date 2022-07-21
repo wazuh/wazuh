@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,6 +9,7 @@ class APIException(Exception):
     """
     Wazuh API exception
     """
+
     def __init__(self, code: int, details: str = None):
         """
         Constructor
@@ -34,7 +35,8 @@ class APIException(Exception):
             2008: 'Experimental features are disabled. '
                   'It can be changed in the API configuration',
             2009: 'Semicolon (;) is a reserved character and must '
-                  'be percent-encoded (%3B) to use it.'
+                  'be percent-encoded (%3B) to use it.',
+            2010: 'Error while attempting to bind on address: address already in use'
         }
 
     def __str__(self):

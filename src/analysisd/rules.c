@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -17,14 +17,16 @@
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
 #define STATIC
+#define INLINE
 #else
 #define STATIC static
+#define INLINE inline
 #endif
 
 /* Global definition */
-RuleInfo *currently_rule;
 int default_timeframe;
 
+/* Used for statistics */
 unsigned int hourly_alerts;
 
 /* Do diff mutex */
@@ -44,17 +46,20 @@ EventList *os_analysisd_last_events;
 #endif
 
 /* Prototypes */
-STATIC int getattributes(char **attributes,
-                  char **values,
-                  int *id, int *level,
-                  int *maxsize, int *timeframe,
-                  int *frequency, int *accuracy,
-                  int *noalert, int *ignore_time, int *overwrite,
-                  OSList* log_msg);
+STATIC int getattributes(char **attributes, char **values, int *id, int *level,
+                         int *maxsize, int *timeframe, int *frequency,
+                         int *accuracy, int *noalert, int *ignore_time,
+                         int *overwrite, OSList* log_msg);
 STATIC int doesRuleExist(int sid, RuleNode *r_node);
 STATIC void Rule_AddAR(RuleInfo *config_rule);
 STATIC char *loadmemory(char *at, const char *str, OSList* log_msg);
 STATIC void printRuleinfo(const RuleInfo *rule, int node);
+
+/**
+ * @brief Free the rules_tmp_params_t structure members
+ * @param rule_tmp_params Struct to free
+ */
+STATIC INLINE void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params);
 
 /**
  * @brief Check if a option has attribute negate
@@ -92,13 +97,13 @@ void Rules_OP_CreateRules() {
 
 }
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg)
 {
     OS_XML xml;
     XML_NODE node = NULL;
     XML_NODE rule = NULL;
-    XML_NODE rule_opt = NULL;
+
     int retval = -1;
 
     /* XML variables */
@@ -216,30 +221,12 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
     const char *xml_mitre = "mitre";
     const char *xml_mitre_id = "id";
+    const char *xml_mitre_tactic_id = "tacticID";
+    const char *xml_mitre_technique_id = "techniqueID";
 
-    char *rulepath = NULL;
-    char *regex = NULL;
-    char *match = NULL;
-    char *url = NULL;
-    char *if_matched_regex = NULL;
-    char *if_matched_group = NULL;
-    char *user = NULL;
-    char *id = NULL;
-    char *srcport = NULL;
-    char *dstport = NULL;
-    char *srcgeoip = NULL;
-    char *dstgeoip = NULL;
-    char *protocol = NULL;
-    char *system_name = NULL;
-
-    char *status = NULL;
-    char *hostname = NULL;
-    char *data = NULL;
-    char *extra_data = NULL;
-    char *program_name = NULL;
-    char *location = NULL;
-    char *action = NULL;
-    RuleInfo *config_ruleinfo = NULL;
+    rules_tmp_params_t rule_tmp_params = {0};
+    RuleInfo * config_ruleinfo = NULL;
+    char * rulepath = NULL;
 
     size_t i;
     default_timeframe = 360;
@@ -313,8 +300,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 goto cleanup;
             }
             if ((!node[i]->attributes) || (!node[i]->values)
-                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
-                || (strcasecmp(node[i]->attributes[0], "name") != 0) 
+                || (!node[i]->values[0]) || (!node[i]->attributes[0])
+                || (strcasecmp(node[i]->attributes[0], "name") != 0)
                 || (node[i]->attributes[1])) {
                 smerror(log_msg, "rules_op: Invalid root element '%s'."
                        "Only the group name is allowed", node[i]->element);
@@ -344,6 +331,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
             /* Check if the rule element is correct */
             if (!rule[j]->element) {
+                smerror(log_msg, INVALID_RULE_ELEMENT);
                 goto cleanup;
             }
 
@@ -380,15 +368,23 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     goto cleanup;
                 }
 
-                if (overwrite != 1 && doesRuleExist(id, *r_node)) {
-                    smerror(log_msg, "Duplicate rule ID:%d", id);
-                    goto cleanup;
+                if (doesRuleExist(id, *r_node)) {
+                    // If rule exists but 'overwrite' was not set to 'yes', then the rule is skipped.
+                    if (overwrite != 1) {
+                        smwarn(log_msg, ANALYSISD_DUPLICATED_SIG_ID, id);
+                        j++;
+                        continue;
+                    }
+                } else if (overwrite == 1) {
+                    // As the rule does not exists, it will be handled as if the 'overwrite' parameter were set to 'no'
+                    smwarn(log_msg, ANALYSISD_OVERWRITE_MISSING_RULE, id);
+                    overwrite = 0;
                 }
 
                 /* Allocate memory and initialize structure */
-                config_ruleinfo = zerorulemember(id, level, maxsize,
-                                                 frequency, timeframe,
-                                                 noalert, ignore_time, overwrite, last_event_list);
+                config_ruleinfo = zerorulemember(id, level, maxsize, frequency,
+                                                 timeframe, noalert, ignore_time,
+                                                 overwrite, last_event_list);
 
                 /* If rule is 0, set it to level 99 to have high priority.
                  * Set it to 0 again later.
@@ -423,10 +419,14 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
             /* Rule elements block */
             {
+                bool do_skip_rule = false;
                 int ifield = 0;
                 int info_type = 0;
                 int count_info_detail = 0;
                 int mitre_size = 0;
+                int mitre_size_deprecated = 0;
+                bool mitre_deprecated = false;
+                bool mitre_new_format = false;
                 RuleInfoDetail *last_info_detail = NULL;
 
                 bool negate_regex = false;
@@ -448,6 +448,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 bool negate_dstgeoip = false;
                 bool negate_action = false;
 
+                /* Default regex types */
                 w_exp_type_t match_type = EXP_TYPE_OSMATCH;
                 w_exp_type_t regex_type = EXP_TYPE_OSREGEX;
                 w_exp_type_t extra_data_type = EXP_TYPE_OSMATCH;
@@ -467,64 +468,44 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 w_exp_type_t id_type = EXP_TYPE_OSMATCH;
                 w_exp_type_t action_type = EXP_TYPE_STRING;
 
-                regex = NULL;
-                match = NULL;
-                url = NULL;
-                if_matched_regex = NULL;
-                if_matched_group = NULL;
-                user = NULL;
-                id = NULL;
-                srcport = NULL;
-                dstport = NULL;
-                srcgeoip = NULL;
-                dstgeoip = NULL;
-                system_name = NULL;
-                protocol = NULL;
+                memset(&rule_tmp_params, 0, sizeof(rules_tmp_params_t));
 
-                status = NULL;
-                hostname = NULL;
-                data = NULL;
-                extra_data = NULL;
-                program_name = NULL;
-                location = NULL;
-                action = NULL;
-
-                rule_opt =  OS_GetElementsbyNode(&xml, rule[j]);
-                if (rule_opt == NULL) {
+                rule_tmp_params.rule_arr_opt =  OS_GetElementsbyNode(&xml, rule[j]);
+                if (rule_tmp_params.rule_arr_opt == NULL) {
                     smerror(log_msg, "Rule '%d' without any option. It may lead to false positives and some "
                            "other problems for the system. Exiting.", config_ruleinfo->sigid);
                     goto cleanup;
                 }
 
-                for (int k = 0; rule_opt[k]; k++) {
+                for (int k = 0; rule_tmp_params.rule_arr_opt[k]; k++) {
 
-                    if ((!rule_opt[k]->element) || (!rule_opt[k]->content)) {
+                    if ((!rule_tmp_params.rule_arr_opt[k]->element) || (!rule_tmp_params.rule_arr_opt[k]->content)) {
                         break;
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_regex) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_regex) == 0) {
 
-                        regex =loadmemory(regex, rule_opt[k]->content, log_msg);
-                        negate_regex = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        regex_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSREGEX, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.regex = loadmemory(rule_tmp_params.regex, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_regex = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        regex_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSREGEX, config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_match) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_match) == 0) {
 
-                        match = loadmemory(match, rule_opt[k]->content, log_msg);
-                        negate_match = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        match_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.match = loadmemory(rule_tmp_params.match, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_match = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        match_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_decoded) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_decoded) == 0) {
 
-                        config_ruleinfo->decoded_as = getDecoderfromlist(rule_opt[k]->content, decoder_list);
+                        config_ruleinfo->decoded_as = getDecoderfromlist(rule_tmp_params.rule_arr_opt[k]->content, decoder_list);
                         if (config_ruleinfo->decoded_as == 0) {
-                            smerror(log_msg, "Invalid decoder name: '%s'.", rule_opt[k]->content);
+                            smerror(log_msg, "Invalid decoder name: '%s'.", rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_cve) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_cve) == 0) {
 
                         if (config_ruleinfo->info_details == NULL) {
-                            config_ruleinfo->info_details = zeroinfodetails(RULEINFODETAIL_CVE, rule_opt[k]->content);
+                            config_ruleinfo->info_details = zeroinfodetails(RULEINFODETAIL_CVE, rule_tmp_params.rule_arr_opt[k]->content);
                         } else {
                             for (last_info_detail = config_ruleinfo->info_details;
                                     last_info_detail->next != NULL;
@@ -534,20 +515,20 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             /* Silently Drop info messages if their are more then MAX_RULEINFODETAIL */
                             if (count_info_detail <= MAX_RULEINFODETAIL) {
                                 last_info_detail->next = zeroinfodetails(RULEINFODETAIL_CVE,
-                                                         rule_opt[k]->content);
+                                                         rule_tmp_params.rule_arr_opt[k]->content);
                             }
                         }
 
                         /* keep old methods for now */
-                        config_ruleinfo->cve = loadmemory(config_ruleinfo->cve, rule_opt[k]->content, log_msg);
+                        config_ruleinfo->cve = loadmemory(config_ruleinfo->cve, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_info) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_info) == 0) {
 
-                        info_type = get_info_attributes(rule_opt[k]->attributes, rule_opt[k]->values, log_msg);
+                        info_type = get_info_attributes(rule_tmp_params.rule_arr_opt[k]->attributes, rule_tmp_params.rule_arr_opt[k]->values, log_msg);
                         mdebug1("info_type = %d", info_type);
 
                         if (config_ruleinfo->info_details == NULL) {
-                            config_ruleinfo->info_details = zeroinfodetails(info_type, rule_opt[k]->content);
+                            config_ruleinfo->info_details = zeroinfodetails(info_type, rule_tmp_params.rule_arr_opt[k]->content);
                         } else {
                             for (last_info_detail = config_ruleinfo->info_details;
                                     last_info_detail->next != NULL;
@@ -556,18 +537,18 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             }
                             /* Silently Drop info messages if their are more then MAX_RULEINFODETAIL */
                             if (count_info_detail <= MAX_RULEINFODETAIL) {
-                                last_info_detail->next = zeroinfodetails(info_type, rule_opt[k]->content);
+                                last_info_detail->next = zeroinfodetails(info_type, rule_tmp_params.rule_arr_opt[k]->content);
                             }
                         }
 
                         /* keep old methods for now */
-                        config_ruleinfo->info = loadmemory(config_ruleinfo->info, rule_opt[k]->content, log_msg);
+                        config_ruleinfo->info = loadmemory(config_ruleinfo->info, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_day_time) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_day_time) == 0) {
 
-                        config_ruleinfo->day_time = OS_IsValidTime(rule_opt[k]->content);
+                        config_ruleinfo->day_time = OS_IsValidTime(rule_tmp_params.rule_arr_opt[k]->content);
                         if (!config_ruleinfo->day_time) {
-                            smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
+                            smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
@@ -575,44 +556,43 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_week_day) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_week_day) == 0) {
 
-                        config_ruleinfo->week_day = OS_IsValidDay(rule_opt[k]->content);
+                        config_ruleinfo->week_day = OS_IsValidDay(rule_tmp_params.rule_arr_opt[k]->content);
                         if (!config_ruleinfo->week_day) {
-                            smerror(log_msg, INVALID_DAY, rule_opt[k]->content);
-                            smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
+                            smerror(log_msg, INVALID_DAY, rule_tmp_params.rule_arr_opt[k]->content);
+                            smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_group) == 0) {
-                        config_ruleinfo->group = loadmemory(config_ruleinfo->group, rule_opt[k]->content, log_msg);
- 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_comment) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_group) == 0) {
+                        config_ruleinfo->group = loadmemory(config_ruleinfo->group, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
 
-                        char *newline;
-                        newline = strchr(rule_opt[k]->content, '\n');
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_comment) == 0) {
+
+                        char * newline = strchr(rule_tmp_params.rule_arr_opt[k]->content, '\n');
                         if (newline) {
                             *newline = ' ';
                         }
 
-                        config_ruleinfo->comment = loadmemory(config_ruleinfo->comment, rule_opt[k]->content, log_msg);
+                        config_ruleinfo->comment = loadmemory(config_ruleinfo->comment, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_srcip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_srcip) == 0) {
 
-                        if (!w_expression_add_osip(&config_ruleinfo->srcip, rule_opt[k]->content)) {
-                            smerror(log_msg, INVALID_IP, rule_opt[k]->content);
+                        if (!w_expression_add_osip(&config_ruleinfo->srcip, rule_tmp_params.rule_arr_opt[k]->content)) {
+                            smerror(log_msg, INVALID_IP, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
                         if (!config_ruleinfo->srcip) {
-                            smerror(log_msg, INVALID_IP, rule_opt[k]->content);
+                            smerror(log_msg, INVALID_IP, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
-                        config_ruleinfo->srcip->negate = w_check_attr_negate(rule_opt[k],
+                        config_ruleinfo->srcip->negate = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k],
                                                                              config_ruleinfo->sigid,
                                                                              log_msg);
 
@@ -620,19 +600,19 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_dstip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_dstip) == 0) {
 
-                        if (!w_expression_add_osip(&config_ruleinfo->dstip, rule_opt[k]->content)) {
-                            smerror(log_msg, INVALID_IP, rule_opt[k]->content);
+                        if (!w_expression_add_osip(&config_ruleinfo->dstip, rule_tmp_params.rule_arr_opt[k]->content)) {
+                            smerror(log_msg, INVALID_IP, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
                         if (!config_ruleinfo->dstip) {
-                            smerror(log_msg, INVALID_IP, rule_opt[k]->content);
+                            smerror(log_msg, INVALID_IP, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
-                        config_ruleinfo->dstip->negate = w_check_attr_negate(rule_opt[k],
+                        config_ruleinfo->dstip->negate = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k],
                                                                              config_ruleinfo->sigid,
                                                                              log_msg);
 
@@ -640,284 +620,298 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_user) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_user) == 0) {
 
-                        user = loadmemory(user, rule_opt[k]->content, log_msg);
-                        negate_user = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        user_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.user = loadmemory(rule_tmp_params.user, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_user = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        user_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element,xml_srcgeoip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_srcgeoip) == 0) {
 
-                        srcgeoip = loadmemory(srcgeoip, rule_opt[k]->content, log_msg);
-                        negate_srcgeoip = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        srcgeoip_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.srcgeoip = loadmemory(rule_tmp_params.srcgeoip, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_srcgeoip = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        srcgeoip_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                           config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element,xml_dstgeoip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_dstgeoip) == 0) {
 
-                        dstgeoip = loadmemory(dstgeoip, rule_opt[k]->content, log_msg);
-                        negate_dstgeoip = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        dstgeoip_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.dstgeoip = loadmemory(rule_tmp_params.dstgeoip, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_dstgeoip = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        dstgeoip_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                           config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_id) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_id) == 0) {
 
-                        id = loadmemory(id, rule_opt[k]->content, log_msg);
-                        negate_id = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        id_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.id = loadmemory(rule_tmp_params.id, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_id = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        id_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_srcport) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_srcport) == 0) {
 
-                        srcport = loadmemory(srcport, rule_opt[k]->content, log_msg);
-                        negate_srcport = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        srcport_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.srcport = loadmemory(rule_tmp_params.srcport, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_srcport = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        srcport_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                          config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_dstport) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_dstport) == 0) {
 
-                        dstport = loadmemory(dstport, rule_opt[k]->content, log_msg);
-                        negate_dstport = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        dstport_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.dstport = loadmemory(rule_tmp_params.dstport, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_dstport = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        dstport_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                          config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_PACKETINFO)) {
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_status) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_status) == 0) {
 
-                        status = loadmemory(status, rule_opt[k]->content, log_msg);
-                        negate_status = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        status_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.status = loadmemory(rule_tmp_params.status, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_status = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        status_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                         config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_hostname) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_hostname) == 0) {
 
-                        hostname = loadmemory(hostname, rule_opt[k]->content, log_msg);
-                        negate_hostname = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        hostname_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.hostname = loadmemory(rule_tmp_params.hostname, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_hostname = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        hostname_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                           config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_data) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_data) == 0) {
 
-                        data = loadmemory(data, rule_opt[k]->content, log_msg);
-                        negate_data = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        data_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.data = loadmemory(rule_tmp_params.data, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_data = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        data_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_extra_data) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_extra_data) == 0) {
 
-                        extra_data = loadmemory(extra_data, rule_opt[k]->content, log_msg);
-                        negate_extra_data = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        extra_data_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.extra_data = loadmemory(rule_tmp_params.extra_data, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_extra_data = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        extra_data_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                             config_ruleinfo->sigid, log_msg);
 
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_program_name) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_program_name) == 0) {
 
-                        program_name = loadmemory(program_name, rule_opt[k]->content, log_msg);
-                        negate_program_name = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        program_name_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.program_name = loadmemory(rule_tmp_params.program_name, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_program_name = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        program_name_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                               config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_action) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_action) == 0) {
 
-                        action = loadmemory(action, rule_opt[k]->content, log_msg);
-                        negate_action = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        action_type = w_check_attr_type(rule_opt[k], EXP_TYPE_STRING, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.action = loadmemory(rule_tmp_params.action, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_action = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        action_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_STRING, config_ruleinfo->sigid, log_msg);
 
-                    } else if(strcasecmp(rule_opt[k]->element, xml_system_name) == 0){
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_system_name) == 0){
 
-                        system_name = loadmemory(system_name, rule_opt[k]->content, log_msg);
-                        negate_system_name = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        system_name_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.system_name = loadmemory(rule_tmp_params.system_name, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_system_name = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        system_name_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                              config_ruleinfo->sigid, log_msg);
 
-                    } else if(strcasecmp(rule_opt[k]->element, xml_protocol) == 0){
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_protocol) == 0){
 
-                        protocol = loadmemory(protocol, rule_opt[k]->content, log_msg);
-                        negate_protocol = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        protocol_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.protocol = loadmemory(rule_tmp_params.protocol, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_protocol = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        protocol_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                           config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_location) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_location) == 0) {
 
-                        location = loadmemory(location, rule_opt[k]->content, log_msg);
-                        negate_location = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        location_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH,
+                        rule_tmp_params.location = loadmemory(rule_tmp_params.location, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_location = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        location_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH,
                                                           config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_field) == 0) {
 
-                        if (!w_check_attr_field_name(rule_opt[k],
+                        if (!w_check_attr_field_name(rule_tmp_params.rule_arr_opt[k],
                                                      &config_ruleinfo->fields[ifield],
                                                      config_ruleinfo->sigid, log_msg)) {
                             goto cleanup;
                         }
 
                         w_exp_type_t type;
-                        type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSREGEX, config_ruleinfo->sigid, log_msg);
-                        bool negate = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
+                        type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSREGEX, config_ruleinfo->sigid, log_msg);
+                        bool negate = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
 
                         w_calloc_expression_t(&config_ruleinfo->fields[ifield]->regex, type);
                         config_ruleinfo->fields[ifield]->regex->negate = negate;
 
-                        if (!w_expression_compile(config_ruleinfo->fields[ifield]->regex, rule_opt[k]->content, 0)) {
+                        if (!w_expression_compile(config_ruleinfo->fields[ifield]->regex, rule_tmp_params.rule_arr_opt[k]->content, 0)) {
                             smerror(log_msg, RL_REGEX_SYNTAX, config_ruleinfo->fields[ifield]->name, config_ruleinfo->sigid);
                             goto cleanup;
                         }
 
                         ifield++;
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_list) == 0) {
-                        mdebug1("-> %s == %s", rule_opt[k]->element, xml_list);
-                        if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_list) == 0) {
+                        mdebug1("-> %s == %s", rule_tmp_params.rule_arr_opt[k]->element, xml_list);
+                        if (rule_tmp_params.rule_arr_opt[k]->attributes && rule_tmp_params.rule_arr_opt[k]->values && rule_tmp_params.rule_arr_opt[k]->content) {
                             int list_att_num = 0;
                             int rule_type = 0;
                             char *rule_dfield = NULL;
                             OSMatch *matcher = NULL;
                             int lookup_type = LR_STRING_MATCH;
-                            while (rule_opt[k]->attributes[list_att_num]) {
-                                if (strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_lookup) == 0) {
-                                    if (strcasecmp(rule_opt[k]->values[list_att_num], xml_match_key) == 0) {
+                            while (rule_tmp_params.rule_arr_opt[k]->attributes[list_att_num]) {
+                                if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->attributes[list_att_num], xml_list_lookup) == 0) {
+                                    if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_match_key) == 0) {
                                         lookup_type = LR_STRING_MATCH;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_not_match_key) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_not_match_key) == 0) {
                                         lookup_type = LR_STRING_NOT_MATCH;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_match_key_value) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_match_key_value) == 0) {
                                         lookup_type = LR_STRING_MATCH_VALUE;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_address_key) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_address_key) == 0) {
                                         lookup_type = LR_ADDRESS_MATCH;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_not_address_key) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_not_address_key) == 0) {
                                         lookup_type = LR_ADDRESS_NOT_MATCH;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_address_key_value) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_address_key_value) == 0) {
                                         lookup_type = LR_ADDRESS_MATCH_VALUE;
                                     } else {
-                                        smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.", 
-                                                rule_opt[k]->values[list_att_num]);
+                                        smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
+                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.",
+                                                rule_tmp_params.rule_arr_opt[k]->values[list_att_num]);
                                         goto cleanup;
                                     }
-                                } else if (strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_field) == 0) {
-                                    if (strcasecmp(rule_opt[k]->values[list_att_num], xml_srcip) == 0) {
+                                } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->attributes[list_att_num], xml_list_field) == 0) {
+                                    if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_srcip) == 0) {
                                         rule_type = RULE_SRCIP;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_srcport) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_srcport) == 0) {
                                         rule_type = RULE_SRCPORT;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_dstip) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_dstip) == 0) {
                                         rule_type = RULE_DSTIP;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_dstport) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_dstport) == 0) {
                                         rule_type = RULE_DSTPORT;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_user) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_user) == 0) {
                                         rule_type = RULE_USER;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_url) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_url) == 0) {
                                         rule_type = RULE_URL;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_id) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_id) == 0) {
                                         rule_type = RULE_ID;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_hostname) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_hostname) == 0) {
                                         rule_type = RULE_HOSTNAME;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_program_name) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_program_name) == 0) {
                                         rule_type = RULE_PROGRAM_NAME;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_status) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_status) == 0) {
                                         rule_type = RULE_STATUS;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_action) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_action) == 0) {
                                         rule_type = RULE_ACTION;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_protocol) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_protocol) == 0) {
                                         rule_type = RULE_PROTOCOL;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_system_name) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_system_name) == 0) {
                                         rule_type = RULE_SYSTEMNAME;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_data) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_data) == 0) {
                                         rule_type = RULE_DATA;
-                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_extra_data) == 0) {
+                                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], xml_extra_data) == 0) {
                                         rule_type = RULE_EXTRA_DATA;
                                     } else {
                                         rule_type = RULE_DYNAMIC;
 
                                         // Trim whitespaces
-                                        rule_dfield = rule_opt[k]->values[list_att_num];
+                                        rule_dfield = rule_tmp_params.rule_arr_opt[k]->values[list_att_num];
                                         rule_dfield = &rule_dfield[strspn(rule_dfield, " ")];
                                         rule_dfield[strcspn(rule_dfield, " ")] = '\0';
                                     }
-                                } else if (strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_cvalue) == 0) {
+                                } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->attributes[list_att_num], xml_list_cvalue) == 0) {
                                     os_calloc(1, sizeof(OSMatch), matcher);
-                                    if (!OSMatch_Compile(rule_opt[k]->values[list_att_num], matcher, 0)) {
-                                        smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num], 
+                                    if (!OSMatch_Compile(rule_tmp_params.rule_arr_opt[k]->values[list_att_num], matcher, 0)) {
+                                        smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
+                                        smerror(log_msg, REGEX_COMPILE, rule_tmp_params.rule_arr_opt[k]->values[list_att_num],
                                             matcher->error);
                                         goto cleanup;
                                     }
                                 } else {
                                     smerror(log_msg, "List field=\"%s\" is not valid",
-                                           rule_opt[k]->values[list_att_num]);
-                                    smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
+                                           rule_tmp_params.rule_arr_opt[k]->values[list_att_num]);
+                                    smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
                                     goto cleanup;
                                 }
                                 list_att_num++;
                             }
                             if (rule_type == 0) {
                                 smerror(log_msg, "List requires the field=\"\" attribute");
-                                smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
+                                smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
                                 goto cleanup;
                             }
 
                             /* Wow it's all ready - this seems too complex to get to this point */
-                            config_ruleinfo->lists = OS_AddListRule(config_ruleinfo->lists,
-                                                                    lookup_type,
-                                                                    rule_type,
-                                                                    rule_dfield,
-                                                                    rule_opt[k]->content,
-                                                                    matcher,
-                                                                    l_node);
-                            if (config_ruleinfo->lists == NULL) {
-                                smerror(log_msg, "List error: Could not load %s", rule_opt[k]->content);
-                                goto cleanup;
+                            ListRule * list_head
+                                = OS_AddListRule(config_ruleinfo->lists,
+                                                 lookup_type,
+                                                 rule_type,
+                                                 rule_dfield,
+                                                 rule_tmp_params.rule_arr_opt[k]->content,
+                                                 matcher,
+                                                 l_node);
+
+                            if (list_head == NULL) {
+
+                                smwarn(log_msg, ANALYSISD_LIST_NOT_LOADED,
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       config_ruleinfo->sigid);
+
+                                if (matcher != NULL) {
+                                    OSMatch_FreePattern(matcher);
+                                }
+                                os_free(matcher);
+                                do_skip_rule =  true;
+                                break;
                             }
+
+                            config_ruleinfo->lists = list_head;
+
                         } else {
                             smerror(log_msg, "List must have a correctly formatted field attribute");
-                            smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
+                            smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
                         /* xml_list eval is done */
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_url) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_url) == 0) {
 
-                        url = loadmemory(url, rule_opt[k]->content, log_msg);
-                        negate_url = w_check_attr_negate(rule_opt[k], config_ruleinfo->sigid, log_msg);
-                        url_type = w_check_attr_type(rule_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
+                        rule_tmp_params.url = loadmemory(rule_tmp_params.url, rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                        negate_url = w_check_attr_negate(rule_tmp_params.rule_arr_opt[k], config_ruleinfo->sigid, log_msg);
+                        url_type = w_check_attr_type(rule_tmp_params.rule_arr_opt[k], EXP_TYPE_OSMATCH, config_ruleinfo->sigid, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_compiled) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_compiled) == 0) {
 
                         int it_id = 0;
                         while (compiled_rules_name[it_id]) {
-                            if (strcmp(compiled_rules_name[it_id], rule_opt[k]->content) == 0) {
+                            if (strcmp(compiled_rules_name[it_id], rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                                 break;
                             }
                             it_id++;
@@ -925,8 +919,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                         /* Checking if the name is valid */
                         if (!compiled_rules_name[it_id]) {
-                            smerror(log_msg, "Compiled rule not found: '%s'", rule_opt[k]->content);
-                            smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
+                            smerror(log_msg, "Compiled rule not found: '%s'", rule_tmp_params.rule_arr_opt[k]->content);
+                            smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
 
                         }
@@ -936,334 +930,344 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_category) == 0) {
-                        if (strcmp(rule_opt[k]->content, "firewall") == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_category) == 0) {
+                        if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "firewall") == 0) {
                             config_ruleinfo->category = FIREWALL;
-                        } else if (strcmp(rule_opt[k]->content, "ids") == 0) {
+                        } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "ids") == 0) {
                             config_ruleinfo->category = IDS;
-                        } else if (strcmp(rule_opt[k]->content, "syslog") == 0) {
+                        } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "syslog") == 0) {
                             config_ruleinfo->category = SYSLOG;
-                        } else if (strcmp(rule_opt[k]->content, "web-log") == 0) {
+                        } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "web-log") == 0) {
                             config_ruleinfo->category = WEBLOG;
-                        } else if (strcmp(rule_opt[k]->content, "squid") == 0) {
+                        } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "squid") == 0) {
                             config_ruleinfo->category = SQUID;
-                        } else if (strcmp(rule_opt[k]->content, "windows") == 0) {
+                        } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "windows") == 0) {
                             config_ruleinfo->category = DECODER_WINDOWS;
-                        } else if (strcmp(rule_opt[k]->content, "ossec") == 0) {
+                        } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->content, "ossec") == 0) {
                             config_ruleinfo->category = OSSEC_RL;
                         } else {
-                            merror(INVALID_CAT, rule_opt[k]->content);
+                            merror(INVALID_CAT, rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_if_sid) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_sid) == 0) {
                         config_ruleinfo->if_sid =
                             loadmemory(config_ruleinfo->if_sid,
-                                       rule_opt[k]->content, log_msg);
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_if_level) == 0) {
-                        if (!OS_StrIsNum(rule_opt[k]->content)) {
-                            smerror(log_msg, INVALID_CONFIG, "if_level", rule_opt[k]->content);
-                            goto cleanup;
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_level) == 0) {
+
+                       if (!OS_StrIsNum(rule_tmp_params.rule_arr_opt[k]->content)) {
+
+                            smwarn(log_msg, ANALYSISD_INV_IF_LEVEL,
+                                   rule_tmp_params.rule_arr_opt[k]->content,
+                                   config_ruleinfo->sigid);
+                            do_skip_rule =  true;
+                            break;
                         }
-
                         config_ruleinfo->if_level =
                             loadmemory(config_ruleinfo->if_level,
-                                       rule_opt[k]->content, log_msg);
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_if_group) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_group) == 0) {
                         config_ruleinfo->if_group =
                             loadmemory(config_ruleinfo->if_group,
-                                       rule_opt[k]->content, log_msg);
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_if_matched_regex) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_matched_regex) == 0) {
                         config_ruleinfo->context = 1;
-                        if_matched_regex =
-                            loadmemory(if_matched_regex,
-                                       rule_opt[k]->content, log_msg);
+                        rule_tmp_params.if_matched_regex =
+                            loadmemory(rule_tmp_params.if_matched_regex,
+                                       rule_tmp_params.rule_arr_opt[k]->content, log_msg);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_if_matched_group) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_matched_group) == 0) {
                         config_ruleinfo->context = 1;
-                        if_matched_group =
-                            loadmemory(if_matched_group,
-                                       rule_opt[k]->content, log_msg);
+                        rule_tmp_params.if_matched_group =
+                            loadmemory(rule_tmp_params.if_matched_group,
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       log_msg);
 
 
-                    } else if (strcasecmp(rule_opt[k]->element,
-                                          xml_if_matched_sid) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_matched_sid) == 0) {
                         config_ruleinfo->context = 1;
-                        if (!OS_StrIsNum(rule_opt[k]->content)) {
-                            smerror(log_msg, INVALID_CONFIG, "if_matched_sid", rule_opt[k]->content);
-                            goto cleanup;
+                        if (!OS_StrIsNum(rule_tmp_params.rule_arr_opt[k]->content)) {
+                            smwarn(log_msg, ANALYSISD_INV_IF_MATCHED_SID,
+                                   rule_tmp_params.rule_arr_opt[k]->content,
+                                   config_ruleinfo->sigid);
+                            do_skip_rule = true;
+                            break;
                         }
-                        config_ruleinfo->if_matched_sid =
-                            atoi(rule_opt[k]->content);
+                        config_ruleinfo->if_matched_sid = atoi(rule_tmp_params.rule_arr_opt[k]->content);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_source_ip) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_same_srcip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_source_ip) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_srcip) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCIP;
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_dstip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_dstip) == 0) {
                         config_ruleinfo->same_field |= FIELD_DSTIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_src_port) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_same_srcport) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_src_port) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_srcport) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_dst_port) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_same_dstport) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_dst_port) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_dstport) == 0) {
                         config_ruleinfo->same_field |= FIELD_DSTPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_protocol) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_protocol) == 0) {
                         config_ruleinfo->same_field |= FIELD_PROTOCOL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_action) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_action) == 0) {
                         config_ruleinfo->same_field |= FIELD_ACTION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_id) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_id) == 0) {
                         config_ruleinfo->same_field |= FIELD_ID;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_url) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_url) == 0) {
                         config_ruleinfo->same_field |= FIELD_URL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_data) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_data) == 0) {
                         config_ruleinfo->same_field |= FIELD_DATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_extra_data) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_extra_data) == 0) {
                         config_ruleinfo->same_field |= FIELD_EXTRADATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_status) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_status) == 0) {
                         config_ruleinfo->same_field |= FIELD_STATUS;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_systemname) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_systemname) == 0) {
                         config_ruleinfo->same_field |= FIELD_SYSTEMNAME;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_srcgeoip) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_srcgeoip) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_same_dstgeoip) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_dstgeoip) == 0) {
                         config_ruleinfo->same_field |= FIELD_DSTGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_location) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_location) == 0) {
                         config_ruleinfo->same_field |= FIELD_LOCATION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_agent) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_agent) == 0) {
                         smwarn(log_msg, "Detected a deprecated field option for rule, %s is not longer available.",
                             xml_same_agent);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_srcuser) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_srcuser) == 0) {
                         config_ruleinfo->same_field |= FIELD_SRCUSER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_user) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_user) == 0) {
                         config_ruleinfo->same_field |= FIELD_USER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_dodiff) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_dodiff) == 0) {
                         config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts |= FIELD_DODIFF;
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_srcip) == 0 ||
-                               strcmp(rule_opt[k]->element,
-                                      xml_notsame_source_ip) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, 
+                                    xml_different_srcip) == 0 ||
+                               strcmp(rule_tmp_params.rule_arr_opt[k]->element,
+                                    xml_notsame_source_ip) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_different_dstip) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_dstip) == 0) {
                         config_ruleinfo->different_field |= FIELD_DSTIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_different_src_port) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_different_srcport) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_src_port) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_srcport) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_different_dst_port) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_different_dstport) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_dst_port) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_dstport) == 0) {
                         config_ruleinfo->different_field |= FIELD_DSTPORT;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_protocol) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_protocol) == 0) {
                         config_ruleinfo->different_field |= FIELD_PROTOCOL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_action) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_action) == 0) {
                         config_ruleinfo->different_field |= FIELD_ACTION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 ||
-                               strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_id) == 0 ||
+                               strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_notsame_id) == 0) {
                         config_ruleinfo->different_field |= FIELD_ID;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_url) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_url) == 0) {
                         config_ruleinfo->different_field |= FIELD_URL;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_data) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_data) == 0) {
                         config_ruleinfo->different_field |= FIELD_DATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_extra_data) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_extra_data) == 0) {
                         config_ruleinfo->different_field |= FIELD_EXTRADATA;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_status) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_status) == 0) {
                         config_ruleinfo->different_field |= FIELD_STATUS;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_systemname) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_systemname) == 0) {
                         config_ruleinfo->different_field |= FIELD_SYSTEMNAME;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_srcgeoip) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_srcgeoip) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCGEOIP;
 
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_opt[k]->element, xml_different_dstgeoip) == 0) {
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_dstgeoip) == 0) {
                         config_ruleinfo->different_field |= FIELD_DSTGEOIP;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_fts) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_fts) == 0) {
                         config_ruleinfo->alert_opts |= DO_FTS;
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_different_srcuser) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_srcuser) == 0) {
                         config_ruleinfo->different_field |= FIELD_SRCUSER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_different_user) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_notsame_user) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_user) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_notsame_user) == 0) {
                         config_ruleinfo->different_field |= FIELD_USER;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_notsame_agent) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_notsame_agent) == 0) {
                         smwarn(log_msg, "Detected a deprecated field option for rule, %s is not longer available.",
                             xml_notsame_agent);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_different_location) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_location) == 0) {
                         config_ruleinfo->different_field |= FIELD_LOCATION;
 
                         if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_global_frequency) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_global_frequency) == 0) {
                         config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_same_field) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_same_field) == 0) {
 
                         if (config_ruleinfo->same_field & FIELD_DYNAMICS) {
 
@@ -1271,20 +1275,20 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
 
                             os_realloc(config_ruleinfo->same_fields, (size + 2) * sizeof(char *), config_ruleinfo->same_fields);
-                            os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[size]);
+                            os_strdup(rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->same_fields[size]);
                             config_ruleinfo->same_fields[size + 1] = NULL;
 
                         } else {
 
                             config_ruleinfo->same_field |= FIELD_DYNAMICS;
                             os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
-                            os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
+                            os_strdup(rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->same_fields[0]);
                             config_ruleinfo->same_fields[1] = NULL;
 
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_notsame_field) == 0 ||
-                               strcasecmp(rule_opt[k]->element, xml_different_field) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_notsame_field) == 0 ||
+                               strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_different_field) == 0) {
 
                         if (config_ruleinfo->different_field & FIELD_DYNAMICS) {
                             int size;
@@ -1293,59 +1297,59 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             os_realloc(config_ruleinfo->not_same_fields,
                                        (size + 2) * sizeof(char *),
                                        config_ruleinfo->not_same_fields);
-                            os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[size]);
+                            os_strdup(rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->not_same_fields[size]);
                             config_ruleinfo->not_same_fields[size + 1] = NULL;
 
                         } else {
 
                             config_ruleinfo->different_field |= FIELD_DYNAMICS;
                             os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
-                            os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
+                            os_strdup(rule_tmp_params.rule_arr_opt[k]->content, config_ruleinfo->not_same_fields[0]);
                             config_ruleinfo->not_same_fields[1] = NULL;
 
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_options) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_options) == 0) {
 
-                        if (strcmp("alert_by_email", rule_opt[k]->content) == 0) {
+                        if (strcmp("alert_by_email", rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             if (!(config_ruleinfo->alert_opts & DO_MAILALERT)) {
                                 config_ruleinfo->alert_opts |= DO_MAILALERT;
                             }
                         } else if (strcmp("no_email_alert",
-                                          rule_opt[k]->content) == 0) {
+                                          rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             if (config_ruleinfo->alert_opts & DO_MAILALERT) {
                                 config_ruleinfo->alert_opts &= 0xfff - DO_MAILALERT;
                             }
                         } else if (strcmp("log_alert",
-                                          rule_opt[k]->content) == 0) {
+                                          rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             if (!(config_ruleinfo->alert_opts & DO_LOGALERT)) {
                                 config_ruleinfo->alert_opts |= DO_LOGALERT;
                             }
-                        } else if (strcmp("no_log", rule_opt[k]->content) == 0) {
+                        } else if (strcmp("no_log", rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             if (config_ruleinfo->alert_opts & DO_LOGALERT) {
                                 config_ruleinfo->alert_opts &= 0xfff - DO_LOGALERT;
                             }
-                        } else if (strcmp("no_ar", rule_opt[k]->content) == 0) {
+                        } else if (strcmp("no_ar", rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             if (!(config_ruleinfo->alert_opts & NO_AR)) {
                                 config_ruleinfo->alert_opts |= NO_AR;
                             }
-                        } else if (strcmp("no_full_log", rule_opt[k]->content) == 0) {
+                        } else if (strcmp("no_full_log", rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             config_ruleinfo->alert_opts |= NO_FULL_LOG;
-                        } else if (strcmp("no_counter", rule_opt[k]->content) == 0) {
+                        } else if (strcmp("no_counter", rule_tmp_params.rule_arr_opt[k]->content) == 0) {
                             config_ruleinfo->alert_opts |= NO_COUNTER;
                         } else {
-                            smerror(log_msg, XML_VALUEERR, xml_options, rule_opt[k]->content);
-                            smerror(log_msg, "Invalid option '%s' for rule '%d'.", rule_opt[k]->element,
+                            smerror(log_msg, XML_VALUEERR, xml_options, rule_tmp_params.rule_arr_opt[k]->content);
+                            smerror(log_msg, "Invalid option '%s' for rule '%d'.", rule_tmp_params.rule_arr_opt[k]->element,
                                    config_ruleinfo->sigid);
                             goto cleanup;
                         }
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_ignore) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_ignore) == 0) {
                         char **norder;
                         char **s_norder;
                         int i;
 
-                        norder = OS_StrBreak(',', rule_opt[k]->content, Config.decoder_order_size);
+                        norder = OS_StrBreak(',', rule_tmp_params.rule_arr_opt[k]->content, Config.decoder_order_size);
                         if (norder == NULL) {
                             merror_exit(MEM_ERROR, errno, strerror(errno));
                         }
@@ -1358,7 +1362,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             word[strcspn(word, " ")] = '\0';
 
                             if (strlen(word) == 0) {
-                                smerror(log_msg, "Wrong ignore option: '%s'", rule_opt[k]->content);
+                                smerror(log_msg, "Wrong ignore option: '%s'", rule_tmp_params.rule_arr_opt[k]->content);
                                 goto cleanup;
                             }
 
@@ -1392,12 +1396,12 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                         free(s_norder);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_check_if_ignored) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_check_if_ignored) == 0) {
                         char **norder;
                         char **s_norder;
                         int i;
 
-                        norder = OS_StrBreak(',', rule_opt[k]->content, Config.decoder_order_size);
+                        norder = OS_StrBreak(',', rule_tmp_params.rule_arr_opt[k]->content, Config.decoder_order_size);
                         if (norder == NULL) {
                             merror_exit(MEM_ERROR, errno, strerror(errno));
                         }
@@ -1410,7 +1414,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             word[strcspn(word, " ")] = '\0';
 
                             if (strlen(word) == 0) {
-                                smerror(log_msg, "Wrong check_if_ignored option: '%s'", rule_opt[k]->content);
+                                smerror(log_msg, "Wrong check_if_ignored option: '%s'", rule_tmp_params.rule_arr_opt[k]->content);
                                 goto cleanup;
                             }
 
@@ -1437,18 +1441,25 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                 config_ruleinfo->ckignore |= FTS_DYNAMIC;
                                 config_ruleinfo->ckignore_fields[i] = strdup(word);
                             }
-
                             free(*norder);
                             norder++;
                         }
-
                         free(s_norder);
 
-                    } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
+                    } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_mitre) == 0) {
+                        char *tactic_id = NULL;
+                        char *technique_id = NULL;
+                        bool id_flag = FALSE;
+                        bool id_tactic_flag = FALSE;
+                        bool id_technique_flag = FALSE;
+                        bool failure = FALSE;
+                        int id_tactic_n = 0;
+                        int id_technique_n = 0;
                         int ind;
                         int l;
                         XML_NODE mitre_opt = NULL;
-                        mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
+
+                        mitre_opt = OS_GetElementsbyNode(&xml, rule_tmp_params.rule_arr_opt[k]);
 
                         if (mitre_opt == NULL) {
                             smwarn(log_msg, "Empty Mitre information for rule '%d'", config_ruleinfo->sigid);
@@ -1458,41 +1469,152 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                         for (ind = 0; mitre_opt[ind] != NULL; ind++) {
                             if ((!mitre_opt[ind]->element) || (!mitre_opt[ind]->content)) {
+                                failure = TRUE;
                                 break;
                             } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
                                 if (strlen(mitre_opt[ind]->content) == 0) {
                                     smwarn(log_msg, "No Mitre Technique ID found for rule '%d'",
                                         config_ruleinfo->sigid);
+                                    failure = TRUE;
                                 } else {
-                                    int inarray = 0;
-                                    for (l = 0; l < mitre_size; l++) {
-                                        if (strcmp(config_ruleinfo->mitre_id[l], mitre_opt[ind]->content) == 0) {
-                                            inarray = 1;
-                                        }
-                                    }
-                                    if (!inarray) {
-                                        os_realloc(config_ruleinfo->mitre_id, (mitre_size + 2) * sizeof(char *),
-                                                   config_ruleinfo->mitre_id);
-                                        os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size]);
-                                        config_ruleinfo->mitre_id[mitre_size + 1] = NULL;
-                                        mitre_size++;
-                                    }
+                                    id_flag = TRUE;
+                                }
+                            } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_tactic_id) == 0) {
+                                if (strlen(mitre_opt[ind]->content) == 0) {
+                                    smwarn(log_msg, "No Mitre Tactic ID found for rule '%d'",
+                                        config_ruleinfo->sigid);
+                                    failure = TRUE;
+                                } else {
+                                    id_tactic_flag = TRUE;
+                                    id_tactic_n++;
+                                }
+                            } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_technique_id) == 0) {
+                                if (strlen(mitre_opt[ind]->content) == 0) {
+                                    smwarn(log_msg, "No Mitre Technique ID found for rule '%d'",
+                                        config_ruleinfo->sigid);
+                                    failure = TRUE;
+                                } else {
+                                    id_technique_flag = TRUE;
+                                    id_technique_n++;
                                 }
                             } else {
                                 smerror(log_msg, "Invalid option '%s' for rule '%d'", mitre_opt[ind]->element,
-                                        config_ruleinfo->sigid);
-                                free_strarray(config_ruleinfo->mitre_id);
-                                OS_ClearNode(mitre_opt);
-                                goto cleanup;
+                                    config_ruleinfo->sigid);
+                                failure = TRUE;
                             }
                         }
-                        OS_ClearNode(mitre_opt);
 
+                        if(failure == FALSE) {
+                            if(id_flag == TRUE) {
+                                if(id_tactic_flag == TRUE || id_technique_flag == TRUE) {
+                                    smwarn(log_msg, "Rule '%d' combined old and new Mitre formats in the same block. The Mitre block will be discarded.",
+                                            config_ruleinfo->sigid);
+                                    failure = TRUE;
+                                } else {
+                                    if (mitre_new_format == TRUE) {
+                                        smwarn(log_msg, "Rule '%d' combined old and new Mitre formats, the old Mitre Technique format will be discarded.",
+                                            config_ruleinfo->sigid);
+                                        free_strarray(config_ruleinfo->mitre_id);
+                                        config_ruleinfo->mitre_id = NULL;
+                                        failure = TRUE;
+                                    } else {
+                                        mitre_deprecated = TRUE;
+                                        mdebug1("You are using a deprecated Mitre format in rule '%d'",
+                                            config_ruleinfo->sigid);
+                                    }
+                                }
+                            } else {
+                                if(id_tactic_flag == TRUE && id_technique_flag == TRUE){
+                                    if(id_tactic_n > 1 || id_technique_n > 1) {
+                                        smwarn(log_msg, "In rule '%d' is not allowed to join more than one Mitre techniqueID or tacticID in the same block. The Mitre block will be discarded.",
+                                            config_ruleinfo->sigid);
+                                        failure = TRUE;
+                                    } else {
+                                        mitre_new_format = TRUE;
+                                        if (mitre_deprecated == TRUE) {
+                                            smwarn(log_msg, "Rule '%d' combined old and new Mitre formats, the old Mitre Technique format will be discarded.",
+                                                config_ruleinfo->sigid);
+                                            free_strarray(config_ruleinfo->mitre_id);
+                                            config_ruleinfo->mitre_id = NULL;
+                                            mitre_deprecated = FALSE;
+                                        }
+                                    }
+                                }
+                                else if(id_tactic_flag == FALSE && id_technique_flag == TRUE) {
+                                    smwarn(log_msg, "Mitre tacticID should be defined in rule '%d'",
+                                        config_ruleinfo->sigid);
+                                    failure = TRUE;
+                                }
+                                else if(id_tactic_flag == TRUE && id_technique_flag == FALSE) {
+                                    smwarn(log_msg, "Mitre techniqueID should be defined in rule '%d'",
+                                        config_ruleinfo->sigid);
+                                    failure = TRUE;
+                                }
+                            }
+                        }
+
+                        if(failure == FALSE) {
+                            for (ind = 0; mitre_opt[ind] != NULL; ind++) {
+                                if (strcasecmp(mitre_opt[ind]->element, xml_mitre_id) == 0) {
+                                    bool inarray = FALSE;
+                                    for (l = 0; l < mitre_size_deprecated; l++) {
+                                        if (strcmp(config_ruleinfo->mitre_id[l], mitre_opt[ind]->content) == 0) {
+                                            inarray = TRUE;
+                                        }
+                                    }
+                                    if (!inarray) {
+                                        os_realloc(config_ruleinfo->mitre_id, (mitre_size_deprecated + 2) * sizeof(char *),
+                                                config_ruleinfo->mitre_id);
+                                        os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_id[mitre_size_deprecated]);
+                                        config_ruleinfo->mitre_id[mitre_size_deprecated + 1] = NULL;
+                                        mitre_size_deprecated++;
+                                    }
+                                } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_tactic_id) == 0) {
+                                    os_strdup(mitre_opt[ind]->content, tactic_id);
+
+                                } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_technique_id) == 0) {
+                                    os_strdup(mitre_opt[ind]->content, technique_id);
+                                }
+                            }
+                            if(tactic_id && technique_id) {
+                                bool inarray = FALSE;
+                                for (l = 0; l < mitre_size; l++) {
+                                    if (strcmp(config_ruleinfo->mitre_technique_id[l], technique_id) == 0 &&
+                                        strcmp(config_ruleinfo->mitre_tactic_id[l], tactic_id) == 0) {
+                                        inarray = TRUE;
+                                    }
+                                }
+                                if (!inarray) {
+                                    os_realloc(config_ruleinfo->mitre_tactic_id, (mitre_size + 2) * sizeof(char *),
+                                            config_ruleinfo->mitre_tactic_id);
+                                    os_strdup(tactic_id, config_ruleinfo->mitre_tactic_id[mitre_size]);
+                                        config_ruleinfo->mitre_tactic_id[mitre_size + 1] = NULL;
+
+                                    os_realloc(config_ruleinfo->mitre_technique_id, (mitre_size + 2) * sizeof(char *),
+                                                config_ruleinfo->mitre_technique_id);
+                                    os_strdup(technique_id, config_ruleinfo->mitre_technique_id[mitre_size]);
+                                        config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
+                                    mitre_size++;
+                                }
+                            }
+                            os_free(tactic_id);
+                            os_free(technique_id);
+                        }
+                        OS_ClearNode(mitre_opt);
                     } else {
-                        smerror(log_msg, "Invalid option '%s' for rule '%d'.", rule_opt[k]->element,
-                               config_ruleinfo->sigid);
+                        smerror(log_msg, "Invalid option '%s' for rule '%d'.",
+                                rule_tmp_params.rule_arr_opt[k]->element,
+                                config_ruleinfo->sigid);
                         goto cleanup;
                     }
+                }
+
+                // Skip rule, without having to abort analysisd execution
+                if (do_skip_rule) {
+                    w_free_rules_tmp_params(&rule_tmp_params);
+                    os_remove_ruleinfo(config_ruleinfo);
+                    j++;
+                    continue;
                 }
 
                 /* Check for a valid description */
@@ -1502,8 +1624,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field 
-                    || config_ruleinfo->different_field || config_ruleinfo->frequency) 
+                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field
+                    || config_ruleinfo->different_field || config_ruleinfo->frequency)
                     && !config_ruleinfo->context) {
                     smerror(log_msg, "Invalid use of frequency/context options. "
                            "Missing if_matched on rule '%d'.", config_ruleinfo->sigid);
@@ -1511,283 +1633,244 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 /* If if_matched_group we must have a if_sid or if_group */
-                if (if_matched_group) {
+                if (rule_tmp_params.if_matched_group &&
+                    !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     if (!config_ruleinfo->if_sid && !config_ruleinfo->if_group) {
-                        os_strdup(if_matched_group, config_ruleinfo->if_group);
+                        os_strdup(rule_tmp_params.if_matched_group, config_ruleinfo->if_group);
                     }
                 }
 
                 /* If_matched_sid, we need to get the if_sid */
                 if (config_ruleinfo->if_matched_sid &&
                         !config_ruleinfo->if_sid &&
-                        !config_ruleinfo->if_group) {
+                        !config_ruleinfo->if_group &&
+                        !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     os_calloc(16, sizeof(char), config_ruleinfo->if_sid);
                     snprintf(config_ruleinfo->if_sid, 15, "%d",
                              config_ruleinfo->if_matched_sid);
                 }
 
                 /* Check the regexes */
-                if (regex) {
+                if (rule_tmp_params.regex) {
                     w_calloc_expression_t(&config_ruleinfo->regex, regex_type);
                     config_ruleinfo->regex->negate = negate_regex;
 
-                    if (!w_expression_compile(config_ruleinfo->regex, regex, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->regex, rule_tmp_params.regex, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_regex, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(regex);
                 }
 
                 /* Add in match */
-                if (match) {
+                if (rule_tmp_params.match) {
                     w_calloc_expression_t(&config_ruleinfo->match, match_type);
                     config_ruleinfo->match->negate = negate_match;
 
-                    if (!w_expression_compile(config_ruleinfo->match, match, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->match, rule_tmp_params.match, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_match, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(match);
                 }
 
                 /* Add in id */
-                if (id) {
+                if (rule_tmp_params.id) {
                     w_calloc_expression_t(&config_ruleinfo->id, id_type);
                     config_ruleinfo->id->negate = negate_id;
 
-                    if (!w_expression_compile(config_ruleinfo->id, id, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->id, rule_tmp_params.id, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_id, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(id);
                 }
 
                 /* Add srcport */
-                if (srcport) {
+                if (rule_tmp_params.srcport) {
                     w_calloc_expression_t(&config_ruleinfo->srcport, srcport_type);
                     config_ruleinfo->srcport->negate = negate_srcport;
 
-                    if (!w_expression_compile(config_ruleinfo->srcport, srcport, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->srcport, rule_tmp_params.srcport, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_srcport, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(srcport);
                 }
 
                 /* Add dstport */
-                if (dstport) {
+                if (rule_tmp_params.dstport) {
                     w_calloc_expression_t(&config_ruleinfo->dstport, dstport_type);
                     config_ruleinfo->dstport->negate = negate_dstport;
 
-                    if (!w_expression_compile(config_ruleinfo->dstport, dstport, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->dstport, rule_tmp_params.dstport, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_dstport, config_ruleinfo->sigid);
                         goto cleanup;
                     }
 
-                    os_free(dstport);
-
                 }
 
                 /* Add in status */
-                if (status) {
+                if (rule_tmp_params.status) {
                     w_calloc_expression_t(&config_ruleinfo->status, status_type);
                     config_ruleinfo->status->negate = negate_status;
 
-                    if (!w_expression_compile(config_ruleinfo->status, status, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->status, rule_tmp_params.status, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_status, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(status);
                 }
 
                 /* Add in hostname */
-                if (hostname) {
+                if (rule_tmp_params.hostname) {
                     w_calloc_expression_t(&config_ruleinfo->hostname, hostname_type);
                     config_ruleinfo->hostname->negate = negate_hostname;
 
-                    if (!w_expression_compile(config_ruleinfo->hostname, hostname, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->hostname, rule_tmp_params.hostname, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_hostname, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(hostname);
                 }
 
                 /* Add data */
-                if (data) {
+                if (rule_tmp_params.data) {
                     w_calloc_expression_t(&config_ruleinfo->data, data_type);
                     config_ruleinfo->data->negate = negate_data;
 
-                    if (!w_expression_compile(config_ruleinfo->data, data, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->data, rule_tmp_params.data, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_data, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(data);
                 }
 
                 /* Add extra data */
-                if (extra_data) {
+                if (rule_tmp_params.extra_data) {
                     w_calloc_expression_t(&config_ruleinfo->extra_data, extra_data_type);
                     config_ruleinfo->extra_data->negate = negate_extra_data;
 
-                    if (!w_expression_compile(config_ruleinfo->extra_data, extra_data, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->extra_data, rule_tmp_params.extra_data, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_extra_data, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(extra_data);
                 }
 
                 /* Add in program name */
-                if (program_name) {
+                if (rule_tmp_params.program_name) {
                     w_calloc_expression_t(&config_ruleinfo->program_name, program_name_type);
                     config_ruleinfo->program_name->negate = negate_program_name;
 
-                    if (!w_expression_compile(config_ruleinfo->program_name, program_name, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->program_name, rule_tmp_params.program_name, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_program_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(program_name);
                 }
 
                 /* Add in user */
-                if (user) {
+                if (rule_tmp_params.user) {
                     w_calloc_expression_t(&config_ruleinfo->user, user_type);
                     config_ruleinfo->user->negate = negate_user;
 
-                    if (!w_expression_compile(config_ruleinfo->user, user, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->user, rule_tmp_params.user, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_user, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(user);
                 }
 
                 /* Adding in srcgeoip */
-                if(srcgeoip) {
+                if(rule_tmp_params.srcgeoip) {
                     w_calloc_expression_t(&config_ruleinfo->srcgeoip, srcgeoip_type);
                     config_ruleinfo->srcgeoip->negate = negate_srcgeoip;
 
-                    if (!w_expression_compile(config_ruleinfo->srcgeoip, srcgeoip, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->srcgeoip, rule_tmp_params.srcgeoip, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_srcgeoip, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(srcgeoip);
                 }
 
                 /* Adding in dstgeoip */
-                if(dstgeoip) {
+                if(rule_tmp_params.dstgeoip) {
                     w_calloc_expression_t(&config_ruleinfo->dstgeoip, dstgeoip_type);
                     config_ruleinfo->dstgeoip->negate = negate_dstgeoip;
 
-                    if (!w_expression_compile(config_ruleinfo->dstgeoip, dstgeoip, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->dstgeoip, rule_tmp_params.dstgeoip, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_dstgeoip, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(dstgeoip);
                 }
 
                 /* Add in URL */
-                if (url) {
+                if (rule_tmp_params.url) {
                     w_calloc_expression_t(&config_ruleinfo->url, url_type);
                     config_ruleinfo->url->negate = negate_url;
 
-                    if (!w_expression_compile(config_ruleinfo->url, url, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->url, rule_tmp_params.url, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_url, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(url);
                 }
 
                 /* Add location */
-                if (location) {
+                if (rule_tmp_params.location) {
                     w_calloc_expression_t(&config_ruleinfo->location, location_type);
                     config_ruleinfo->location->negate = negate_location;
 
-                    if (!w_expression_compile(config_ruleinfo->location, location, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->location, rule_tmp_params.location, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_location, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(location);
                 }
-                
+
                 /* Add location */
-                if (action) {
+                if (rule_tmp_params.action) {
                     w_calloc_expression_t(&config_ruleinfo->action, action_type);
                     config_ruleinfo->action->negate = negate_action;
 
-                    if (!w_expression_compile(config_ruleinfo->action, action, 0)) {
+                    if (!w_expression_compile(config_ruleinfo->action, rule_tmp_params.action, 0)) {
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_action, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(action);
                 }
 
                 /* Add matched_group */
-                if (if_matched_group) {
+                if (rule_tmp_params.if_matched_group) {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->if_matched_group);
-                    if (!OSMatch_Compile(if_matched_group, config_ruleinfo->if_matched_group, 0)) {
-                        smerror(log_msg, REGEX_COMPILE, if_matched_group, config_ruleinfo->if_matched_group->error);
+                    if (!OSMatch_Compile(rule_tmp_params.if_matched_group, config_ruleinfo->if_matched_group, 0)) {
+                        smerror(log_msg, REGEX_COMPILE, rule_tmp_params.if_matched_group, config_ruleinfo->if_matched_group->error);
                         goto cleanup;
                     }
-                    os_free(if_matched_group);
-                    if_matched_group = NULL;
                 }
 
                 /* Add matched_regex */
-                if (if_matched_regex) {
+                if (rule_tmp_params.if_matched_regex) {
                     os_calloc(1, sizeof(OSRegex), config_ruleinfo->if_matched_regex);
-                    if (!OSRegex_Compile(if_matched_regex, config_ruleinfo->if_matched_regex, 0)) {
-                        smerror(log_msg, REGEX_COMPILE, if_matched_regex, config_ruleinfo->if_matched_regex->error);
+                    if (!OSRegex_Compile(rule_tmp_params.if_matched_regex, config_ruleinfo->if_matched_regex, 0)) {
+                        smerror(log_msg, REGEX_COMPILE, rule_tmp_params.if_matched_regex, config_ruleinfo->if_matched_regex->error);
                         goto cleanup;
                     }
-                    os_free(if_matched_regex);
-                    if_matched_regex = NULL;
                 }
 
                 /* Add protocol */
-                if(protocol){
+                if(rule_tmp_params.protocol){
                     w_calloc_expression_t(&config_ruleinfo->protocol, protocol_type);
                     config_ruleinfo->protocol->negate = negate_protocol;
 
-                    if (!w_expression_compile(config_ruleinfo->protocol, protocol, 0)){
-                        smerror(log_msg, RL_REGEX_SYNTAX, protocol, config_ruleinfo->sigid);
+                    if (!w_expression_compile(config_ruleinfo->protocol, rule_tmp_params.protocol, 0)){
+                        smerror(log_msg, RL_REGEX_SYNTAX, rule_tmp_params.protocol, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(protocol);
                 }
 
                 /* Add system_name */
-                if(system_name){
+                if(rule_tmp_params.system_name){
                     w_calloc_expression_t(&config_ruleinfo->system_name, system_name_type);
                     config_ruleinfo->system_name->negate = negate_system_name;
 
-                    if (!w_expression_compile(config_ruleinfo->system_name, system_name, 0)){
+                    if (!w_expression_compile(config_ruleinfo->system_name, rule_tmp_params.system_name, 0)){
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_system_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(system_name);
                 }
 
-                OS_ClearNode(rule_opt);
-                rule_opt = NULL;
+                w_free_rules_tmp_params(&rule_tmp_params);
             } /* end of elements block */
 
-            /* Assign an active response to the rule */
+            /* Assign an active response to the rule if not logtest*/
             if (os_analysisd_rulelist == *r_node) {
                 Rule_AddAR(config_ruleinfo);
             }
@@ -1802,13 +1885,24 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             if (config_ruleinfo->sigid < 10) {
                 OS_AddRule(config_ruleinfo, r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
-                if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid)) {
-                    smerror(log_msg, "Overwrite rule '%d' not found.", config_ruleinfo->sigid);
-                    goto cleanup;
+
+                if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid, log_msg)) {
+
+                    // If there is no rule to overwrite, then the rule is added as any other rule
+                    if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
+                        // Skip rule, without having to abort analysisd execution
+                        os_remove_ruleinfo(config_ruleinfo);
+                        config_ruleinfo = NULL;
+                        continue;
+                    }
                 }
             } else {
+
                 if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
-                    goto cleanup;
+                    // Skip rule, without having to abort analysisd execution
+                    os_remove_ruleinfo(config_ruleinfo);
+                    config_ruleinfo = NULL;
+                    continue;
                 }
             }
 
@@ -1819,7 +1913,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             }
 
             /* Set the event_search pointer */
-            if (config_ruleinfo->if_matched_sid) {
+            if (config_ruleinfo->if_matched_sid &&
+                !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
 
                 config_ruleinfo->event_search = (void *(*)(void *, void *, void *, void *)) Search_LastSids;
 
@@ -1828,7 +1923,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             }
 
             /* Mark the rules that match if_matched_group */
-            else if (config_ruleinfo->if_matched_group) {
+            else if (config_ruleinfo->if_matched_group &&
+                    !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                 /* Create list */
                 config_ruleinfo->group_search = OSList_Create();
                 if (!config_ruleinfo->group_search) {
@@ -1881,30 +1977,10 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
 cleanup:
 
-    os_free(regex);
-    os_free(match);
-    os_free(id);
-    os_free(srcport);
-    os_free(dstport);
-    os_free(status);
-    os_free(hostname);
-    os_free(extra_data);
-    os_free(program_name);
-    os_free(location);
-    os_free(user);
-    os_free(srcgeoip);
-    os_free(dstgeoip);
-    os_free(url);
-    os_free(if_matched_group);
-    os_free(if_matched_regex);
-    os_free(system_name);
-    os_free(protocol);
-    os_free(data);
     os_free(rulepath);
-    os_free(action)
     OS_ClearNode(rule);
-    OS_ClearNode(rule_opt);
-    
+    w_free_rules_tmp_params(&rule_tmp_params);
+
     if (config_ruleinfo != NULL) {
         os_remove_ruleinfo(config_ruleinfo);
     }
@@ -1930,7 +2006,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
                 merror(MEM_ERROR, errno, strerror(errno));
                 return (NULL);
             }
-            strncpy(at, str, strsize);
+            memcpy(at, str, strsize);
             return (at);
         } else {
             smerror(log_msg, SIZE_ERROR, str);
@@ -1954,8 +2030,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
             return (NULL);
         }
 
-        strncat(at, str, strsize);
-        at[finalsize - 1] = '\0';
+        strcat(at, str);
 
         return (at);
     }
@@ -2090,6 +2165,8 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
 
     ruleinfo_pt->internal_saving = false;
 
+    ruleinfo_pt->rule_overwrite = NULL;
+
     return (ruleinfo_pt);
 }
 
@@ -2129,12 +2206,10 @@ int get_info_attributes(char **attributes, char **values, OSList* log_msg)
 }
 
 /* Get the attributes */
-STATIC int getattributes(char **attributes, char **values,
-                  int *id, int *level,
-                  int *maxsize, int *timeframe,
-                  int *frequency, int *accuracy,
-                  int *noalert, int *ignore_time, int *overwrite,
-                  OSList* log_msg)
+STATIC int getattributes(char **attributes, char **values, int *id, int *level,
+                         int *maxsize, int *timeframe, int *frequency,
+                         int *accuracy, int *noalert, int *ignore_time,
+                         int *overwrite, OSList* log_msg)
 {
     int k = 0;
 
@@ -2226,7 +2301,13 @@ STATIC int getattributes(char **attributes, char **values,
         }
         /* Rule noalert */
         else if (strcasecmp(attributes[k], xml_noalert) == 0) {
-            *noalert = 1;
+            if (strcmp(values[k], "0") == 0) {
+                *noalert = 0;
+            } else if (strcmp(values[k], "1") == 0) {
+                *noalert = 1;
+            } else {
+                smwarn(log_msg, "Invalid value for attribute '%s'", xml_noalert);
+            }
         } else if (strcasecmp(attributes[k], xml_overwrite) == 0) {
             if (strcmp(values[k], "yes") == 0) {
                 *overwrite = 1;
@@ -2467,10 +2548,11 @@ STATIC int doesRuleExist(int sid, RuleNode *r_node)
 }
 
 /* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
-                              ListNode **cdblists, RuleNode *curr_node,
-                              regex_matching *rule_match, OSList **fts_list,
-                              OSHash **fts_store, const bool save_fts_value) {
+RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
+                               ListNode **cdblists, RuleNode *curr_node,
+                               regex_matching *rule_match, OSList **fts_list,
+                               OSHash **fts_store, const bool save_fts_value,
+                               cJSON * rules_debug_list) {
 
     /* We check for:
      * decoded_as,
@@ -2506,6 +2588,12 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
     }
 #endif
 
+    if (rules_debug_list != NULL) {
+        char rule_str[RULES_DEBUG_MSG_I_MAX_LEN];
+        snprintf(rule_str, RULES_DEBUG_MSG_I_MAX_LEN, RULES_DEBUG_MSG_I, rule->sigid, rule->comment);
+        cJSON_AddItemToArray(rules_debug_list, cJSON_CreateString(rule_str));
+    }
+
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
             rule->decoded_as != lf->decoder_syscheck_id)){
@@ -2523,7 +2611,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->program_name, lf->program_name, NULL, NULL)
+        if (w_expression_match(rule->program_name, lf->program_name, NULL, rule_match)
             == rule->program_name->negate) {
             return (NULL);
         }
@@ -2535,7 +2623,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->id, lf->id, NULL, NULL) == rule->id->negate) {
+        if (w_expression_match(rule->id, lf->id, NULL, rule_match) == rule->id->negate) {
             return (NULL);
         }
     }
@@ -2546,7 +2634,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->system_name, lf->systemname, NULL, NULL)
+        if (w_expression_match(rule->system_name, lf->systemname, NULL, rule_match)
             == rule->system_name->negate) {
             return (NULL);
         }
@@ -2557,21 +2645,21 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         if (!lf->protocol) {
             return (NULL);
         }
-        if (w_expression_match(rule->protocol, lf->protocol, NULL, NULL) == rule->protocol->negate) {
+        if (w_expression_match(rule->protocol, lf->protocol, NULL, rule_match) == rule->protocol->negate) {
             return (NULL);
         }
     }
 
     /* Check if any word to match exists */
     if (rule->match) {
-        if (w_expression_match(rule->match, lf->log, NULL, NULL) == rule->match->negate) {
+        if (w_expression_match(rule->match, lf->log, NULL, rule_match) == rule->match->negate) {
             return (NULL);
         }
     }
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        bool matches = w_expression_match(rule->regex, lf->log, NULL, NULL);
+        bool matches = w_expression_match(rule->regex, lf->log, NULL, rule_match);
         if (matches == rule->regex->negate) {
             return NULL;
         }
@@ -2583,7 +2671,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->action, lf->action, NULL, NULL) == rule->action->negate) {
+        if (w_expression_match(rule->action, lf->action, NULL, rule_match) == rule->action->negate) {
             return (NULL);
         }
     }
@@ -2594,7 +2682,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->url, lf->url, NULL, NULL) == rule->url->negate) {
+        if (w_expression_match(rule->url, lf->url, NULL, rule_match) == rule->url->negate) {
             return (NULL);
         }
     }
@@ -2605,7 +2693,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->location, lf->location, NULL, NULL) == rule->location->negate) {
+        if (w_expression_match(rule->location, lf->location, NULL, rule_match) == rule->location->negate) {
             return (NULL);
         }
     }
@@ -2617,7 +2705,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return NULL;
         }
 
-        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, NULL);
+        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, rule_match);
         if (matches == rule->fields[i]->regex->negate) {
             return NULL;
         }
@@ -2631,7 +2719,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->srcip, lf->srcip, NULL, NULL) == rule->srcip->negate) {
+            if (w_expression_match(rule->srcip, lf->srcip, NULL, rule_match) == rule->srcip->negate) {
                 return (NULL);
             }
         }
@@ -2642,7 +2730,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->dstip, lf->dstip, NULL, NULL) == rule->dstip->negate) {
+            if (w_expression_match(rule->dstip, lf->dstip, NULL, rule_match) == rule->dstip->negate) {
                 return (NULL);
             }
         }
@@ -2652,7 +2740,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->srcport, lf->srcport, NULL, NULL) == rule->srcport->negate) {
+            if (w_expression_match(rule->srcport, lf->srcport, NULL, rule_match) == rule->srcport->negate) {
                 return (NULL);
             }
         }
@@ -2661,7 +2749,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->dstport, lf->dstport, NULL, NULL) == rule->dstport->negate) {
+            if (w_expression_match(rule->dstport, lf->dstport, NULL, rule_match) == rule->dstport->negate) {
                 return (NULL);
             }
         }
@@ -2679,11 +2767,11 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         /* Checking if exist any user to match */
         if (rule->user) {
             if (lf->dstuser) {
-                if (w_expression_match(rule->user, lf->dstuser, NULL, NULL) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->dstuser, NULL, rule_match) == rule->user->negate) {
                     return (NULL);
                 }
             } else if (lf->srcuser) {
-                if (w_expression_match(rule->user, lf->srcuser, NULL, NULL) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->srcuser, NULL, rule_match) == rule->user->negate) {
                     return (NULL);
                 }
             } else {
@@ -2698,7 +2786,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return NULL;
             }
 
-            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, NULL) == rule->srcgeoip->negate) {
+            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, rule_match) == rule->srcgeoip->negate) {
                 return NULL;
             }
         }
@@ -2709,7 +2797,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return NULL;
             }
 
-            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, NULL) == rule->dstgeoip->negate) {
+            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, rule_match) == rule->dstgeoip->negate) {
                 return NULL;
             }
         }
@@ -2741,7 +2829,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             if (!lf->data) {
                 return (NULL);
             }
-            if (w_expression_match(rule->data, lf->data, NULL, NULL) == rule->data->negate) {
+            if (w_expression_match(rule->data, lf->data, NULL, rule_match) == rule->data->negate) {
                 return (NULL);
             }
         }
@@ -2752,7 +2840,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return(NULL);
             }
 
-            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, NULL)
+            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, rule_match)
                 == rule->extra_data->negate) {
                 return (NULL);
             }
@@ -2764,7 +2852,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->hostname, lf->hostname, NULL, NULL) == rule->hostname->negate) {
+            if (w_expression_match(rule->hostname, lf->hostname, NULL, rule_match) == rule->hostname->negate) {
                 return (NULL);
             }
         }
@@ -2775,7 +2863,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->status, lf->status, NULL, NULL) == rule->status->negate) {
+            if (w_expression_match(rule->status, lf->status, NULL, rule_match) == rule->status->negate) {
                 return (NULL);
             }
         }
@@ -2984,6 +3072,12 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
     }
 #endif
 
+    if (rules_debug_list != NULL) {
+        char rule_str[RULES_DEBUG_MSG_II_MAX_LEN];
+        snprintf(rule_str, RULES_DEBUG_MSG_II_MAX_LEN, RULES_DEBUG_MSG_II, rule->sigid);
+        cJSON_AddItemToArray(rules_debug_list, cJSON_CreateString(rule_str));
+    }
+
     /* Search for dependent rules */
     if (curr_node->child) {
         RuleNode *child_node = curr_node->child;
@@ -2993,9 +3087,16 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             print_out("       *Trying child rules.");
         }
 #endif
+
+        if (rules_debug_list != NULL) {
+            cJSON_AddItemToArray(rules_debug_list, cJSON_CreateString(RULES_DEBUG_MSG_III));
+        }
+
         while (child_node) {
-            child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,
-                                             fts_list, fts_store, save_fts_value);
+            child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists,
+                                             child_node, rule_match, fts_list,
+                                             fts_store, save_fts_value,
+                                             rules_debug_list);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;
@@ -3090,7 +3191,7 @@ w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int r
     const char * xml_type = "type";
     const char * str_type = w_get_attr_val_by_name(node, xml_type);
 
-    if (!str_type) { 
+    if (!str_type) {
         return default_type;
     }
 
@@ -3109,4 +3210,38 @@ w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int r
     }
 
     return default_type;
+}
+
+STATIC INLINE void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params) {
+
+    if (rule_tmp_params == NULL) {
+        return;
+    }
+
+    os_free(rule_tmp_params->regex);
+    os_free(rule_tmp_params->match);
+    os_free(rule_tmp_params->id);
+    os_free(rule_tmp_params->srcport);
+    os_free(rule_tmp_params->dstport);
+    os_free(rule_tmp_params->status);
+    os_free(rule_tmp_params->hostname);
+    os_free(rule_tmp_params->extra_data);
+    os_free(rule_tmp_params->program_name);
+    os_free(rule_tmp_params->location);
+    os_free(rule_tmp_params->user);
+    os_free(rule_tmp_params->srcgeoip);
+    os_free(rule_tmp_params->dstgeoip);
+    os_free(rule_tmp_params->url);
+    os_free(rule_tmp_params->if_matched_group);
+    os_free(rule_tmp_params->if_matched_regex);
+    os_free(rule_tmp_params->system_name);
+    os_free(rule_tmp_params->protocol);
+    os_free(rule_tmp_params->data);
+    os_free(rule_tmp_params->action);
+
+    if (rule_tmp_params->rule_arr_opt != NULL) {
+        OS_ClearNode(rule_tmp_params->rule_arr_opt);
+        rule_tmp_params->rule_arr_opt = NULL;
+    }
+
 }

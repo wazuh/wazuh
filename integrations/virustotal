@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # October 19, 2017.
 #
 # This program is free software; you can redistribute it
@@ -55,7 +55,7 @@ def main(args):
     debug(alert_file_location)
 
     # Load alert. Parse JSON object.
-    with open(alert_file_location) as alert_file:
+    with open(alert_file_location, errors='ignore') as alert_file:
         json_alert = json.load(alert_file)
     debug("# Processing alert")
     debug(json_alert)

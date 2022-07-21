@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,6 +14,7 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
+
 /* Read the main elements of the configuration */
 static int read_main_elements(const OS_XML *xml, int modules,
                               XML_NODE node,
@@ -22,7 +23,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
 {
     int i = 0;
     const char *osglobal = "global";                    /* Server Config */
+#ifndef WIN32
     const char *osrules = "ruleset";                    /* Server Config */
+#endif
     const char *ossyscheck = "syscheck";                /* Agent Config  */
     const char *osrootcheck = "rootcheck";              /* Agent Config  */
     const char *osalerts = "alerts";                    /* Server Config */
@@ -35,24 +38,32 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osclient = "client";                    /* Agent Config  */
     const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
     const char *oscommand = "command";                  /* ? Config      */
-    const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
     const char *osactive_response = "active-response";  /* Agent Config  */
     const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                    /* Labels Config */
-    const char *osauthd = "auth";                       /* Authd Config */
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
-    const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
-
+    const char *osgcp_pub = "gcp-pubsub";               /* Google Cloud PubSub - Wazuh Module */
+    const char *osgcp_bucket = "gcp-bucket";            /* Google Cloud Bucket - Wazuh Module */
+    const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
+    const char *wazuh_db = "wdb";                       /* Wazuh-DB Daemon */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+    const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
+    const char *osauthd = "auth";                       /* Authd Config */
+    const char *osreports = "reports";                  /* Server Config */
+#ifndef CLIENT
+    const char *key_polling = "agent-key-polling";      /* Deprecated Agent Key Polling module */
+#endif
+#endif
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
+    const char *github = "github";                      /* GitHub Module */
+    const char *office365 = "office365";                /* Office365 Module */
 #endif
 
     while (node[i]) {
@@ -90,11 +101,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
+        }
+#ifndef WIN32
+        else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
             if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, ossyscheck) == 0) {
+        }
+#endif
+        else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
             }
@@ -118,8 +133,17 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
-            if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
+            if (modules & CCLIENT) {
+                if (modules & CAGENT_CONFIG) {
+                    if (Read_Client_Shared(chld_node, d1) < 0){
+                        goto fail;
+                    }
+                }
+                else {
+                    if (Read_Client(xml, chld_node, d1, d2) < 0){
+                        goto fail;
+                    }
+                }
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
             if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
@@ -133,14 +157,26 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
+        }
+#ifndef WIN32
+        else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, oswmodule) == 0) {
+        }
+#endif
+        else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
+            } 
+#ifndef CLIENT
+            else if ((node[i]->attributes[0] && !strcmp(node[i]->attributes[0], "name")) &&
+                     (node[i]->values[0] && !strcmp(node[i]->values[0], key_polling))) {
+                if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
+                    goto fail;
+                }
             }
+#endif
         } else if (strcmp(node[i]->element, ossca) == 0) {
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
@@ -153,24 +189,27 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #else
             mwarn("%s configuration is only set in the manager.", node[i]->element);
 #endif
-        } else if (strcmp(node[i]->element, osgcp) == 0) {
-            if ((modules & CWMODULE) && (Read_GCP(xml, node[i], d1) < 0)) {
+        } else if (strcmp(node[i]->element, osgcp_pub) == 0) {
+            if ((modules & CWMODULE) && (Read_GCP_pubsub(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        }
+
+        } else if (strcmp(node[i]->element, osgcp_bucket) == 0) {
+            if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
 #ifndef WIN32
-        else if (strcmp(node[i]->element, osfluent_forward) == 0) {
+        } else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        }
-#endif
-        else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
-            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
+        } else if (strcmp(node[i]->element, osauthd) == 0) {
+            if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+#endif
+        } else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
@@ -191,14 +230,34 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
-            #if !defined(WIN32) && !defined(CLIENT)  
+            #if !defined(WIN32) && !defined(CLIENT)
                 if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
                     goto fail;
                 }
             #else
                 mwarn("%s configuration is only set in the manager.", node[i]->element);
             #endif
-        } else {
+        }  else if (chld_node && (strcmp(node[i]->element, wazuh_db) == 0)) {
+            #if !defined(CLIENT)
+                if ((modules & WAZUHDB) && (Read_WazuhDB(xml, chld_node) < 0)) {
+                    goto fail;
+                }
+            #else
+                mwarn("%s configuration is only set in the manager.", node[i]->element);
+            #endif
+        }
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
+        else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
+            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, office365) == 0)) {
+            if ((modules & CWMODULE) && (Read_Office365(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        }
+#endif
+        else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
         }

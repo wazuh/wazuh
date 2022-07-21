@@ -1,0 +1,54 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml wm-syscollector
+
+actor user
+actor "wazuh-manager" as manager
+participant "wazuh-modulesd\nmain" as main
+participant "wm_comm\n<<thread>>" as comm
+participant "wm_syscollector\n<<thread>>" as wm_syscollector
+
+
+user ->> main++: start
+main -> main: read configuration
+main -> comm++: start communication dispatcher
+main -> wm_syscollector++: start syscollector
+wm_syscollector -> wm_syscollector: load dynamic libraries
+note over wm_syscollector
+    wm_syscollector dynamic libraries deps:
+    - libsyscollector
+    - libdbsync
+    - libsysinfo
+    - librsync
+end note
+loop every ""interval"" seconds
+    wm_syscollector -> wm_syscollector: scan
+    wm_syscollector -> wm_syscollector: sync
+end
+... If incoming remote request is received ...
+alt active configuration request
+    manager ->> comm: get syscollector\nactive configuration
+    comm -> wm_syscollector: get active configuration
+    comm <-- wm_syscollector: active configuration
+    manager <-- comm: syscollector active configuration
+else module synchronization request
+    manager ->> comm: sync syscollector data
+    comm -> wm_syscollector: sync data
+    wm_syscollector -> wm_syscollector: sync
+    comm <-- wm_syscollector: data
+    manager <-- comm: syscollector data
+end
+... If exit signal is received ...
+
+user ->> main: exit
+main -> wm_syscollector: stop
+wm_syscollector -> wm_syscollector: stop
+wm_syscollector -> wm_syscollector: unload dynamic libraries
+main <-- wm_syscollector: stopped
+main -> wm_syscollector!!: destroy
+main -> main!!:exit
+destroy comm
+
+@enduml

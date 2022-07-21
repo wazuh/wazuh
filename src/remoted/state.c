@@ -1,7 +1,7 @@
 /* Remoted state management functions
  * May 25, 2018
  *
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -58,7 +58,7 @@ int rem_write_state() {
 
     mdebug2("Updating state file.");
 
-    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+    snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {
@@ -92,8 +92,11 @@ int rem_write_state() {
         "# Discarded messages\n"
         "discarded_count='%u'\n"
         "\n"
-        "# Messages sent\n"
-        "msg_sent='%u'\n"
+        "# Messages queued\n"
+        "queued_msgs='%u'\n"
+        "\n"
+        "# Total number of bytes sent\n"
+        "sent_bytes='%lu'\n"
         "\n"
         "# Total number of bytes received\n"
         "recv_bytes='%lu'\n"
@@ -101,8 +104,8 @@ int rem_write_state() {
         "# Messages dequeued after the agent closes the connection\n"
         "dequeued_after_close='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
-        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent,
-        state_cpy.recv_bytes, state_cpy.dequeued_after_close);
+        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.queued_msgs,
+        state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.dequeued_after_close);
 
     fclose(fp);
 
@@ -141,9 +144,15 @@ void rem_inc_ctrl_msg() {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_msg_sent() {
+void rem_inc_msg_queued() {
     w_mutex_lock(&state_mutex);
-    remoted_state.msg_sent++;
+    remoted_state.queued_msgs++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_add_send(unsigned long bytes) {
+    w_mutex_lock(&state_mutex);
+    remoted_state.sent_bytes += bytes;
     w_mutex_unlock(&state_mutex);
 }
 

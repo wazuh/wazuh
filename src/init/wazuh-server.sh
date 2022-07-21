@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.2.0"
-REVISION="40200"
+VERSION="v4.5.0"
+REVISION="40500"
 TYPE="server"
 
 ###  Do not modify below here ###
@@ -29,6 +29,7 @@ AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
 OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
+DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -49,7 +50,7 @@ MAX_KILL_TRIES=600
 checkpid()
 {
     for i in ${CDAEMONS}; do
-        for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
+        for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
             ps -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
@@ -188,8 +189,8 @@ disable()
     if [ "$daemon" != '' ]; then
         pstatus ${daemon};
         if [ $? = 1 ]; then
-            kill `cat $DIR/var/run/$daemon*`
-            rm $DIR/var/run/$daemon*
+            kill `cat $DIR/var/run/$daemon-*`
+            rm $DIR/var/run/$daemon-*
             echo "Killing ${daemon}...";
         fi
     fi
@@ -259,10 +260,10 @@ start_service()
 {
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION..."
+        echo "Starting Wazuh $VERSION..."
     fi
 
-    TEST=$(${DIR}/bin/wazuh-logtest.legacy -t  2>&1 | grep "ERROR")
+    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
     if [ ! -z "$TEST" ]; then
         if [ $USE_JSON = true ]; then
             echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
@@ -278,6 +279,16 @@ start_service()
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
     rm -rf $TO_DELETE
+
+    # Stop deprecated daemons that could keep alive on updates
+    for i in ${DEPRECATED_DAEMONS}; do
+        ls ${DIR}/var/run/${i}-*.pid > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
+            kill $pid
+            rm -f ${DIR}/var/run/${i}-${pid}.pid
+        fi
+    done
 
     # We actually start them now.
     first=true
@@ -413,9 +424,9 @@ pstatus()
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
+    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
@@ -476,7 +487,7 @@ stop_service()
                 echo "Killing ${i}...";
             fi
 
-            pid=`cat ${DIR}/var/run/${i}*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
 
             if wait_pid $pid
@@ -499,13 +510,13 @@ stop_service()
                 echo "${i} not running...";
             fi
         fi
-        rm -f ${DIR}/var/run/${i}*.pid
+        rm -f ${DIR}/var/run/${i}-*.pid
     done
 
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
-        echo "$NAME $VERSION Stopped"
+        echo "Wazuh $VERSION Stopped"
     fi
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -44,7 +44,12 @@ char *_rkcl_getrootdir(char *root_dir, int dir_size)
     tmp = strchr(final_file, '\\');
     if (tmp) {
         *tmp = '\0';
-        strncpy(root_dir, final_file, dir_size);
+        const int bytes_written = snprintf(root_dir, dir_size, "%s", final_file);
+
+        if (bytes_written < 0 || bytes_written >= dir_size) {
+            return (NULL);
+        }
+
         return (root_dir);
     }
 
@@ -267,23 +272,19 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 {
     int type = 0, condition = 0;
     char *nbuf;
-    char buf[OS_SIZE_1024 + 2];
-    char root_dir[OS_SIZE_1024 + 2];
-    char final_file[2048 + 1];
-    char ref[255 + 1];
+    char buf[OS_SIZE_1024 + 2] = {0};
+#ifdef WIN32
+    char root_dir[OS_SIZE_1024 + 2] = {0};
+    char final_file[2048 + 1] = {0};
+#endif
+    char ref[255 + 1] = {0};
     char *value;
     char *name = NULL;
     OSStore *vars;
 
-    /* Initialize variables */
-    memset(buf, '\0', sizeof(buf));
-    memset(root_dir, '\0', sizeof(root_dir));
-    memset(final_file, '\0', sizeof(final_file));
-    memset(ref, '\0', sizeof(ref));
-
 #ifdef WIN32
     /* Get Windows rootdir */
-    _rkcl_getrootdir(root_dir, sizeof(root_dir) - 1);
+    _rkcl_getrootdir(root_dir, sizeof(root_dir));
     if (root_dir[0] == '\0') {
         mterror(ARGV0, INVALID_ROOTDIR);
     }

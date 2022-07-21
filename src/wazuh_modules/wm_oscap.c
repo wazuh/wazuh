@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for OpenSCAP
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -11,8 +11,13 @@
 
 #include "wmodules.h"
 
+#ifdef WIN32
+static DWORD WINAPI wm_oscap_main(wm_oscap *arg);       // Module main function. It won't return
+static DWORD WINAPI wm_oscap_destroy(void *oscap);      // Destroy data
+#else
 static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
 static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
+#endif
 cJSON *wm_oscap_dump(const wm_oscap *oscap);
 
 // OpenSCAP module context definition
@@ -22,6 +27,7 @@ const wm_context WM_OSCAP_CONTEXT = {
     (wm_routine)wm_oscap_main,
     (wm_routine)(void *)wm_oscap_destroy,
     (cJSON * (*)(const void *))wm_oscap_dump,
+    NULL,
     NULL
 };
 
@@ -98,7 +104,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
 
     // Connect to socket
 
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
@@ -130,7 +136,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     // Create arguments
 
-    wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
+    char * script = NULL;
+    os_calloc(PATH_MAX, sizeof(char), script);
+    snprintf(script, PATH_MAX, "%s", WM_OSCAP_SCRIPT_PATH);
+    wm_strcat(&command, script, '\0');
+    os_free(script);
 
     switch (eval->type) {
     case WM_OSCAP_XCCDF:
@@ -284,9 +294,9 @@ void wm_oscap_info() {
 
 #else
 
-void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
+DWORD WINAPI wm_oscap_main(__attribute__((unused)) wm_oscap *arg) {
     mtinfo(WM_OSCAP_LOGTAG, "OPEN-SCAP module not compatible with Windows.");
-    return NULL;
+    return 0;
 }
 #endif
 
@@ -333,10 +343,13 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
     return root;
 }
 
-
 // Destroy data
-
+#ifdef WIN32
+DWORD WINAPI wm_oscap_destroy(void *oscap_ptr) {
+    wm_oscap *oscap = (wm_oscap *)oscap_ptr;
+#else
 void wm_oscap_destroy(wm_oscap *oscap) {
+#endif
     wm_oscap_eval *cur_eval;
     wm_oscap_eval *next_eval;
     wm_oscap_profile *cur_profile;
@@ -364,4 +377,8 @@ void wm_oscap_destroy(wm_oscap *oscap) {
     }
 
     free(oscap);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
+

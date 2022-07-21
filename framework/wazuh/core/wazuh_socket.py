@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -233,7 +233,7 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
 daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
     "task-manager": {"protocol" : "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
-    "wazuh-db": {"protocol": "TCP", "path": common.wdb_socket_path, "header_format": "<I", "size": 4}
+    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4}
 }
 
 

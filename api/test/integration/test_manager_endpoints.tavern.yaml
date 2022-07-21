@@ -1,9 +1,6 @@
 ---
 test_name: GET /manager/status
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /manager/status
@@ -17,7 +14,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - wazuh-agentlessd: !anystr
@@ -57,7 +54,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - compilation_date: !anystr
@@ -146,7 +143,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts: !anything
@@ -183,7 +180,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - rootcheck:
@@ -206,7 +203,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - syscheck:
@@ -242,7 +239,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -284,7 +281,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts: !anything
@@ -328,7 +325,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - averages: !anything
@@ -352,7 +349,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - Sun:
@@ -395,7 +392,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - total_events_decoded: !anyfloat
@@ -463,7 +460,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - queue_size: !anyfloat
@@ -472,7 +469,8 @@ stages:
                 evt_count: !anyfloat
                 ctrl_msg_count: !anyfloat
                 discarded_count: !anyfloat
-                msg_sent: !anyfloat
+                queued_msgs: !anyfloat
+                sent_bytes: !anyfloat
                 recv_bytes: !anyfloat
             total_affected_items: 1
             failed_items: []
@@ -494,7 +492,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items: !anything
             failed_items: []
@@ -514,7 +512,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - &manager_log
@@ -541,16 +539,12 @@ stages:
         limit: 2
         sort: -level
     response:
-        status_code: 200
-        json:
-          error: !anyint
-          data:
-            affected_items:
-              - <<: *manager_log
-              - <<: *manager_log
-            failed_items: []
-            total_affected_items: !anyint
-            total_failed_items: 0
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "level"
+            reverse: true
+      status_code: 200
 
   # GET /manager/logs
   - name: Filters -> offset=3, limit=3
@@ -566,7 +560,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -591,7 +585,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -616,7 +610,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -638,7 +632,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -667,6 +661,44 @@ stages:
             key: "level"
             expected_values: "info"
 
+  - name: Filters by query (timestamp<2021-07-01)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: timestamp<2021-07-01
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Filter by non-existent tag
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        tag: wazuh-unknown-daemon
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
 ---
 test_name: GET /manager/logs/summary
 
@@ -683,7 +715,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sca: !anything
@@ -729,7 +761,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - node_name: !anystr
@@ -743,10 +775,10 @@ stages:
                   cert: !anystr
                   use_ca: !anybool
                   ca: !anystr
-                  ssl_cipher: !anystr
+                  ssl_protocol: !anystr
+                  ssl_ciphers: !anystr
                 logs:
                   level: !anystr
-                  path: !anystr
                 cors:
                   enabled: !anybool
                   source_route: !anystr
@@ -760,7 +792,6 @@ stages:
                   max_login_attempts: !anyint
                   block_time: !anyint
                   max_request_per_minute: !anyint
-                use_only_authd: !anybool
                 drop_privileges: !anybool
                 experimental_features: !anybool
           total_affected_items: 1
@@ -783,7 +814,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - name: !anystr
@@ -824,7 +855,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -850,7 +881,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - global: !anything
@@ -868,7 +899,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - active-response: !anything
@@ -887,7 +918,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts: !anything
@@ -905,7 +936,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - command: !anything
@@ -923,7 +954,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -941,7 +972,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - auth: !anything
@@ -959,7 +990,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -977,7 +1008,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - localfile: !anything
@@ -995,7 +1026,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -1012,7 +1043,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -1030,7 +1061,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - monitord: !anything
@@ -1048,7 +1079,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - remote: !anything
@@ -1066,7 +1097,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -1084,7 +1115,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - syscheck: !anything
@@ -1102,7 +1133,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - rootcheck: !anything
@@ -1120,7 +1151,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -1138,35 +1169,10 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - wmodules: !anything
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-
----
-test_name: PUT /manager/restart
-
-stages:
-
-  # PUT /manager/restart
-  - name: Restart manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1211,7 +1217,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts:
@@ -1234,7 +1240,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1258,7 +1264,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1268,6 +1274,21 @@ stages:
                 - 'manager'
           total_affected_items: 0
           total_failed_items: 1
+
+  # PUT /manager/configuration
+  - name: Try to upload an invalid configuration with an invalid content-type
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+    response:
+      status_code: 406
+      json:
+        error: 6002
 
   # GET /manager/configuration/
   - name: Ensure the config didn't change
@@ -1283,11 +1304,35 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts:
                 log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  # PUT /manager/restart
+  - name: Restart manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

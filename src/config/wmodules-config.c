@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -134,22 +134,22 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         mwarn("A deprecated Vulnerability Detector configuration block was found. It will be ignored.");
         OS_ClearNode(children);
         return 0;
-    } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
-    } else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name)) {
+    } else if (!strcmp(node->values[0], KEY_WM_NAME)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #endif
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
 #endif
-
     else {
-        if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
+        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
             !strcmp(node->values[0], KEY_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
         } else {
@@ -216,7 +216,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     return 0;
 }
 
-int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
+int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
@@ -260,9 +260,68 @@ int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Google Cloud module
-    if (!strcmp(node->element, WM_GCP_CONTEXT.name)) {
+    if (!strcmp(node->element, WM_GCP_PUBSUB_CONTEXT.name)) {
 #ifndef WIN32
-        if (wm_gcp_read(children, cur_wmodule) < 0) {
+        if (wm_gcp_pubsub_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#else
+        mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
+#endif
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
+int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //Google Cloud module
+    if (!strcmp(node->element, WM_GCP_BUCKET_CONTEXT.name)) {
+#ifndef WIN32
+        if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -434,6 +493,118 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
     // Fluent Forwarder Module
     if (!strcmp(node->element, WM_FLUENT_CONTEXT.name)) {
         if (wm_fluent_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+#endif
+
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
+int Read_Github(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //GitHub module
+    if (!strcmp(node->element, WM_GITHUB_CONTEXT.name)) {
+        if (wm_github_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
+int Read_Office365(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //Office365 module
+    if (!strcmp(node->element, WM_OFFICE365_CONTEXT.name)) {
+        if (wm_office365_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

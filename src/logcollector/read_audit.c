@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -19,19 +19,19 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
     int i;
     size_t n = 0;
     size_t z;
-    char message[OS_MAXSTR];
+    char message[OS_MAX_LOG_SIZE] = {0};
 
     for (i = 0; i < top; i++) {
         z = strlen(cache[i]);
 
-        if (n + z + 1 < OS_MAXSTR) {
+        if (n + z + 1 < sizeof(message)) {
             if (n > 0)
                 message[n++] = ' ';
 
-            strncpy(message + n, cache[i], z);
+            strncat(message + n, cache[i], OS_MAX_LOG_SIZE - 1 - n);
+            n += z;
         }
 
-        n += z;
         free(cache[i]);
     }
 
@@ -45,7 +45,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *cache[MAX_CACHE];
     char header[MAX_HEADER] = { '\0' };
     int icache = 0;
-    char buffer[OS_MAXSTR];
+    char buffer[OS_MAX_LOG_SIZE];
     char *id;
     char *p;
     size_t z;
@@ -59,9 +59,9 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     offset = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, offset);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, offset);
 
-    for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAX_LOG_SIZE, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
 
         /* Flow control */
@@ -72,7 +72,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         lines++;
 
         if (buffer[rbytes - 1] == '\n') {
-            OS_SHA1_Stream(&context, NULL, buffer);
+            if (is_valid_context_file) {
+                OS_SHA1_Stream(&context, NULL, buffer);
+            }
+
             buffer[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(buffer) != rbytes - 1)
@@ -81,17 +84,18 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                 continue;
             }
         } else {
-            if (rbytes == OS_MAXSTR - 1) {
+            if (rbytes == OS_MAX_LOG_SIZE - 1) {
                 // Message too large, discard line
-                for (offset += rbytes; fgets(buffer, OS_MAXSTR, lf->fp); offset += rbytes) {
+                for (offset += rbytes; fgets(buffer, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
                     rbytes = w_ftell(lf->fp) - offset;
 
                     /* Flow control */
                     if (rbytes <= 0) {
                         break;
                     }
-
-                    OS_SHA1_Stream(&context, NULL, buffer);
+                    if (is_valid_context_file) {
+                        OS_SHA1_Stream(&context, NULL, buffer);
+                    }
 
                     if (buffer[rbytes - 1] == '\n') {
                         break;
@@ -109,9 +113,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        // Extract header: "type=\.* msg=audit(\d+.\d+:\d+):"
+        // Extract header: "\.*type=\.* msg=audit(.*):"
+        //                                        --
 
-        if (strncmp(buffer, "type=", 5) || !((id = strstr(buffer + 5, "msg=audit(")) && (p = strstr(id += 10, "): ")))) {
+        if (!((id = strstr(buffer, "type=")) && (id = strstr(id + 5, " msg=audit(")) && (p = strstr(id += 11, "): ")))) {
             merror("Discarding audit message because of invalid syntax.");
             break;
         }
@@ -138,8 +143,9 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
     if (icache > 0)
         audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
-
-    w_update_file_status(lf->file, offset, &context);
+    if (is_valid_context_file) {
+        w_update_file_status(lf->file, offset, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return NULL;

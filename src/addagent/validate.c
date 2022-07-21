@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,9 +8,12 @@
  * Foundation
  */
 
+#include "cJSON.h"
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha256/sha256_op.h"
+#include "os_err.h"
+#include "wazuh_db/wdb.h"
+#include <time.h>
 #ifndef CLIENT
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
@@ -39,11 +42,11 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
-    char _id[9] = { '\0' };
+    char _id[12] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
     if (!id) {
-        snprintf(_id, 9, "%03d", ++keys->id_counter);
+        snprintf(_id,sizeof(_id), "%03d", ++keys->id_counter);
         id = _id;
     }
     else {
@@ -63,7 +66,7 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
         key = buffer;
     }
 
-    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key, time(NULL));
 }
 
 #ifndef CLIENT
@@ -86,7 +89,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return 0;
@@ -144,7 +147,7 @@ int OS_RemoveAgent(const char *u_id) {
 
     fclose(fp);
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
+    if (TempFile(&file, KEYS_FILE, 0) < 0) {
         free(buffer);
         return 0;
     }
@@ -153,7 +156,7 @@ int OS_RemoveAgent(const char *u_id) {
     fclose(file.fp);
     full_name = getFullnameById(u_id);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
         free(file.name);
         free(buffer);
         free(full_name);
@@ -171,7 +174,7 @@ int OS_RemoveAgent(const char *u_id) {
     // Remove DB from wazuh-db
     int sock = -1;
     int error;
-    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", u_id);
     os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
     if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
         mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
@@ -190,7 +193,6 @@ int OS_RemoveAgent(const char *u_id) {
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
-    OS_RemoveAgentGroup(u_id);
     return 1;
 }
 
@@ -235,7 +237,7 @@ char *getFullnameById(const char *id)
         return (NULL);
     }
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (NULL);
     }
@@ -306,11 +308,7 @@ int IDExist(const char *id, int discard_removed)
         return (0);
     }
 
-    if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
-    } else {
-        fp = fopen(KEYSFILE_PATH, "r");
-    }
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -394,11 +392,7 @@ int NameExist(const char *u_name)
         return (0);
     }
 
-    if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
-    } else {
-        fp = fopen(KEYSFILE_PATH, "r");
-    }
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -450,10 +444,7 @@ char *IPExist(const char *u_ip)
     if (!(u_ip && strncmp(u_ip, "any", 3)) || strchr(u_ip, '/'))
         return NULL;
 
-    if (isChroot())
-        fp = fopen(AUTH_FILE, "r");
-    else
-        fp = fopen(KEYSFILE_PATH, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return NULL;
@@ -497,45 +488,6 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
-#ifndef CLIENT
-
-double OS_AgentAntiquity_ID(const char *id) {
-    char *name = getFullnameById(id);
-    char *ip;
-    double ret = -1;
-
-    if (!name) {
-        return -1;
-    }
-
-    if ((ip = strchr(name, '-'))) {
-        *(ip++) = 0;
-        ret = OS_AgentAntiquity(name, ip);
-    }
-
-    free(name);
-    return ret;
-}
-
-/**
- * @brief Returns the number of seconds since last agent connection
- * 
- * @param name The name of the agent
- * @param ip The IP address of the agent (unused). Kept only for compatibility
- * @retval On success, it returns the difference between the current time and the last keepalive
- * @retval -1 On error: invalid DB query syntax or result
- */
-double OS_AgentAntiquity(const char *name, const char *ip){
-    time_t output = 0;
-
-    output = wdb_get_agent_keepalive(name, ip, NULL);
-
-    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
-}
-
- /* !CLIENT */
- #endif
-
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
 {
@@ -544,7 +496,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     char line_read[FILE_SIZE + 1];
     line_read[FILE_SIZE] = '\0';
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (0);
     }
@@ -691,10 +643,7 @@ void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
     File file;
-    char *buffer;
     char line[OS_BUFFER_SIZE];
-    int pos = 0;
-    struct stat fp_stat;
     char * sep;
 
     fp = fopen(TIMESTAMP_FILE, "r");
@@ -703,12 +652,11 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    if (fstat(fileno(fp), &fp_stat) < 0) {
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("Couldn't open timestamp file.");
         fclose(fp);
         return;
     }
-
-    os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (sep = strchr(line, ' '), sep) {
@@ -717,57 +665,16 @@ void OS_RemoveAgentTimestamp(const char *id)
             continue;
         }
 
-        if (strcmp(id, line)) {
+        if (strcmp(id, line) != 0) {
             *sep = ' ';
-            strncpy(&buffer[pos], line, fp_stat.st_size - pos);
-            pos += strlen(line);
+            fputs(line, file.fp);
         }
     }
 
     fclose(fp);
-
-    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
-        merror("Couldn't open timestamp file.");
-        free(buffer);
-        return;
-    }
-
-    fprintf(file.fp, "%s", buffer);
     fclose(file.fp);
-    free(buffer);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
-}
-
-void OS_RemoveAgentGroup(const char *id)
-{
-    char group_file[OS_FLSIZE + 1];
-    snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-
-    FILE *fp;
-    char group[OS_SIZE_65536 + 1] = {0};
-    fp = fopen(group_file,"r");
-
-    if(!fp){
-        mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
-    } else {
-        if(fgets(group, OS_SIZE_65536, fp)!=NULL ) {
-            fclose(fp);
-            fp = NULL;
-            unlink(group_file);
-
-            char *endl = strchr(group, '\n');
-
-            if (endl) {
-                *endl = '\0';
-            }
-
-        }
-
-        if(fp){
-            fclose(fp);
-        }
-    }
 }
 
 void FormatID(char *id) {

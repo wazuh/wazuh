@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -20,7 +20,13 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
+/* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
+#define AUDIT_SOCKET                "queue/sockets/audit"
+#define AUDIT_CONF_FILE             "etc/af_wazuh.conf"
+#define AUDIT_HEALTHCHECK_DIR       "tmp"
+#define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
+#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
 
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG
@@ -54,12 +60,13 @@ typedef enum fim_state_db {
     FIM_STATE_DB_FULL
 } fim_state_db;
 
-typedef struct fim_element {
+typedef struct _event_data_s {
+    int report_event;
+    fim_event_mode mode;
+    fim_event_type type;
     struct stat statbuf;
-    int index;
-    int configuration;
-    int mode;
-} fim_element;
+    whodata_evt *w_evt;
+} event_data_t;
 
 typedef struct fim_tmp_file {
     union { //type_storage
@@ -83,6 +90,7 @@ typedef struct diff_data {
     char *compress_tmp_file;
     char *diff_file;
 } diff_data;
+
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -144,8 +152,9 @@ void read_internal(int debug_level);
 /**
  * @brief Performs an integrity monitoring scan
  *
+ * @return A timestamp taken as soons as the scan ends.
  */
-void fim_scan();
+time_t fim_scan();
 
 /**
  * @brief Stop scanning files for one second if the max number of files scanned has been reached.
@@ -157,33 +166,29 @@ void check_max_fps();
  * @brief
  *
  * @param [in] path Path of the file to check
- * @param [out] item FIM item
- * @param [in] w_evt Whodata event
- * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
+ * @param [in] evt_data Information associated to the triggered event
+ * @param [in] configuration Configuration block associated with a previous event.
  */
-void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int report);
+void fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration);
 
 /**
  * @brief Check file integrity monitoring on a specific folder
  *
  * @param [in] dir
- * @param [out] item FIM item
- * @param [in] w_evt Whodata event
- * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
+ * @param [in] evt_data Information associated to the triggered event
+ * @param [in] configuration Configuration block associated with the directory.
  * @return 0 on success, -1 on failure
  */
-int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int report);
+int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration) ;
 
 /**
  * @brief Check file integrity monitoring on a specific file
  *
- * @param [in] file
- * @param [in] item FIM item
- * @param [in] w_evt Whodata event
- * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
- * @return 0 on success, -1 on failure
+ * @param [in] path Path of the file to check
+ * @param [in] configuration Configuration block associated with a previous event.
+ * @param [in] evt_data Information associated to the triggered event
  */
-int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
+void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
 
 /**
  * @brief Process FIM realtime event
@@ -213,29 +218,29 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
  * @brief Search the position of the path in directories array
  *
  * @param path Path to seek in the directories array
- * @param entry "file", for file checking or "registry" for registry checking
- * @return Returns the position of the path in the directories array, -1 if the path is not found
+ * @return Returns a pointer to the configuration associated with the provided path, NULL if the path is not found
  */
-int fim_configuration_directory(const char *path, const char *entry);
+directory_t *fim_configuration_directory(const char *path);
 
 /**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
  *
  * @param path File name of the file/directory to check
- * @param dir_position Position of the file to check in the directories array
+ * @param configuration Configuration associated with the file
  * @return Depth of the directory/file, -1 on error
  */
-int fim_check_depth(const char *path, int dir_position);
+int fim_check_depth(const char *path, const directory_t *configuration);
 
 /**
  * @brief Get data from file
  *
- * @param file_name Name of the file to get the data from
- * @param item FIM item asociated with the file
+ * @param file Name of the file to get the data from
+ * @param [in] configuration Configuration block associated with a previous event.
+ * @param [in] statbuf Buffer acquired from a stat command with information linked to 'path'
  *
  * @return A fim_file_data structure with the data from the file
  */
-fim_file_data * fim_get_data(const char *file_name, fim_element *item);
+fim_file_data *fim_get_data(const char *file, const directory_t *configuration, const struct stat *statbuf);
 
 /**
  * @brief Initialize a fim_file_data structure
@@ -288,24 +293,18 @@ void check_deleted_files();
  *   }
  * }
  *
- * @param file_name File path.
- * @param old_data Previous file state.
  * @param new_data Current file state.
- * @param dir_position Index of the related configuration stanza.
- * @param type Type of event: added, deleted or modified.
- * @param mode Event source.
- * @param w_evt Audit data structure.
+ * @param old_data Previous file state.
+ * @param configuration Pointer to the related configuration stanza.
+ * @param evt_data Information associated to the triggered event
  * @param diff File diff if applicable.
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(const char *file_name,
-                      fim_file_data *old_data,
-                      fim_file_data *new_data,
-                      int pos,
-                      unsigned int type,
-                      fim_event_mode mode,
-                      whodata_evt *w_evt,
+cJSON *fim_json_event(const fim_entry *new_data,
+                      const fim_file_data *old_data,
+                      const directory_t *configuration,
+                      const event_data_t *evt_data,
                       const char *diff);
 
 /**
@@ -323,13 +322,6 @@ void free_file_data(fim_file_data *data);
 void free_entry(fim_entry * entry);
 
 /**
- * @brief Frees the memory of a FIM inode data structure
- *
- * @param [out] data The FIM inode data to be freed
- */
-void free_inode_data(fim_inode_data **data);
-
-/**
  * @brief Start real time monitoring
  *
  * @return 0 on success, -1 on error
@@ -340,11 +332,47 @@ int realtime_start(void);
  * @brief Add a directory to real time monitoring
  *
  * @param dir Path to file or directory
- * @param whodata If the path is configured with whodata option
- * @param followsl If the path is configured with follow sym link option
+ * @param configuration Configuration associated with the file or directory
  * @return 1 on success, -1 on realtime_start failure, -2 on set_winsacl failure, and 0 on other errors
  */
-int realtime_adddir(const char *dir, int whodata, int followsl) __attribute__((nonnull(1)));
+int realtime_adddir(const char *dir, directory_t *configuration);
+
+#ifdef INOTIFY_ENABLED
+/**
+ * @brief Add an inotify watch to monitoring directory
+ *
+ * @param dir Path to file or directory
+ * @param configuration Configuration associated with the file or directory
+ * @return 1 on success, -1 on failure
+ */
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration);
+#endif
+
+/**
+ * @brief Remove an inotify watch
+ *
+ * @param configuration Configuration associated with the file or directory
+ */
+void fim_realtime_delete_watches(const directory_t *configuration);
+
+/**
+ * @brief Check whether the realtime event queue has overflown.
+ *
+ * @return 0 if the queue hasn't overflown, 1 otherwise.
+ */
+int fim_realtime_get_queue_overflow();
+
+/**
+ * @brief Set the value of the queue overflown flag.
+ *
+ * @param value The new value to set the queue overflow flag.
+ */
+void fim_realtime_set_queue_overflow(int value);
+
+/**
+ * @brief Log the number of realtime watches currently set.
+ */
+void fim_realtime_print_watches();
 
 /**
  * @brief Process events in the real time queue
@@ -384,15 +412,8 @@ void free_whodata_event(whodata_evt *w_evt);
  *
  * @param msg The message to be sent
  */
-void send_syscheck_msg(const char *msg) __attribute__((nonnull));
+void send_syscheck_msg(const cJSON *msg) __attribute__((nonnull));
 
-/**
- * @brief Send a data synchronization control message
- *
- * @param location Specifies if the synchronization message is for files or registries.
- * @param msg The message to be sent
- */
-void fim_send_sync_msg(const char *location, const char * msg);
 
 // TODO
 /**
@@ -447,9 +468,9 @@ void remove_audit_rule_syscheck(const char *path);
  * @brief Read an audit event from socket
  *
  * @param [out] audit_sock The audit socket to read the events from
- * @param [in] reading_mode READING_MODE or HEALTHCHECK_MODE
+ * @param [in] running atomic_int that holds the status of the running thread.
  */
-void audit_read_events(int *audit_sock, int reading_mode);
+void audit_read_events(int *audit_sock, atomic_int_t *running);
 
 /**
  * @brief Makes Audit thread to wait for audit healthcheck to be performed
@@ -465,10 +486,16 @@ void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 
 /**
+ * @brief Create the necessary file to store the audit rules to be loaded by the immutable mode.
+ *
+*/
+void audit_create_rules_file();
+
+/**
  * @brief Set all directories that don't have audit rules and have whodata enabled to realtime.
  *
 */
-void audit_no_rules_to_realtime();
+void audit_rules_to_realtime();
 
 /**
  * @brief Set Auditd socket configuration
@@ -546,14 +573,6 @@ int audit_health_check(int audit_socket);
  */
 void clean_rules(void);
 
-/**
- * @brief
- *
- * @param buffer
- * @return 0 if no key is found, 1 if AUDIT_KEY is found, 2 if an existing key is found, 3 if AUDIT_HEALTHCHECK_KEY is found
- */
-
-int filterkey_audit_events(char *buffer);
 
 #elif WIN32
 /**
@@ -574,10 +593,10 @@ int whodata_audit_start();
  * @brief Configure the SACL in a configured folder for Whodata auditing
  *
  * @param dir The name of the folder to configure
- * @param position The position of the folder in the configuration array
+ * @param configuration The configuration associated with the folder.
  * @return 0 on success, 1 on error
  */
-int set_winsacl(const char *dir, int position);
+int set_winsacl(const char *dir, directory_t *configuration);
 
 /**
  * @brief In case SACLs and policies have been set, restore them
@@ -615,10 +634,11 @@ char *fim_registry_value_diff(const char *key_name,
  * @brief Function that generates the diff file of a file monitored when the option report_changes is activated
  *
  * @param filename Path of file monitored
+ * @param configuration Configuration associated with the given path.
  * @return String with the diff to add to the alert
  */
 
-char * fim_file_diff(const char *filename);
+char *fim_file_diff(const char *filename, const directory_t *configuration);
 
 /**
  * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
@@ -721,6 +741,14 @@ int w_update_sacl(const char *obj_path);
  */
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+
+/**
+ * @brief Get the number of realtime watches opened by FIM.
+ *
+ * @return Number of realtime watches.
+ */
+unsigned int get_realtime_watches();
+
 #else
 void *fim_run_integrity(void *args);
 #endif
@@ -911,24 +939,70 @@ void fim_diff_folder_size();
  * @brief Get the directory that will be effectively monitored depending on configuration the entry configuration and
  * physical object in the filesystem
  *
- * @param position Position of the directory in the structure
+ * @param dir Pointer to the configuration associated with the directory
  * @return A string holding the element being monitored. It must be freed after it's usage.
  */
-char *fim_get_real_path(int position);
+char *fim_get_real_path(const directory_t *dir);
 
 /**
  * @brief Create a delete event and removes the entry from the database.
  *
- * @param fim_sql FIM database struct.
+ * @param fim_sql  FIM database struct.
  * @param entry Entry data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
- * @param w_evt Whodata information.
+ * @param _evt_data Information associated to the triggered event.
+ * @param _unused_field_1 Unused field, required to use this function as a callback.
+ * @param _unused_field_2 Unused field, required to use this function as a callback.
  *
  */
-void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                           __attribute__((unused))void *alert,
-                           __attribute__((unused))void *fim_ev_mode,
-                           __attribute__((unused))void *w_evt);
+void fim_delete_file_event(fdb_t *fim_sql,
+                           fim_entry *entry,
+                           pthread_mutex_t *mutex,
+                           void *_evt_data,
+                           void *_unused_field_1,
+                           void *_unused_field_2);
+
+/**
+ * @brief Create a delete event and removes the entry from the database.
+ *
+ * @param fim_sql  FIM database struct.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param evt_data Information associated to the triggered event.
+ * @param configuration Directory configuration to be deleted.
+ * @param _unused_field Unused field, required to use this function as a callback.
+ *
+ */
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *evt_data,
+                               void *configuration,
+                               void *_unused_field);
+
+/**
+ * @brief Send a state synchronization message.
+ *
+ * @param location Name of the component
+ * @param msg Synchronization data for the message
+ */
+void fim_send_sync_state(const char *location, cJSON * msg);
+
+/**
+ * @brief Send a control synchronization message
+ * @param component Name of the component.
+ * @param msg Type of the message.
+ * @param id Sync session counter (timetamp).
+ * @param start First key in the list.
+ * @param top Last key in the list.
+ * @param tail Key of the first key in the next sublist.
+ * @param checksum Checksum of this list.
+ */
+void fim_send_sync_control(const char *component,
+                           dbsync_msg msg,
+                           long id,
+                           const char *start,
+                           const char *top,
+                           const char *tail,
+                           const char *checksum);
 #endif /* SYSCHECK_H */

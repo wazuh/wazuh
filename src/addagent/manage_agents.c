@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -13,9 +13,17 @@
  */
 
 #include "manage_agents.h"
+#include "debug_op.h"
+#include "defs.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include "os_err.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include "config/authd-config.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "wazuh_db/wdb.h"
+
 
 #if defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
@@ -94,18 +102,26 @@ int add_agent(int json_output)
     char name[FILE_SIZE + 1];
     char id[FILE_SIZE + 1] = { '\0' };
     char ip[FILE_SIZE + 1];
-    os_ip c_ip;
-    c_ip.ip = NULL;
 
     char *id_exist = NULL;
-    int force_antiquity = INT_MAX;
+    authd_force_options_t authd_force_options = {0};
     int sock;
     int authd_running;
 
-    const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
+    // Creating the configuration structure according to the parameters used
+    const char *env_disconnected_time = getenv("DISCONNECTED_TIME");
 
-    if (env_remove_dup) {
-        force_antiquity = strtol(env_remove_dup, NULL, 10);
+    if (env_disconnected_time) {
+        authd_force_options.disconnected_time = strtol(env_disconnected_time, NULL, 10);
+        authd_force_options.disconnected_time_enabled = true;
+        authd_force_options.enabled = true;
+    }
+
+    const char *env_after_registration_time = getenv("AFTER_REGISTRATION_TIME");
+
+    if (env_after_registration_time) {
+        authd_force_options.after_registration_time = strtol(env_after_registration_time, NULL, 10);
+        authd_force_options.enabled = true;
     }
 
     // Create socket
@@ -113,18 +129,18 @@ int add_agent(int json_output)
     if (sock = auth_connect(), sock < 0) {
         authd_running = 0;
         /* Check if we can open the auth_file */
-        fp = fopen(AUTH_FILE, "a");
+        fp = fopen(KEYS_FILE, "a");
         if (!fp) {
             if (json_output) {
                 char buffer[1024];
                 cJSON *json_root = cJSON_CreateObject();
-                snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
                 cJSON_AddNumberToObject(json_root, "error", 71);
                 cJSON_AddStringToObject(json_root, "message", buffer);
                 printf("%s", cJSON_PrintUnformatted(json_root));
                 exit(1);
             } else
-                merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+                merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
         }
         fclose(fp);
 
@@ -196,47 +212,108 @@ int add_agent(int json_output)
         /* Read IP address from user's environment. If that IP is invalid,
          * force user to provide IP from input device */
         _ip = getenv("OSSEC_AGENT_IP");
-        if (_ip == NULL || !OS_IsValidIP(_ip, &c_ip)) {
+
+        os_ip *aux_ip;
+        os_calloc(1, sizeof(os_ip), aux_ip);
+
+        if (_ip == NULL || !OS_IsValidIP(_ip, aux_ip)) {
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_root, "error", 77);
                 cJSON_AddStringToObject(json_root, "message", "Invalid IP for agent");
                 printf("%s", cJSON_PrintUnformatted(json_root));
+                w_free_os_ip(aux_ip);
                 exit(1);
-            } else
+            } else {
                 _ip = read_from_user();
+                /* Quit */
+                if (strcmp(_ip, QUIT) == 0) {
+                    w_free_os_ip(aux_ip);
+                    goto cleanup;
+                }
+                os_free(aux_ip->ip);
+                if (!OS_IsValidIP(_ip, aux_ip)) {
+                    printf(IP_ERROR, _ip);
+                    w_free_os_ip(aux_ip);
+                    _ip = NULL;
+                    continue;
+                }
+            }
         }
 
-        /* Quit */
-        if (strcmp(_ip, QUIT) == 0) {
-            goto cleanup;
-        }
+        strncpy(ip, aux_ip->ip, FILE_SIZE - 1);
+        w_free_os_ip(aux_ip);
 
-        strncpy(ip, _ip, FILE_SIZE - 1);
-        free(c_ip.ip);
+        if (!authd_running && (id_exist = IPExist(ip))) {
+            bool replace_agent = true;
+            char error_message[OS_SIZE_128];
+            cJSON *j_agent_info = NULL;
+            cJSON *j_connection_status = NULL;
+            cJSON *j_disconnection_time = NULL;
+            cJSON *j_date_add = NULL;
 
-        if (!OS_IsValidIP(ip, &c_ip)) {
-            printf(IP_ERROR, ip);
-            _ip = NULL;
-            c_ip.ip = NULL;
-        } else if (!authd_running && (id_exist = IPExist(ip))) {
-            double antiquity = OS_AgentAntiquity_ID(id_exist);
+            snprintf(error_message, OS_SIZE_128, "Agent '%s' won't be removed because the force option is disabled.", id_exist);
 
-            if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
+            j_agent_info = wdb_get_agent_info(atoi(id_exist), NULL);
+            if(j_agent_info){
+                j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+                j_disconnection_time = cJSON_GetObjectItem(j_agent_info->child, "disconnection_time");
+                j_date_add = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+            }
+
+            if (!j_agent_info || !j_connection_status || !j_disconnection_time || !j_date_add){
+                cJSON_Delete(j_agent_info);
+                merror_exit("Failed to get agent-info for agent '%s'", id_exist);
+            }
+
+            if(authd_force_options.enabled == false) {
+                replace_agent = false;
+            } else {
+                /* Check if the agent has been disconnected longer than the value required*/
+                if (env_disconnected_time) {
+                    time_t agent_time_since_desconnection = 0;
+                    char *status = j_connection_status->valuestring;
+
+                    if(!strcmp(status, AGENT_CS_DISCONNECTED)) {
+                        agent_time_since_desconnection = difftime(time(NULL), j_disconnection_time->valueint);
+                        if(agent_time_since_desconnection <= authd_force_options.disconnected_time){
+                            replace_agent = false;
+                            snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", id_exist);
+                        }
+                    } else if(strcmp(status, AGENT_CS_NEVER_CONNECTED)){
+                        replace_agent = false;
+                        snprintf(error_message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", id_exist);
+                    }
+                }
+
+                /* Check if the agent is old enough to be removed */
+                if(env_after_registration_time) {
+                    if (authd_force_options.after_registration_time != 0){
+                        time_t agent_registration_time = difftime(time(NULL), j_date_add->valueint);
+
+                        if(agent_registration_time <= authd_force_options.after_registration_time){
+                            snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been registered long enough to be removed.", id_exist);
+                            replace_agent = false;
+                        }
+                    }
+                }
+            }
+
+            cJSON_Delete(j_agent_info);
+
+            if (replace_agent) {
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
                     cJSON *json_root = cJSON_CreateObject();
                     cJSON_AddNumberToObject(json_root, "error", 79);
-                    cJSON_AddStringToObject(json_root, "message", "Duplicated IP for agent");
+                    cJSON_AddStringToObject(json_root, "message", "Duplicate IP for agent");
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
-                    printf(IP_DUP_ERROR, ip);
+                    printf("%s\n", error_message);
                     setenv("OSSEC_AGENT_IP", "", 1);
                     _ip = NULL;
-                    free(c_ip.ip);
-                    c_ip.ip = NULL;
                 }
             }
 
@@ -314,7 +391,7 @@ int add_agent(int json_output)
                 time3 = time(0);
                 rand2 = os_random();
 
-                if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
+                if (TempFile(&file, KEYS_FILE, 1) < 0 ) {
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
@@ -345,20 +422,20 @@ int add_agent(int json_output)
                 OS_MD5_Str(str1, -1, md1);
 
                 snprintf(key, 65, "%s%s", md1, md2);
-                fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
+                fprintf(file.fp, "%s %s %s %s\n", id, name, ip, key);
                 fclose(file.fp);
 
-                if (OS_MoveFile(file.name, AUTH_FILE) < 0) {
+                if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
-                        snprintf(buffer, 1023, "Could not write file '%s'", AUTH_FILE);
+                        snprintf(buffer, 1023, "Could not write file '%s'", KEYS_FILE);
                         cJSON_AddNumberToObject(json_root, "error", 71);
                         cJSON_AddStringToObject(json_root, "message", buffer);
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        merror_exit("Could not write file '%s'", AUTH_FILE);
+                        merror_exit("Could not write file '%s'", KEYS_FILE);
                 }
 
                 free(file.name);
@@ -374,7 +451,7 @@ int add_agent(int json_output)
                     } else
                         merror_exit("Lost authd socket connection.");
                 }
-                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, env_remove_dup ? force_antiquity : -1, json_output,NULL,1) < 0) {
+                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, &authd_force_options, json_output, NULL, 1) < 0) {
                     break;
                 }
             }
@@ -398,7 +475,6 @@ int add_agent(int json_output)
     } while (1);
 
 cleanup:
-    free(c_ip.ip);
     auth_close(sock);
     return (0);
 }
@@ -511,13 +587,13 @@ int remove_agent(int json_output)
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
-                        snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                        snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
                         cJSON_AddNumberToObject(json_root, "error", 71);
                         cJSON_AddStringToObject(json_root, "message", buffer);
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+                        merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
                 }
 
                 free(full_name);

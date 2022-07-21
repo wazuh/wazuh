@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,6 +10,8 @@
 
 #ifndef SYSCHECK_OP_H
 #define SYSCHECK_OP_H
+
+extern const char *SYSCHECK_EVENT_STRINGS[];
 
 #ifndef WIN32
 
@@ -84,18 +86,30 @@ typedef enum fim_fields {
     FIM_HARD_LINKS,
     FIM_MODE,
     FIM_SIZE,
+    FIM_SIZE_BEFORE,
     FIM_PERM,
+    FIM_PERM_BEFORE,
     FIM_UID,
+    FIM_UID_BEFORE,
     FIM_GID,
+    FIM_GID_BEFORE,
     FIM_MD5,
+    FIM_MD5_BEFORE,
     FIM_SHA1,
+    FIM_SHA1_BEFORE,
     FIM_UNAME,
+    FIM_UNAME_BEFORE,
     FIM_GNAME,
+    FIM_GNAME_BEFORE,
     FIM_MTIME,
+    FIM_MTIME_BEFORE,
     FIM_INODE,
+    FIM_INODE_BEFORE,
     FIM_SHA256,
+    FIM_SHA256_BEFORE,
     FIM_DIFF,
     FIM_ATTRS,
+    FIM_ATTRS_BEFORE,
     FIM_CHFIELDS,
     FIM_USER_ID,
     FIM_USER_NAME,
@@ -117,6 +131,7 @@ typedef enum fim_fields {
     FIM_REGISTRY_VALUE_NAME,
     FIM_REGISTRY_VALUE_TYPE,
     FIM_ENTRY_TYPE,
+    FIM_EVENT_TYPE,
     FIM_NFIELDS
 } fim_fields;
 
@@ -345,11 +360,12 @@ unsigned int w_get_file_attrs(const char *file_path);
  * @brief Retrieves the permissions of a specific file (Windows)
  *
  * @param [in] file_path The path of the file from which to check permissions
- * @param [out] permissions Buffer in which to write the permissions
- * @param [in] perm_size The size of the permissions buffer
- * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
+ * @param [out] output_acl A cJSON pointer to an object holding the ACL of the file.
+ * @retval 0 on success.
+ * @retval -1 if the cJSON object could not be initialized.
+ * @retval An error code retrieved from `GetLastError` otherwise.
  */
-int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
+int w_get_file_permissions(const char *file_path, cJSON **output_acl);
 
 /**
  * @brief Retrieves the group name from a group ID in windows
@@ -372,12 +388,13 @@ char *get_registry_group(char **sid, HANDLE hndl);
 /**
  * @brief Retrieves the permissions of a registry key.
  *
- * @param hndl Handle for the registry key to check the permissions of.
- * @param perm_key Permissions associated to the registry key.
- *
- * @return Permissions in perm_key. ERROR_SUCCESS on success, different otherwise
+ * @param [in] hndl Handle for the registry key to check the permissions of.
+ * @param [out] output_acl A cJSON pointer to an object holding the ACL of the file.
+ * @retval 0 on success.
+ * @retval -1 if the cJSON object could not be initialized.
+ * @retval An error code retrieved from `GetLastError` otherwise.
 */
-DWORD get_registry_permissions(HKEY hndl, char *perm_key);
+DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl);
 
 /**
  * @brief Get last modification time from registry key.
@@ -387,16 +404,6 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key);
  * @return Last modification time of registry key in POSIX format.
 */
 unsigned int get_registry_mtime(HKEY hndl);
-
-/**
- * @brief Copy ACE information into buffer
- *
- * @param [in] ace ACE structure
- * @param [out] perm Buffer in which to write the ACE information
- * @param [in] perm_size The size of the buffer
- * @return 0 on failure, the number of bytes written into perm on success
- */
-int copy_ace_info(void *ace, char *perm, int perm_size);
 
 /**
  * @brief Retrieves the account information (name and domain) from SID
@@ -425,6 +432,22 @@ void decode_win_attributes(char *str, unsigned int attrs);
  * @return A string in human readable format with the Windows permission
  */
 char *decode_win_permissions(char *raw_perm);
+
+/**
+ * @brief Compares 2 Windows ACLs in JSON format
+ *
+ * @param [in] acl1 A cJSON object holding a Windows ACL
+ * @param [in] acl2 A cJSON object holding a Windows ACL
+ * @return `true` if ACLs are equal to each other, `false` otherwise
+ */
+bool compare_win_permissions(const cJSON * const acl1, const cJSON * const acl2);
+
+/**
+ * @brief Decodes a permission string and converts it to a human readable format
+ *
+ * @param [out] acl_json A cJSON with the permissions to decode
+ */
+void decode_win_acl_json(cJSON *acl_json);
 
 /**
  * @brief Transforms a bit mask of attributes into a human readable cJSON

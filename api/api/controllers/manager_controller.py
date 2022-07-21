@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -191,7 +191,7 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filename': common.analysisd_stats}
+    f_kwargs = {'filename': common.ANALYSISD_STATS}
 
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -212,7 +212,7 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filename': common.remoted_stats}
+    f_kwargs = {'filename': common.REMOTED_STATS}
 
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

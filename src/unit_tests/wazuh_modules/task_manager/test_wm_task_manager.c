@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -123,10 +123,14 @@ void test_wm_task_manager_init_ok(void **state)
 
     config->enabled = 1;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     int ret = wm_task_manager_init(config);
 
@@ -139,19 +143,19 @@ void test_wm_task_manager_init_bind_err(void **state)
 
     config->enabled = 1;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, OS_INVALID);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, OS_INVALID);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8251): Queue '/queue/tasks/task' not accessible: 'Success'. Exiting...");
+    expect_string(__wrap__mterror, formatted_msg, "(8251): Queue 'queue/tasks/task' not accessible: 'Success'. Exiting...");
 
-    will_return(__wrap_pthread_exit, OS_INVALID);
-
-    int ret = wm_task_manager_init(config);
-
-    assert_int_equal(ret, OS_INVALID);
+    expect_assert_failure(wm_task_manager_init(config));
 }
 
 void test_wm_task_manager_init_disabled(void **state)
@@ -164,16 +168,7 @@ void test_wm_task_manager_init_disabled(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8202): Module disabled. Exiting...");
 
-    will_return(__wrap_pthread_exit, OS_INVALID);
-
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
-
-    int ret = wm_task_manager_init(config);
-
-    assert_int_equal(ret, sock);
+    expect_assert_failure(wm_task_manager_init(config));
 }
 
 void test_wm_task_manager_dispatch_ok(void **state)
@@ -623,10 +618,14 @@ void test_wm_task_manager_main_ok(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -695,10 +694,14 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -741,10 +744,14 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -787,10 +794,14 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -833,10 +844,14 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -879,10 +894,14 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -932,10 +951,14 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -980,10 +1003,14 @@ void test_wm_task_manager_main_select_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
-    expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_BindUnixDomain, sock);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
@@ -993,21 +1020,7 @@ void test_wm_task_manager_main_select_err(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8252): Error in select(): 'Success'. Exiting...");
 
-    will_return(__wrap_pthread_exit, OS_INVALID);
-
-    will_return(__wrap_select, 1);
-
-    will_return(__wrap_accept, peer);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, peer);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, message);
-    will_return(__wrap_OS_RecvSecureTCP, OS_SOCKTERR);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
-
-    wm_task_manager_main(config);
+    expect_assert_failure(wm_task_manager_main(config));
 }
 
 void test_wm_task_manager_main_worker_err(void **state)

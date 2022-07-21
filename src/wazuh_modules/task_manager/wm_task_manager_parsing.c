@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Task management.
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 13, 2020.
  *
  * This program is free software; you can redistribute it
@@ -397,8 +397,6 @@ void wm_task_manager_parse_data_result(cJSON *response, const char *node, const 
             timestamp = w_get_timestamp(tmp);
             cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_LAST_UPDATE_TIME], timestamp);
             os_free(timestamp);
-        } else {
-            cJSON_AddStringToObject(response, task_manager_json_keys[WM_TASK_LAST_UPDATE_TIME], "0");
         }
     }
 }

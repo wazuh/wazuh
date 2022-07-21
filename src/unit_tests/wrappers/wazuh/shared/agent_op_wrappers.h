@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,8 @@
 
 #ifndef AGENT_OP_WRAPPERS_H
 #define AGENT_OP_WRAPPERS_H
+
+#include "stddef.h"
 
 int __wrap_auth_connect();
 char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name);

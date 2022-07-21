@@ -1,16 +1,17 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import os
-from time import time
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
 
 from wazuh.rbac.tests.utils import init_db
+from wazuh.core.utils import get_utc_now
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -18,7 +19,7 @@ test_data_path = os.path.join(test_path, 'data')
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
@@ -75,7 +76,7 @@ def test_get_all_token_rules(db_setup):
 
 def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
-    current_timestamp = int(time())
+    current_timestamp = int(get_utc_now().timestamp())
     users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:

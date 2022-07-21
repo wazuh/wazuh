@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 03, 2018.
  *
  * This program is free software; you can redistribute it
@@ -19,6 +19,8 @@ static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_up(void * args);
+static void * run_backup(void * args);
+
 
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
@@ -28,7 +30,8 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile int running = 1;
 rlim_t nofile;
 
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv)
+{
     int test_config = 0;
     int run_foreground = 0;
     int i;
@@ -38,8 +41,15 @@ int main(int argc, char ** argv) {
     pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_up;
+    pthread_t thread_backup;
 
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
     // Get options
 
@@ -76,12 +86,19 @@ int main(int argc, char ** argv) {
 
     // Read internal options
 
-    wconfig.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
     wconfig.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
     wconfig.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
     wconfig.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
     wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
+
+    // Allocating memory for configuration structures and setting default values
+    wdb_init_conf();
+
+    // Read ossec.conf
+    if (ReadConfig(WAZUHDB, OSSECCONF, NULL, NULL) < 0) {
+        merror_exit("Invalid configuration block for Wazuh-DB.");
+    }
 
     if (!isDebug()) {
         int debug_level;
@@ -90,6 +107,8 @@ int main(int argc, char ** argv) {
             nowDebug();
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     if (test_config) {
         exit(0);
@@ -100,8 +119,6 @@ int main(int argc, char ** argv) {
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
-    mdebug1(STARTED_MSG);
-
     if (!run_foreground) {
         goDaemon();
         nowDaemon();
@@ -110,7 +127,7 @@ int main(int argc, char ** argv) {
     // Reset template. Basically, remove queue/db/.template.db
     // The prefix is needed here, because we are not yet chrooted
     char path_template[OS_FLSIZE + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB2_DIR, WDB_PROF_NAME);
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
 
@@ -137,14 +154,16 @@ int main(int argc, char ** argv) {
 
         // Change root
 
-        if (Privsep_Chroot(DEFAULTDIR) < 0) {
-            merror_exit(CHROOT_ERROR, DEFAULTDIR, errno, strerror(errno));
+        if (Privsep_Chroot(home_path) < 0) {
+            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
         }
 
         if (Privsep_SetUser(uid) < 0) {
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
         }
     }
+
+    os_free(home_path);
 
     // Signal manipulation
 
@@ -176,27 +195,35 @@ int main(int argc, char ** argv) {
     // Start threads
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
+        merror("Couldn't create 'run_dealer' thread: %s", strerror(status));
         goto failure;
     }
 
-    os_malloc(sizeof(pthread_t) * wconfig.worker_pool_size, worker_pool);
+    os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
+            merror("Couldn't create 'run_worker' %d thread: %s", i + 1, strerror(status));
             goto failure;
         }
     }
 
     if (status = pthread_create(&thread_gc, NULL, run_gc, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
+        merror("Couldn't create 'run_gc' thread: %s", strerror(status));
         goto failure;
     }
 
     if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
+        merror("Couldn't create 'run_up' thread: %s", strerror(status));
         goto failure;
+    }
+
+    bool backups_enabled = wdb_check_backup_enabled();
+    if (backups_enabled) {
+        if (status = pthread_create(&thread_backup, NULL, run_backup, NULL), status != 0) {
+            merror("Couldn't create 'run_backup' thread: %s", strerror(status));
+            goto failure;
+        }
     }
 
     // Join threads
@@ -211,9 +238,13 @@ int main(int argc, char ** argv) {
     free(worker_pool);
     pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
+    if(backups_enabled) {
+        pthread_join(thread_backup, NULL);
+    }
     wdb_close_all();
 
     OSHash_Free(open_dbs);
+    wdb_free_conf();
 
     // Reset template here too, remove queue/db/.template.db again
     // Without the prefix, because chrooted at that point
@@ -224,7 +255,7 @@ int main(int argc, char ** argv) {
     return EXIT_SUCCESS;
 
 failure:
-    free(worker_pool);
+    os_free(worker_pool);
     return EXIT_FAILURE;
 }
 
@@ -272,7 +303,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
 
             continue;
         }
-        if (wnotify_add(notify_queue, peer) < 0) {
+        if (wnotify_add(notify_queue, peer, WO_READ) < 0) {
             merror("at run_dealer(): wnotify_add(%d): %s (%d)",
                     peer, strerror(errno), errno);
             goto error;
@@ -314,8 +345,8 @@ void * run_worker(__attribute__((unused)) void * args) {
             continue;
         }
 
-        peer = wnotify_get(notify_queue, 0);
-        if (wnotify_delete(notify_queue, peer) < 0) {
+        peer = wnotify_get(notify_queue, 0, NULL);
+        if (wnotify_delete(notify_queue, peer, WO_READ) < 0) {
             merror("at run_worker(): wnotify_delete(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }
@@ -354,7 +385,7 @@ void * run_worker(__attribute__((unused)) void * args) {
             }
 
             *response = '\0';
-            wdb_parse(buffer, response);
+            wdb_parse(buffer, response, peer);
             if (length = strlen(response), length > 0) {
                 if (terminal && length < OS_MAXSTR - 1) {
                     response[length++] = '\n';
@@ -367,7 +398,7 @@ void * run_worker(__attribute__((unused)) void * args) {
             break;
         }
 
-        if (wnotify_add(notify_queue, peer) < 0) {
+        if (wnotify_add(notify_queue, peer, WO_READ) < 0) {
             merror("at run_worker(): wnotify_add(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }
@@ -385,6 +416,43 @@ void * run_gc(__attribute__((unused)) void * args) {
 
     return NULL;
 }
+
+void * run_backup(__attribute__((unused)) void * args) {
+    time_t last_global_backup_time = wdb_global_get_most_recent_backup(NULL);
+    char output[OS_MAXSTR + 1] = {0};
+    time_t current_time = 0;
+    int global_interval = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval;
+    bool global_enabled = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled;
+
+    mdebug2("Database backup thread started.");
+
+    while(running) {
+        for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+            switch (i) {
+                case WDB_GLOBAL_BACKUP:
+                    if (global_enabled) {
+                        current_time = time(NULL);
+                        if((current_time - last_global_backup_time) >= global_interval) {
+                            wdb_t* wdb = wdb_open_global();
+                            if (wdb && wdb->enabled && OS_SUCCESS != wdb_global_create_backup(wdb, output, NULL)) {
+                                merror("Creating Global DB snapshot by interval failed: %s", output);
+                            }
+                            last_global_backup_time = current_time;
+                            wdb_leave(wdb);
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+        }
+        sleep(1);
+   }
+
+    return NULL;
+}
+
 
 void * run_up(__attribute__((unused)) void * args) {
     DIR *fd;
@@ -405,7 +473,7 @@ void * run_up(__attribute__((unused)) void * args) {
         return NULL;
     }
 
-    while ((db = readdir(fd)) != NULL) {
+    while ((db = readdir(fd)) != NULL && running) {
         if ((strcmp(db->d_name, ".") == 0) ||
             (strcmp(db->d_name, "..") == 0) ||
             (strcmp(db->d_name, ".template.db") == 0) ||
@@ -427,8 +495,14 @@ void * run_up(__attribute__((unused)) void * args) {
 
         *(name++) = '\0';
         wdb = wdb_open_agent2(atoi(entry));
-        wdb_leave(wdb);
+
+        if (wdb != NULL) {
+            wdb_leave(wdb);
+        }
+
         free(entry);
+
+        sleep(1);
     }
 
     os_free(db_folder);

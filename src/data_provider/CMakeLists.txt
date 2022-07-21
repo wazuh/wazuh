@@ -46,6 +46,11 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
+if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
+include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+endif(NOT CMAKE_CHECK_CENTOS5)
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -54,21 +59,40 @@ link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
+if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
+link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
+link_directories(${SRC_FOLDER}/external/rpm/builddir/)
+endif(NOT CMAKE_CHECK_CENTOS5)
+link_directories(${SRC_FOLDER}/external/openssl/)
+
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Win.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsInfoWin.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp")
+      "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/*Windows.cpp")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
+elseif(CMAKE_CHECK_CENTOS5)
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParser.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParserRpmLegacy.cpp")
+  add_definitions(-DLINUX_TYPE=LinuxType::LEGACY) # Partial compilation in legacy systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinux*.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
+  add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
@@ -88,6 +112,14 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
       "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
+      "${CMAKE_SOURCE_DIR}/src/*Solaris.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/*Solaris.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/networkSolarisHelper.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*Solaris.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 else()
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Unix.cpp"
@@ -104,22 +136,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
-      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
       POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(sysinfo PROPERTIES
-          LINK_FLAGS "-static-libgcc -static-libstdc++")
-
+  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
+    set_target_properties(sysinfo PROPERTIES
+      LINK_FLAGS "-static-libstdc++")
+  else()
+    set_target_properties(sysinfo PROPERTIES
+      LINK_FLAGS "-static-libgcc -static-libstdc++")
+  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    if(DISABLE_SHARED)
-      if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(sysinfo proc db)
-      else()
-        target_link_libraries(sysinfo proc)
-      endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    endif(DISABLE_SHARED)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
@@ -130,11 +159,8 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-if(DISABLE_SHARED)
-  target_link_libraries(sysinfo cjson)
-else()
-  target_link_libraries(sysinfo wazuhext)
-endif(DISABLE_SHARED)
+target_link_libraries(sysinfo wazuhext)
+
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 12, 2018.
  *
  * This program is free software; you can redistribute it
@@ -15,6 +15,8 @@
 // This function performs those data migrations between
 // updates that cannot be resolved with queries
 static int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step);
+static int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step);
+
 // Migrate to the fourth version of the database:
 // - The attributes field of the fim_entry table is decoded
 static int wdb_adjust_v4(wdb_t *wdb);
@@ -30,41 +32,31 @@ static const char *SQL_GLOBAL_STMT[] = {
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
-    const char * UPDATES[] = {
-        schema_upgrade_v1_sql,
-        schema_upgrade_v2_sql,
-        schema_upgrade_v3_sql,
-        schema_upgrade_v4_sql,
-        schema_upgrade_v5_sql,
-        schema_upgrade_v6_sql,
-        schema_upgrade_v7_sql
-    };
+    const char *UPDATES[] = { schema_upgrade_v1_sql, schema_upgrade_v2_sql,
+                              schema_upgrade_v3_sql, schema_upgrade_v4_sql,
+                              schema_upgrade_v5_sql, schema_upgrade_v6_sql,
+                              schema_upgrade_v7_sql, schema_upgrade_v8_sql };
 
-    char db_version[OS_SIZE_256 + 2];
+    char db_version[OS_SIZE_256];
     int version = 0;
 
-    switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
-    case -1:
-        return wdb;
-
-    case 0:
-        break;
-
-    default:
+    int ret = wdb_metadata_get_entry(wdb, "db_version", db_version);
+    if (ret == OS_SUCCESS || ret == OS_NOTFOUND) {
         version = atoi(db_version);
 
         if (version < 0) {
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
             return wdb;
         }
-    }
 
-    for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
-        mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+        for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
+            mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
-        if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_upgrade(wdb, i)) {
-            wdb = wdb_backup(wdb, version);
-            break;
+            if (wdb_sql_exec(wdb, UPDATES[i]) == -1 ||
+                wdb_adjust_upgrade(wdb, i)) {
+                wdb = wdb_backup(wdb, version);
+                break;
+            }
         }
     }
 
@@ -74,42 +66,89 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
-        schema_global_upgrade_v2_sql
+        schema_global_upgrade_v2_sql,
+        schema_global_upgrade_v3_sql,
+        schema_global_upgrade_v4_sql
     };
 
+    char output[OS_MAXSTR + 1] = { 0 };
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
+    int updates_length = (int)(sizeof(UPDATES) / sizeof(char *));
 
-    switch (wdb_metadata_table_check(wdb,"metadata")) {
-    case OS_INVALID:
-        mwarn("DB(%s) Error trying to find metadata table", wdb->id);
-        wdb = wdb_backup_global(wdb, -1);
-        return wdb;
-    case 0:
-        // The table doesn't exist. Checking if version is 3.10 to upgrade or recreate
-        if (wdb_upgrade_check_manager_keepalive(wdb) != 1) {
-            wdb = wdb_backup_global(wdb, -1);
-            return wdb;
+    int count = 0;
+    if (wdb_count_tables_with_name(wdb, "metadata", &count) == OS_SUCCESS) {
+        if (0 < count) {
+            if (wdb_metadata_get_entry(wdb, "db_version", db_version) == OS_SUCCESS) {
+                version = atoi(db_version);
+            }
+            else {
+                /**
+                 * We can't determine if the database should be upgraded. If we
+                 * allow the usage, we could have many errors because of an
+                 * operation over an old database version. We should block the
+                 * usage until determine whether we should upgrade or not.
+                 */
+                mwarn("DB(%s): Error trying to get DB version", wdb->id);
+                wdb->enabled = false;
+                return wdb;
+            }
         }
-        break;
-    default:
-        if( wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {
-            version = atoi(db_version);
-        }
-        else{
-            mwarn("DB(%s): Error trying to get DB version", wdb->id);
-            wdb = wdb_backup_global(wdb, -1);
-            return wdb;
+        else {
+            /*
+             * The table does not exist which could mean that we have and old
+             * version of the db. If we have an older version than 3.10 we can
+             * recreate the global.db database and not lose critical data.
+             */
+            if (wdb_is_older_than_v310(wdb)) {
+                if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
+                    merror("Creating pre-upgrade Global DB snapshot failed: %s", output);
+                    wdb->enabled = false;
+                }
+                else {
+                    wdb = wdb_recreate_global(wdb);
+                }
+                return wdb;
+            }
         }
     }
+    else {
+        /*
+         * An error occurred trying to get the table count and so we can't
+         * determine if the database should be upgraded. If we allow the
+         * database usage, we could have many errors because of an operation
+         * over an old or corrupted database. If we recreate the database, we
+         * have the risk of loosing data of the newer database versions. Instead
+         * we block the usage until we can determine whether we should upgrade
+         * or not.
+         */
+        merror("DB(%s) Error trying to find metadata table", wdb->id);
+        wdb->enabled = false;
+        return wdb;
+    }
 
-    for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
-        mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
-
-        if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
-            mwarn("Failed to update global.db to version %d", i + 1);
-            wdb = wdb_backup_global(wdb, version);
-            break;
+    if (version < updates_length) {
+        if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
+            merror("Creating pre-upgrade Global DB snapshot failed: %s", output);
+            wdb->enabled = false;
+        }
+        else {
+            for (int i = version; i < updates_length; i++) {
+                mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+                if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID ||
+                    wdb_adjust_global_upgrade(wdb, i)) {
+                    if (OS_INVALID != wdb_global_restore_backup(&wdb, NULL, false, output)) {
+                        merror("Failed to update global.db to version %d. The global.db was "
+                               "restored to the original state.",
+                               i + 1);
+                    }
+                    else {
+                        merror("Failed to update global.db to version %d.", i + 1);
+                        wdb->enabled = false;
+                    }
+                    break;
+                }
+            }
         }
     }
 
@@ -156,34 +195,32 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     return new_wdb;
 }
 
-wdb_t * wdb_backup_global(wdb_t *wdb, int version) {
+wdb_t * wdb_recreate_global(wdb_t *wdb) {
     char path[PATH_MAX];
     wdb_t * new_wdb = NULL;
     sqlite3 * db;
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-    if (wdb_close(wdb, TRUE) != -1) {
-        if (wdb_create_backup_global(version) != -1) {
-            mwarn("Creating Global DB backup and creating empty DB");
-            unlink(path);
+    wdb_leave(wdb);
+    if (wdb_close(wdb, TRUE) != OS_INVALID) {
+        unlink(path);
 
-            if (OS_SUCCESS != wdb_create_global(path)) {
-                merror("Couldn't create SQLite database '%s'", path);
-                return NULL;
-            }
-
-            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-                sqlite3_close_v2(db);
-                return NULL;
-            }
-
-            new_wdb = wdb_init(db, WDB_GLOB_NAME);
-            wdb_pool_append(new_wdb);
+        if (OS_SUCCESS != wdb_create_global(path)) {
+            merror("Couldn't create SQLite database '%s'", path);
+            return NULL;
         }
-    } else {
-        merror("Couldn't create SQLite Global backup database.");
+
+        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
+            sqlite3_close_v2(db);
+            return NULL;
+        }
+
+        new_wdb = wdb_init(db, WDB_GLOB_NAME);
+        wdb_pool_append(new_wdb);
+        w_mutex_lock(&new_wdb->mutex);
+        new_wdb->refcount++;
     }
 
     return new_wdb;
@@ -241,61 +278,19 @@ int wdb_create_backup(const char * agent_id, int version) {
     return 0;
 }
 
-int wdb_create_backup_global(int version) {
-    char path[OS_FLSIZE + 1];
-    char buffer[4096];
-    FILE *source;
-    FILE *dest;
-    size_t nbytes;
-    int result = 0;
-
-    snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-
-    if (!(source = fopen(path, "r"))) {
-        merror("Couldn't open source '%s': %s (%d)", path, strerror(errno), errno);
-        return OS_INVALID;
-    }
-
-    snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d-%lu", WDB2_DIR, WDB_GLOB_NAME, version, (unsigned long)time(NULL));
-
-    if (!(dest = fopen(path, "w"))) {
-        merror("Couldn't open dest '%s': %s (%d)", path, strerror(errno), errno);
-        fclose(source);
-        return OS_INVALID;
-    }
-
-    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            result = OS_INVALID;
-            break;
-        }
-    }
-
-    fclose(source);
-    if (fclose(dest) == -1) {
-        unlink(path);
-        merror("Couldn't create file %s completely.", path);
-        return OS_INVALID;
-    }
-
-    if (result < 0) {
-        unlink(path);
-        return OS_INVALID;
-    }
-
-    if (chmod(path, 0640) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-        unlink(path);
-        return OS_INVALID;
-    }
-
-    return OS_SUCCESS;
-}
-
 int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
     switch (upgrade_step) {
         case 3:
             return wdb_adjust_v4(wdb);
+        default:
+            return 0;
+    }
+}
+
+int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step) {
+    switch (upgrade_step) {
+        case 3:
+            return wdb_global_adjust_v4(wdb);
         default:
             return 0;
     }
@@ -349,31 +344,31 @@ int wdb_adjust_v4(wdb_t *wdb) {
     return 0;
 }
 
-// Check the presence of manager's keepalive in the global database
-int wdb_upgrade_check_manager_keepalive(wdb_t *wdb) {
+bool wdb_is_older_than_v310(wdb_t *wdb) {
     sqlite3_stmt *stmt = NULL;
-    int result = -1;
+    int result = OS_INVALID;
 
-    if (sqlite3_prepare_v2(wdb->db,
-                           SQL_GLOBAL_STMT[WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE],
-                           -1,
-                           &stmt,
-                           NULL) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(wdb->db, SQL_GLOBAL_STMT[WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE], -1, &stmt, NULL) !=
+        SQLITE_OK) {
         merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+    }
+    else {
+        switch (sqlite3_step(stmt)) {
+            case SQLITE_ROW: {
+                result = sqlite3_column_int(stmt, 0);
+                break;
+            }
+            case SQLITE_DONE: {
+                result = OS_SUCCESS;
+                break;
+            }
+            default: {
+                result = OS_INVALID;
+                break;
+            }
+        }
+        sqlite3_finalize(stmt);
     }
 
-    switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        result = sqlite3_column_int(stmt, 0);
-        break;
-    case SQLITE_DONE:
-        result = OS_SUCCESS;
-        break;
-    default:
-        result = OS_INVALID;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    return (result != 1);
 }

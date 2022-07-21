@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -48,6 +48,8 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
     if (!fp_in) {
         return (XMLW_NOIN);
     }
+
+    setvbuf(fp_in, NULL,_IOFBF , XML_MAXSIZE + 1);
 
     /* Open outfile */
     fp_out = fopen(outfile, "w");

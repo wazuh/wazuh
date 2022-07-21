@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -23,12 +23,13 @@
 #define __attribute__(x)
 #endif
 
+#include <stdarg.h>
 #include <external/cJSON/cJSON.h>
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
-#define LOGFILE   "/logs/ossec.log"
-#define LOGJSONFILE "/logs/ossec.json"
+#define LOGFILE   "logs/ossec.log"
+#define LOGJSONFILE "logs/ossec.json"
 #define _PRINTF_FORMAT printf
 #else
 #define LOGFILE "ossec.log"
@@ -58,10 +59,13 @@ void _mdebug2(const char * file, int line, const char * func, const char *msg, .
 void _mtdebug2(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));
 void _merror(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull));
 void _mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));
+void _mverror(const char * file, int line, const char * func, const char *msg, va_list args)  __attribute__((nonnull));
 void _mwarn(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull));
 void _mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));
+void _mvwarn(const char * file, int line, const char * func, const char *msg, va_list args)  __attribute__((nonnull));
 void _minfo(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull));
 void _mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));
+void _mvinfo(const char * file, int line, const char * func, const char *msg, va_list args)  __attribute__((nonnull));
 void print_out(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
 void _mferror(const char * file, int line, const char * func, const char *msg, ... ) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull));
 void _mtferror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));

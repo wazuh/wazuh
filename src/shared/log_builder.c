@@ -3,7 +3,7 @@
  * @brief Definition of the shared log builder library
  * @date 2019-12-06
  *
- * @copyright Copyright (c) 2015-2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 /*
@@ -36,6 +36,9 @@ static int log_builder_update_hostname(log_builder_t * builder);
  */
 static int log_builder_update_host_ip(log_builder_t * builder);
 
+/* Number of seconds of how often the IP must be updated. */
+static int g_ip_update_interval = 0;
+
 // Initialize a log builder structure
 log_builder_t * log_builder_init(bool update) {
     log_builder_t * builder;
@@ -44,7 +47,7 @@ log_builder_t * log_builder_init(bool update) {
     {
         pthread_rwlockattr_t attr;
         pthread_rwlockattr_init(&attr);
-
+        g_ip_update_interval = getDefine_Int("logcollector","ip_update_interval", 0, 3600);
 #ifdef __linux__
         /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
         * Do not use recursive locking.
@@ -60,7 +63,7 @@ log_builder_t * log_builder_init(bool update) {
         log_builder_update(builder);
     } else {
         strncpy(builder->host_name, "localhost", LOG_BUILDER_HOSTNAME_LEN - 1);
-        strncpy(builder->host_ip, "0.0.0.0", INET6_ADDRSTRLEN - 1);
+        strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }
 
     return builder;
@@ -241,49 +244,50 @@ int log_builder_update_hostname(log_builder_t * builder) {
 
 // Update the host's IP value
 int log_builder_update_host_ip(log_builder_t * builder) {
-    char * host_ip = NULL;
+    static char host_ip[IPSIZE] = { '\0' };
+    static time_t last_update = 0;
+    time_t now = time(NULL);
 
+    if ((now - last_update) >= g_ip_update_interval) {
+        last_update = now;
 #ifdef WIN32
-    host_ip = get_agent_ip();
+        char * tmp_host_ip = get_agent_ip();
 
-    if (host_ip == NULL) {
-        mdebug1("Cannot update host IP.");
-    }
+        if (tmp_host_ip) {
+            strncpy(host_ip, tmp_host_ip, IPSIZE - 1);
+            os_free(tmp_host_ip);
+        } else {
+            mdebug1("Cannot update host IP.");
+            *host_ip = '\0';
+        }
 
-#elif defined __linux__ || defined __MACH__ || defined sun
-    const char * REQUEST = "host_ip";
-    int sock = control_check_connection();
+#elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
+        const char * REQUEST = "host_ip";
+        int sock = control_check_connection();
 
-    if (sock == -1) {
-        mdebug1("Cannot update host IP: The control module is not available: %s (%d)", strerror(errno), errno);
-    } else {
-        os_calloc(INET6_ADDRSTRLEN, sizeof(char), host_ip);
-
-        if (send(sock, REQUEST, strlen(REQUEST), 0) > 0) {
-            if (recv(sock, host_ip, INET6_ADDRSTRLEN - 1, 0) < 0) {
-                mdebug1("The control module did not respond: %s (%d).", strerror(errno), errno);
-                *host_ip = '\0';
+        if (sock == -1) {
+            mdebug1("Cannot update host IP: The control module is not available: %s (%d)", strerror(errno), errno);
+            last_update = 0;
+        } else {
+            if (send(sock, REQUEST, strlen(REQUEST), 0) > 0) {
+                if (recv(sock, host_ip, IPSIZE - 1, 0) < 0) {
+                    mdebug1("The control module did not respond: %s (%d).", strerror(errno), errno);
+                    *host_ip = '\0';
+                }
             }
+
+            close(sock);
         }
-
-        close(sock);
-
-        if (*host_ip == '\0') {
-            os_free(host_ip);
-        }
-    }
-
 #endif
+    }
     w_rwlock_wrlock(&builder->rwlock);
-
-    if (host_ip != NULL) {
-        strncpy(builder->host_ip, host_ip, INET6_ADDRSTRLEN - 1);
-        free(host_ip);
+    if (*host_ip != '\0' && strcmp(host_ip, "Err")) {
+        strcpy(builder->host_ip, host_ip);
     } else {
-        strncpy(builder->host_ip, "0.0.0.0", INET6_ADDRSTRLEN - 1);
+        strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }
 
-    builder->host_ip[INET6_ADDRSTRLEN - 1] = '\0';
+    builder->host_ip[IPSIZE - 1] = '\0';
     w_rwlock_unlock(&builder->rwlock);
 
     return 0;

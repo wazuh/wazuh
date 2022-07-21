@@ -1,18 +1,16 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
 import os
 import typing
+from functools import wraps
 
 import six
 from connexion import ProblemException
 
-from api.api_exception import APIError
-from wazuh.core.common import wazuh_path as WAZUH_PATH
-from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
-    WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
+from wazuh.core import common, exception
 
 
 def serialize(item):
@@ -234,7 +232,7 @@ def to_relative_path(full_path):
     :return: Relative path
     :rtype: str
     """
-    return os.path.relpath(full_path, WAZUH_PATH)
+    return os.path.relpath(full_path, common.WAZUH_PATH)
 
 
 def _create_problem(exc: Exception, code=None):
@@ -254,26 +252,26 @@ def _create_problem(exc: Exception, code=None):
         ProblemException or `exc` exception type
     """
     ext = None
-    if isinstance(exc, WazuhException):
+    if isinstance(exc, exception.WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
                                     'code': exc.code,
                                     'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
 
-    if isinstance(exc, WazuhInternalError):
-        raise ProblemException(status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
-                               ext=ext)
-    elif isinstance(exc, WazuhPermissionError):
+    if isinstance(exc, exception.WazuhInternalError):
+        raise ProblemException(status=500 if not code else code,
+                               type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, exception.WazuhPermissionError):
         raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhResourceNotFound):
+    elif isinstance(exc, exception.WazuhResourceNotFound):
         raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhTooManyRequests):
+    elif isinstance(exc, exception.WazuhTooManyRequests):
         raise ProblemException(status=429, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhNotAcceptable):
+    elif isinstance(exc, exception.WazuhNotAcceptable):
         raise ProblemException(status=406, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhError):
-        raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
-                               ext=ext)
+    elif isinstance(exc, exception.WazuhError):
+        raise ProblemException(status=400 if not code else code,
+                               type=exc.type, title=exc.title, detail=exc.message, ext=ext)
 
     raise exc
 
@@ -294,3 +292,58 @@ def raise_if_exc(obj):
         _create_problem(obj)
     else:
         return obj
+
+
+def get_invalid_keys(original_dict, des_dict):
+    """Return a set with the keys from `original_dict` that are not present in `des_dict`.
+
+    Parameters
+    ----------
+    original_dict : dict
+        Original dictionary.
+    des_dict : dict
+        Deserialized dictionary with the model keys.
+
+    Returns
+    -------
+    set
+        Set with the invalid keys.
+    """
+    invalid_keys = set()
+
+    for key in original_dict:
+        if isinstance(original_dict[key], dict):
+            try:
+                invalid_keys.update(get_invalid_keys(original_dict[key], des_dict[key]))
+            except KeyError:
+                invalid_keys.add(key)
+        else:
+            if key not in set(des_dict):
+                invalid_keys.add(key)
+
+    return invalid_keys
+
+
+def deprecate_endpoint(link: str = ''):
+    """Decorator to add deprecation headers to API response.
+
+    Parameters
+    ----------
+    link : str
+        Documentation related with this deprecation.
+    """
+
+    def add_deprecation_headers(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            api_response = await func(*args, **kwargs)
+
+            api_response.headers['Deprecated'] = 'true'
+            if link:
+                api_response.headers['Link'] = f'<{link}>; rel="Deprecated"'
+
+            return api_response
+
+        return wrapper
+
+    return add_deprecation_headers

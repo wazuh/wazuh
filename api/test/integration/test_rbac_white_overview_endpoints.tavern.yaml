@@ -1,8 +1,5 @@
 test_name: GET /overview/agents
 
-marks:
-  - rbac_tests
-
 stages:
 
  - name: Get full agents overview
@@ -44,11 +41,16 @@ stages:
                platform: !anystr
                version: !anystr
          agent_status:
-           active: 4
-           disconnected: 1
-           never_connected: 1
-           pending: 0
-           total: 6
+           connection:
+             active: 4
+             disconnected: 1
+             never_connected: 1
+             pending: 0
+             total: 6
+           configuration:
+             synced: 4
+             not_synced: 2
+             total: 6
          agent_version: !anything # This will be tested with an external function
          groups: []
          last_registered_agent:
@@ -72,6 +74,6 @@ stages:
                uname: !anystr
                version: !anystr
              registerIP: any
-             status: active
+             status: disconnected
              version: !anystr
          nodes: !anything

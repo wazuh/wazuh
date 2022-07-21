@@ -7,17 +7,22 @@
 
 # https:
 #  enabled: yes
-#  key: "api/configuration/ssl/server.key"
-#  cert: "api/configuration/ssl/server.crt"
+#  key: "server.key"
+#  cert: "server.crt"
 #  use_ca: False
-#  ca: "api/configuration/ssl/ca.crt"
-#  ssl_cipher: "TLSv1.2"
+#  ca: "ca.crt"
+#  ssl_protocol: "TLSv1.2"
+#  ssl_ciphers: ""
+
+# Modify API's intervals (time in seconds)
+# intervals:
+#   request_timeout: 10
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
 # logs:
 #  level: "info"
-#  path: "logs/api.log"
+#  format: "plain"
 
 # Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
 # cors:
@@ -38,14 +43,14 @@
 #  block_time: 300
 #  max_request_per_minute: 300
 
-# Force the use of authd when adding and removing agents. Values: yes, no
-# use_only_authd: no
-
-# Drop privileges (Run as ossec user)
+# Drop privileges (Run as wazuh user)
 # drop_privileges: yes
 
 # Enable features under development
 # experimental_features: no
+
+# Maximum body size that the API can accept, in bytes (0 -> limitless)
+# max_upload_size: 10485760
 
 # Enable remote commands
 # remote_commands:

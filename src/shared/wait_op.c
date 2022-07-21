@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -22,12 +22,7 @@ void os_setwait()
 
     /* For same threads */
     __wait_lock = 1;
-
-    if (isChroot()) {
-        fp = fopen(WAIT_FILE, "w");
-    } else {
-        fp = fopen(WAIT_FILE_PATH, "w");
-    }
+    fp = fopen(WAIT_FILE, "w");
 
     if (fp) {
         fprintf(fp, "l");
@@ -41,12 +36,8 @@ void os_setwait()
 void os_delwait()
 {
     __wait_lock = 0;
+    unlink(WAIT_FILE);
 
-    if (isChroot()) {
-        unlink(WAIT_FILE);
-    } else {
-        unlink(WAIT_FILE_PATH);
-    }
     return;
 }
 
@@ -55,8 +46,19 @@ void os_delwait()
  * process is allowed to lock).
  */
 #ifdef WIN32
-void os_wait()
-{
+
+void loop_check(bool (*fn_ptr)()) {
+    while (1) {
+        if (!__wait_lock || (fn_ptr && fn_ptr())) {
+            break;
+        }
+
+        /* Sleep LOCK_LOOP seconds and check if lock is gone */
+        sleep(LOCK_LOOP);
+    }
+}
+
+void os_wait_primitive(bool (*fn_ptr)()) {
     static int just_unlocked = 0;
 
     if (!__wait_lock) {
@@ -71,14 +73,8 @@ void os_wait()
     } else {
         mdebug1(WAITING_MSG);
     }
-    while (1) {
-        if (!__wait_lock) {
-            break;
-        }
 
-        /* Sleep LOCK_LOOP seconds and check if lock is gone */
-        sleep(LOCK_LOOP);
-    }
+    loop_check(fn_ptr);
 
     if (just_unlocked) {
         minfo(WAITING_FREE);
@@ -94,64 +90,62 @@ void os_wait()
 
 #else /* !WIN32 */
 
-void os_wait()
-{
+void loop_check(struct stat *file_status, bool (*fn_ptr)()) {
+    while (1) {
+        if (stat(WAIT_FILE, file_status) == -1 || (fn_ptr && fn_ptr())) {
+            break;
+        }
+        /* Sleep LOCK_LOOP seconds and check if lock is gone */
+        sleep(LOCK_LOOP);
+    }
+}
+
+void os_wait_primitive(bool (*fn_ptr)()) {
     struct stat file_status;
-    static int just_unlocked = 0;
+    static atomic_int_t just_unlocked = ATOMIC_INT_INITIALIZER(0);
 
     /* If the wait file is not present, keep going */
-    if (isChroot()) {
-        if (stat(WAIT_FILE, &file_status) == -1) {
-            just_unlocked = 1;
-            return;
-        }
-    } else {
-        if (stat(WAIT_FILE_PATH, &file_status) == -1) {
-            just_unlocked = 1;
-            return;
-        }
+    if (stat(WAIT_FILE, &file_status) == -1) {
+        atomic_int_set(&just_unlocked, 1);
+        return;
     }
 
     /* Wait until the lock is gone */
-    if (just_unlocked){
+    if (atomic_int_get(&just_unlocked) == 1){
         mwarn(WAITING_MSG);
     } else {
         mdebug1(WAITING_MSG);
     }
 
-    while (1) {
-        if (isChroot()) {
-            if (stat(WAIT_FILE, &file_status) == -1) {
-                break;
-            }
-        } else {
-            if (stat(WAIT_FILE_PATH, &file_status) == -1) {
-                break;
-            }
-        }
+    loop_check(&file_status, fn_ptr);
 
-        /* Sleep LOCK_LOOP seconds and check if lock is gone */
-        sleep(LOCK_LOOP);
-    }
-
-    if (just_unlocked) {
+    if (atomic_int_get(&just_unlocked) == 1) {
         minfo(WAITING_FREE);
     } else {
         mdebug1(WAITING_FREE);
     }
 
-    just_unlocked = 1;
+    atomic_int_set(&just_unlocked, 1);
 
     return;
 }
 
 #endif /* !WIN32 */
 
+void os_wait() {
+    os_wait_primitive(NULL);
+}
+
+void os_wait_predicate(bool (*fn_ptr)()) {
+    os_wait_primitive(fn_ptr);
+}
+
+
 // Check whether the agent wait mark is on (manager is disconnected)
 
 bool os_iswait() {
 #ifndef WIN32
-    return IsFile(isChroot() ? WAIT_FILE : WAIT_FILE_PATH) == 0;
+    return IsFile(WAIT_FILE) == 0;
 #else
     return __wait_lock;
 #endif

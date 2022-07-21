@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -39,9 +39,9 @@ int ReadExecConfig()
     exec_size = 0;
 
     /* Open file */
-    fp = fopen(DEFAULTARPATH, "r");
+    fp = fopen(DEFAULTAR, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (0);
     }
 
@@ -55,29 +55,34 @@ int ReadExecConfig()
         // The command name must not start with '!'
 
         if (buffer[0] == '!') {
-            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
 
         /* Clean up the buffer */
         tmp_str = strstr(buffer, " - ");
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
         tmp_str += 3;
 
         /* Set the name */
-        strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
-        exec_names[exec_size][OS_FLSIZE] = '\0';
+        const int bytes_written = snprintf(exec_names[exec_size], sizeof(exec_names[exec_size]), "%s", str_pt);
+
+        if (bytes_written < 0) {
+            merror(EXEC_BAD_NAME " Error %d (%s).", exec_names[exec_size], errno, strerror(errno));
+        } else if ((size_t)bytes_written >= sizeof(exec_names[exec_size])) {
+            merror(EXEC_BAD_NAME, exec_names[exec_size]);
+        }
 
         str_pt = tmp_str;
 
         /* Search for ' ' and - */
         tmp_str = strstr(tmp_str, " - ");
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
@@ -92,7 +97,7 @@ int ReadExecConfig()
             /* Write the full command path */
             snprintf(exec_cmd[exec_size], OS_FLSIZE,
                      "%s/%s",
-                     AR_BINDIRPATH,
+                     AR_BINDIR,
                      str_pt);
             process_file = fopen(exec_cmd[exec_size], "r");
             if (!process_file) {
@@ -122,8 +127,7 @@ int ReadExecConfig()
         for (j = 0; j < exec_size; j++) {
             if (strcmp(exec_names[j], exec_names[exec_size]) == 0) {
                 if (exec_cmd[j][0] == '\0') {
-                    strncpy(exec_cmd[j], exec_cmd[exec_size], OS_FLSIZE);
-                    exec_cmd[j][OS_FLSIZE] = '\0';
+                    snprintf(exec_cmd[j], sizeof(exec_cmd[j]), "%s", exec_cmd[exec_size]);
                     dup_entry = 1;
                     break;
                 } else if (exec_cmd[exec_size][0] == '\0') {
@@ -161,7 +165,7 @@ char *GetCommandbyName(const char *name, int *timeout)
     if (name[0] == '!') {
         static char command[OS_FLSIZE];
 
-        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, name + 1) >= (int)sizeof(command)) {
+        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, name + 1) >= (int)sizeof(command)) {
             mwarn("Cannot execute command '%32s...': path too long.", name + 1);
             return NULL;
         }

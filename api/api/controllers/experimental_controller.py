@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -8,6 +8,7 @@ from functools import wraps
 from aiohttp import web
 
 import wazuh.ciscat as ciscat
+import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 from api import configuration
@@ -23,21 +24,59 @@ def check_experimental_feature_value(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not configuration.api_conf['experimental_features']:
-            raise_if_exc(WazuhResourceNotFound(code=1122))
+            raise_if_exc(WazuhResourceNotFound(1122))
         else:
             return func(*args, **kwargs)
     return wrapper
 
 
 @check_experimental_feature_value
+async def clear_rootcheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
+    """Clear the rootcheck database for all agents or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
+
+    Returns
+    -------
+    web.Response
+    """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
+    if 'all' in agents_list:
+        agents_list = '*'
+
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=rootcheck.clear,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=agents_list == '*',
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+@check_experimental_feature_value
 async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
-    """ Clear the syscheck database for all agents.
+    """Clear the syscheck database for all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param agents_list: List of agent's IDs.
     :return: AllItemsResponseAgentIDs
     """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
         agents_list = '*'
 

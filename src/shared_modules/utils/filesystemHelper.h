@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * October 23, 2020.
  *
  * This program is free software; you can redistribute it
@@ -20,6 +20,7 @@
 #include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <vector>
 #include <dirent.h>
 
 #pragma GCC diagnostic push
@@ -29,8 +30,13 @@ namespace Utils
 {
     static bool existsDir(const std::string& path)
     {
-        struct stat info{};
+        struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
+    }
+    static bool existsRegular(const std::string& path)
+    {
+        struct stat info {};
+        return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
     struct DirSmartDeleter
     {
@@ -44,15 +50,18 @@ namespace Utils
     {
         std::vector<std::string> ret;
         std::unique_ptr<DIR, DirSmartDeleter> spDir{opendir(path.c_str())};
+
         if (spDir)
         {
             auto entry{readdir(spDir.get())};
+
             while (entry)
             {
                 ret.push_back(entry->d_name);
                 entry = readdir(spDir.get());
             }
         }
+
         return ret;
     }
 
@@ -65,6 +74,7 @@ namespace Utils
         {
             content << file.rdbuf();
         }
+
         return content.str();
     }
 
@@ -78,6 +88,7 @@ namespace Utils
         {
             // Get pointer to associated buffer object
             auto buffer { file.rdbuf() };
+
             if (nullptr != buffer)
             {
                 // Get file size using buffer's members
@@ -90,7 +101,7 @@ namespace Utils
             }
         }
 
-        return std::vector<char>{spBuffer.get(), spBuffer.get() + size};
+        return std::vector<char> {spBuffer.get(), spBuffer.get() + size};
     }
 }
 

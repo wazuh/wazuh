@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -67,7 +67,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
     if (!flags.initialized) {
         w_logging_init();
-        mdebug1("Logging module auto-initialized");  
+        mdebug1("Logging module auto-initialized");
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -79,7 +79,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile) - 1);
+        strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -126,7 +126,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-            
+
             w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
@@ -145,7 +145,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile) - 1);
+        strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -223,7 +223,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void w_logging_init(){
     flags.initialized = 1;
     w_mutex_init(&logging_mutex, NULL);
-    os_logging_config();    
+    os_logging_config();
 }
 
 void os_logging_config(){
@@ -235,11 +235,11 @@ void os_logging_config(){
 
   pid = (int)getpid();
 
-  if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
+  if (OS_ReadXML(OSSECCONF, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
+    merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);
@@ -361,6 +361,13 @@ void _mterror(const char *tag, const char * file, int line, const char * func, c
     va_end(args);
 }
 
+void _mverror(const char * file, int line, const char * func, const char *msg, va_list args)
+{
+    int level = LOGLEVEL_ERROR;
+    const char *tag = __local_name;
+    _log(level, tag, file, line, func, msg, args);
+}
+
 void _mwarn(const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
@@ -382,6 +389,13 @@ void _mtwarn(const char *tag, const char * file, int line, const char * func, co
     va_end(args);
 }
 
+void _mvwarn(const char * file, int line, const char * func, const char *msg, va_list args)
+{
+    int level = LOGLEVEL_WARNING;
+    const char *tag = __local_name;
+    _log(level, tag, file, line, func, msg, args);
+}
+
 void _minfo(const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
@@ -401,6 +415,13 @@ void _mtinfo(const char *tag, const char * file, int line, const char * func, co
     va_start(args, msg);
     _log(level, tag, file, line, func, msg, args);
     va_end(args);
+}
+
+void _mvinfo(const char * file, int line, const char * func, const char *msg, va_list args)
+{
+    int level = LOGLEVEL_INFO;
+    const char *tag = __local_name;
+    _log(level, tag, file, line, func, msg, args);
 }
 
 /* Only logs to a file */
@@ -446,16 +467,16 @@ void _merror_exit(const char * file, int line, const char * func, const char *ms
     int level = LOGLEVEL_CRITICAL;
     const char *tag = __local_name;
 
+    va_start(args, msg);
+    _log(level, tag, file, line, func, msg, args);
+    va_end(args);
+
 #ifdef WIN32
     /* If not MA */
 #ifndef MA
     WinSetError();
 #endif
 #endif
-
-    va_start(args, msg);
-    _log(level, tag, file, line, func, msg, args);
-    va_end(args);
 
     exit(1);
 }
@@ -465,16 +486,16 @@ void _mterror_exit(const char *tag, const char * file, int line, const char * fu
     va_list args;
     int level = LOGLEVEL_CRITICAL;
 
+    va_start(args, msg);
+    _log(level, tag, file, line, func, msg, args);
+    va_end(args);
+
 #ifdef WIN32
     /* If not MA */
 #ifndef MA
     WinSetError();
 #endif
 #endif
-
-    va_start(args, msg);
-    _log(level, tag, file, line, func, msg, args);
-    va_end(args);
 
     exit(1);
 }

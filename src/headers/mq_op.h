@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,7 @@
 #define MQ_H
 
 #include "config/localfile-config.h"
+#include <sys/types.h>
 
 /* Default queues */
 #define LOCALFILE_MQ    '1'
@@ -35,6 +36,22 @@
 #define INFINITE_OPENQ_ATTEMPTS 0
 
 extern int sock_fail_time;
+
+/**
+ *  Starts a Message Queue with specific owner and perms.
+ *  @param key path where the message queue will be created
+ *  @param type WRITE||READ
+ *  @param n_attempts Number of attempts to connect to the queue (0 to attempt until a successful conection).
+ *  @param uid owner of the queue.
+ *  @param gid group of the queue.
+ *  @param perms permissions of the queue.
+ *  @return
+ *  UNIX -> OS_INVALID if queue failed to start
+ *  UNIX -> int(rc) file descriptor of initialized queue
+ *  WIN32 -> 0
+ */
+int StartMQWithSpecificOwnerAndPerms(const char *key, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
+
 /**
  *  Starts a Message Queue.
  *  @param key path where the message queue will be created
@@ -46,6 +63,23 @@ extern int sock_fail_time;
  *  WIN32 -> 0
  */
 int StartMQ(const char *key, short int type, short int n_attempts) __attribute__((nonnull));
+
+/**
+ * Sends a message string through a message queue
+ * @param queue file descriptor of the queue where the message will be sent (UNIX)
+ * @param message string containing the message
+ * @param locmsg path to the queue file
+ * @param loc  queue location (WIN32)
+ * @param fn_ptr function pointer to the function that will check if the process is shutting down
+ * @return
+ * UNIX -> 0 if file descriptor is still available
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
+ * WIN32 -> 0 on success
+ * WIN32 -> -1 on error
+ * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ */
+
+int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) __attribute__((nonnull));
 
 /**
  * Sends a message string through a message queue
@@ -84,5 +118,17 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 void mq_log_builder_init();
 
 int mq_log_builder_update();
+
+/**
+ *  Reconnect a Message Queue.
+ *  @param key path where the message queue will be reconnect.
+ *  @param fn_ptr pointer to function that evaluates a predicate.
+ *  @return
+ *  UNIX -> OS_INVALID if queue failed to reconnect.
+ *  UNIX -> int(rc) file descriptor of initialized queue
+ *  WIN32 -> 0
+ */
+int MQReconnectPredicated(const char *key, bool (*fn_ptr)()) __attribute__((nonnull));
+
 
 #endif /* MQ_H */

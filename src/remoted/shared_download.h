@@ -1,6 +1,6 @@
 /*
  * Wazuh Shared Configuration Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 3, 2018.
  *
  * This program is free software; you can redistribute it
@@ -12,7 +12,7 @@
 #ifndef SHARED_DOWNLOAD_H
 #define SHARED_DOWNLOAD_H
 
-#include <external/libyaml/include/yaml.h>
+#include "external/libyaml/include/yaml.h"
 
 #define W_PARSER_ERROR -1
 #define W_SHARED_YAML_FILE "files.yml"
@@ -43,22 +43,15 @@ typedef struct _remote_files_group{
     int merged_is_downloaded;
 } remote_files_group;
 
-typedef struct _agent_group{
-    char *name;
-    char *group;
-} agent_group;
-
 int w_yaml_file_has_changed();
 int w_yaml_file_update_structs();
 remote_files_group * w_parser_get_group(const char * name);
-agent_group * w_parser_get_agent(const char * name);
 const char *w_read_scalar_value(yaml_event_t * event);
 int w_move_next(yaml_parser_t * parser, yaml_event_t * event);
-agent_group * w_read_agents(yaml_parser_t * parser);
 remote_files_group * w_read_groups(yaml_parser_t * parser);
 int w_read_group(yaml_parser_t * parser, remote_files_group * group);
 file * w_read_group_files(yaml_parser_t * parser);
-int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group, agent_group ** agents_group);
+int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group);
 void w_free_groups();
 int w_init_shared_download();
 int w_prepare_parsing();

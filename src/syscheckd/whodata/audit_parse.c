@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,6 +12,12 @@
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 
 #ifdef ENABLE_AUDIT
+
+#ifndef WAZUH_UNIT_TESTING
+#define STATIC static
+#else
+#define STATIC
+#endif
 
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
@@ -230,34 +236,109 @@ void clean_regex() {
     freed = 1;
 }
 
+/**
+ * @brief Looks for a specific field in an audit event.
+ *
+ * @param buffer Audit message.
+ * @param key Audit field to look for
+ * @return Value of the field specified in key.
+ */
+STATIC char *get_audit_field(const char *buffer, const char *key) {
+    char *value = NULL;
+    char *start = NULL;
+    char *ascii_value = NULL;
+    int is_hex_buffer = 1;
+    int limiter_pos = 0;
+    int key_length = strlen(key);
 
-int filterkey_audit_events(char *buffer) {
-    int i = 0;
-    char logkey1[OS_SIZE_256] = { 0 };
-    char logkey2[OS_SIZE_256] = { 0 };
-
-    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
-    if (strstr(buffer, logkey1)) {
-        mdebug2(FIM_AUDIT_MATCH_KEY, logkey1);
-        return 1;
-    }
-
-    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_HEALTHCHECK_KEY);
-    if (strstr(buffer, logkey1)) {
-        mdebug2(FIM_AUDIT_MATCH_KEY, logkey1);
-        return 3;
-    }
-
-    while (syscheck.audit_key[i]) {
-        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_key[i]);
-        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_key[i]);
-        if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
-            mdebug2(FIM_AUDIT_MATCH_KEY, logkey1);
-            return 2;
+    // Find the key
+    for (start = strstr(buffer, key); start != NULL; start = strstr(start + 1, key)) {
+        if (start[key_length] != '=') {
+            continue;
         }
-        i++;
+        // Check if the there is a field that matches `key` argument.
+        if (start == buffer || *(start - 1) == ' ' || *(start - 1) == '\n') {
+            break;
+        }
     }
-    return 0;
+
+    if (start == NULL) {
+        return NULL;
+    }
+
+    start += key_length + 1;
+
+    if (*start == '"') {
+        is_hex_buffer = 0;
+        start++;
+    }
+
+    // The key can be limited by one of these three characters
+    if (limiter_pos = strcspn(start, "\n\035 \""), limiter_pos == 0) {
+        return NULL;
+    }
+
+    os_calloc(limiter_pos + 1, sizeof(char), value);
+    strncpy(value, start, limiter_pos);
+
+    if (is_hex_buffer) {
+        ascii_value = decode_hex_buffer_2_ascii_buffer(value, limiter_pos);
+        free(value);
+        return ascii_value;
+    }
+
+    return value;
+}
+
+/**
+ * @brief Scans the buffer for a valid audit key (AUDIT_KEY, AUDIT_HC_KEY or a user configured key)
+ *
+ * @param buffer Audit message being scanned.
+ * @return Type of key.
+ * @retval FIM_AUDIT_UNKNOWN_KEY if the key is unknown.
+ * @retval FIM_AUDIT_KEY if the key of the event is AUDIT_KEY.
+ * @retval FIM_AUDIT_HC_KEY if the key of the event is AUDIT_HEALTHCHECK_KEY.
+ * @retval FIM_AUDIT_CUSTOM_KEY if the key of the event is configured using the audit_key option.
+ */
+STATIC audit_key_type filterkey_audit_events(const char *buffer) {
+    char *save_ptr = NULL;
+    char *full_key = NULL;
+    char *key = NULL;
+    int i;
+
+    // Find the key
+    if (full_key = get_audit_field(buffer, "key"), full_key == NULL) {
+        return FIM_AUDIT_UNKNOWN_KEY;
+    }
+
+    for (key = strtok_r(full_key, "\001", &save_ptr); key != NULL; key = strtok_r(NULL, "\001", &save_ptr)) {
+        if (*key == '\0') {
+            continue;
+        }
+
+        if (strcmp(key, AUDIT_KEY) == 0) {
+            mdebug2(FIM_AUDIT_MATCH_KEY, full_key);
+            free(full_key);
+            return FIM_AUDIT_KEY;
+        }
+
+        if (strcmp(key, AUDIT_HEALTHCHECK_KEY) == 0) {
+            mdebug2(FIM_AUDIT_MATCH_KEY, full_key);
+            free(full_key);
+            return FIM_AUDIT_HC_KEY;
+        }
+
+        for (i = 0; syscheck.audit_key[i]; i++) {
+            if (strcmp(key, syscheck.audit_key[i]) == 0) {
+                mdebug2(FIM_AUDIT_MATCH_KEY, key);
+                free(full_key);
+                return FIM_AUDIT_CUSTOM_KEY;
+            }
+        }
+    }
+
+    free(full_key);
+    return FIM_AUDIT_UNKNOWN_KEY;
 }
 
 
@@ -374,6 +455,7 @@ void audit_parse(char *buffer) {
     char *psuccess;
     char *pconfig;
     char *pdelete;
+    char *endptr = NULL;
     regmatch_t match[2];
     int match_size;
     char *path0 = NULL;
@@ -385,13 +467,13 @@ void audit_parse(char *buffer) {
     char *dev = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
-    unsigned int filter_key;
+    audit_key_type filter_key;
 
     // Checks if the key obtained is one of those configured to monitor
     filter_key = filterkey_audit_events(buffer);
 
     switch (filter_key) {
-    case 1: // "wazuh_fim"
+    case FIM_AUDIT_KEY:
         if ((pconfig = strstr(buffer, "type=CONFIG_CHANGE"), pconfig) &&
             ((pdelete = strstr(buffer, "op=remove_rule"), pdelete) ||
              (pdelete = strstr(buffer, "op=\"remove_rule\""), pdelete))) { // Detect rules modification.
@@ -443,13 +525,13 @@ void audit_parse(char *buffer) {
                     snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
                     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
                     // Stop thread
-                    audit_thread_active = 0;
+                    atomic_int_set(&audit_thread_active, 0);
                 }
             }
             os_free(p_dir);
         }
         // Fallthrough
-    case 2:
+    case FIM_AUDIT_CUSTOM_KEY:
         if (psuccess = strstr(buffer, "success=yes"), psuccess) {
 
             os_calloc(1, sizeof(whodata_evt), w_evt);
@@ -460,16 +542,30 @@ void audit_parse(char *buffer) {
                 char *chr_item;
                 os_malloc(match_size + 1, chr_item);
                 snprintf(chr_item, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                items = atoi(chr_item);
+
+                // No further checks needed on items
+                items = strtol(chr_item, NULL, 10);
+
                 free(chr_item);
             }
+
             // user_name & user_id
             if (regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->user_id);
                 snprintf(w_evt->user_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->user_name = get_user(atoi(w_evt->user_id));
+
+                if (w_evt->user_id[0] != '\0') {
+                    errno = 0;
+                    int user_id = strtol(w_evt->user_id, &endptr, 10);
+
+                    if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                        w_evt->user_name = get_user(user_id);
+                    }
+                    endptr = NULL;
+                }
             }
+
             // audit_name & audit_uid
             if (regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
@@ -484,8 +580,18 @@ void audit_parse(char *buffer) {
                     w_evt->audit_name = NULL;
                     w_evt->audit_uid = NULL;
                 } else {
-                    w_evt->audit_name = get_user(atoi(auid));
-                    w_evt->audit_uid = strdup(auid);
+                    w_evt->audit_uid = auid;
+                    auid = NULL;
+
+                    if (w_evt->audit_uid[0] != '\0') {
+                        errno = 0;
+                        int audit_uid = strtol(w_evt->audit_uid, &endptr, 10);
+
+                        if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                            w_evt->audit_name = get_user(audit_uid);
+                        }
+                        endptr = NULL;
+                    }
                 }
                 os_free(auid);
             }
@@ -494,14 +600,32 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->effective_uid);
                 snprintf(w_evt->effective_uid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->effective_name = get_user(atoi(w_evt->effective_uid));
+
+                if (w_evt->effective_uid[0] != '\0') {
+                    errno = 0;
+                    int euid = strtol(w_evt->effective_uid, &endptr, 10);
+
+                    if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                        w_evt->effective_name = get_user(euid);
+                    }
+                    endptr = NULL;
+                }
             }
             // group_name & group_id
             if (regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->group_id);
                 snprintf(w_evt->group_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->group_name = (char *)get_group(atoi(w_evt->group_id));
+
+                if (w_evt->group_id[0] != '\0') {
+                    errno = 0;
+                    int gid = strtol(w_evt->group_id, &endptr, 10);
+
+                    if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                        w_evt->group_name = get_group(gid);
+                    }
+                    endptr = NULL;
+                }
             }
             // process_id
             if (regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
@@ -509,7 +633,9 @@ void audit_parse(char *buffer) {
                 char *pid = NULL;
                 os_malloc(match_size + 1, pid);
                 snprintf(pid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->process_id = atoi(pid);
+
+                w_evt->process_id = strtol(pid, &endptr, 10);
+
                 free(pid);
             }
             // ppid
@@ -521,7 +647,9 @@ void audit_parse(char *buffer) {
                 os_malloc(match_size + 1, ppid);
                 snprintf(ppid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
                 get_parent_process_info(ppid, &w_evt->parent_name, &w_evt->parent_cwd);
-                w_evt->ppid = atoi(ppid);
+
+                w_evt->ppid = strtol(ppid, &endptr, 10);
+
                 free(ppid);
             }
             // process_name
@@ -824,7 +952,7 @@ void audit_parse(char *buffer) {
             free_whodata_event(w_evt);
         }
         break;
-    case 3:
+    case FIM_AUDIT_HC_KEY:
         if (regexec(&regexCompiled_syscall, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             char *syscall = NULL;
@@ -836,7 +964,7 @@ void audit_parse(char *buffer) {
                 // i686: 5 open
                 // i686: 295 openat
                 mdebug2(FIM_HEALTHCHECK_CREATE, syscall);
-                audit_health_check_creation = 1;
+                atomic_int_set(&audit_health_check_creation, 1);
             } else if (!strcmp(syscall, "87") || !strcmp(syscall, "263") || !strcmp(syscall, "10") ||
                        !strcmp(syscall, "301")) {
                 // x86_64: 87 unlink
@@ -849,6 +977,9 @@ void audit_parse(char *buffer) {
             }
             os_free(syscall);
         }
+        break;
+    default:
+        break;
     }
 }
 

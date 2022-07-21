@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -245,7 +245,7 @@ static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
-static void help_analysisd(void)
+static void help_analysisd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -258,9 +258,10 @@ static void help_analysisd(void)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -276,16 +277,18 @@ int main_analysisd(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    const char *dir = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
 
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
 
     thishour = 0;
     today = 0;
@@ -295,7 +298,6 @@ int main_analysisd(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -308,7 +310,7 @@ int main_analysisd(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -333,7 +335,7 @@ int main_analysisd(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                snprintf(home_path, PATH_MAX, "%s", optarg);
                 break;
             case 'c':
                 if (!optarg) {
@@ -345,11 +347,18 @@ int main_analysisd(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
         }
 
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -363,8 +372,9 @@ int main_analysisd(int argc, char **argv)
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* Start daemon */
-    mdebug1(STARTED_MSG);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -483,14 +493,33 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+    }
+
+    /* Verbose message */
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
+
+    if (!test_config) {
+        /* Signal manipulation */
+        StartSIG(ARGV0);
+
+        /* Create the PID file */
+        if (CreatePID(ARGV0, getpid()) < 0) {
+            merror_exit(PID_ERROR);
+        }
+
+        /* Set the queue */
+        if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
+            merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        }
     }
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
@@ -515,7 +544,7 @@ int main_analysisd(int argc, char **argv)
             OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
             OSListNode * node_log_msg;
             int error_exit = 0;
-            
+
 
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
@@ -535,9 +564,9 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, 
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
                                         &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
-                        error_exit = 1; 
+                        error_exit = 1;
                     }
                     node_log_msg = OSList_GetFirstNode(list_msg);
 
@@ -736,22 +765,6 @@ int main_analysisd(int argc, char **argv)
         minfo("The option <queue_size> is deprecated and won't apply. Set up each queue size in the internal_options file.");
     }
 
-    /* Verbose message */
-    mdebug1(PRIVSEP_MSG, dir, user);
-
-    /* Signal manipulation */
-    StartSIG(ARGV0);
-
-    /* Create the PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
-
-    /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-    }
-
     /* Whitelist */
     if (Config.white_list == NULL) {
         if (Config.ar) {
@@ -801,7 +814,7 @@ int main_analysisd(int argc, char **argv)
     w_create_thread(asyscom_main, NULL);
 
     /* Load Mitre JSON File and Mitre hash table */
-    mitre_load(NULL);
+    mitre_load();
 
     /* Initialize Logtest */
     w_create_thread(w_logtest_init, NULL);
@@ -863,26 +876,8 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (Config.ar & REMOTE_AR) {
             if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If LOCAL_AR is set, keep it there */
-                if (Config.ar & LOCAL_AR) {
-                    Config.ar = 0;
-                    Config.ar |= LOCAL_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, ARQUEUE, "active-response");
-            }
-        }
-#else
-        /* Only for LOCAL_ONLY installs */
-        if (Config.ar & REMOTE_AR) {
-            if (Config.ar & LOCAL_AR) {
-                Config.ar = 0;
-                Config.ar |= LOCAL_AR;
-            } else {
-                Config.ar = 0;
             }
         }
 #endif
@@ -890,14 +885,6 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (Config.ar & LOCAL_AR) {
             if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If REMOTE_AR is set, keep it there */
-                if (Config.ar & REMOTE_AR) {
-                    Config.ar = 0;
-                    Config.ar |= REMOTE_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, EXECQUEUE, "exec");
             }
@@ -919,7 +906,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
         lf->year = prev_year;
-        strncpy(lf->mon, prev_month, 3);
+        memset(lf->mon, 0, sizeof(lf->mon));
         lf->day = today;
 
         if (OS_GetLogLocation(today, prev_year, prev_month) < 0) {
@@ -1368,7 +1355,7 @@ void * ad_input_main(void * args) {
                         reported_dbsync = TRUE;
                     }
                 }
-            } else if (msg[0] == UPGRADE_MQ) { 
+            } else if (msg[0] == UPGRADE_MQ) {
                 result = -1;
 
                 if (!queue_full(upgrade_module_input)) {
@@ -1389,7 +1376,7 @@ void * ad_input_main(void * args) {
                         reported_upgrade_module = TRUE;
                     }
                 }
-                
+
             } else {
 
                 os_strdup(buffer, copy);
@@ -1464,7 +1451,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                     OS_CustomLog(lf, Config.custom_alert_output_format);
                 } else if (Config.alerts_log) {
                     __crt_ftell = ftell(_aflog);
-                    OS_Log(lf);
+                    OS_Log(lf, _aflog);
                 } else if(Config.jsonout_output){
                     __crt_ftell = ftell(_jflog);
                 }
@@ -2030,7 +2017,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Check each rule */
             else if (t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
-                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true), !t_currently_rule) {
+                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true, NULL), !t_currently_rule) {
 
                 continue;
             }
@@ -2106,8 +2093,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                         do_ar = 0;
                     }
 
-                    if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, &arq, lf, *rule_ar);
+                    if (do_ar) {
+                        OS_Exec(&execdq, &arq, &sock, lf, *rule_ar);
                     }
                     rule_ar++;
                 }
@@ -2217,7 +2204,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
                 }
 
                 today = day;
-                strncpy(prev_month, mon, 3);
+                memcpy(prev_month, mon, sizeof(mon));
                 prev_year = year;
             }
         }
@@ -2243,7 +2230,7 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
                 OS_CustomLog(lf, Config.custom_alert_output_format);
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
-                OS_Log(lf);
+                OS_Log(lf, _aflog);
             } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
@@ -2363,47 +2350,47 @@ void w_get_initial_queues_size(){
 
 void w_init_queues(){
      /* Init the archives writer queue */
-    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
+    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 128, 2000000));
 
     /* Init the alerts log writer queue */
-    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
+    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 128, 2000000));
 
     /* Init statistical the log writer queue */
-    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
+    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 128, 2000000));
 
     /* Init the firewall log writer queue */
-    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
+    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 128, 2000000));
 
     /* Init the FTS log writer queue */
-    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
+    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 128, 2000000));
 
     /* Init the decode syscheck queue input */
-    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
+    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 128, 2000000));
 
     /* Init the decode syscollector queue input */
-    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
+    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 128, 2000000));
 
     /* Init the decode rootcheck queue input */
-    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 128, 2000000));
 
     /* Init the decode rootcheck json queue input */
-    decode_queue_sca_input = queue_init(getDefine_Int("analysisd", "decode_sca_queue_size", 0, 2000000));
+    decode_queue_sca_input = queue_init(getDefine_Int("analysisd", "decode_sca_queue_size", 128, 2000000));
 
     /* Init the decode hostinfo queue input */
-    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 128, 2000000));
 
     /* Init the decode winevt queue input */
-    decode_queue_winevt_input = queue_init(getDefine_Int("analysisd", "decode_winevt_queue_size", 0, 2000000));
+    decode_queue_winevt_input = queue_init(getDefine_Int("analysisd", "decode_winevt_queue_size", 128, 2000000));
 
     /* Init the decode event queue input */
-    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
+    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 128, 2000000));
 
     /* Init the decode event queue output */
-    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 128, 2000000));
 
     /* Initialize database synchronization message queue */
-    dispatch_dbsync_input = queue_init(getDefine_Int("analysisd", "dbsync_queue_size", 0, 2000000));
+    dispatch_dbsync_input = queue_init(getDefine_Int("analysisd", "dbsync_queue_size", 128, 2000000));
 
     /* Initialize upgrade module message queue */
-    upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 0, 2000000));
+    upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
 }

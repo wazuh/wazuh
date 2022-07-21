@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -26,6 +26,8 @@
 #include "../../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
+
+#include "test_fim.h"
 
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
@@ -97,12 +99,9 @@ void expect_fim_registry_get_key_data_call(LPSTR usid,
     expect_ConvertSidToStringSid_call(gsid, 1);
     expect_LookupAccountSid_call((PSID)gname, "domain", 1);
 
-    expect_get_registry_permissions("sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                    ERROR_SUCCESS);
+    expect_get_registry_permissions(create_win_permissions_object(), ERROR_SUCCESS);
 
-    expect_string(__wrap_decode_win_permissions, raw_perm,
-                  "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
-    will_return(__wrap_decode_win_permissions, permissions);
+    expect_any(__wrap_decode_win_acl_json, perms);
 
     expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_SUCCESS);
 }
@@ -663,12 +662,11 @@ static void test_fim_registry_get_key_data_check_perm(void **state) {
     configuration->opts = CHECK_PERM;
     HKEY key_handle = HKEY_LOCAL_MACHINE;
     fim_registry_key *ret_key;
+    cJSON *permissions = create_win_permissions_object();
 
-    expect_get_registry_permissions("permissions", ERROR_SUCCESS);
+    expect_get_registry_permissions(permissions, ERROR_SUCCESS);
 
-    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
-    will_return(__wrap_decode_win_permissions,
-                "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
+    expect_string(__wrap_decode_win_acl_json, perms, permissions);
 
     ret_key = fim_registry_get_key_data(key_handle, path, configuration);
 
@@ -676,7 +674,8 @@ static void test_fim_registry_get_key_data_check_perm(void **state) {
     assert_null(ret_key->user_name);
     assert_null(ret_key->gid);
     assert_null(ret_key->group_name);
-    assert_string_equal(ret_key->perm, "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
+    assert_non_null(ret_key->perm);
+    assert_non_null(ret_key->perm_json);
     assert_null(ret_key->mtime);
 }
 
@@ -793,17 +792,13 @@ static void test_fim_registry_scan_no_entries_configured(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
@@ -875,15 +870,11 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
@@ -989,15 +980,11 @@ static void test_fim_registry_scan_regular_scan(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
@@ -1018,17 +1005,13 @@ static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, -1);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
@@ -1052,17 +1035,13 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, -1);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, &file);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_fim_db_process_read_file, 0);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, &file);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_fim_db_process_read_registry_data_file, 0);
 
@@ -1125,14 +1104,11 @@ static void test_fim_registry_process_key_delete_event_success(void **state) {
     fim_event_mode event_mode = FIM_SCHEDULED;
     void *w_event = NULL;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_get_values_from_registry_key_call(syscheck.database, data->file, FIM_DB_DISK, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_fim_db_process_read_registry_data_file, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_remove_registry_key_call(syscheck.database, data->entry, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     fim_registry_process_key_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 

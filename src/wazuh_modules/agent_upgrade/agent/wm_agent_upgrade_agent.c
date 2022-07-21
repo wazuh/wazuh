@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 30, 2020.
  *
  * This program is free software; you can redistribute it
@@ -110,13 +110,10 @@ void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, c
 STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg) {
     // Initialize socket
     char sockname[PATH_MAX + 1];
-    if (isChroot()) {
-		strcpy(sockname, AGENT_UPGRADE_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR AGENT_UPGRADE_SOCK);
-	}
 
-    int sock = OS_BindUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR);
+	strcpy(sockname, AGENT_UPGRADE_SOCK);
+
+    int sock = OS_BindUnixDomainWithPerms(sockname, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660);
     if (sock < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, AGENT_UPGRADE_SOCK, strerror(errno));
         return NULL;
@@ -195,7 +192,7 @@ STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) 
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write
      *  the upgrade result
     */
-    int queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    int queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     // Wait until pkg_installer script verifies the agent was connected and writes the upgrade_result file
     sleep(WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
@@ -274,7 +271,7 @@ STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_st
         if(*queue_fd >= 0){
             close(*queue_fd);
         }
-        *queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        *queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
         if (*queue_fd < 0) {
             mterror_exit(WM_AGENT_UPGRADE_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
         }

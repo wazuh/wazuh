@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
@@ -8,8 +8,8 @@ from wazuh.core.agent import Agent
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.utils import WazuhVersion
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
@@ -81,7 +81,8 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
     node_name = get_node().get('node') if cluster_enabled else None
 
     msg_queue = json.dumps(
-        create_wazuh_socket_message(origin={'name': node_name, 'module': 'api/framework'}, command=command,
+        create_wazuh_socket_message(origin={'name': node_name, 'module': common.origin_module.get()},
+                                    command=command,
                                     parameters={'extra_args': arguments if arguments else [],
                                                 'alert': alert if alert else {}}))
 
@@ -110,7 +111,7 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
 
     Raises
     ------
-    WazuhError(1651)
+    WazuhError(1707)
         If the agent with ID agent_id is not active.
     """
     # Agent basic information
@@ -118,13 +119,13 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
 
     # Check if agent is active
     if agent_info['status'].lower() != 'active':
-        raise WazuhError(1651, extra_message='{0}'.format(agent_info['status']))
+        raise WazuhError(1707)
 
     # Once we know the agent is active, store version
     agent_version = agent_info['version']
 
     # Check if AR is enabled
-    agent_conf = Agent(agent_id).getconfig('com', 'active-response', agent_version)
+    agent_conf = Agent(agent_id).get_config('com', 'active-response', agent_version)
     if agent_conf['active-response']['disabled'] == 'yes':
         raise WazuhError(1750)
 
@@ -146,7 +147,7 @@ def get_commands() -> list:
         List with the available commands.
     """
     commands = list()
-    with open(common.ar_conf_path) as f:
+    with open(common.AR_CONF) as f:
         for line in f:
             cmd = line.split(" - ")[0]
             commands.append(cmd)

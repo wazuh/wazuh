@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "string.h"
 #include "../os_regex/os_regex.h"
+#include "string_op.h"
 
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
@@ -117,23 +118,33 @@ char *os_shell_escape(const char *src)
     /* Determine how long the string will be */
     const char *iterator = src;
     for (; *iterator; iterator++) {
-        if ( strchr(shell_escapes, *iterator) ) {
+        if (strchr(shell_escapes, *iterator)) {
+            if ((*iterator == '\\') && *(iterator+1) && strchr(shell_escapes, *(iterator+1))) {
+                // avoid scape because it's already scaped
+                iterator++;
+            }
             length++;
         }
         length++;
     }
     /* Allocate memory */
-    if ( (escaped_string = (char *) calloc(1, length + 1 )) == NULL ) {
-        // Return NULL
+    if ((escaped_string = (char *) calloc(1, length + 1 )) == NULL) {
         return NULL;
     }
 
     /* Escape the escapable characters */
     iterator = src;
-    for ( i = 0; *iterator; iterator++ ) {
-        if ( strchr(shell_escapes, *iterator) ) {
-            escaped_string[i] = '\\';
-            i++;
+    for (i = 0; *iterator; iterator++) {
+        if (strchr(shell_escapes, *iterator)) {
+            if ((*iterator == '\\') && *(iterator+1) && strchr(shell_escapes, *(iterator+1))) {
+                // avoid scape because it's already scaped
+                escaped_string[i] = *iterator;
+                i++;
+                iterator++;
+            } else {
+                escaped_string[i] = '\\';
+                i++;
+            }
         }
         escaped_string[i] = *iterator;
         i++;
@@ -388,112 +399,16 @@ void free_strarray(char ** array) {
     }
 }
 
-/* Returns 0 if str is found */
-int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
-    DIR *dp;
-    FILE *fp = NULL;
-    char ** files;
-    int i;
-    int status = -1;
+// Get the size of a string array
+size_t strarray_size(char ** array) {
+    size_t size = 0;
 
-    dp = opendir(path);
-    if (!dp) {
-        mdebug1("At wstr_find_in_folder(): Opening directory: '%s': %s", path, strerror(errno));
-        return status;
-    }
-
-    // Try to open directory, avoid TOCTOU hazard
-    if (files = wreaddir(path), !files) {
-        if (errno != ENOTDIR) {
-            mdebug1("Could not open directory '%s'", path);
-        }
-        closedir(dp);
-        return status;
-    }
-
-    /* Read directory */
-    for (i = 0; files[i]; ++i) {
-        char buffer[OS_SIZE_65536 + 1] = {0};
-        char file[PATH_MAX + 1] = {0};
-
-        snprintf(file, PATH_MAX + 1, "%s/%s", path, files[i]);
-        if (files[i][0] == '.') {
-            continue;
-        }
-
-        fp = fopen(file,"r");
-
-        if (!fp) {
-            continue;
-        }
-
-        if( fgets (buffer, OS_SIZE_65536, fp)!=NULL ) {
-
-            if(strip_new_line){
-
-                char *endl = strchr(buffer, '\n');
-
-                if (endl) {
-                    *endl = '\0';
-                }
-            }
-
-            /* Found */
-            if(strncmp(str,buffer,OS_SIZE_65536) == 0){
-                status = 0;
-                goto end;
-            }
-        }
-        fclose(fp);
-        fp = NULL;
-    }
-
-end:
-    free_strarray(files);
-    if(fp){
-        fclose(fp);
-    }
-
-    if(dp){
-        closedir(dp);
-    }
-    return status;
-}
-
-/* Returns 0 if str is found */
-int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
-    FILE *fp = NULL;
-    int i = -1;
-    char buffer[OS_SIZE_65536 + 1] = {0};
-
-    fp = fopen(file,"r");
-
-    if(!fp){
-        return -1;
-    }
-
-    while(fgets (buffer, OS_SIZE_65536, fp) != NULL) {
-
-        char *endl = strchr(buffer, '\n');
-
-        if (endl) {
-            i++;
-        }
-
-        /* Found */
-        if(strip_new_line && endl){
-            *endl = '\0';
-        }
-
-        if(strncmp(str,buffer,OS_SIZE_65536) == 0){
-            fclose(fp);
-            return i;
-            break;
+    if (array) {
+        while (array[size]) {
+            size++;
         }
     }
-    fclose(fp);
-
-    return -1;
+    return size;
 }
 
 char * wstr_delete_repeated_groups(const char * string){
@@ -595,10 +510,12 @@ void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, ch
 
             for (count = 0, new_term_it = (*splitted_str)[splitted_count]; count < occurrences; count++) {
                 if (count) {
-                    strncpy(new_term_it, new_delim, new_delim_size);
+                    strncpy(new_term_it, new_delim, term_size);
+                    term_size -= new_delim_size;
                     new_term_it += new_delim_size;
                 }
-                strncpy(new_term_it, acc_strs[count], strlen(acc_strs[count]));
+                strncpy(new_term_it, acc_strs[count], term_size);
+                term_size -= strlen(acc_strs[count]);
                 new_term_it += strlen(acc_strs[count]);
                 os_free(acc_strs[count]);
             }
@@ -738,25 +655,113 @@ long w_parse_time(const char * string) {
     switch (*end) {
     case '\0':
         break;
+    case 'w':
+        seconds *= W_WEEK_SECONDS;
+        break;
     case 'd':
-        seconds *= 86400;
+        seconds *= W_DAY_SECONDS;
         break;
     case 'h':
-        seconds *= 3600;
+        seconds *= W_HOUR_SECONDS;
         break;
     case 'm':
-        seconds *= 60;
+        seconds *= W_MINUTE_SECONDS;
         break;
     case 's':
-        break;
-    case 'w':
-        seconds *= 604800;
         break;
     default:
         return -1;
     }
 
     return seconds >= 0 ? seconds : -1;
+}
+
+// Parse positive size string into bytes
+
+ssize_t w_parse_size(const char * string) {
+    char c;
+    ssize_t size;
+
+    switch (sscanf(string, "%zd%c", &size, &c)) {
+    case 1:
+        break;
+
+    case 2:
+        switch (c) {
+        case 'G':
+        case 'g':
+            size *= 1073741824;
+            break;
+        case 'M':
+        case 'm':
+            size *= 1048576;
+            break;
+        case 'K':
+        case 'k':
+            size *= 1024;
+            break;
+        case 'B':
+        case 'b':
+            break;
+        default:
+            return -1;
+        }
+
+        break;
+
+    default:
+        return -1;
+    }
+
+    return size >= 0 ? size : -1;
+}
+
+// Get time unit from seconds
+
+char*  w_seconds_to_time_unit(long seconds, bool long_format) {
+
+    if (seconds < 0) {
+        return "invalid";
+    }
+    else if (seconds >= W_WEEK_SECONDS) {
+        return long_format ? W_WEEKS_L : W_WEEKS_S ;
+    }
+    else if (seconds >= W_DAY_SECONDS) {
+        return long_format ? W_DAYS_L : W_DAYS_S ;
+    }
+    else if (seconds >= W_HOUR_SECONDS) {
+        return long_format ? W_HOURS_L : W_HOURS_S ;
+    }
+    else if (seconds >= W_MINUTE_SECONDS) {
+       return long_format ? W_MINUTES_L : W_MINUTES_S ;
+    }
+    else {
+       return long_format ? W_SECONDS_L : W_SECONDS_S ;
+    }
+}
+
+// Get time value from seconds
+
+long w_seconds_to_time_value(long seconds) {
+
+    if(seconds < 0) {
+        return -1;
+    }
+    else if (seconds >= W_WEEK_SECONDS) {
+        return seconds/W_WEEK_SECONDS;
+    }
+    else if (seconds >= W_DAY_SECONDS) {
+        return seconds/W_DAY_SECONDS;
+    }
+    else if (seconds >= W_HOUR_SECONDS) {
+        return seconds/W_HOUR_SECONDS;
+    }
+    else if (seconds >= W_MINUTE_SECONDS) {
+        return seconds/W_MINUTE_SECONDS;
+    }
+    else {
+        return seconds;
+    }
 }
 
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
@@ -772,7 +777,7 @@ char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const 
 
     const size_t decoded_len = buffer_size / 2;
     char *decoded_buffer;
-    os_calloc(decoded_len, sizeof(char), decoded_buffer);
+    os_calloc(decoded_len + 1, sizeof(char), decoded_buffer);
 
     size_t i;
     for(i = 0; i < decoded_len; ++i) {
@@ -954,6 +959,11 @@ int os_snprintf(char *str, size_t size, const char *format, ...) {
 
 char * w_remove_substr(char *str, const char *sub) {
     char *p, *q, *r;
+
+    if (!str || !sub) {
+        return NULL;
+    }
+
     if ((q = r = strstr(str, sub)) != NULL) {
         size_t len = strlen(sub);
         while ((r = strstr(p = r + len, sub)) != NULL) {
@@ -1102,4 +1112,23 @@ char** w_strtok(const char *string) {
     }
 
     return output;
+}
+
+char* w_strcat_list(char ** list, char sep_char) {
+
+    char * concatenation = NULL;
+    char sep[] = {sep_char, '\0'};
+
+    if (list != NULL) {
+        char ** FIRST_ELEMENT = list;
+        while (*list != NULL) {
+            if (list != FIRST_ELEMENT) {
+                concatenation = w_strcat(concatenation, sep, 1);
+            }
+            concatenation = w_strcat(concatenation, *list, w_strlen(*list));
+            list++;
+        }
+    }
+
+    return concatenation;
 }

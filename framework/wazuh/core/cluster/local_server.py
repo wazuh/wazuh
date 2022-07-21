@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -7,6 +7,7 @@ import functools
 import json
 import os
 import random
+from datetime import datetime
 from typing import Tuple, Union
 
 import uvloop
@@ -16,6 +17,7 @@ from wazuh.core.cluster import common as c_common, server, client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
+from wazuh.core.utils import get_date_from_timestamp
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -163,7 +165,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         if not future.cancelled():
             exc = future.exception()
             if exc:
-                self.logger.error(exc)
+                self.logger.error(exc, exc_info=False)
 
 
 class LocalServer(server.AbstractServer):
@@ -192,7 +194,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = os.path.join(common.wazuh_path, 'queue', 'cluster', 'c-internal.sock')
+        socket_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock')
 
         try:
             local_server = await loop.create_unix_server(
@@ -243,7 +245,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
         if command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b' ' + data)
             return b'ok', b'Added request to API requests queue'
-        elif command == b'dapi_forward':
+        elif command == b'dapi_fwd':
             node_name, request = data.split(b' ', 1)
             node_name = node_name.decode()
             if node_name in self.server.node.clients:
@@ -288,7 +290,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
             Dict object containing nodes information.
 
         """
-        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
+        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes)),
+                                 default=lambda o: "n/a" if
+                                 isinstance(o, datetime) and o == get_date_from_timestamp(0)
+                                 else (o.__str__() if isinstance(o, datetime) else None)).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -383,6 +383,10 @@
 #define PRODUCT_STORAGE_WORKGROUP_SERVER_CORE_C "Storage Server Workgroup (core installation) "
 #endif
 
+#ifndef FIRST_BUILD_WINDOWS_11
+#define FIRST_BUILD_WINDOWS_11 22000
+#endif
+
 #define mkstemp(x) 0
 #define mkdir(x, y) mkdir(x)
 #endif /* WIN32 */
@@ -533,19 +537,12 @@ float DirSize(const char *path) {
     return folder_size;
 }
 
-#endif
-
 int CreatePID(const char *name, int pid)
 {
     char file[256];
     FILE *fp;
 
-    if (isChroot()) {
-        snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
-    } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
-                 OS_PIDFILE, name, pid);
-    }
+    snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
 
     fp = fopen(file, "a");
     if (!fp) {
@@ -592,17 +589,11 @@ char *GetRandomNoise()
     }
 }
 
-
 int DeletePID(const char *name)
 {
-    char file[256];
+    char file[256] = {'\0'};
 
-    if (isChroot()) {
-        snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
-    } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
-                 OS_PIDFILE, name, (int)getpid());
-    }
+    snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
 
     if (File_DateofChange(file) < 0) {
         return (-1);
@@ -615,7 +606,7 @@ int DeletePID(const char *name)
 
     return (0);
 }
-
+#endif
 
 void DeleteState() {
     char path[PATH_MAX + 1];
@@ -624,7 +615,7 @@ void DeleteState() {
 #ifdef WIN32
         snprintf(path, sizeof(path), "%s.state", __local_name);
 #else
-        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+        snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
 #endif
         unlink(path);
     } else {
@@ -852,9 +843,6 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     char buf[2048 + 1];
     FILE *fp;
     FILE *finalfp;
-    char newpath[PATH_MAX];
-    DIR *dir;
-    struct dirent *ent = NULL;
 
     /* Create a new entry */
 
@@ -895,54 +883,37 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         }
     }
 
-    /* Is a file */
-    if (dir = opendir(files), !dir) {
+    finalfp = fopen(finalpath, "a");
+    if (!finalfp) {
+        merror("Unable to append merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
+        return (0);
+    }
 
-        finalfp = fopen(finalpath, "a");
-        if (!finalfp) {
-            merror("Unable to append merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
-            return (0);
-        }
+    fp = fopen(files, "r");
 
-        fp = fopen(files, "r");
-
-        if (!fp) {
-            merror("Unable to merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
-            fclose(finalfp);
-            return (0);
-        }
-
-        fseek(fp, 0, SEEK_END);
-        files_size = ftell(fp);
-
-        if (tag) {
-            fprintf(finalfp, "#%s\n", tag);
-        }
-
-        fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
-        fseek(fp, 0, SEEK_SET);
-
-        while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-            buf[n] = '\0';
-            fwrite(buf, n, 1, finalfp);
-        }
-
-        fclose(fp);
+    if (!fp) {
+        merror("Unable to merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
         fclose(finalfp);
+        return (0);
     }
-    else { /* Is a directory */
-        mdebug2("Merging directory: %s", files);
 
-        while ((ent = readdir(dir)) != NULL) {
-            // Skip . and ..
-            if (ent->d_name[0] != '.' || (ent->d_name[1] && (ent->d_name[1] != '.' || ent->d_name[2]))) {
-                snprintf(newpath, PATH_MAX, "%s/%s", files, ent->d_name);
-                MergeAppendFile(finalpath, newpath, tag, path_offset);
-            }
-        }
+    fseek(fp, 0, SEEK_END);
+    files_size = ftell(fp);
 
-        closedir(dir);
+    if (tag) {
+        fprintf(finalfp, "#%s\n", tag);
     }
+
+    fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
+    fseek(fp, 0, SEEK_SET);
+
+    while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
+        buf[n] = '\0';
+        fwrite(buf, n, 1, finalfp);
+    }
+
+    fclose(fp);
+    fclose(finalfp);
 
     return (1);
 }
@@ -1174,11 +1145,6 @@ void goDaemonLight()
 
     dup2(1, 2);
 
-    /* Go to / */
-    if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, "/", errno, strerror(errno));
-    }
-
     nowDaemon();
 }
 
@@ -1218,11 +1184,6 @@ void goDaemon()
         dup2(fd, 2);
 
         close(fd);
-    }
-
-    /* Go to / */
-    if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, "/", errno, strerror(errno));
     }
 
     nowDaemon();
@@ -1278,7 +1239,7 @@ end:
 time_t get_UTC_modification_time(const char *file){
     HANDLE hdle;
     FILETIME modification_date;
-    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
+    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
         hdle == INVALID_HANDLE_VALUE) {
         mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
         return 0;
@@ -1896,6 +1857,7 @@ const char *getuname()
                 TCHAR wincomp[size];
                 DWORD winMajor = 0;
                 DWORD winMinor = 0;
+                DWORD buildRevision = 0;
                 DWORD dwCount = size;
                 unsigned long type=REG_DWORD;
 
@@ -1919,7 +1881,23 @@ const char *getuname()
                             snprintf(__wp, 63, " [Ver: %d.%d]", (unsigned int)winMajor, (unsigned int)winMinor);
                         }
                         else {
-                            snprintf(__wp, 63, " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
+                            dwCount = size;
+                            dwRet = RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&buildRevision, &dwCount);
+                            if (dwRet != ERROR_SUCCESS) {
+                                snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
+                            }
+                            else {
+                                snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s.%lu]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp, buildRevision);
+                            }
+
+                            char *endptr = NULL, *osVersion = NULL;
+                            const int buildNumber = (int) strtol(wincomp, &endptr, 10);
+
+                            if ('\0' == *endptr && buildNumber >= FIRST_BUILD_WINDOWS_11) {
+                                if (osVersion = strstr(ret, "Microsoft Windows 10"), osVersion != NULL) {
+                                    memcpy(osVersion, "Microsoft Windows 11", strlen("Microsoft Windows 11"));
+                                }
+                            }
                         }
                     }
                     RegCloseKey(RegistryKey);
@@ -1939,10 +1917,17 @@ const char *getuname()
                             snprintf(__wp, 63, " [Ver: 6.2]");
                         }
                         else {
-                            snprintf(__wp, 63, " [Ver: %s.%s]", winver,wincomp);
+                            dwCount = size;
+                            dwRet = RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&buildRevision, &dwCount);
+                            if (dwRet != ERROR_SUCCESS) {
+                                snprintf(__wp, sizeof(__wp), " [Ver: %s.%s]", winver,wincomp);
+                            }
+                            else {
+                                snprintf(__wp, sizeof(__wp), " [Ver: %s.%s.%lu]", winver, wincomp, buildRevision);
+                            }
                         }
-                        RegCloseKey(RegistryKey);
                     }
+                    RegCloseKey(RegistryKey);
                 }
 
                 strncat(ret, __wp, ret_size - 1);
@@ -2034,7 +2019,7 @@ void w_ch_exec_dir() {
     }
 }
 
-FILE * w_fopen_r(const char *file, const char * mode) {
+FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION * lpFileInformation) {
 
     FILE *fp = NULL;
     int fd;
@@ -2044,6 +2029,14 @@ FILE * w_fopen_r(const char *file, const char * mode) {
                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return NULL;
+    }
+
+    if (lpFileInformation != NULL) {
+        memset(lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
+    }
+
+    if (GetFileInformationByHandle(h, lpFileInformation) == 0) {
+        merror(FILE_ERROR, file);
     }
 
     if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
@@ -2059,6 +2052,109 @@ FILE * w_fopen_r(const char *file, const char * mode) {
     }
 
     return fp;
+}
+
+char **expand_win32_wildcards(const char *path) {
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFind;
+    char **pending_expand = NULL;
+    char **expanded_paths = NULL;
+    char *pattern = NULL;
+    char *next_glob = NULL;
+    char *parent_path = NULL;
+    int pending_expand_index = 0;
+    int expanded_index = 0;
+    size_t glob_pos = 0;
+
+    os_calloc(2, sizeof(char *), pending_expand);
+    os_strdup(path, pending_expand[0]);
+    // Loop until there is not any directory to expand.
+    while(true) {
+        pattern = pending_expand[0];
+
+        if (pattern == NULL) {
+            break;
+        }
+
+        glob_pos = strcspn(pattern, "*?");
+        if (glob_pos == strlen(pattern)) {
+            // If there are no more patterns, exit
+            expanded_paths = pending_expand;
+            break;
+        }
+
+        os_calloc(2, sizeof(char *), expanded_paths);
+
+        for (pending_expand_index = 0; pattern != NULL; pattern = pending_expand[++pending_expand_index]) {
+            glob_pos = strcspn(pattern, "*?");
+            next_glob = strchr(pattern + glob_pos, PATH_SEP);
+
+            // Find the next regex to be appended in case there is an expanded folder.
+            if (next_glob != NULL) {
+                *next_glob = '\0';
+                next_glob++;
+            }
+            os_strdup(pattern, parent_path);
+            char *look_back = strrchr(parent_path, PATH_SEP);
+
+            if (look_back) {
+                *look_back = '\0';
+            }
+
+            hFind = FindFirstFile(pattern, &FindFileData);
+            if (hFind == INVALID_HANDLE_VALUE) {
+                long unsigned errcode = GetLastError();
+                if (errcode == 2) {
+                    mdebug2("No file/folder that matches %s.", pattern);
+                } else {
+                    mdebug2("FindFirstFile failed (%lu) - '%s'\n", errcode, pattern);
+                }
+
+                os_free(pattern);
+                os_free(parent_path);
+                next_glob = NULL;
+                continue;
+            }
+            do {
+                if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
+                    continue;
+                }
+
+                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                    continue;
+                }
+
+                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
+                    continue;
+                }
+
+                os_strdup(parent_path, expanded_paths[expanded_index]);
+                wm_strcat(&expanded_paths[expanded_index], FindFileData.cFileName, PATH_SEP);
+
+                if (next_glob != NULL) {
+                    wm_strcat(&expanded_paths[expanded_index], next_glob, PATH_SEP);
+                }
+
+                os_realloc(expanded_paths, (expanded_index + 2) * sizeof(char *), expanded_paths);
+                expanded_index++;
+                expanded_paths[expanded_index] = NULL;
+
+            } while(FindNextFile(hFind, &FindFileData));
+
+            FindClose(hFind);
+            // Now, free the memory, as the path that needed to be expanded is no longer needed and it's expansion is
+            // saved in expanded_paths vector.
+            os_free(pattern);
+            os_free(parent_path);
+            next_glob = NULL;
+        }
+
+        expanded_index = 0;
+        os_free(pending_expand);
+        pending_expand = expanded_paths;
+    }
+
+    return expanded_paths;
 }
 
 #endif /* WIN32 */
@@ -2501,6 +2597,9 @@ cJSON* getunameJSON()
         if (read_info->os_release){
             cJSON_AddStringToObject(root, "os_release", read_info->os_release);
         }
+        if (read_info->os_display_version){
+            cJSON_AddStringToObject(root, "os_display_version", read_info->os_display_version);
+        }
 
         free_osinfo(read_info);
         return root;
@@ -2669,53 +2768,6 @@ FILE * wfopen(const char * pathname, const char * mode) {
 #else
     return fopen(pathname, mode);
 #endif
-}
-
-
-int w_remove_line_from_file(char *file, int line){
-    FILE *fp_src;
-    FILE *fp_dst;
-    size_t count_w;
-    char buffer[OS_SIZE_65536 + 1];
-    char destination[PATH_MAX] = {0};
-
-    fp_src = fopen(file, "r");
-
-    if (!fp_src) {
-        merror("At remove_line_from_file(): Couldn't open file '%s'", file);
-        return -1;
-    }
-
-    snprintf(destination, PATH_MAX, "%s.back", file);
-
-    /* Write to file */
-    fp_dst = fopen(destination, "w");
-
-    if (!fp_dst) {
-        mdebug1("At remove_line_from_file(): Couldn't open file '%s'", destination);
-        fclose(fp_src);
-        return -1;
-    }
-
-    /* Write message to the destination file */
-    int i = 0;
-    while (fgets(buffer, OS_SIZE_65536 + 1, fp_src) != NULL) {
-
-        if(i != line){
-            count_w = fwrite(buffer, 1, strlen(buffer) , fp_dst);
-
-            if (count_w != strlen(buffer) || ferror(fp_dst)) {
-                merror("At remove_line_from_file(): Couldn't write file '%s'", destination);
-                break;
-            }
-        }
-        i++;
-    }
-
-    fclose(fp_src);
-    fclose(fp_dst);
-
-    return w_copy_file(destination, file, 'w', NULL, 0);
 }
 
 
@@ -3127,7 +3179,7 @@ int64_t w_ftell(FILE *x) {
 #ifndef WIN32
     int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x);
+    int64_t z = ftello64(x);
 #endif
 
     if (z < 0)  {
@@ -3143,7 +3195,7 @@ int w_fseek(FILE *x, int64_t pos, int mode) {
 #ifndef WIN32
     int64_t z = fseek(x, pos, mode);
 #else
-    int64_t z = _fseeki64(x, pos, mode);
+    int64_t z = fseeko64(x, pos, mode);
 #endif
     if (z < 0)  {
         mwarn("Fseek function failed due to [(%d)-(%s)]", errno, strerror(errno));
@@ -3357,5 +3409,58 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
     }
 
     return result;
+}
+#endif
+
+#ifndef WIN32
+/**
+ * @brief Get the Wazuh installation directory
+ *
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ *
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
+ */
+char *w_homedir(char *arg) {
+    char *buff = NULL;
+    struct stat buff_stat;
+    char * delim = "/bin";
+    os_calloc(PATH_MAX, sizeof(char), buff);
+#ifdef __MACH__
+    pid_t pid = getpid();
+    if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+#else
+    if (realpath("/proc/self/exe", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+    else if (realpath("/proc/curproc/file", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+    else if (realpath("/proc/self/path/a.out", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+#endif
+    else if (realpath(arg, buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    } else {
+        // The path was not found so read WAZUH_HOME env var
+        char * home_env = NULL;
+        if (home_env = getenv(WAZUH_HOME_ENV), home_env) {
+            snprintf(buff, PATH_MAX, "%s", home_env);
+        }
+    }
+
+    if ((stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
+        os_free(buff);
+        merror_exit(HOME_ERROR);
+    }
+
+    return buff;
 }
 #endif

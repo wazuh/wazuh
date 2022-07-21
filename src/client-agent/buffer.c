@@ -1,6 +1,6 @@
 /*
  * Anti-flooding mechanism
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 4, 2017
  *
  * This program is free software; you can redistribute it
@@ -136,8 +136,11 @@ int buffer_append(const char *msg){
 }
 
 /* Send messages from buffer to the server */
+#ifdef WIN32
+DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
+#else
 void *dispatch_buffer(__attribute__((unused)) void * arg){
-
+#endif
     char flood_msg[OS_MAXSTR];
     char full_msg[OS_MAXSTR];
     char warn_msg[OS_MAXSTR];
@@ -232,7 +235,10 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
         gettime(&ts1);
         time_sub(&ts1, &ts0);
-        delay(&ts1);
+
+        if (ts1.tv_sec >= 0) {
+            delay(&ts1);
+        }
     }
 }
 
@@ -240,7 +246,10 @@ void delay(struct timespec * ts_loop) {
     long interval_ns = 1000000000 / agt->events_persec;
     struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
     time_sub(&ts_timeout, ts_loop);
-    nanosleep(&ts_timeout, NULL);
+
+    if (ts_timeout.tv_sec >= 0) {
+        nanosleep(&ts_timeout, NULL);
+    }
 }
 
 int w_agentd_get_buffer_lenght() {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -18,10 +18,17 @@
 #include "headers/defs.h"
 
 
-int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size)
+int OS_MD5_SHA1_SHA256_File(const char *fname,
+                            char **prefilter_cmd,
+                            os_md5 md5output,
+                            os_sha1 sha1output,
+                            os_sha256 sha256output,
+                            int mode,
+                            size_t max_size)
 {
     size_t n, read = 0;
     FILE *fp;
+    wfd_t *wfd;
     unsigned char buf[OS_BUFFER_SIZE + 2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
@@ -44,16 +51,22 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
             return (-1);
         }
     } else {
-        char cmd[OS_MAXSTR];
-        size_t target_length = strlen(prefilter_cmd) + 1 + strlen(fname);
-        int res = snprintf(cmd, sizeof(cmd), "%s %s", prefilter_cmd, fname);
-        if (res < 0 || (unsigned int)res != target_length) {
-            return (-1);
+        char **command = NULL;
+        int cnt = 0;
+        while(prefilter_cmd[cnt] != NULL) {
+            cnt++;
         }
-        fp = popen(cmd, "r");
-        if (!fp) {
-            return (-1);
+        os_calloc(cnt + 2, sizeof(char *), command);
+        for (cnt = 0; prefilter_cmd[cnt]; cnt++) {
+            os_strdup(prefilter_cmd[cnt], command[cnt]);
         }
+
+        os_strdup(fname, command[cnt]);
+
+        wfd = wpopenv(*command, command, W_BIND_STDOUT);
+        fp = wfd->file_out;
+
+        free_strarray(command);
     }
 
     /* Initialize both hashes */
@@ -67,11 +80,11 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
         if (max_size > 0) {
             read = read + n;
             if (read >= max_size) {     // Maximum filesize error
-                mwarn("'%s' filesize is larger than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
+                mwarn("'%s' filesize is larger than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
                 if (prefilter_cmd == NULL) {
                     fclose(fp);
                 } else {
-                    pclose(fp);
+                    wpclose(wfd);
                 }
                 return (-1);
             }
@@ -110,7 +123,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     if (prefilter_cmd == NULL) {
         fclose(fp);
     } else {
-        pclose(fp);
+        wpclose(wfd);
     }
 
     return (0);

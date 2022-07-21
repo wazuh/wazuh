@@ -1,0 +1,60 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml centralized_configuration
+
+hide footbox
+
+box "**Wazuh Master Node**"
+participant "wazuh-remoted" as masterremote
+participant "wazuh-clusterd" as mclusterd
+end box
+box "**Wazuh Worker Node**"
+participant "wazuh-clusterd" as wclusterd
+participant "wazuh-remoted" as workerremote
+end box
+participant "**Wazuh Agent**\nwazuh-agentd" as agent
+
+masterremote++
+mclusterd++
+workerremote++
+wclusterd++
+agent++
+
+loop every remoted.shared_reload
+    opt remoted.merge_shared == 1
+        masterremote -> masterremote: create group's and multigroup's\nmerged.mg by joining individual files
+    end
+end
+
+loop
+    wclusterd -> mclusterd: sync
+    rnote over wclusterd, mclusterd: [[https://github.com/wazuh/wazuh/blob/master/framework/wazuh/core/cluster/cluster.json sync file list]]
+    mclusterd --> wclusterd: delta
+end
+
+loop every <client> notify_time
+    opt merged.mg hash not cached
+        agent -> agent: hash current merged.mg and\nsave it into cache value
+    end 
+    workerremote <- agent: send agent status\n(uname, labels, ip, merged.mg hash, labels ip)
+    workerremote -> workerremote: update agent status
+    opt agent's and worker's merged.mg differ\n(based on their hashes)
+        loop until whole merged.mg is transfered
+            workerremote -> agent: merged.mg chunk
+            workerremote <-- agent:
+        end
+        agent -> agent: unmerge merged.mg into separated files
+        alt unmerge ok
+            agent -> agent: clean merged.mg cache
+            opt agent.remote_conf is true and is a valid config
+                opt auto_restart
+                    agent ->x agent: restart
+                end
+            end
+        else
+            agent -> workerremote: send warning alert
+        end
+    end
+end

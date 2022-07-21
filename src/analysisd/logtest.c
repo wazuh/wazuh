@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -8,6 +8,7 @@
  */
 
 #include "logtest.h"
+#include "os_xml/os_xml.h"
 
 
 OSHash *w_logtest_sessions;
@@ -55,6 +56,7 @@ void *w_logtest_init() {
 
         for (int i = 0; i < num_extra_threads; i++) {
             if (CreateThreadJoinable(logtest_threads + i, w_logtest_clients_handler, &connection)) {
+                os_free(logtest_threads);
                 merror_exit(THREAD_ERROR);
             }
         }
@@ -173,7 +175,9 @@ char *w_logtest_generate_error_response(char * msg){
 }
 
 
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg) {
+cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
+                              w_logtest_extra_data_t * extra_data,
+                              OSList * list_msg) {
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
@@ -202,7 +206,7 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
     }
 
     /* Rules matching */
-    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, list_msg), check_add_event == -1) {
+    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, extra_data->rules_debug_list, list_msg), check_add_event == -1) {
         Free_Eventinfo(lf);
         return output;
     }
@@ -210,11 +214,11 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
     /* Add alert description to the event and check alert level if exist a match */
     if (lf->generated_rule) {
         lf->comment = ParseRuleComment(lf);
-        *alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level) ? true : false;
+        extra_data->alert_generated = ((check_add_event == 1) && session->logbylevel <= lf->generated_rule->level);
     }
 
     /* Parse the alert */
-    char *output_str = Eventinfo_to_jsonstr(lf, false);
+    char *output_str = Eventinfo_to_jsonstr(lf, false, list_msg);
     output = cJSON_Parse(output_str);
     os_free(output_str);
 
@@ -285,12 +289,13 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session) {
         decodernode = session->decoderlist_nopname;
     }
 
-    DecodeEvent(lf, Config.g_rules_hash, &session->decoder_match, decodernode);
+    DecodeEvent(lf, session->g_rules_hash, &session->decoder_match, decodernode);
 }
 
 
-int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg) {
-
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
+                                  cJSON * rules_debug_list,
+                                  OSList * list_msg) {
     RuleNode * rulenode = NULL;
     RuleInfo * ruleinformation = NULL;
     bool added_list_event = false;
@@ -311,8 +316,13 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
         }
 
         /* Search the rule that match */
-        if (ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist, &session->cdblistnode,
-            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false), !ruleinformation) {
+        ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist,
+                                              &session->cdblistnode, rulenode,
+                                              &session->rule_match,
+                                              &session->fts_list,
+                                              &session->fts_store, false,
+                                              rules_debug_list);
+        if (!ruleinformation) {
             continue;
         }
 
@@ -375,13 +385,13 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
     return added_list_event ? 1 : 0;
 }
 
+w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
-w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
-
-    w_logtest_session_t * session;
+    w_logtest_session_t * session = NULL;
+    _Config ruleset_config = {0};
     bool retval = true;
 
-    char **files;
+    char ** files = NULL;
 
     /*Generate session token*/
     char *token = w_logtest_generate_token();
@@ -403,30 +413,38 @@ w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
     os_calloc(1, sizeof(EventList), session->eventlist);
     OS_CreateEventList(Config.memorysize, session->eventlist);
 
+    /* Get ruleset files */
+    if (!w_logtest_ruleset_load(&ruleset_config, list_msg)) {
+        goto cleanup;
+    }
+
     /* Load decoders */
     session->decoderlist_forpname = NULL;
     session->decoderlist_nopname = NULL;
     session->decoder_store = NULL;
 
-    files = Config.decoders;
+    files = ruleset_config.decoders;
 
-    while (files && *files) {
-        if (!ReadDecodeXML(*files, &session->decoderlist_forpname,
-            &session->decoderlist_nopname, &session->decoder_store, list_msg)) {
+    while (files != NULL && *files != NULL) {
+        if (ReadDecodeXML(*files, &session->decoderlist_forpname,
+            &session->decoderlist_nopname, &session->decoder_store, list_msg) == 0) {
             goto cleanup;
         }
         files++;
     }
 
-    SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, &session->decoderlist_forpname);
+    if (SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, 
+                     &session->decoderlist_forpname) == 0) {
+        goto cleanup;
+    }
 
     /* Load CDB list */
     session->cdblistnode = NULL;
     session->cdblistrule = NULL;
 
-    files = Config.lists;
+    files = ruleset_config.lists;
 
-    while (files && *files) {
+    while (files != NULL && *files != NULL) {
         if (Lists_OP_LoadList(*files, &session->cdblistnode, list_msg) < 0) {
             goto cleanup;
         }
@@ -438,9 +456,9 @@ w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
     /* Load rules */
     session->rule_list = NULL;
 
-    files = Config.includes;
+    files = ruleset_config.includes;
 
-    while (files && *files) {
+    while (files != NULL && *files != NULL) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
                             &session->eventlist, &session->decoder_store, list_msg) < 0) {
             goto cleanup;
@@ -475,6 +493,9 @@ w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
     memset(&session->decoder_match, 0, sizeof(regex_matching));
     memset(&session->rule_match, 0, sizeof(regex_matching));
 
+    /* Set custom level for alerts */
+    session->logbylevel = ruleset_config.logbylevel;
+
     retval = false;
 
 cleanup:
@@ -492,7 +513,9 @@ cleanup:
 
         /* Remove decoder lists */
         os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
-        OSStore_Free(session->decoder_store);
+        if (session->decoder_store != NULL) {
+            OSStore_Free(session->decoder_store);
+        }
 
         /* Remove cdblistnode and cdblistrule */
         os_remove_cdblist(&session->cdblistnode);
@@ -518,11 +541,10 @@ cleanup:
         os_free(token);
         os_free(session);
     }
-
+    w_logtest_ruleset_free_config(&ruleset_config);
 
     return session;
 }
-
 
 void w_logtest_remove_session(char *token) {
 
@@ -762,10 +784,11 @@ int w_logtest_check_input_remove_session(cJSON * root, char ** msg) {
 
 int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) {
 
-    cJSON * location;
-    cJSON * log_format;
-    cJSON * event;
-    cJSON * token;
+    cJSON * location = NULL;
+    cJSON * log_format = NULL;
+    cJSON * event = NULL;
+    cJSON * token = NULL;
+    cJSON * options = NULL;
 
     /* Check JSON fields */
     location = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOCATION);
@@ -808,8 +831,9 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         return W_LOGTEST_CODE_INVALID_JSON;
     }
 
+    /* Session may not be initialized */
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
-    if (token && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
+    if (token != NULL && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
 
         char * str_token = NULL;
 
@@ -824,6 +848,13 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         os_free(str_token);
 
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
+    }
+
+    /* The optional parameters must be in a json object. Otherwise, they will be dismissed. */
+    options = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_OPT);
+    if (options != NULL && !cJSON_IsObject(options)) {
+        cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_OPT);
+        smwarn(list_msg, LOGTEST_WARN_FIELD_NOT_OBJECT_IGNORE, W_LOGTEST_JSON_OPT);
     }
 
     return W_LOGTEST_CODE_SUCCESS;
@@ -1019,15 +1050,23 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     w_logtest_session_t * current_session = NULL;
     int retval = W_LOGTEST_RCODE_SUCCESS;
 
+    /* Get options */
+    cJSON * j_processing_opt = NULL;
+    cJSON * j_rule_verbose = NULL;
+
+    cJSON * json_log_processed = NULL;
+
+    w_logtest_extra_data_t extra_data = {.alert_generated = false, .rules_debug_list = NULL};
+
     /* Search an active session */
     cJSON * j_token;
     char * s_token = NULL;
 
-    if (j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN), j_token) {
+    if (j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN), j_token != NULL) {
         s_token = j_token->valuestring;
     }
 
-    if (s_token) {
+    if (s_token != NULL) {
 
         w_rwlock_wrlock(&w_logtest_sessions->mutex);
 
@@ -1064,23 +1103,41 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
 
     /* Proccess log */
-    bool alert_generated = false;
-    cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, list_msg);
+    j_processing_opt = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_OPT);
+    if (j_processing_opt != NULL) {
+
+        j_rule_verbose = cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULES_DEBUG);
+
+        if (j_rule_verbose != NULL) {
+
+            if (cJSON_IsBool(j_rule_verbose) && cJSON_IsTrue(j_rule_verbose)) {
+                extra_data.rules_debug_list = cJSON_CreateArray();
+            } else if (!cJSON_IsBool(j_rule_verbose)) {
+                smwarn(list_msg, LOGTEST_WARN_FIELD_NOT_BOOLEAN_IGNORE, W_LOGTEST_JSON_OPT_RULES_DEBUG);
+            }
+        }
+    }
+
+    json_log_processed = w_logtest_process_log(json_request, current_session, &extra_data, list_msg);
 
     w_mutex_unlock(&current_session->mutex);
 
-    if (json_log_processed) {
+    if (json_log_processed != NULL) {
         cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
     } else {
         smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
         mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
     }
 
+    if (extra_data.rules_debug_list != NULL) {
+        cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OPT_RULES_DEBUG, extra_data.rules_debug_list);
+    }
+
     /* Generate response */
     w_logtest_add_msg_response(json_response, list_msg, &retval);
 
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
-        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert_generated ? 1 : 0);
+        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, extra_data.alert_generated ? 1 : 0);
     }
 
     return retval;
@@ -1126,4 +1183,112 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
     w_logtest_add_msg_response(json_response, list_msg, &retval);
 
     return retval;
+}
+
+bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
+
+    const char * FILE_CONFIG = OSSECCONF;
+    const char * XML_MAIN_NODE = "ossec_config";
+    bool retval = true;
+
+    OS_XML xml;
+    XML_NODE node;
+
+    /* Load and find the root */
+    if (OS_ReadXML(FILE_CONFIG, &xml) < 0) {
+        smerror(list_msg, XML_ERROR, FILE_CONFIG, xml.err, xml.err_line);
+        return false;
+    } else if (node = OS_GetElementsbyNode(&xml, NULL), node == NULL) {
+        OS_ClearXML(&xml);
+        smerror(list_msg, "There are no configuration blocks inside of '%s'", FILE_CONFIG);
+        return false;
+    }
+
+    /* Find the nodes of ossec_conf */
+    for (int i = 0; node[i]; i++) {
+        /* NULL element */
+        if (node[i]->element == NULL) {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+        /* Main node type (ossec_config) */
+        else if (strcmp(node[i]->element, XML_MAIN_NODE) == 0) {
+
+            XML_NODE conf_section_arr = NULL;
+            conf_section_arr = OS_GetElementsbyNode(&xml, node[i]);
+
+            /* If have configuration sections, iterates them */
+            if (conf_section_arr != NULL) {
+                if (!w_logtest_ruleset_load_config(&xml, conf_section_arr, ruleset_config, list_msg)) {
+                    smerror(list_msg, CONFIG_ERROR, FILE_CONFIG);
+                    OS_ClearNode(conf_section_arr);
+                    retval = false;
+                    break;
+                }
+                OS_ClearNode(conf_section_arr);
+            }
+        }
+    }
+
+    /* Clean up */
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
+
+    return retval;
+}
+
+bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _Config * ruleset_config, OSList * list_msg) {
+
+    const char * XML_RULESET = "ruleset";
+    const char * XML_ALERTS = "alerts";
+    bool retval = true;
+
+    /* Load configuration of the configuration section */
+    for (int i = 0; conf_section_nodes[i]; i++) {
+        XML_NODE options_node = NULL;
+
+        if (!conf_section_nodes[i]->element) {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+        /* Empty configuration sections are not allowed. */
+        else if (options_node = OS_GetElementsbyNode(xml, conf_section_nodes[i]), options_node == NULL) {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+
+        /* Load ruleset */
+        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 
+            && Read_Rules(options_node, ruleset_config, list_msg) < 0) {
+
+            OS_ClearNode(options_node);
+            retval = false;
+            break;
+
+        }
+
+        /* Load alert by level */
+
+        if (strcmp(conf_section_nodes[i]->element, XML_ALERTS) == 0 && Read_Alerts(options_node, ruleset_config, list_msg) < 0) {
+            OS_ClearNode(options_node);
+            retval = false;
+            break;
+        }
+
+        OS_ClearNode(options_node);
+    }
+
+    return retval;
+}
+
+void w_logtest_ruleset_free_config (_Config * ruleset_config) {
+
+    free_strarray(ruleset_config->decoders);
+    free_strarray(ruleset_config->includes);
+    free_strarray(ruleset_config->lists);
+
+    return;
 }

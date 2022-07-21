@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Shared variables and functions
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -9,9 +9,9 @@ VERSION_FILE="./src/VERSION"
 REVISION_FILE="./src/REVISION"
 VERSION=`cat ${VERSION_FILE}`
 REVISION=`cat ${REVISION_FILE}`
-LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
+VUNAME=`uname -r`
 
 # If whoami does not exist, try id
 if command -v whoami > /dev/null 2>&1 ; then
@@ -23,17 +23,22 @@ else
     fi
 fi
 
+# If hostname does not exist, try 'uname -n'
+if command -v hostname > /dev/null 2>&1 ; then
+    HOST=`hostname`
+else
+    HOST=`uname -n`
+fi
+
 OSSEC_INIT="/etc/ossec-init.conf"
-HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
 INSTYPE="server"
-DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
-INSTALLDIR="$DEFAULT_DIR";
+# Default installation directory
+INSTALLDIR="/var/ossec";
 PREINSTALLEDDIR=""
-WORKDIR="$INSTALLDIR"
 CEXTRA=""
 
 # Internal definitions

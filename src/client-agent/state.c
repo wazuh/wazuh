@@ -1,7 +1,7 @@
 /* Agent state management functions
  * August 2, 2017
  *
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -33,11 +33,18 @@ void w_agentd_state_init() {
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
 }
 
+#ifdef WIN32
+DWORD WINAPI state_main(__attribute__((unused)) LPVOID arg) {
+#else
 void * state_main(__attribute__((unused)) void * args) {
-
+#endif
     if (!interval) {
         minfo("State file is disabled.");
+#ifdef WIN32
+        return 0;
+#else
         return NULL;
+#endif
     }
 
     mdebug1("State file updating thread started.");
@@ -47,7 +54,11 @@ void * state_main(__attribute__((unused)) void * args) {
         sleep(interval);
     }
 
-    return NULL;
+#ifdef WIN32
+        return 0;
+#else
+        return NULL;
+#endif
 }
 
 int write_state() {
@@ -79,7 +90,7 @@ int write_state() {
     }
 #else
     char path_temp[PATH_MAX + 1];
-    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+    snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {

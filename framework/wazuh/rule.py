@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -15,18 +15,18 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
-    RULE_REQUIREMENTS, SORT_FIELDS
+    RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
     to_relative_path
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config()['disabled']
+cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
               tsc=None, mitre=None, relative_dirname=None, filename=None, level=None, offset=0,
-              limit=common.database_limit, select=None, sort_by=None, sort_ascending=True, search_text=None,
+              limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True, search_text=None,
               complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
@@ -39,7 +39,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
     :param tsc: Filters the rules by tsc requirement.
-    :param mitre: Filters the rules by mitre attack ID.
+    :param mitre: Filters the rules by mitre technique ID.
     :param relative_dirname: Filters the relative dirname.
     :param filename: List of filenames to filter by.
     :param level: Filters the rules by level. level=2 or level=2-5.
@@ -97,7 +97,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, select=select, sort_by=sort_by,
                          sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
-                         limit=limit, q=q, required_fields=REQUIRED_FIELDS)
+                         limit=limit, q=q, required_fields=REQUIRED_FIELDS, allowed_select_fields=RULE_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -105,8 +105,9 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
 
 
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
-def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.database_limit, sort_by=None,
-                    sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
+                    sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
+                    search_in_fields=None):
     """Gets a list of the rule files.
 
     :param status: Filters by status: enabled, disabled, all.
@@ -139,7 +140,8 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
                                          tags))
     else:
         rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
-                                               {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
+                                               {'status': status, 'relative_dirname': relative_dirname,
+                                                'filename': filename},
                                                tags)
 
     data = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
@@ -151,7 +153,7 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
     return result
 
 
-def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+def get_groups(offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True, search_text=None,
                complementary_search=False, search_in_fields=None):
     """Get all the groups used in the rules.
 
@@ -179,7 +181,7 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     return result
 
 
-def get_requirement(requirement=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+def get_requirement(requirement=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True,
                     search_text=None, complementary_search=False, search_in_fields=None):
     """Get the requirements used in the rules
 
@@ -235,7 +237,7 @@ def get_rule_file(filename=None, raw=False):
     if len(files) > 0:
         rules_path = files[0]['relative_dirname']
         try:
-            full_path = join(common.wazuh_path, rules_path, filename)
+            full_path = join(common.WAZUH_PATH, rules_path, filename)
             with open(full_path) as f:
                 content = f.read()
             if raw:
@@ -279,7 +281,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule'
                                       )
-    full_path = join(common.user_rules_path, filename)
+    full_path = join(common.USER_RULES_PATH, filename)
     backup_file = ''
     try:
         if len(content) == 0:
@@ -301,7 +303,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     except WazuhError as e:
         result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
+        exists(backup_file) and safe_move(backup_file, full_path)
 
     return result
 
@@ -323,7 +325,7 @@ def delete_rule_file(filename=None):
                                       none_msg='Could not delete rule'
                                       )
 
-    full_path = join(common.user_rules_path, filename[0])
+    full_path = join(common.USER_RULES_PATH, filename[0])
 
     try:
         if exists(full_path):

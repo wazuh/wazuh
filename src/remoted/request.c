@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * May 31, 2017.
  *
  * This program is free software; you can redistribute it
@@ -50,7 +50,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     unsigned int counter = (unsigned int)os_random();
     char counter_s[COUNTER_LENGTH];
     req_node_t * node;
-    const char * path = isChroot() ? REMOTE_REQ_SOCK : DEFAULTDIR REMOTE_REQ_SOCK;
+    const char * path = REMOTE_REQ_SOCK;
 
     mdebug1("Running request listener thread.");
 
@@ -252,7 +252,7 @@ void * req_dispatch(req_node_t * node) {
 
             // Try to send message
 
-            if (send_msg(agentid, payload, ldata)) {
+            if (send_msg(agentid, payload, ldata) < 0) {
                 mwarn("Sending request to agent '%s'.", agentid);
 
                 if (OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR) < 0) {

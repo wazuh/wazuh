@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -102,8 +102,10 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
 
 cJSON * __wrap_wdb_exec_stmt_sized(__attribute__((unused)) sqlite3_stmt *stmt,
                                    size_t max_size,
-                                   int* status) {
+                                   int* status,
+                                   bool column_mode) {
     check_expected(max_size);
+    check_expected(column_mode);
     *status = mock();
     return mock_ptr_type(cJSON *);
 }
@@ -145,6 +147,36 @@ int __wrap_wdbi_query_clear(__attribute__((unused)) wdb_t *wdb,
                             __attribute__((unused)) wdb_component_t component,
                             __attribute__((unused)) const char *payload) {
     return mock();
+}
+
+int __wrap_wdbi_check_sync_status(__attribute__((unused)) wdb_t *wdb,
+                                  wdb_component_t component) {
+    check_expected(component);
+    return mock();
+}
+
+void __wrap_wdbi_update_attempt(__attribute__((unused))wdb_t * wdb,
+                                wdb_component_t component,
+                                long timestamp,
+                                os_sha1 last_agent_checksum,
+                                os_sha1 manager_checksum,
+                                bool legacy) {
+    check_expected(component);
+    check_expected(timestamp);
+    check_expected(last_agent_checksum);
+    check_expected(manager_checksum);
+    check_expected(legacy);
+}
+
+void __wrap_wdbi_update_completion(__attribute__((unused))wdb_t * wdb,
+                                wdb_component_t component,
+                                long timestamp,
+                                os_sha1 last_agent_checksum,
+                                os_sha1 manager_checksum) {
+    check_expected(component);
+    check_expected(timestamp);
+    check_expected(last_agent_checksum);
+    check_expected(manager_checksum);
 }
 
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
@@ -230,4 +262,107 @@ sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb,
 
 int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
     return mock();
+}
+
+int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer) {
+    check_expected(peer);
+    return mock();
+}
+
+int  __wrap_wdb_package_save(__attribute__((unused))wdb_t * wdb,
+                             const char* scan_id,
+                             const char* scan_time,
+                             const char* format,
+                             const char* name,
+                             const char* priority,
+                             const char* section,
+                             long size,
+                             const char* vendor,
+                             const char* install_time,
+                             const char* version,
+                             const char* architecture,
+                             const char* multiarch,
+                             const char* source,
+                             const char* description,
+                             const char* location,
+                             const char* checksum,
+                             const char* item_id,
+                             const bool replace) {
+    check_expected(scan_id);
+    check_expected(scan_time);
+    check_expected(format);
+    check_expected(name);
+    check_expected(priority);
+    check_expected(section);
+    check_expected(size);
+    check_expected(vendor);
+    check_expected(install_time);
+    check_expected(version);
+    check_expected(architecture);
+    check_expected(multiarch);
+    check_expected(source);
+    check_expected(description);
+    check_expected(location);
+    check_expected(checksum);
+    check_expected(item_id);
+    check_expected(replace);
+    return mock();
+}
+
+int __wrap_wdb_hotfix_save(__attribute__((unused))wdb_t * wdb,
+                           const char* scan_id,
+                           const char* scan_time,
+                           const char* hotfix,
+                           const char* checksum,
+                           const bool replace) {
+    check_expected(scan_id);
+    check_expected(scan_time);
+    check_expected(hotfix);
+    check_expected(checksum);
+    check_expected(replace);
+    return mock();
+}
+
+int __wrap_wdb_package_update(__attribute__((unused))wdb_t * wdb,
+                              const char * scan_id) {
+    check_expected(scan_id);
+    return mock();
+}
+
+int __wrap_wdb_package_delete(__attribute__((unused))wdb_t * wdb,
+                              const char * scan_id) {
+    check_expected(scan_id);
+    return mock();
+}
+
+int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
+                              const char * scan_id) {
+    check_expected(scan_id);
+    return mock();
+}
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
+    return mock_ptr_type(sqlite3_stmt*);
+}
+
+cJSON *__wrap_wdb_get_internal_config() {
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_get_config() {
+    return mock_ptr_type(cJSON *);
+}
+
+int __wrap_wdb_get_global_group_hash(__attribute__((unused))wdb_t * wdb,
+                                     os_sha1 hexdigest) {
+    check_expected(hexdigest);
+    return mock();
+}
+
+int __wrap_wdb_commit2(__attribute__((unused))wdb_t * wdb) {
+    return mock();
+}
+
+void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb) {
+    function_called();
 }

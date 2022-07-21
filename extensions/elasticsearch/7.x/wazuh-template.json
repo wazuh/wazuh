@@ -151,6 +151,8 @@
       "data.aws.userIdentity.userName",
       "data.aws.vpcEndpointId",
       "data.command",
+      "data.cis.group",
+      "data.cis.rule_title",
       "data.data",
       "data.docker.Actor.Attributes.container",
       "data.docker.Actor.Attributes.image",
@@ -163,14 +165,56 @@
       "data.dstport",
       "data.dstuser",
       "data.extra_data",
+      "data.hotfix",
+      "data.gcp.jsonPayload.queryName",
+      "data.gcp.jsonPayload.vmInstanceName",
+      "data.gcp.resource.labels.location",
+      "data.gcp.resource.labels.project_id",
+      "data.gcp.resource.labels.source_type",
+      "data.gcp.resource.type",
+      "data.github.org",
+      "data.github.actor",
+      "data.github.action",
+      "data.github.repo",
       "data.hardware.serial",
+      "data.hardware.cpu_name",
+      "data.hardware.cpu_cores",
+      "data.hardware.cpu_mhz",
+      "data.hardware.ram_total",
+      "data.hardware.ram_free",
+      "data.hardware.ram_usage",
       "data.id",
       "data.integration",
       "data.netinfo.iface.adapter",
+      "data.netinfo.iface.type",
+      "data.netinfo.iface.state",
+      "data.netinfo.iface.mtu",
       "data.netinfo.iface.ipv4.address",
       "data.netinfo.iface.ipv6.address",
       "data.netinfo.iface.mac",
+      "data.netinfo.iface.tx_packets",
+      "data.netinfo.iface.rx_packets",
+      "data.netinfo.iface.tx_bytes",
+      "data.netinfo.iface.rx_bytes",
+      "data.netinfo.iface.tx_errors",
+      "data.netinfo.iface.rx_errors",
+      "data.netinfo.iface.tx_dropped",
+      "data.netinfo.iface.rx_dropped",
       "data.netinfo.iface.name",
+      "data.netinfo.proto.iface",
+      "data.netinfo.proto.type",
+      "data.netinfo.proto.gateway",
+      "data.netinfo.proto.dhcp",
+      "data.netinfo.proto.metric",
+      "data.netinfo.addr.iface",
+      "data.netinfo.addr.proto",
+      "data.netinfo.addr.address",
+      "data.netinfo.addr.netmask",
+      "data.netinfo.addr.broadcast",
+      "data.office365.Actor.ID",
+      "data.office365.UserId",
+      "data.office365.Operation",
+      "data.office365.ClientIP",
       "data.os.architecture",
       "data.os.build",
       "data.os.codename",
@@ -181,7 +225,9 @@
       "data.os.name",
       "data.os.platform",
       "data.os.release",
+      "data.os.os_release",
       "data.os.release_version",
+      "data.os.display_version",
       "data.os.sysname",
       "data.os.version",
       "data.oscap.check.description",
@@ -215,17 +261,42 @@
       "data.osquery.pack",
       "data.port.process",
       "data.port.protocol",
+      "data.port.local_ip",
+      "data.port.local_port",
+      "data.port.remote_ip",
+      "data.port.remote_port",
+      "data.port.tx_queue",
+      "data.port.rx_queue",
+      "data.port.inode",
       "data.port.state",
+      "data.port.pid",
       "data.process.args",
       "data.process.cmd",
       "data.process.egroup",
       "data.process.euser",
       "data.process.fgroup",
+      "data.process.priority",
+      "data.process.nice",
+      "data.process.size",
+      "data.process.vm_size",
+      "data.process.resident",
+      "data.process.share",
+      "data.process.start_time",
+      "data.process.pgrp",
+      "data.process.session",
+      "data.process.nlwp",
+      "data.process.tgid",
+      "data.process.tty",
+      "data.process.processor",
+      "data.process.pid",
       "data.process.name",
       "data.process.rgroup",
       "data.process.ruser",
       "data.process.sgroup",
       "data.process.state",
+      "data.process.ppid",
+      "data.process.utime",
+      "data.process.stime",
       "data.process.suser",
       "data.program.architecture",
       "data.program.description",
@@ -234,9 +305,11 @@
       "data.program.multiarch",
       "data.program.name",
       "data.program.priority",
+      "data.program.size",
       "data.program.section",
       "data.program.source",
       "data.program.vendor",
+      "data.program.install_time",
       "data.program.version",
       "data.protocol",
       "data.pwd",
@@ -444,7 +517,8 @@
       "syscheck.value_type",
       "syscheck.changed_attributes",
       "title",
-      "type"
+      "type",
+      "operation_type"
     ]
   },
   "mappings": {
@@ -727,6 +801,9 @@
           },
           "level": {
             "type": "long"
+          },
+          "tsc": {
+            "type": "keyword"
           },
           "id": {
             "type": "keyword"
@@ -1081,6 +1158,55 @@
               }
             }
           },
+          "office365": {
+            "properties": {
+              "Actor": {
+                "properties": {
+                  "ID": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "UserId": {
+                "type": "keyword"
+              },
+              "Operation": {
+                "type": "keyword"
+              },
+              "ClientIP": {
+                "type": "keyword"
+              },
+              "ResultStatus": {
+                "type": "keyword"
+              },
+              "Subscription": {
+                "type": "keyword"
+              }
+            }
+          },
+          "github": {
+            "properties": {
+              "org": {
+                "type": "keyword"
+              },
+              "actor": {
+                "type": "keyword"
+              },
+              "action": {
+                "type": "keyword"
+              },
+              "actor_location": {
+                "properties": {
+                  "country_code": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "repo": {
+                "type": "keyword"
+              }
+            }
+          },
           "type": {
             "type": "keyword"
           },
@@ -1217,6 +1343,9 @@
                 "type": "keyword"
               },
               "release_version": {
+                "type": "keyword"
+              },
+              "display_version": {
                 "type": "keyword"
               }
             }
@@ -1728,6 +1857,22 @@
           },
           "aws": {
             "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "accountId": {
+                "type": "keyword"
+              },
+              "log_info": {
+                "properties": {
+                  "s3bucket": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "region": {
+                "type": "keyword"
+              },
               "bytes": {
                 "type": "long"
               },
@@ -1791,6 +1936,129 @@
                     }
                   }
                 }
+              }
+            }
+          },
+          "cis": {
+            "properties": {
+              "benchmark": {
+                "type": "keyword"
+              },
+              "error": {
+                "type": "long"
+              },
+              "fail": {
+                "type": "long"
+              },
+              "group": {
+                "type": "keyword"
+              },
+              "notchecked": {
+                "type": "long"
+              },
+              "pass": {
+                "type": "long"
+              },
+              "result": {
+                "type": "keyword"
+              },
+              "rule_title": {
+                "type": "keyword"
+              },
+              "score": {
+                "type": "long"
+              },
+              "timestamp": {
+                "type": "keyword"
+              },
+              "unknown": {
+                "type": "long"
+              }
+            }
+          },
+          "docker": {
+            "properties": {
+              "Action": {
+                "type": "keyword"
+              },
+              "Actor": {
+                "properties": {
+                  "Attributes": {
+                    "properties": {
+                      "image": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              },
+              "Type": {
+                "type": "keyword"
+              }
+            }
+          },
+          "gcp": {
+            "properties": {
+              "jsonPayload": {
+                "properties": {
+                  "authAnswer": {
+                    "type": "keyword"
+                  },
+                  "queryName": {
+                    "type": "keyword"
+                  },
+                  "responseCode": {
+                    "type": "keyword"
+                  },
+                  "vmInstanceId": {
+                    "type": "keyword"
+                  },
+                  "vmInstanceName": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "resource": {
+                "properties": {
+                  "labels": {
+                    "properties": {
+                      "location": {
+                        "type": "keyword"
+                      },
+                      "project_id": {
+                        "type": "keyword"
+                      },
+                      "source_type": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "type": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "severity": {
+                "type": "keyword"
+              }
+            }
+          },
+          "osquery": {
+            "properties": {
+              "name": {
+                "type": "keyword"
+              },
+              "pack": {
+                "type": "keyword"
+              },
+              "action": {
+                "type": "keyword"
+              },
+              "calendarTime": {
+                "type": "keyword"
               }
             }
           }

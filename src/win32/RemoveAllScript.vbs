@@ -1,5 +1,5 @@
 ' Script for configuration Windows agent.
-' Copyright (C) 2015-2020, Wazuh Inc. <support@wazuh.com>
+' Copyright (C) 2015, Wazuh Inc. <support@wazuh.com>
 '
 ' This program is free software; you can redistribute it and/or modify
 ' it under the terms of the GNU General Public License as published by
@@ -20,14 +20,14 @@
 
 ' This function is called only when uninstalling the product.
 ' Remove everything, but a few specified items.
-' 
+'
 public function removeAll()
 
    ' Retrieve the parameters
    strArgs = Session.Property("CustomActionData")
    args = Split(strArgs, ",")
    home_dir = Replace(args(0), Chr(34), "") 'APPLICATIONFOLDER
- 
+
    Set objSFO = CreateObject("Scripting.FileSystemObject")
 
    If objSFO.fileExists(home_dir & "ossec.conf.save") AND objSFO.fileExists(home_dir & "ossec.conf") Then
@@ -42,6 +42,10 @@ public function removeAll()
       objSFO.DeleteFile(home_dir & "local_internal_options.conf.save")
    End If
 
+   If objSFO.fileExists(home_dir & "installer.log.save") AND objSFO.fileExists(home_dir & "installer.log") Then
+      objSFO.DeleteFile(home_dir & "installer.log.save")
+   End If
+
    If objSFO.fileExists(home_dir & "ossec.conf") Then
       objSFO.GetFile(home_dir + "\ossec.conf").Name = "ossec.conf.save"
    End If
@@ -54,14 +58,18 @@ public function removeAll()
       objSFO.GetFile(home_dir + "\local_internal_options.conf").Name = "local_internal_options.conf.save"
    End If
 
+   If objSFO.fileExists(home_dir & "installer.log") Then
+      objSFO.GetFile(home_dir + "\installer.log").Name = "installer.log.save"
+   End If
+
    If objSFO.folderExists(home_dir) Then
       Set folder = objSFO.GetFolder(home_dir)
- 
+
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the files specified here *will not* be deleted
        Dim filesToKeep: filesToKeep = Array("ossec.conf.save", "client.keys.save", _
-                                            "local_internal_options.conf.save")
- 
+                                            "local_internal_options.conf.save", "installer.log.save")
+
       ' Construct a simple dictionary to check out later whether a file is in
       ' the list or not
       Dim dicFiles: Set dicFiles = CreateObject("Scripting.Dictionary")
@@ -69,8 +77,19 @@ public function removeAll()
       For Each x in filesToKeep
          dicFiles.add x, x
       Next
- 
- 
+
+      ' Everything in the application's root folder will be deleted.
+      ' *BUT*, the subfolders, and the files inside, specified here *will not* be deleted
+      Dim subfoldersToKeep: subfoldersToKeep = Array("backup", "upgrade")
+
+      ' Construct a simple dictionary to check out later whether a subfolders is in
+      ' the list or not
+      Dim dicFolders: Set dicFolders = CreateObject("Scripting.Dictionary")
+      dicFolders.CompareMode = vbTextCompare
+      For Each x in subfoldersToKeep
+         dicFolders.add x, x
+      Next
+
       ' Delete the files in the root folder
       For Each f In folder.Files
          name = f.name
@@ -80,18 +99,19 @@ public function removeAll()
             f.Delete True
          End If
       Next
- 
-      ' And delete all the subfolders, empty or not
+
+      ' Delete the subfolders in the root folder
       For Each f In folder.SubFolders
-         On Error Resume Next
-         f.Delete True
+         name = f.name
+         ' Delete the file only if it is not in the list
+         If Not dicFolders.Exists(name) Then
+            On Error Resume Next
+            f.Delete True
+         End If
       Next
 
- 
    End If   'objSFO.fileExists
- 
+
    removeAll = 0
 
 End Function   'removeAll
-
-

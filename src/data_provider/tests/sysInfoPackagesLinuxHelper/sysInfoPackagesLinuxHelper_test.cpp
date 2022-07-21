@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 28, 2021.
  *
  * This program is free software; you can redistribute it
@@ -10,7 +10,14 @@
  */
 
 #include "sysInfoPackagesLinuxHelper_test.h"
-#include "packages/packagesLinuxParserHelper.h"
+#include "packages/packageLinuxParserHelper.h"
+#include "packages/packageLinuxParserHelperExtra.h"
+#include "packages/packageLinuxRpmParserHelper.h"
+#include "packages/packageLinuxRpmParserHelperLegacy.h"
+#include "packages/rpmPackageManager.h"
+#include <alpm.h>
+#include <package.h>
+#include <handle.h>
 
 using ::testing::_;
 using ::testing::Return;
@@ -38,6 +45,32 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
 
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationLibRpm)
+{
+    RpmPackageManager::Package input;
+    input.name = "mktemp";
+    input.size = 15432;
+    input.installTime = "1425472738";
+    input.group = "System Environment/Base";
+    input.version = "1.5";
+    input.architecture = "x86_64";
+    input.vendor = "CentOS";
+    input.description = "A small utility for safely making /tmp files.";
+    input.epoch = 3;
+    input.release = "24.el5";
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
 TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPG)
 {
     constexpr auto RPM_PACKAGE_CENTOS
@@ -46,6 +79,15 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPG)
     };
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_TRUE(jsPackageInfo.empty());
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPGLibRPM)
+{
+    RpmPackageManager::Package input;
+    input.name = "gpg-pubkey";
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_TRUE(jsPackageInfo.empty());
 }
 
@@ -69,6 +111,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_EQ("", jsPackageInfo["description"]);
 }
 
+
 TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
 {
     constexpr auto RPM_PACKAGE_CENTOS
@@ -83,6 +126,55 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
     EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
     EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochNoReleaseLibRpm)
+{
+    RpmPackageManager::Package input;
+    input.name = "mktemp";
+    input.size = 15432;
+    input.installTime = "1425472738";
+    input.group = "System Environment/Base";
+    input.version = "4.16";
+    input.architecture = "x86_64";
+    input.vendor = "CentOS";
+    input.description = "A small utility for safely making /tmp files.";
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("4.16", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochLibRpm)
+{
+    RpmPackageManager::Package input;
+    input.name = "mktemp";
+    input.size = 15432;
+    input.installTime = "1425472738";
+    input.group = "System Environment/Base";
+    input.version = "4.16";
+    input.architecture = "x86_64";
+    input.vendor = "CentOS";
+    input.description = "A small utility for safely making /tmp files.";
+    input.epoch = 1;
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1:4.16", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -233,4 +325,111 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
     EXPECT_EQ("compression library - development", jsPackageInfo["description"]);
     EXPECT_EQ("zlib", jsPackageInfo["source"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
+{
+    __alpm_list_t   mock        {};
+    __alpm_pkg_t    data        {};
+    __alpm_handle_t dataHandle  {};
+    __alpm_list_t   dataGroups  {};
+
+    constexpr auto PKG_GROUP    {"wazuh"};
+    constexpr auto PKG_ARCH     {"x86_64"};
+    constexpr auto PKG_NAME     {"firefox"};
+    constexpr auto PKG_DESC     {"Standalone web browser from mozilla.org"};
+    constexpr auto PKG_VERSION  {"86.0-2"};
+
+    data.handle        = &dataHandle;
+    data.groups        = &dataGroups;
+    data.isize         = 1;
+    data.installdate   = 0;
+    data.groups->next  = nullptr;
+    data.name          = const_cast<char*>(PKG_NAME);
+    data.groups->data  = const_cast<char*>(PKG_GROUP);
+    data.version       = const_cast<char*>(PKG_VERSION);
+    data.arch          = const_cast<char*>(PKG_ARCH);
+    data.desc          = const_cast<char*>(PKG_DESC);
+    mock.data          = &data;
+    data.ops           = &default_pkg_ops;
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ(PKG_NAME, jsPackageInfo["name"]);
+    EXPECT_EQ(1, jsPackageInfo["size"]);
+    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
+    EXPECT_EQ(PKG_GROUP, jsPackageInfo["groups"]);
+    EXPECT_EQ(PKG_VERSION, jsPackageInfo["version"]);
+    EXPECT_EQ(PKG_ARCH, jsPackageInfo["architecture"]);
+    EXPECT_EQ("pacman", jsPackageInfo["format"]);
+    EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
+    EXPECT_EQ(PKG_DESC, jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
+{
+    __alpm_list_t   mock            {};
+    __alpm_pkg_t    data            {};
+    __alpm_handle_t dataHandle      {};
+    __alpm_list_t   dataFirstGroup  {};
+    __alpm_list_t   dataSecondGroup {};
+    __alpm_list_t   dataThirdGroup  {};
+    __alpm_list_t   dataFourthGroup {};
+
+    dataFirstGroup.data    = const_cast<char*>("Wazuh");
+    dataFirstGroup.next    = &dataSecondGroup;
+    dataSecondGroup.data   = const_cast<char*>("test");
+    dataSecondGroup.next   = &dataThirdGroup;
+    dataThirdGroup.data    = const_cast<char*>("Arch");
+    dataThirdGroup.next    = &dataFourthGroup;
+    dataFourthGroup.data   = const_cast<char*>("lorem");
+    dataFourthGroup.next   = nullptr;
+
+    data.isize             = 0;
+    data.installdate       = 0;
+    data.name              = nullptr;
+    data.version           = nullptr;
+    data.arch              = nullptr;
+    data.desc              = nullptr;
+    data.handle            = &dataHandle;
+    data.groups            = &dataFirstGroup;
+    mock.data              = &data;
+    data.ops               = &default_pkg_ops;
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("Wazuh-test-Arch-lorem", jsPackageInfo["groups"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
+{
+    __alpm_list_t   mock        {};
+    __alpm_pkg_t    data        {};
+    __alpm_handle_t dataHandle  {};
+    __alpm_list_t   dataGroups  {};
+
+    data.handle        = &dataHandle;
+    data.groups        = &dataGroups;
+    data.isize         = 0;
+    data.installdate   = 0;
+    data.groups->next  = nullptr;
+    data.name          = nullptr;
+    data.groups->data  = nullptr;
+    data.version       = nullptr;
+    data.arch          = nullptr;
+    data.desc          = nullptr;
+    mock.data          = &data;
+    data.ops           = &default_pkg_ops;
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("", jsPackageInfo["name"]);
+    EXPECT_EQ(0, jsPackageInfo["size"]);
+    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
+    EXPECT_EQ("", jsPackageInfo["groups"]);
+    EXPECT_EQ("", jsPackageInfo["version"]);
+    EXPECT_EQ("", jsPackageInfo["architecture"]);
+    EXPECT_EQ("pacman", jsPackageInfo["format"]);
+    EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
+    EXPECT_EQ("", jsPackageInfo["description"]);
 }

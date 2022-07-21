@@ -1,9 +1,6 @@
 ---
 test_name: PUT /active-response/{:agent_id}
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Runs an Active Response command on a specified agent with version >= 4.2.0
@@ -75,13 +72,9 @@ stages:
           affected_items: !anything
           failed_items:
             - error:
-                code: 1651
+                code: 1707
               id:
                 - '010'
-            # Separated errors as the message is not the same (different status)
-            - error:
-                code: 1651
-              id:
                 - '012'
           total_affected_items: 4
           total_failed_items: 2
@@ -107,7 +100,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 1651
+                code: 1707
               id:
                 - 009
           total_affected_items: 0
@@ -202,7 +195,6 @@ stages:
 
     # PUT /active-response
   - name: Runs an Active Response command on all agents
-    delay_before: !float "{active_reponse_delay}"
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/active-response"
@@ -228,14 +220,10 @@ stages:
             - '008'
           failed_items:
             - error:
-                code: 1651
+                code: 1707
               id:
                 - '009'
                 - '010'
-            # Separated errors as the message is not the same (different status)
-            - error:
-                code: 1651
-              id:
                 - '011'
                 - '012'
             - error:

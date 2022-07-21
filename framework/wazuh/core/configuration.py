@@ -1,28 +1,26 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import logging
 import os
-import random
 import re
 import subprocess
-import time
-import xml.etree.ElementTree as ET
+import sys
+import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
 
-from xml.dom.minidom import parseString
+from defusedxml.ElementTree import tostring
+from defusedxml.minidom import parseString
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.wazuh_socket import WazuhSocket
-from wazuh.core.results import WazuhResult
-from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
-
 from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
+from wazuh.core.wazuh_socket import WazuhSocket
 
 logger = logging.getLogger('wazuh')
 
@@ -154,8 +152,7 @@ def _insert_section(json_dst, section_name, section_data):
     elif section_name in conf_sections and conf_sections[section_name]['type'] == 'last':
         if section_name in json_dst:
             # if the option already exists it is overwritten. But a warning is shown.
-            logger.warning(
-                "There are multiple {} sections in configuration. Using only last section.".format(section_name))
+            logger.warning(f'There are multiple {section_name} sections in configuration. Using only last section.')
         json_dst[section_name] = section_data  # Create
 
 
@@ -206,11 +203,15 @@ def _read_option(section_name, opt):
             opt_value[a] = opt.attrib[a]
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
-        opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+        regex = rf'<{opt_name}>(.*)</{opt_name}>'
+        opt_value = re.match(regex,
+                             re.sub('(?:(\n) +)', '',
+                                    tostring(opt, encoding='unicode').replace('\\<', '<').replace('\\>', '>')
+                                    ).strip()).group(1)
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
-        if opt.attrib:
+        if opt.attrib or list(opt):
             opt_value = {}
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]
@@ -399,7 +400,7 @@ def _rootkit_files2json(filepath):
 
     # file_name ! Name ::Link to it
     regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
+    regex_check = re.compile(r"^(.+)!(.+)::(.+)")
 
     try:
         with open(filepath) as f:
@@ -407,8 +408,7 @@ def _rootkit_files2json(filepath):
                 if re.search(regex_comment, line):
                     continue
 
-                match_check = re.search(regex_check, line)
-                if match_check:
+                if match_check := re.search(regex_check, line):
                     new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(),
                                  'link': match_check.group(3).strip()}
                     data.append(new_check)
@@ -430,8 +430,8 @@ def _rootkit_trojans2json(filepath):
 
     # file_name !string_to_search!Description
     regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
-    regex_binary_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!")
+    regex_check = re.compile(r"^(.+)!(.+)!(.+)")
+    regex_binary_check = re.compile(r"^(.+)!(.+)!")
 
     try:
         with open(filepath) as f:
@@ -466,14 +466,24 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
-    """
-    Returns ossec.conf (manager) as dictionary.
+def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_import=False):
+    """Returns ossec.conf (manager) as dictionary.
 
-    :param section: Filters by section (i.e. rules).
-    :param field: Filters by field in section (i.e. included).
-    :param conf_file: Path of the configuration file to read.
-    :return: ossec.conf (manager) as dictionary.
+    Parameters
+    ----------
+    section : str
+        Filters by section (i.e. rules).
+    field : str
+        Filters by field in section (i.e. included).
+    conf_file : str
+        Path of the configuration file to read.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
+
+    Returns
+    -------
+    dict
+        ossec.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -482,7 +492,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
+        if not from_import:
+            raise WazuhError(1101, extra_message=str(e))
+        else:
+            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            sys.exit(0)
 
     if section:
         try:
@@ -505,15 +519,15 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filename='agent.conf', return_format=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
-    agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
+    agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, agent_conf)
@@ -536,18 +550,18 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.database_limit, filename=None):
+def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.DATABASE_LIMIT, filename=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
     # Check if a multigroup_id is provided and it exists
-    if multigroup_id and not os_path.exists(os_path.join(common.multi_groups_path, multigroup_id)) or not multigroup_id:
+    if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
         raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
 
     agent_conf_name = filename if filename else 'agent.conf'
-    agent_conf = os_path.join(common.multi_groups_path, multigroup_id, agent_conf_name)
+    agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
 
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
@@ -570,10 +584,10 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
 
     :return: configuration file as dictionary.
     """
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
-    file_path = os_path.join(common.shared_path, group_id if not filename == 'ar.conf' else '', filename)
+    file_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '', filename)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -592,7 +606,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
             else:
                 data = types[type_conf](file_path)
         else:
-            raise WazuhError(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
+            raise WazuhError(1104, f'{type_conf}. Valid types: {types.keys()}')
     else:
         if filename == "agent.conf":
             data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
@@ -618,20 +632,18 @@ def parse_internal_options(high_name, low_name):
 
         return config
 
-    if not os_path.exists(common.internal_options):
+    if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
         raise WazuhInternalError(1107)
 
     # Check if the option exists at local internal options
-    if os_path.exists(common.local_internal_options):
+    if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
         try:
-            return get_config(common.local_internal_options).get('root',
-                                                                 '{0}.{1}'.format(high_name, low_name))
+            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
         except NoOptionError:
             pass
 
     try:
-        return get_config(common.internal_options).get('root',
-                                                       '{0}.{1}'.format(high_name, low_name))
+        return get_config(common.INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
     except NoOptionError as e:
         raise WazuhInternalError(1108, e.args[0])
 
@@ -639,11 +651,11 @@ def parse_internal_options(high_name, low_name):
 def get_internal_options_value(high_name, low_name, max_, min_):
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
-        raise WazuhError(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
+        raise WazuhError(1109, f'Option: {high_name}.{low_name}. Value: {option}')
 
     option = int(option)
     if option < min_ or option > max_:
-        raise WazuhError(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max_, min_, option))
+        raise WazuhError(1110, f'Max value: {max_}. Min value: {min_}. Found: {option}.')
 
     return option
 
@@ -655,13 +667,13 @@ def upload_group_configuration(group_id, file_content):
     :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    tmp_file_path = os_path.join(common.wazuh_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.OSSEC_TMP_PATH)
     # create temporary file for parsing xml input and validate XML format
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             custom_entities = {
                 '_custom_open_tag_': '\\<',
                 '_custom_close_tag_': '\\>',
@@ -673,7 +685,7 @@ def upload_group_configuration(group_id, file_content):
             for character, replacement in custom_entities.items():
                 file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
 
-            # Beautify xml file using a minidom.Document
+            # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
 
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
@@ -695,7 +707,7 @@ def upload_group_configuration(group_id, file_content):
     try:
         # check Wazuh xml format
         try:
-            subprocess.check_output([os_path.join(common.wazuh_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
+            subprocess.check_output([os_path.join(common.WAZUH_PATH, "bin", "verify-agent-conf"), '-f', tmp_file_path],
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
@@ -718,8 +730,9 @@ def upload_group_configuration(group_id, file_content):
 
         # move temporary file to group folder
         try:
-            new_conf_path = os_path.join(common.shared_path, group_id, "agent.conf")
-            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+            new_conf_path = os_path.join(common.SHARED_PATH, group_id, "agent.conf")
+            safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
+                      permissions=0o660)
         except Exception as e:
             raise WazuhInternalError(1016, extra_message=str(e))
 
@@ -740,7 +753,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     :return: Confirmation message in string
     """
     # Check if the group exists
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
     if file_name == 'agent.conf':
@@ -753,8 +766,38 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
 
 
 def get_active_configuration(agent_id, component, configuration):
-    """
-    Reads agent loaded configuration in memory
+    """Get an agent's component active configuration.
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID. All possible values from 000 onwards.
+    component : str
+        Selected agent's component.
+    configuration : str
+        Configuration to get, written on disk.
+
+    Returns
+    -------
+    str
+        The active configuration the agent is currently using.
+
+    Raises
+    ------
+    WazuhError(1307)
+        If the component or configuration are not specified.
+    WazuhError(1101)
+        If the specified component is not valid.
+    WazuhError(1121)
+        If the component is not properly configured.
+    WazuhInternalError(1121)
+        If the socket cant be created.
+    WazuhInternalError(1118)
+        If the socket is not able to receive a response.
+    WazuhError(1117)
+        If there's no such file or directory in agent node, or the socket cannot send the request.
+    WazuhError(1116)
+        If the reply from the node contains an error.
     """
     if not component or not configuration:
         raise WazuhError(1307)
@@ -766,11 +809,15 @@ def get_active_configuration(agent_id, component, configuration):
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.wazuh_path, "queue", "sockets")
+    sockets_path = os_path.join(common.WAZUH_PATH, "queue", "sockets")
 
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
         command = f"getconfig {configuration}"
+        # Verify component configuration
+        if not os.path.exists(dest_socket):
+            raise WazuhError(1121, extra_message=f"please verify that the component '{component}' \
+                is properly configured")
     else:
         dest_socket = os_path.join(sockets_path, "request")
         command = f"{str(agent_id).zfill(3)} {component} getconfig {configuration}"
@@ -799,7 +846,7 @@ def get_active_configuration(agent_id, component, configuration):
         # Include password if auth->use_password enabled and authd.pass file exists
         if msg.get('auth', {}).get('use_password') == 'yes':
             try:
-                with open(os_path.join(common.wazuh_path, "etc", "authd.pass"), 'r') as f:
+                with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
                     msg['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass
@@ -807,7 +854,7 @@ def get_active_configuration(agent_id, component, configuration):
         return msg
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
-                         extra_message='{0}:{1}'.format(component, configuration))
+                         extra_message=f'{component}:{configuration}')
 
 
 def write_ossec_conf(new_conf: str):
@@ -820,7 +867,7 @@ def write_ossec_conf(new_conf: str):
         The new configuration to be applied.
     """
     try:
-        with open(common.ossec_conf, 'w') as f:
+        with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
     except Exception:
         raise WazuhError(1126)

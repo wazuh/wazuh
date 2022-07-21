@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -59,11 +59,11 @@ static int conn_port(int proto, int port)
     struct sockaddr_in server;
 
     if (proto == IPPROTO_UDP) {
-        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+        if ((ossock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
             return (0);
         }
     } else if (proto == IPPROTO_TCP) {
-        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        if ((ossock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
             return (0);
         }
     } else {

@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * March 16, 2021.
  *
  * This program is free software; you can redistribute it
@@ -19,7 +19,7 @@
 class IBerkeleyDbWrapper
 {
     public:
-        virtual int32_t getRow(DBT & key, DBT & data) = 0;
+        virtual int32_t getRow(DBT& key, DBT& data) = 0;
         // LCOV_EXCL_START
         virtual ~IBerkeleyDbWrapper() = default;
         // LCOV_EXCL_STOP

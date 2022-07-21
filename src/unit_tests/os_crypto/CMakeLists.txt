@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -13,4 +13,6 @@ if(${TARGET} STREQUAL "server")
     add_subdirectory(blowfish)
     add_subdirectory(md5)
     add_subdirectory(md5_sha1)
+    add_subdirectory(md5_sha1_sha256)
+    add_subdirectory(sha256)
 endif()

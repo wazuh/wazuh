@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -22,25 +22,36 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "cJSON.h"
 
 /* redefinitons/wrapping */
 
-extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
+extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
 extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
-
 
 static void test_create_agent_add_payload(void **state) {
     char* agent = "agent1";
     char* ip = "192.0.0.0";
     char* groups = "Group1,Group2";
     char* key = "1234";
-    int force = 1;
+    char* key_hash = "7110eda4d09e062aa5e4a390b0a572ac0d2c0220";
+    authd_force_options_t force_options = {0};
     char* id = "001";
     cJSON* payload = NULL;
-    payload = w_create_agent_add_payload(agent, ip, groups, key, force, id);
+    char* expected_force_payload = "{\"disconnected_time\":{\"enabled\":false,\"value\":0},"
+                                   "\"enabled\":true,\"key_mismatch\":false,\"after_registration_time\":0}";
+
+    force_options.disconnected_time_enabled = false;
+    force_options.disconnected_time = 0;
+    force_options.enabled = true;
+    force_options.key_mismatch = false;
+    force_options.after_registration_time = 0;
+
+    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options);
 
     assert_non_null(payload);
     cJSON* function = cJSON_GetObjectItem(payload, "function");
@@ -55,21 +66,26 @@ static void test_create_agent_add_payload(void **state) {
     assert_non_null(item);
     assert_string_equal(item->valuestring, groups);
 
-
     item = cJSON_GetObjectItem(arguments, "key");
     assert_non_null(item);
     assert_string_equal(item->valuestring, key);
 
+    item = cJSON_GetObjectItem(arguments, "key_hash");
+    assert_non_null(item);
+    assert_string_equal(item->valuestring, key_hash);
 
     item = cJSON_GetObjectItem(arguments, "id");
     assert_non_null(item);
     assert_string_equal(item->valuestring, id);
 
-    item = cJSON_GetObjectItem(arguments, "force");
-    assert_non_null(item);
-    assert_int_equal(item->valueint, force);
+    cJSON* j_force = cJSON_GetObjectItem(arguments, "force");
+    assert_non_null(j_force);
+
+    char* str_force = cJSON_PrintUnformatted(j_force);
+    assert_string_equal(str_force, expected_force_payload);
 
     cJSON_Delete(payload);
+    os_free(str_force);
 }
 
 #ifndef WIN32
@@ -175,8 +191,8 @@ static void test_parse_agent_add_response(void **state) {
     int err = 0;
     char err_response[OS_MAXSTR + 1];
 
-    // Remove _merror checks
-    expect_any_always(__wrap__merror, formatted_msg);
+    // Remove _mwarn checks
+    expect_any_always(__wrap__mwarn, formatted_msg);
 
     /* Success parse */
     err = w_parse_agent_add_response(success_response, err_response, new_id, new_key, FALSE, FALSE);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,7 @@
 #define H_STRINGOP_OS
 
 #include <external/cJSON/cJSON.h>
+#include <stdbool.h>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -25,12 +26,29 @@
 char *convert_windows_string(LPCWSTR string);
 #endif
 
+// Time values for conversion
+#define W_WEEK_SECONDS      604800
+#define W_DAY_SECONDS       86400
+#define W_HOUR_SECONDS      3600
+#define W_MINUTE_SECONDS    60
+
+// Time units
+#define W_WEEKS_L   "week(s)"
+#define W_WEEKS_S   "w"
+#define W_DAYS_L    "day(s)"
+#define W_DAYS_S    "d"
+#define W_HOURS_L   "hour(s)"
+#define W_HOURS_S   "h"
+#define W_MINUTES_L "minute(s)"
+#define W_MINUTES_S "m"
+#define W_SECONDS_L "second(s)"
+#define W_SECONDS_S "s"
+
 // Convert string to lowercase
 #define str_lowercase(str_lc) { char *x = str_lc; while (*x != '\0') { *x = tolower(*x); x++; } }
 
 // Convert string to uppercase
 #define str_uppercase(str_lc) { char *x = str_lc; while (*x != '\0') { *x = toupper(*x); x++; } }
-
 
 // Convert double to string
 #define w_double_str(x) ({char *do_str; os_calloc(20, sizeof(char),do_str); snprintf(do_str, 19, "%f", x); do_str;})
@@ -87,11 +105,8 @@ char * wstr_chr(char * str, int character);
 // Free string array
 void free_strarray(char ** array);
 
-/* Returns 0 if str is found */
-int wstr_find_in_folder(char *path,const char *str,int strip_new_line);
-
-/* Returns 0 if str is found */
-int wstr_find_line_in_file(char *file,const char *str,int strip_new_line);
+// Get the size of a string array
+size_t strarray_size(char ** array);
 
 // Delete last occurrence of duplicated string
 char * wstr_delete_repeated_groups(const char * string);
@@ -159,6 +174,54 @@ int w_parse_bool(const char * string);
  * @retval -1 Cannot parse string, or value is negative.
  */
 long w_parse_time(const char * string);
+
+/**
+ * @brief Parse positive size string into bytes
+ *
+ * Format: ^[0-9]+(b|B|k|K|m|M|g|G)?
+ *
+ * b/B: bytes
+ * k/K: kilobytes
+ * m/M: megabytes
+ * g/G: gigabytes
+ *
+ * Any character after the first byte is ignored.
+ *
+ * @param string Input string.
+ * @pre string is not null.
+ * @return Size represented in bytes.
+ * @retval -1 Cannot parse string, or value is negative.
+ */
+ssize_t w_parse_size(const char * string);
+
+/**
+ * @brief Convert seconds into the greater valid time unit (s|m|h|d|w).
+ * The conversion will always round down the output.
+ *
+ * s: seconds
+ * m: minutes
+ * h: hours
+ * d: days
+ * w: weeks
+ *
+ * @param seconds Positive amount of seconds.
+ * @param long_format Format of the output.
+ *                    TRUE: long format ("second(s)").
+ *                    FALSE: short format ("s")
+ * @return String with the time unit.
+ * @retval "invalid" if the input is negative. A time unit if the input is valid.
+ */
+char* w_seconds_to_time_unit(long seconds, bool long_format);
+
+/**
+ * @brief Convert seconds into the greater time value.
+ *  * The conversion will always round down the output.
+ *
+ * @param seconds Positive amount of seconds.
+ * @return Value of the seconds converted to the greater time unit.
+ * @retval - if the input is negative. A time value if the input is valid.
+ */
+long w_seconds_to_time_value(long seconds);
 
 /*
  * @brief Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
@@ -287,5 +350,14 @@ char** w_strarray_append(char **array, char *string, int n);
  * @post The structure returned must be freed with free_strarray().
  */
 char** w_strtok(const char *string);
+
+/**
+ * @brief Concatenate a NULL-terminated string list into a single string
+ *
+ * @param list String list to concatenate
+ * @param sep Optional separator. Set to 0 if unused.
+ * @return Allocated string with list concatenation.
+ */
+char* w_strcat_list(char ** list, char sep);
 
 #endif

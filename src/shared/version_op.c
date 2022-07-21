@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -442,34 +442,40 @@ os_info *get_unix_version()
         fclose(os_release);
 
         // If the OS is CentOS, try to get the version from the 'centos-release' file.
-        if (info->os_platform && strcmp(info->os_platform, "centos") == 0) {
-            regex_t regexCompiled;
-            regmatch_t match[2];
-            int match_size;
-            if (version_release = fopen("/etc/centos-release","r"), version_release){
-                os_free(info->os_version);
-                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-                if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                    merror_exit("Cannot compile regular expression.");
-                }
-                while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_malloc(match_size + 1, info->os_version);
-                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                        break;
+        if (info->os_platform) {
+            if (strcmp(info->os_platform, "centos") == 0) {
+                regex_t regexCompiled;
+                regmatch_t match[2];
+                int match_size;
+                if (version_release = fopen("/etc/centos-release","r"), version_release){
+                    os_free(info->os_version);
+                    static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror_exit("Cannot compile regular expression.");
                     }
+                    while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                        if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_malloc(match_size + 1, info->os_version);
+                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                            break;
+                        }
+                    }
+                    regfree(&regexCompiled);
+                    fclose(version_release);
                 }
-                regfree(&regexCompiled);
-                fclose(version_release);
+            }
+            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0) {
+                os_strdup("rolling", info->os_build);
             }
         }
     }
 
-    if (!info->os_name || !info->os_version || !info->os_platform) {
+    if (!info->os_name || (!info->os_version && !info->os_build) || !info->os_platform) {
         os_free(info->os_name);
         os_free(info->os_version);
         os_free(info->os_platform);
+        os_free(info->os_build);
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
@@ -540,6 +546,27 @@ os_info *get_unix_version()
             }
             regfree(&regexCompiled);
             fclose(version_release);
+        // Arch
+        } else if (version_release = fopen("/etc/arch-release","r"), version_release){
+            info->os_name = strdup("Arch Linux");
+            info->os_platform = strdup("arch");
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror_exit("Cannot compile regular expression.");
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, info->os_version);
+                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            if (info->os_version == NULL) {
+                os_strdup("rolling", info->os_build);
+            }
+            regfree(&regexCompiled);
+            fclose(version_release);
         // Ubuntu
         } else if (version_release = fopen("/etc/lsb-release","r"), version_release){
             info->os_name = strdup("Ubuntu");
@@ -576,24 +603,6 @@ os_info *get_unix_version()
             info->os_name = strdup("SuSE Linux");
             info->os_platform = strdup("suse");
             static const char *pattern = ".*VERSION = ([0-9][0-9]*)";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                merror_exit("Cannot compile regular expression.");
-            }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                    break;
-                }
-            }
-            regfree(&regexCompiled);
-            fclose(version_release);
-        // Arch
-        } else if (version_release = fopen("/etc/arch-release","r"), version_release){
-            info->os_name = strdup("Arch Linux");
-            info->os_platform = strdup("arch");
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Cannot compile regular expression.");
             }
@@ -746,7 +755,36 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Linux") == 0){ // Linux undefined
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"ZscalerOS") == 0) {
+                info->os_name = strdup("BSD");
+                info->os_platform = strdup("bsd");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (uname -r).");
+                    } else if (w_regexec("([0-9]+-\\S*).*", buff, 2, match)){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_malloc(match_size + 1, info->os_version);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
+                os_strdup("AIX", info->os_name);
+                os_strdup("aix", info->os_platform);
+
+                if (cmd_output_ver = popen("oslevel", "r"), cmd_output_ver) {
+                    if (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
+                        int buff_len = strlen(buff);
+                        if (buff_len > 0) {
+                            buff[buff_len - 1] = '\0';
+                            os_strdup(buff, info->os_version);
+                        }
+                    } else {
+                        mdebug1("Cannot read from command output (oslevel).");
+                    }
+                    pclose(cmd_output_ver);
+                }
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
                 info->os_name = strdup("Linux");
                 info->os_platform = strdup("linux");
             }
@@ -805,6 +843,9 @@ os_info *get_unix_version()
                 info->os_version = tmp_os_version;
             }
         }
+    } else if (info->os_build && strcmp(info->os_build, "rolling") == 0) {
+        // Rolling releases doesn't have a version.
+        info->os_version = strdup("");
     } else {
         // Empty version
         info->os_version = strdup("0.0");

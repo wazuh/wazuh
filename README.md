@@ -75,29 +75,33 @@ Wazuh continuously collects and analyzes detailed runtime information. For examp
 
 The Wazuh WUI provides a powerful user interface for data visualization and analysis. This interface can also be used to manage Wazuh configuration and to monitor its status.
 
+**Modules overview**
+
+![Modules overview](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app.png)
+
 **Security events**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app2.png)
+![Module: Security events](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app2.png)
 
 **Integrity monitoring**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app3.png)
+![Module: Integrity monitoring](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app3.png)
 
 **Vulnerability detection**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app4.png)
+![Module: Vulnerabilities](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app4.png)
 
 **Regulatory compliance**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app5.png)
+![Module: PCI DSS](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app5.png)
 
 **Agents overview**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app6.png)
+![Agents overview](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app6.png)
 
 **Agent summary**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app7.png)
+![Agent summary](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app7.png)
 
 ## Orchestration
 
@@ -165,6 +169,6 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2020 Wazuh Inc. (License GPLv2)
+Wazuh Copyright (C) 2015-2022 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.

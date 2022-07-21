@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -14,6 +14,7 @@
 void os_setwait(void);
 void os_delwait(void);
 void os_wait(void);
+void os_wait_predicate(bool (*fn_ptr)());
 
 /**
  * @brief Check whether the agent wait mark is on (manager is disconnected)

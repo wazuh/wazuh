@@ -1,28 +1,23 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-import fcntl
 import json
 import re
 import socket
 from collections import OrderedDict
-from datetime import datetime
-from datetime import timezone
-from os import remove
 from os.path import exists, join
 from typing import Dict
 
 from api import configuration
-from wazuh import WazuhInternalError, WazuhError
+from wazuh import WazuhInternalError, WazuhError, WazuhException
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.utils import tail
-from wazuh.core.wazuh_socket import create_wazuh_socket_message
+from wazuh.core.utils import tail, get_utc_strptime
+from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-execq_lockfile = join(common.wazuh_path, "var", "run", ".api_execq_lock")
 
 
 def status():
@@ -49,7 +44,7 @@ def get_ossec_log_fields(log):
     else:
         return None
 
-    return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
+    return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
 def get_ossec_logs(limit=2000):
@@ -62,14 +57,14 @@ def get_ossec_logs(limit=2000):
     """
     logs = []
 
-    for line in tail(common.ossec_log, limit):
+    for line in tail(common.OSSEC_LOG, limit):
         log_fields = get_ossec_log_fields(line)
         if log_fields:
             date, tag, level, description = log_fields
 
             # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': date.astimezone(timezone.utc),
-                        'tag': tag, 'level': level, 'description': description}
+            log_line = {'timestamp': date.strftime(common.DATE_FORMAT), 'tag': tag,
+                        'level': level, 'description': description}
             logs.append(log_line)
 
     return logs
@@ -120,78 +115,39 @@ def validate_ossec_conf():
     str
         Status of the configuration.
     """
-    lock_file = open(execq_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
+
+    # Socket path
+    wcom_socket_path = common.WCOM_SOCKET
+    # Message for checking Wazuh configuration
+    wcom_msg = common.CHECK_CONFIG_COMMAND
+
+    # Connect to wcom socket
+    if exists(wcom_socket_path):
+        try:
+            wcom_socket = WazuhSocket(wcom_socket_path)
+        except WazuhException as e:
+            extra_msg = f'Socket: WAZUH_PATH/queue/sockets/com. Error {e.message}'
+            raise WazuhInternalError(1013, extra_message=extra_msg)
+    else:
+        raise WazuhInternalError(1901)
+
+    # Send msg to wcom socket
+    try:
+        wcom_socket.send(wcom_msg.encode())
+
+        buffer = bytearray()
+        datagram = wcom_socket.receive()
+        buffer.extend(datagram)
+
+    except (socket.error, socket.timeout) as e:
+        raise WazuhInternalError(1014, extra_message=str(e))
+    finally:
+        wcom_socket.close()
 
     try:
-        # Sockets path
-        api_socket_relative_path = join('queue', 'alerts', 'execa')
-        api_socket_path = join(common.wazuh_path, api_socket_relative_path)
-        execq_socket_path = common.EXECQ
-        # Message for checking Wazuh configuration
-        execq_msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
-                                                           command=common.CHECK_CONFIG_COMMAND,
-                                                           parameters={"extra_args": [], "alert": {}}))
-
-        # Remove api_socket if exists
-        try:
-            remove(api_socket_path)
-        except OSError as e:
-            if exists(api_socket_path):
-                extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
-                raise WazuhInternalError(1014, extra_message=extra_msg)
-
-        # up API socket
-        try:
-            api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            api_socket.bind(api_socket_path)
-            # Timeout
-            api_socket.settimeout(10)
-        except OSError as e:
-            extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
-            raise WazuhInternalError(1013, extra_message=extra_msg)
-
-        # Connect to execq socket
-        if exists(execq_socket_path):
-            try:
-                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                execq_socket.connect(execq_socket_path)
-            except OSError as e:
-                extra_msg = f'Socket: WAZUH_PATH/queue/alerts/execq. Error {e.strerror}'
-                raise WazuhInternalError(1013, extra_message=extra_msg)
-        else:
-            raise WazuhInternalError(1901)
-
-        # Send msg to execq socket
-        try:
-            execq_socket.send(execq_msg.encode())
-            execq_socket.close()
-        except socket.error as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-        finally:
-            execq_socket.close()
-
-        # If api_socket receives a message, configuration is OK
-        try:
-            buffer = bytearray()
-            # Receive data
-            datagram = api_socket.recv(4096)
-            buffer.extend(datagram)
-        except socket.timeout as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-        finally:
-            api_socket.close()
-            # Remove api_socket
-            if exists(api_socket_path):
-                remove(api_socket_path)
-
-        try:
-            response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhInternalError(1904, extra_message=str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
+        response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+    except (KeyError, json.decoder.JSONDecodeError) as e:
+        raise WazuhInternalError(1904, extra_message=str(e))
 
     return response
 

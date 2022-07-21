@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,9 +13,7 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include "external/libpcre2/include/pcre2.h"
-#include "shared.h"
 #include "os_regex/os_regex.h"
-#include "validate_op.h"
 
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"

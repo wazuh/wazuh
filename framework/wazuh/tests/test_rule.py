@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -8,8 +8,8 @@ from unittest.mock import patch, mock_open, MagicMock
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
@@ -55,7 +55,7 @@ rule_contents = '''
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <list field="user" lookup="match_key">etc/lists/list-user</list>
     <field name="netinfo.iface.name">ens33</field>
-    <regex>$(\\d+.\\d+.\\d+.\\d+)</regex>
+    <regex>$(\\d{2,3}.\\d{2,3}.\\d{2,3}.\\d{2,3})</regex>
   </rule>
 </group>
     '''
@@ -63,13 +63,13 @@ rule_contents = '''
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
-    with patch('wazuh.core.common.wazuh_path', new=parent_directory):
+    with patch('wazuh.core.common.WAZUH_PATH', new=parent_directory):
         yield
 
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_rules_path():
-    with patch('wazuh.core.common.ruleset_rules_path', new=data_path):
+    with patch('wazuh.core.common.RULES_PATH', new=data_path):
         yield
 
 
@@ -272,11 +272,11 @@ def test_get_rules_file_invalid_xml(get_rules_mock):
 ])
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_file')
-@patch('wazuh.core.utils.copyfile')
+@patch('wazuh.core.utils.full_copy')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file,
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_full_copy, mock_xml, mock_delete, file,
                      overwrite):
     """Test uploading a rule file.
 

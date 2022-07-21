@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for file downloads
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -11,6 +11,8 @@
 
 #include "wmodules.h"
 #include <os_net/os_net.h>
+
+#ifndef WIN32
 
 #undef minfo
 #undef mwarn
@@ -36,6 +38,7 @@ const wm_context WM_DOWNLOAD_CONTEXT = {
     (wm_routine)wm_download_main,
     (wm_routine)(void *)wm_download_destroy,
     (cJSON * (*)(const void *))wm_download_dump,
+    NULL,
     NULL
 };
 
@@ -61,8 +64,8 @@ void * wm_download_main(wm_download_t * data) {
     do {
         static unsigned int seconds = 60;
 
-        if (sock = OS_BindUnixDomain(WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            mwarn("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK_PATH, seconds);
+        if (sock = OS_BindUnixDomainWithPerms(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
+            mwarn("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK, seconds);
             sleep(seconds);
             seconds += seconds < 600 ? 60 : 0;
         }
@@ -211,7 +214,7 @@ unsc:
 
     // Jail path
 
-    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, unsc_fpath) >= (int)sizeof(jpath)) {
+    if (snprintf(jpath, sizeof(jpath), "%s", unsc_fpath) >= (int)sizeof(jpath)) {
         mdebug1("Path too long: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err path too long");
         goto end;
@@ -288,3 +291,4 @@ cJSON *wm_download_dump() {
     cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
     return root;
 }
+#endif

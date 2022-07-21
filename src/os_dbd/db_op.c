@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -173,7 +173,6 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
         merror(DBINIT_ERROR);
         return (NULL);
     }
-
 
     /* If host is 127.0.0.1 or localhost, use tcp socket */
     if((strcmp(host, "127.0.0.1") == 0) ||

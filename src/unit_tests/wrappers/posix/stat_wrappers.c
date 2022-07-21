@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -22,6 +22,12 @@ int __wrap_chmod(const char *path) {
     return mock();
 }
 
+int __wrap_fchmod(int fd, mode_t mode) {
+    check_expected(fd);
+    check_expected(mode);
+    return mock();
+}
+
 int __wrap_chown(const char *__file, int __owner, int __group) {
     check_expected(__file);
     check_expected(__owner);
@@ -31,8 +37,13 @@ int __wrap_chown(const char *__file, int __owner, int __group) {
 }
 
 int __wrap_lstat(const char *filename, struct stat *buf) {
+    struct stat * mock_buf;
     check_expected(filename);
-    buf->st_mode = mock();
+
+    mock_buf = mock_type(struct stat *);
+    if (mock_buf != NULL) {
+        memcpy(buf, mock_buf, sizeof(struct stat));
+    }
     return mock();
 }
 
@@ -62,11 +73,14 @@ int __wrap_mkdir(const char *__path, __mode_t __mode) {
 }
 #endif
 
-#ifndef WIN32
-void expect_mkdir(const char *__path, __mode_t __mode, int ret) {
+#ifdef WIN32
+void expect_mkdir(const char *__path, int ret) {
+#elif defined(__MACH__)
+void expect_mkdir(const char *__path, mode_t __mode, int ret) {
     expect_value(__wrap_mkdir, __mode, __mode);
 #else
-void expect_mkdir(const char *__path, int ret) {
+void expect_mkdir(const char *__path, __mode_t __mode, int ret) {
+    expect_value(__wrap_mkdir, __mode, __mode);
 #endif
     expect_string(__wrap_mkdir, __path, __path);
     will_return(__wrap_mkdir, ret);
@@ -84,4 +98,9 @@ int __wrap_stat(const char * __file, struct stat * __buf) {
         return mock_type(int);
     }
     return __real_stat(__file, __buf);
+}
+
+mode_t __wrap_umask(mode_t mode) {
+    check_expected(mode);
+    return mock();
 }

@@ -28,7 +28,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(rsync_test_tool
 	    rsync
 	    dbsync
-	    -static-libgcc -static-libstdc++
+	    -static-libstdc++
 	)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	target_link_libraries(rsync_test_tool

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -11,7 +11,7 @@ from numbers import Number
 
 import wazuh.core.exception as wexception
 from wazuh.core import utils
-from wazuh.core.common import database_limit
+from wazuh.core.common import DATABASE_LIMIT
 
 current_module = sys.modules[__name__]
 
@@ -21,6 +21,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
     Models a result returned by any framework function. This should be the class of object that every
     framework function returns.
     """
+
     def __init__(self, dct):
         """
         Initializes an instance
@@ -152,13 +153,13 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         """
         raise NotImplemented
 
-    def limit(self, limit=database_limit, offset=0):
+    def limit(self, limit=DATABASE_LIMIT, offset=0):
         """
         Should take the first `limit` results starting from `offset`
 
         To be redefined in WazuhResult subclasses.
 
-        :param limit: integer. Default the value specified in wazuh.common.database_limit
+        :param limit: integer. Default the value specified in wazuh.common.DATABASE_LIMIT
         :param offset: integer. Default 0.
         :return: filtered AbstractWazuhResult
         """
@@ -272,6 +273,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
      ...
      }
     """
+
     def __init__(self, dikt=None, affected_items=None,
                  total_affected_items=None,
                  sort_fields=None, sort_casting=None, sort_ascending=None,
@@ -336,7 +338,8 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         :return:
         """
         if not isinstance(other, AffectedItemsWazuhResult):
-            raise wexception.WazuhInternalError(1000, extra_message=f"Failed items cannot be taken from {type(other)} object")
+            raise wexception.WazuhInternalError(1000,
+                                                extra_message=f"Failed items cannot be taken from {type(other)} object")
 
         for error, ids in other._failed_items.items():
             for id_ in ids:
@@ -546,10 +549,8 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             'affected_items': self.affected_items,
             'total_affected_items': self.total_affected_items,
             'total_failed_items': self.total_failed_items,
-            'failed_items': [{'error': {'code': exc.code,
-                                        'message': exc.message,
-                                        'remediation': exc.remediation
-                                        },
+            'failed_items': [{'error': {'code': exc.code, 'message': exc.message} | (
+                                       {'remediation': exc.remediation} if exc.remediation is not None else {}),
                               'id': sort_ids(ids)
                               }
                              for exc, ids in ordered_failed_items],
@@ -591,11 +592,13 @@ def nested_itemgetter(*expressions):
                 except KeyError:
                     return None
             return value
+
         getters.append(_getter)
 
     def _nested_itemgetter(map_, getters_=tuple(deepcopy(getters))):
         result = [getter(map_) for getter in getters_]
         return result[0] if len(result) == 1 else tuple(result)
+
     return _nested_itemgetter
 
 

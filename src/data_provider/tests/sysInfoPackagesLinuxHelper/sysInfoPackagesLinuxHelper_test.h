@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 28, 2021.
  *
  * This program is free software; you can redistribute it
@@ -14,15 +14,15 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysInfoPackagesLinuxHelperTest : public ::testing::Test 
+class SysInfoPackagesLinuxHelperTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    SysInfoPackagesLinuxHelperTest() = default;
-    virtual ~SysInfoPackagesLinuxHelperTest() = default;
+        SysInfoPackagesLinuxHelperTest() = default;
+        virtual ~SysInfoPackagesLinuxHelperTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_PACKAGES_LINUX_HELPER_TEST_H

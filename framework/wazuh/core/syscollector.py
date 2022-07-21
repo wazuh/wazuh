@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
@@ -32,7 +32,7 @@ def get_valid_fields(element_type, agent_id=None):
     windows_fields = {'hostname': 'hostname', 'os.version': 'os_version', 'os.name': 'os_name',
                                   'architecture': 'architecture', 'os.major': 'os_major', 'os.minor': 'os_minor',
                                   'os.build': 'os_build', 'version': 'version', 'scan.time': 'scan_time',
-                                  'scan.id': 'scan_id', 'os_release': 'os_release'}
+                                  'scan.id': 'scan_id', 'os_release': 'os_release', 'os.display_version': 'os_display_version'}
     valid_select_fields = {
         Type.OS: ('sys_osinfo', {'Windows': windows_fields,
                                  'Linux': {
@@ -99,6 +99,7 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
                          *args, **kwargs)
         self.array = array
         self.nested = nested
+        self.date_fields = {'scan.time', 'install_time'}
 
     def _format_data_into_dictionary(self):
         if self.nested:

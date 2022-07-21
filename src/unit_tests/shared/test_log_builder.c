@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -26,6 +26,8 @@ void test_log_builder(void **state)
     const char * LOG = "Hello \"World\"";
     const char * LOCATION = "test";
     const char * EXPECTED_OUTPUT = "location: test, log: Hello \"World\", escaped: Hello \\\"World\\\"";
+
+    will_return(__wrap_getDefine_Int, 60);
 
     int retval = 1;
     log_builder_t * builder = log_builder_init(false);

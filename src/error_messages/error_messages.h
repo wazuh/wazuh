@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -21,7 +21,7 @@
 #define NULL_ERROR    "(1105): Attempted to use null string."
 #define FORMAT_ERROR  "(1106): String not correctly formatted."
 #define MKDIR_ERROR   "(1107): Could not create directory '%s' due to [(%d)-(%s)]."
-//#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
+#define HOME_ERROR    "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable."
 #define THREAD_ERROR  "(1109): Unable to create new pthread."
 #define FWRITE_ERROR  "(1110): Could not write file '%s' due to [(%d)-(%s)]."
 #define WAITPID_ERROR "(1111): Error during waitpid()-call due to [(%d)-(%s)]."
@@ -30,15 +30,13 @@
 #define SELECT_ERROR  "(1114): Error during select()-call due to [(%d)-(%s)]."
 #define FREAD_ERROR   "(1115): Could not read from file '%s' due to [(%d)-(%s)]."
 #define FSEEK_ERROR   "(1116): Could not set position in file '%s' due to [(%d)-(%s)]."
-#define FILE_ERROR    "(1117): Error handling file '%s' (date)."
+#define FILE_ERROR    "(1117): Error handling file '%s'."
 #define FSTAT_ERROR   "(1118): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
-//#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "(1122): No file found by pattern: '%s'."
 #define UNLINK_ERROR  "(1123): Unable to delete file: '%s' due to [(%d)-(%s)]."
 #define RENAME_ERROR  "(1124): Could not rename file '%s' to '%s' due to [(%d)-(%s)]."
-//#define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
 #define OPEN_ERROR    "(1126): Unable to open file '%s' due to [(%d)-(%s)]."
 #define CHMOD_ERROR   "(1127): Could not chmod object '%s' due to [(%d)-(%s)]."
 #define MKSTEMP_ERROR "(1128): Could not create temporary file '%s' due to [(%d)-(%s)]."
@@ -59,7 +57,6 @@
 #define RMDIR_ERROR     "(1143): Unable to delete folder '%s' due to [(%d)-(%s)]."
 #define ATEXIT_ERROR    "(1144): Unable to set exit function"
 
-
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
 #define CONFIG_ERROR    "(1202): Configuration error at '%s'."
@@ -68,19 +65,21 @@
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
 #define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted."
+#define ENROLL_CONN_ERROR "(1208): Unable to connect to enrollment service at '[%s]:%d'"
+#define ENROLL_CONNECTED  "(1209): Connected to enrollment service at '[%s]:%d'"
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'"
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up."
 #define PID_ERROR       "(1212): Unable to create PID file."
 #define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
-#define CONNS_ERROR     "(1216): Unable to connect to '%s:%d/%s': '%s'."
-#define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
+#define CONNS_ERROR     "(1216): Unable to connect to '[%s]:%d/%s': '%s'."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
 #define SEND_ERROR      "(1218): Unable to send message to '%s': %s"
 #define RULESLOAD_ERROR "(1219): Unable to access the rules directory."
 #define RULES_ERROR     "(1220): Error loading the rules: '%s'."
 #define LISTS_ERROR     "(1221): Error loading the list: '%s'."
+#define IMSG_ERROR      "(1222): Invalid msg: %s"
 #define QUEUE_SEND      "(1224): Error sending message to queue."
 #define SIGNAL_RECV     "(1225): SIGNAL [(%d)-(%s)] Received. Exit Cleaning..."
 #define XML_ERROR       "(1226): Error reading XML file '%s': %s (line %d)."
@@ -88,9 +87,9 @@
 #define XML_NO_ELEM     "(1228): Element '%s' without any option."
 #define XML_INVALID     "(1229): Invalid element '%s' on the '%s' config."
 #define XML_INVELEM     "(1230): Invalid element in the configuration: '%s'."
-#define XML_INVATTR     "(1243): Invalid attribute '%s' in the configuration: '%s'."
 #define XML_ELEMNULL    "(1231): Invalid NULL element in the configuration."
 #define XML_READ_ERROR  "(1232): Error reading XML. Unknown cause."
+#define XML_INVATTR     "(1233): Invalid attribute '%s' in the configuration: '%s'."
 #define XML_VALUENULL   "(1234): Invalid NULL content for element: %s."
 #define XML_VALUEERR    "(1235): Invalid value for element '%s': %s."
 #define XML_MAXREACHED  "(1236): Maximum number of elements reached for: %s."
@@ -107,20 +106,21 @@
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
 #define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
+#define ACCESS_ERROR    "(1250): Error trying to execute \"%s\": %s (%d)."
 
-#define MAILQ_ERROR     "(1221): No Mail queue at %s"
-#define IMSG_ERROR      "(1222): Invalid msg: %s"
-#define SNDMAIL_ERROR   "(1223): Error Sending email to %s (smtp server)"
-#define XML_INV_GRAN_MAIL "(1224): Invalid 'email_alerts' config (missing parameters)."
+/* Mail errors */
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."
 #define TOOMANY_WAIT_ERROR "(1262): Too many errors waiting for child process(es)."
+#define SNDMAIL_ERROR   "(1263): Error Sending email to %s (smtp server)"
+#define XML_INV_GRAN_MAIL "(1264): Invalid 'email_alerts' config (missing parameters)."
+#define INVALID_SMTP    "(1265): Invalid SMTP Server: %s"
 
 /* rootcheck */
-#define MAX_RK_MSG        "(1250): Maximum number of global files reached: %d"
 #define INVALID_RKCL_NAME  "(1251): Invalid rk configuration name: '%s'."
 #define INVALID_RKCL_VALUE "(1252): Invalid rk configuration value: '%s'."
 #define INVALID_ROOTDIR    "(1253): Invalid rootdir (unable to retrieve)."
 #define INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
+#define MAX_RK_MSG        "(1255): Maximum number of global files reached: %d"
 
 /* syscheck */
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
@@ -135,17 +135,29 @@
 #define INVALID_HOSTNAME        "(1275): Invalid hostname in syslog message: '%s'."
 #define INVALID_GEOIP_DB        "(1276): Cannot open GeoIP database: '%s'."
 #define FIM_INVALID_MESSAGE     "(1277): Invalid syscheck message received."
+#define UNABLE_TO_RECONNECT     "(1278): Unable to reconnect to '%s': %s (%d)."
+#define INVALID_RULE_ELEMENT    "(1279): Invalid rule element."
+#define INVALID_PREFIX          "(1283): Incorrect prefix message, message type: %s."
+#define INVALID_OPERATION       "(1284): Incorrect/unknown operation, type: %s."
+#define INVALID_RESPONSE        "(1285): Response without content, the event cannot be raised."
+#define A_QUERY_ERROR           "(1286): Wazuh-db query error, check wdb logs."
+#define INVALID_TYPE            "(1287): Incorrect/unknown type value %s."
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
+#define LOGCOLLECTOR_MACOS_LOG_IREGEX_ERROR         "(1601): Invalid internal macOS log regex."
+#define LOGCOLLECTOR_MACOS_LOG_ERROR_AFTER_EXEC     "(1602): Execution error '%s'"
+#define LOGCOLLECTOR_MACOS_LOG_SHOW_INFO            "(1603): Monitoring macOS old logs with: %s."
+#define LOGCOLLECTOR_MACOS_LOG_STREAM_INFO          "(1604): Monitoring macOS logs with: %s."
+#define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s."
+#define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s."
+#define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."
 
 #define REMOTED_NET_PROTOCOL_NOT_SET  "(1752): Network protocol is not set."
-
-/* 1760 - 1769 -- reserved for maild */
 
 /* Active Response */
 #define AR_CMD_MISS     "(1280): Missing command options. " \
@@ -167,8 +179,11 @@
 #define EXEC_INV_JSON   "(1315): Invalid JSON message: '%s'"
 #define EXEC_INV_CMD    "(1316): Invalid AR command: '%s'"
 #define EXEC_CMD_FAIL   "(1317): Could not launch command %s (%d)"
+#define EXEC_BAD_NAME   "(1318): Command name truncated %s"
 
-#define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
+#define AR_NOAGENT_ERROR                "(1320): Agent '%s' not found."
+#define EXEC_QUEUE_CONNECTION_ERROR     "(1321): Error communicating with queue '%s'."
+#define EXEC_QUEUE_BUSY                 "(1322): Socket busy."
 
 /* List operations */
 #define LIST_ERROR      "(1290): Unable to create a new list (calloc)."
@@ -214,6 +229,12 @@
 #define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
+#define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
+#define DUP_MACOS       "(1970): Can't add more than one 'macos' block."
+#define FP_TO_FD_ERROR  "(1971): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: %s (%d)."
+#define GET_FLAGS_ERROR "(1972): The flags couldn't be obtained from the file descriptor: %s (%d)."
+#define SET_FLAGS_ERROR "(1973): The flags couldn't be set in the file descriptor: %s (%d)."
+#define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -231,10 +252,6 @@
 #define REGEX_COMPILE   "(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
 #define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
-
-/* Mail errors */
-#define INVALID_SMTP    "(1501): Invalid SMTP Server: %s"
-#define INVALID_MAIL    "(1502): Invalid Email Address: %s"
 
 /* Decoders */
 #define PPLUGIN_INV     "(2101): Parent decoder name invalid: '%s'."
@@ -264,7 +281,7 @@
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "(4101): Waiting for server reply (not started). Tried: '%s'."
-#define AG_CONNECTED    "(4102): Connected to the server (%s:%d/%s)."
+#define AG_CONNECTED    "(4102): Connected to the server ([%s]:%d/%s)."
 #define AG_USINGIP      "(4103): Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "(4104): Invalid hostname: '%s'."
 #define AG_INV_IP       "(4105): No valid server IP found."
@@ -286,10 +303,11 @@
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
 /* Syslog output */
-#define XML_INV_CSYSLOG "(5301): Invalid client-syslog configuration."
+#define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
+#define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
 
 /* Integrator daemon */
-#define XML_INV_INTEGRATOR "(5302): Invalid integratord configuration."
+#define XML_INV_INTEGRATOR "(5310): Invalid integratord configuration."
 
 /* Agentless */
 #define XML_INV_AGENTLESS   "(7101): Invalid agentless configuration."
@@ -311,6 +329,9 @@
 #define DB_SQL_ERROR          "(5211): SQL error: '%s'"
 #define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
 #define DB_CACHE_ERROR        "(5213): Cannot cache statement."
+#define DB_CACHE_NULL_STMT    "(5214): Null statement on internal cache."
+#define DB_AGENT_SQL_ERROR    "(5215): DB(%s) SQL Error: '%s'."
+#define DB_INVALID_DELTA_MSG  "(5216): Delta (%s) field count mismatch: expect %zu, received %zu."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."
@@ -320,7 +341,7 @@
 #define VU_CHECK_DB_ERROR           "(5504): Database check failed."
 #define VU_OS_VERSION_ERROR         "(5505): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5506): Could not refresh the '%s' DB."
-#define VU_GET_SOFTWARE_ERROR       "(5507): The software of the agent '%.3d' could not be obtained."
+#define VU_GET_SOFTWARE_ERROR       "(5507): The software of the agent '%.3d' could not be obtained after %d attempts. Skipping agent until the next scan."
 #define VU_AG_CHECK_ERR             "(5508): Agent vulnerabilities could not be checked."
 #define VU_DB_TIMESTAMP_FEED_ERROR  "(5509): Stored timestamp could not be compared. The '%s' feed will continue updating."
 #define VU_SSL_LIBRARY_ERROR        "(5510): Could not initialize the OpenSSL library."
@@ -381,13 +402,13 @@
 #define VU_WDB_LASTSCAN_ERROR       "(5565): Could not update the last scan for agent '%.3d'"
 #define VU_AGENT_NOT_INITIALIZED    "(5566): The agent structure is not initialized."
 #define VU_DB_NOT_INITIALIZED       "(5567): The DB is not initialized."
-#define VU_OSINFOLNX_ERROR          "(5568): Couldn't get the OS information of the agent '%.3d'"
+#define VU_OSINFOLNX_ERROR          "(5568): Invalid OS information of the agent '%.3d'"
 #define VU_GET_PACKAGES_ERROR       "(5569): Couldn't get the packages of the agent '%.3d'"
 #define VU_GET_PACKAGES_VULN_ERROR  "(5570): Couldn't get from the NVD the '%s' vulnerabilities of the package '%s'"
 #define VU_GET_PACKAGES_DEP_ERROR   "(5571): Couldn't get from the NVD the '%s' dependencies of the package with ID '%d'"
 #define VU_INSERT_PACKAGE_ERROR     "(5572): Couldn't insert the package '%s' into the vulnerability '%s'. Version (%s) '%s' '%s' (feed '%s')."
 #define VU_FILTER_VULN_ERROR        "(5573): Couldn't verify if the vulnerability '%s' of the package '%s' is already patched."
-#define VU_DISCARD_KERNEL_PKG       "(5574): Discarded Linux Kernel package '%s' (not running) for agent '%.3d'"
+#define VU_DISCARD_KERNEL_PKG       "(5574): Discarded Linux Kernel package '%s' ('%s') for agent '%.3d'"
 #define VU_OVAL_UNAVAILABLE_DATA    "(5575): Unavailable vulnerability data for the agent '%.3d' OS. Skipping it."
 #define VU_PKG_NO_VER               "(5576): Missing version for package '%s' of the inventory."
 #define VU_CVEDB_ERROR              "(5577): Could not connect to the CVE DB."
@@ -404,6 +425,8 @@
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
 #define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
 #define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
+#define VU_PKG_INVALID_VER          "(5591): Invalid version for package '%s' of the inventory: '%s'"
+#define VU_SUSE_VERSION_ERROR       "(5592): Invalid SUSE OS version."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
@@ -421,14 +444,14 @@
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
 #define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
-#define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
+
 #define FIM_ERROR_AUDIT_MODE                        "(6617): Unable to get audit mode: %s (%d)."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 #define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'. It will be monitored in Realtime"
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
-
+#define FIM_ERROR_WHODATA_UNINITIALIZED             "(6623): Trying to monitor '%s' in who-data mode, but who-data is not initialized."
 
 #define FIM_ERROR_WHODATA_NOTFIND_DIRPOS            "(6625): The '%s' file does not have an associated directory."
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
@@ -554,6 +577,7 @@
 #define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
 #define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
 #define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
+#define XML_ERROR_EMPTY_OR_
 
 /* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
@@ -611,6 +635,9 @@
 #define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
 #define MOD_TASK_DB_ERROR                           "(8261): Database error."
 
+/* Sysinfo */
+#define SYSINFO_DYNAMIC_INIT_ERROR                  "(9000): Error loading sysinfo module."
+
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
@@ -620,9 +647,9 @@
                         " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
+#define WAZUH_HOMEDIR "Wazuh home directory: %s"
 
 /* Debug Messages */
-#define STARTED_MSG "Starting ..."
 #define FOUND_USER  "Found user/group ..."
 #define ASINIT      "Active response initialized ..."
 #define READ_CONFIG "Read configuration ..."
@@ -645,6 +672,7 @@
 /* OSSEC alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
+#define OS_AG_STOPPED   "ossec: Agent stopped: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
 #define OS_AG_REMOVED   "ossec: Agent removed: '%s'."
 

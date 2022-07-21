@@ -1,9 +1,6 @@
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Get the OS of an agent
@@ -55,6 +52,18 @@ stages:
       json:
         error: 1724
 
+  - name: Try to get 012 agent's syscollector OS data (never connected)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/012/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 2007
+
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
 
@@ -88,7 +97,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -110,8 +119,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -128,7 +136,6 @@ stages:
         message: !anystr
       save:
         json:
-          board_serial: data.affected_items[0].board_serial
           cpu_name: data.affected_items[0].cpu.name
           ram_total: data.affected_items[0].ram.total
 
@@ -148,7 +155,6 @@ marks:
   - parametrize:
       key: field
       vals:
-        - board_serial
         - cpu.cores
         - cpu.mhz
         - cpu.name
@@ -170,7 +176,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -353,15 +359,13 @@ stages:
       <<: *packages_request_003
       params:
         sort: -name
-        limit: 2
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *packages_response
-            - <<: *packages_response
 
   - name: Filter sort 2
     request:
@@ -369,15 +373,12 @@ stages:
       <<: *packages_request_003
       params:
         sort: +name
-        limit: 2
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *packages_response
-            - <<: *packages_response
 
   - name: Wrong sort
     request:
@@ -565,7 +566,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -589,8 +590,7 @@ stages:
         error: !anyint
         data:
           affected_items: &processes_response_004
-            - cmd: !anystr
-              egroup: !anystr
+            - egroup: !anystr
               euser: !anystr
               fgroup: !anystr
               name: !anystr
@@ -913,7 +913,6 @@ stages:
             - <<: *processes_response_004
       save:
         json:
-          offset_test_cmd: data.affected_items[1].cmd
           offset_test_egroup: data.affected_items[1].egroup
           offset_test_euser: data.affected_items[1].euser
           offset_test_fgroup: data.affected_items[1].fgroup
@@ -957,8 +956,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - cmd: "{offset_test_cmd}"
-              egroup: "{offset_test_egroup}"
+            - egroup: "{offset_test_egroup}"
               euser: "{offset_test_euser}"
               fgroup: "{offset_test_fgroup}"
               name: "{offset_test_name}"
@@ -1043,11 +1041,11 @@ stages:
       params:
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
 
   - name: Processes of an agent, select
     request:
@@ -1060,7 +1058,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -1301,7 +1299,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -1315,13 +1313,12 @@ stages:
       <<: *port_request_005
       params:
         sort: "{field}"
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
@@ -1633,14 +1630,12 @@ stages:
       <<: *netaddr_request_002
       params:
         sort: +proto
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "proto"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *netaddr_response
 
   - name: Invalid sort
     request:
@@ -1693,7 +1688,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -1707,13 +1702,12 @@ stages:
       <<: *netaddr_request_002
       params:
         sort: "{field}"
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
@@ -1979,14 +1973,12 @@ stages:
       <<: *netproto_request_003
       params:
         sort: +dhcp
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "dhcp"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *netproto_response_003
 
   - name: Invalid sort
     request:
@@ -2023,7 +2015,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -2038,13 +2030,12 @@ stages:
       <<: *netproto_request_003
       params:
         sort: "{field}"
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
@@ -2218,14 +2209,12 @@ stages:
       <<: *netiface_request_008
       params:
         sort: +type
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "type"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *netiface_response_008
 
   - name: Invalid sort
     request:
@@ -2692,7 +2681,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -2706,13 +2695,12 @@ stages:
       <<: *netiface_request_008
       params:
         sort: "{field}"
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/os
@@ -2797,7 +2785,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -2819,8 +2807,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -2833,7 +2820,6 @@ stages:
                 time: !anything
       save:
         json:
-          board_serial: data.affected_items[0].board_serial
           cpu_name: data.affected_items[0].cpu.name
           ram_total: data.affected_items[0].ram.total
 
@@ -2853,7 +2839,6 @@ marks:
   - parametrize:
       key: field
       vals:
-        - board_serial
         - cpu.cores
         - cpu.mhz
         - cpu.name
@@ -2875,7 +2860,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -3177,30 +3162,6 @@ stages:
     response:
       status_code: 400
 
-  - name: Sort
-    request:
-      verify: False
-      <<: *netaddr_request
-      params:
-        sort: +proto
-        limit: 1
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *netaddr_response
-
-  - name: Invalid sort
-    request:
-      verify: False
-      <<: *netaddr_request
-      params:
-        sort: -wrong
-    response:
-      <<: *error_response_1403
-
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
@@ -3228,23 +3189,9 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
-
-  - name: Netaddress of an agent, sort
-    request:
-      verify: False
-      <<: *netaddr_request
-      params:
-        sort: "{field}"
-        limit: 1
-    response:
-      status_code: 200
       json:
         error: !anyint
         data:
@@ -3529,14 +3476,12 @@ stages:
       <<: *netproto_request
       params:
         sort: +dhcp
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "dhcp"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *netproto_response
 
   - name: Invalid sort
     request:
@@ -3573,7 +3518,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -3587,13 +3532,12 @@ stages:
       <<: *netproto_request
       params:
         sort: "{field}"
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
@@ -3766,14 +3710,13 @@ stages:
       <<: *netiface_request
       params:
         sort: -type
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "type"
+            reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *netiface_response
 
   - name: Invalid sort
     request:
@@ -4225,7 +4168,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -4239,13 +4182,13 @@ stages:
       <<: *netiface_request
       params:
         sort: "{field}"
-        limit: 1
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
+
 ---
 test_name: GET /syscollector/{agent_id}/hotfixes
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -191,9 +191,7 @@ void test_wm_agent_upgrade_send_command_to_agent_ok(void **state)
     char *response = "Command received OK.";
     size_t response_size = strlen(response) + 1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -227,8 +225,6 @@ void test_wm_agent_upgrade_send_command_to_agent_recv_error(void **state)
     int socket = 555;
     char *command = "Command to agent: restart agent now.";
     char *response = "Error.";
-
-    will_return(__wrap_isChroot, 1);
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -264,8 +260,6 @@ void test_wm_agent_upgrade_send_command_to_agent_sockterr_error(void **state)
     char *command = "Command to agent: restart agent now.";
     char *response = "Command received OK.";
 
-    will_return(__wrap_isChroot, 1);
-
     expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
@@ -299,15 +293,13 @@ void test_wm_agent_upgrade_send_command_to_agent_connect_error(void **state)
 {
     char *command = "Command to agent: restart agent now.";
 
-    will_return(__wrap_isChroot, 1);
-
     expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8114): Cannot connect to '/queue/sockets/request'. Could not reach agent.");
+    expect_string(__wrap__mterror, formatted_msg, "(8114): Cannot connect to 'queue/sockets/request'. Could not reach agent.");
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
@@ -325,9 +317,7 @@ void test_wm_agent_upgrade_send_lock_restart_ok(void **state)
     char *cmd = "028 com lock_restart -1";
     char *agent_res = "ok ";
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -365,9 +355,7 @@ void test_wm_agent_upgrade_send_lock_restart_err(void **state)
     char *cmd = "028 com lock_restart -1";
     char *agent_res = "err Could not restart agent";
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -407,9 +395,7 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
     char *agent_res = "ok ";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -449,9 +435,7 @@ void test_wm_agent_upgrade_send_open_ok_new(void **state)
     char *agent_res = "{\"error\":0,\"message\":\"ok\",\"data\": []}";
     int format = 1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -492,9 +476,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     char *agent_res2 = "ok ";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -518,9 +500,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res1);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -560,9 +540,7 @@ void test_wm_agent_upgrade_send_open_retry_err(void **state)
     char *agent_res = "err Could not open file in agent";
     int format = -1;
 
-    will_return_count(__wrap_isChroot, 0, 10);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 10);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 10);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 10);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 10);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 10);
@@ -646,9 +624,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -675,9 +651,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -733,9 +707,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -762,9 +734,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -821,9 +791,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -850,9 +818,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -914,9 +880,7 @@ void test_wm_agent_upgrade_send_close_ok(void **state)
     char *agent_res = "ok ";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -956,9 +920,7 @@ void test_wm_agent_upgrade_send_close_ok_new(void **state)
     char *agent_res = "{\"error\":0,\"message\":\"ok\",\"data\": []}";
     int format = 1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -998,9 +960,7 @@ void test_wm_agent_upgrade_send_close_err(void **state)
     char *agent_res = "err Could not close file in agent";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1041,9 +1001,7 @@ void test_wm_agent_upgrade_send_sha1_ok(void **state)
     char *agent_res = "ok d321af65983fa412e3a12c312ada12ab321a253a";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1084,9 +1042,7 @@ void test_wm_agent_upgrade_send_sha1_ok_new(void **state)
     char *agent_res = "{\"error\":0,\"message\":\"d321af65983fa412e3a12c312ada12ab321a253a\",\"data\": []}";
     int format = 1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1128,9 +1084,7 @@ void test_wm_agent_upgrade_send_sha1_err(void **state)
     char *agent_res = "err Could not calculate sha1 in agent";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1171,9 +1125,7 @@ void test_wm_agent_upgrade_send_sha1_invalid_sha1(void **state)
     char *agent_res = "ok d321af65983fa412e3a21c312ada12ab321a253a";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1217,9 +1169,7 @@ void test_wm_agent_upgrade_send_upgrade_ok(void **state)
     char *agent_res = "ok 0";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1260,9 +1210,7 @@ void test_wm_agent_upgrade_send_upgrade_ok_new(void **state)
     char *agent_res = "{\"error\":0,\"message\":\"0\",\"data\": []}";
     int format = 1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1304,9 +1252,7 @@ void test_wm_agent_upgrade_send_upgrade_err(void **state)
     char *agent_res = "err Could not run script in agent";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1347,9 +1293,7 @@ void test_wm_agent_upgrade_send_upgrade_script_err(void **state)
     char *agent_res = "ok 2";
     int format = -1;
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1385,6 +1329,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -1401,7 +1346,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -1413,7 +1359,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -1422,9 +1368,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -1551,6 +1495,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -1567,7 +1512,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("windows", agent_task->agent_info->platform);
@@ -1579,7 +1525,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -1588,9 +1534,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -1754,9 +1698,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
     will_return(__wrap_OS_SHA1_File, "2c312ada12ab321a253ad321af65983fa412e3a1");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -1919,9 +1861,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
     will_return(__wrap_OS_SHA1_File, "2c312ada12ab321a253ad321af65983fa412e3a1");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -2048,6 +1988,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -2064,7 +2005,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2076,7 +2018,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2085,9 +2027,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -2215,6 +2155,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -2229,7 +2170,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2241,7 +2183,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2250,9 +2192,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 5);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 5);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 5);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 5);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 5);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 5);
@@ -2367,6 +2307,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -2380,7 +2321,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2392,7 +2334,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2401,9 +2343,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 4);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 4);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 4);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 4);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 4);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 4);
@@ -2501,6 +2441,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -2513,7 +2454,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2525,7 +2467,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2534,9 +2476,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 3);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 3);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 3);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 3);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 3);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 3);
@@ -2616,6 +2556,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *open_file = "111 com open wb test.wpk";
@@ -2627,7 +2568,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2639,7 +2581,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2648,9 +2590,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return_count(__wrap_isChroot, 0, 11);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 11);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 11);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 11);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 11);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 11);
@@ -2768,6 +2708,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     char *lock_restart = "111 com lock_restart -1";
     char *agent_res_err = "err ";
@@ -2777,7 +2718,8 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2789,7 +2731,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2798,9 +2740,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '111'");
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -2839,12 +2779,14 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     wm_manager_configs *config = state[0];
     wm_agent_task *agent_task = state[1];
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2856,7 +2798,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_err(void **state)
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_wpk
@@ -2871,12 +2813,14 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_version_err(void **sta
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     wm_manager_configs *config = state[0];
     wm_agent_task *agent_task = state[1];
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = 111;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2888,7 +2832,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_validate_wpk_version_err(void **sta
     agent_task->task_info->task = upgrade_task;
 
     // wm_agent_upgrade_validate_wpk_version
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
 
     int res = wm_agent_upgrade_send_wpk_to_agent(agent_task, config);
@@ -2927,10 +2871,10 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     int agent_id = 25;
     char *status = "In progress";
-
     char *lock_restart = "025 com lock_restart -1";
     char *open_file = "025 com open wb test.wpk";
     char *write_file = "025 com write 5 test.wpk test\n";
@@ -2947,7 +2891,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = agent_id;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -2997,7 +2942,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 
     // wm_agent_upgrade_send_wpk_to_agent
 
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -3005,9 +2950,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -3137,11 +3080,11 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     int agent_id = 25;
     char *status1 = "In progress";
     char *status2 = "Legacy";
-
     char *lock_restart = "025 com lock_restart -1";
     char *open_file = "025 com open wb test.wpk";
     char *write_file = "025 com write 5 test.wpk test\n";
@@ -3158,7 +3101,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = agent_id;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -3229,7 +3173,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     // wm_agent_upgrade_send_wpk_to_agent
 
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -3237,9 +3181,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -3470,9 +3412,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     will_return(__wrap_OS_SHA1_File, "d321af65983fa412e3a12c312ada12ab321a253a");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    will_return_count(__wrap_isChroot, 0, 6);
-
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -3602,12 +3542,12 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 {
     (void) state;
 
+    char repository[OS_BUFFER_SIZE] = "";
     int socket = 555;
     int agent_id = 25;
     char *status1 = "In progress";
     char *status2 = "Failed";
     char *error = "Send lock restart error";
-
     char *lock_restart = "025 com lock_restart -1";
     char *open_file = "025 com open wb test.wpk";
     char *write_file = "025 com write 5 test.wpk test\n";
@@ -3623,7 +3563,8 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     wm_upgrade_task *upgrade_task = NULL;
 
     config->chunk_size = 5;
-    config->wpk_repository = WM_UPGRADE_WPK_REPO_URL_4_X;
+    snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, 4);
+    config->wpk_repository = repository;
 
     agent_task->agent_info->agent_id = agent_id;
     os_strdup("ubuntu", agent_task->agent_info->platform);
@@ -3693,7 +3634,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     // wm_agent_upgrade_send_wpk_to_agent
 
-    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, WM_UPGRADE_WPK_REPO_URL_4_X);
+    expect_string(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config, repository);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
 
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -3701,9 +3642,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8162): Sending WPK to agent: '025'");
 
-    will_return(__wrap_isChroot, 0);
-
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);

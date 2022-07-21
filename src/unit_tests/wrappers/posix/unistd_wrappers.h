@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -46,5 +46,10 @@ int __wrap_gethostname(char *name, int len);
 int __wrap_readlink(void **state);
 
 int __wrap_symlink(const char *path1, const char *path2);
+
+int __wrap_access (const char *__name, int __type);
+#ifdef WIN32
+int __wrap__access (const char *__name, int __type);
+#endif
 
 #endif

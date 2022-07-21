@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -280,43 +280,6 @@ static void test_fim_db_get_registry_data_db_error(void **state) {
     assert_null(value);
 }
 
-static void test_fim_db_insert_registry(void **state) {
-    int ret;
-    fim_entry *entry = *state;
-
-    will_return_always(__wrap_sqlite3_step, 1);
-
-    // Insert entry
-    ret = fim_db_insert_registry(syscheck.database, entry);
-    assert_int_equal(ret, FIMDB_OK);
-    ret = check_fim_db_reg_key(entry->registry_entry.key);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value, entry->registry_entry.value->id);
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_db_insert_registry_db_error(void **state) {
-    int ret;
-    fim_entry *entry = *state;
-
-    for (int i = 0; i < 5; i++){
-        will_return(__wrap_sqlite3_step, 0);
-        will_return(__wrap_sqlite3_step, FIMDB_ERR);
-    }
-
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting registry rowid HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile: not an error");
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry data '1': not an error");
-
-    // Insert entry
-    ret = fim_db_insert_registry(syscheck.database, entry);
-    assert_int_not_equal(ret, 0);
-    ret = check_fim_db_reg_key(entry->registry_entry.key);
-    assert_int_equal(ret, -1);
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value, entry->registry_entry.value->id);
-    assert_int_equal(ret, -1);
-}
-
 static void test_fim_db_insert_registry_key(void **state) {
     int ret;
     fim_entry *entry = *state;
@@ -349,7 +312,7 @@ static void test_fim_db_insert_registry_key_db_error(void **state) {
     int ret;
     fim_entry *entry = *state;
 
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -365,7 +328,7 @@ static void test_fim_db_insert_registry_data_db_error(void **state) {
     int ret;
     fim_entry *entry = *state;
 
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry data \'1\': not an error");
+    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry data \'1\': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -417,7 +380,7 @@ static void test_fim_db_remove_registry_key_db_error(void **state) {
     int ret;
     fim_entry *entry = *state;
 
-    expect_string(__wrap__merror, formatted_msg, "Step error deleting data value from key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__merror, formatted_msg, "Step error deleting data value from key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -435,7 +398,7 @@ static void test_fim_db_remove_registry_data_db_error(void **state) {
     int ret;
     fim_entry *entry = *state;
 
-    expect_string(__wrap__merror, formatted_msg, "Step error deleting entry name 'valuename': not an error");
+    expect_string(__wrap__merror, formatted_msg, "Step error deleting entry name 'valuename': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -502,7 +465,7 @@ static void test_fim_db_set_registry_key_scanned_error(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, FIMDB_ERR);
-    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned key path 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned key path 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
 
     execute_query(default_key_query);
 
@@ -533,7 +496,7 @@ static void test_fim_db_set_registry_data_scanned_error(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, FIMDB_ERR);
-    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned data name 'valuename': not an error");
+    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned data name 'valuename': not an error (0)");
 
     execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");
@@ -706,8 +669,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_get_registry_key_db_error, teardown_delete_tables),
         cmocka_unit_test_teardown(test_fim_db_get_registry_key_using_id_db_error, teardown_delete_tables),
         cmocka_unit_test_teardown(test_fim_db_get_registry_data_db_error, teardown_delete_tables),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_registry, setup_registry_entry, teardown_registry_entry),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_db_error, setup_registry_entry, teardown_registry_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_key, setup_registry_entry, teardown_registry_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_data, setup_registry_entry, teardown_registry_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_key_db_error, setup_registry_entry, teardown_registry_entry),

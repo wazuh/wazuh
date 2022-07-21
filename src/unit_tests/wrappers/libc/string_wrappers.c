@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -14,7 +14,7 @@
 #include <cmocka.h>
 
 
-char *__wrap_strerror (__attribute__((unused)) int __errnum) {
+char *__wrap_strerror(__attribute__((unused)) int __errnum) {
     return mock_type(char*);
 }
 

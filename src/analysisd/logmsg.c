@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -15,6 +15,27 @@ void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * f
 
     va_list args;
     os_analysisd_log_msg_t * new_msg;
+
+    if (list == NULL) {
+        va_start(args, msg);
+        switch (level) {
+
+        case LOGLEVEL_ERROR:
+            _mverror(file, line, func, msg, args);
+            break;
+
+        case LOGLEVEL_WARNING:
+            _mvwarn(file, line, func, msg, args);
+            break;
+
+        default:
+            _mvinfo(file, line, func, msg, args);
+            break;
+        }
+        va_end(args);
+        return;
+    }
+
     os_malloc(sizeof(os_analysisd_log_msg_t), new_msg);
 
     /* Debug information */

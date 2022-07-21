@@ -19,6 +19,21 @@
         {
             "name":"wazuh_modules/syscollector",
             "flags":"-r"
+        },
+        {
+            "name":"server",
+            "flags":"--scanbuild",
+            "compile":false
+        },
+        {
+            "name":"agent",
+            "flags":"--scanbuild",
+            "compile":false
+        },
+        {
+            "name":"winagent",
+            "flags":"--scanbuild",
+            "compile":false
         }
     ]
 }

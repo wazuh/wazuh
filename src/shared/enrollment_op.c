@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -11,6 +11,8 @@
 #include "os_auth/auth.h"
 #include "os_net/os_net.h"
 #include "shared.h"
+#include "headers/sec.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
     /* Remove static qualifier when unit testing */
@@ -35,9 +37,10 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
 static int w_enrollment_send_message(w_enrollment_ctx *cfg);
 static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
-static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
+static int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
+static int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip);
+static void w_enrollment_concat_key(char *buff, keyentry* key);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
 static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
@@ -73,7 +76,7 @@ w_enrollment_cert *w_enrollment_cert_init(){
     w_enrollment_cert *cert_cfg;
     os_malloc(sizeof(w_enrollment_cert), cert_cfg);
     cert_cfg->ciphers = strdup(DEFAULT_CIPHERS);
-    cert_cfg->authpass_file = strdup(AUTHDPASS_PATH);
+    cert_cfg->authpass_file = strdup(AUTHD_PASS);
     cert_cfg->authpass = NULL;
     cert_cfg->agent_cert = NULL;
     cert_cfg->agent_key = NULL;
@@ -92,17 +95,18 @@ void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
     os_free(cert_cfg);
 }
 
-w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert) {
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert, keystore *keys) {
     assert(target != NULL);
     assert(cert != NULL);
     w_enrollment_ctx *cfg;
     os_malloc(sizeof(w_enrollment_ctx), cfg);
     cfg->target_cfg = target;
     cfg->cert_cfg = cert;
-    cfg->enabled = 1;
+    cfg->enabled = true;
     cfg->ssl = NULL;
-    cfg->allow_localhost = 1;
+    cfg->allow_localhost = true;
     cfg->delay_after_enrollment = 20;
+    cfg->keys = keys;
     return cfg;
 }
 
@@ -135,7 +139,7 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
  * be obtained by obtaining hostname
  *
  * @param cfg configuration structure
- * @param allow_localhost 1 will allow localhost as name, 0 will throw an merror_exit
+ * @param allow_localhost true will allow localhost as name, false will throw an merror_exit
  * @return agent_name on succes
  *         NULL on errors
  * */
@@ -188,15 +192,15 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     char *ip_address = NULL;
     char *tmp_str = strchr(server_address, '/');
     if (tmp_str) {
-        // server_address comes in {hostname}/{ip} fomat
+        // server_address comes in {hostname}/{ip} format
         ip_address = strdup(++tmp_str);
     }
-    if(!ip_address){
+    if (!ip_address) {
         // server_address is either a host or a ip
         ip_address = OS_GetHost(server_address, 3);
     }
 
-    /* Translate hostname to an ip_adress */
+    /* Translate hostname to an ip_address */
     if (!ip_address) {
         merror("Could not resolve hostname: %s\n", server_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
@@ -206,15 +210,15 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     SSL_CTX *ctx = os_ssl_keys(0, NULL, cfg->cert_cfg->ciphers,
         cfg->cert_cfg->agent_cert, cfg->cert_cfg->agent_key, cfg->cert_cfg->ca_cert, cfg->cert_cfg->auto_method);
     if (!ctx) {
-        merror("Could not set up SSL connection! Check ceritification configuration.");
+        merror("Could not set up SSL connection! Check certification configuration.");
         os_free(ip_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
     }
 
     /* Connect via TCP */
-    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, 0);
+    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, strchr(ip_address, ':') != NULL);
     if (sock < 0) {
-        merror("Unable to connect to %s:%d", ip_address, cfg->target_cfg->port);
+        merror(ENROLL_CONN_ERROR, ip_address, cfg->target_cfg->port);
         os_free(ip_address);
         SSL_CTX_free(ctx);
         return ENROLLMENT_CONNECTION_FAILURE;
@@ -228,16 +232,22 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     ERR_clear_error();
     int ret = SSL_connect(cfg->ssl);
     if (ret <= 0) {
-        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(cfg->ssl, ret));
+        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect.", SSL_get_error(cfg->ssl, ret));
         ERR_print_errors_fp(stderr);  // This function empties the error queue
         os_free(ip_address);
         SSL_CTX_free(ctx);
+        OS_CloseSocket(sock);
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 
-    mdebug1("Connected to %s:%d", ip_address, cfg->target_cfg->port);
+    mdebug1(ENROLL_CONNECTED, ip_address, cfg->target_cfg->port);
 
-    w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
+    if (w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address) == 1) {
+        os_free(ip_address);
+        SSL_CTX_free(ctx);
+        OS_CloseSocket(sock);
+        return ENROLLMENT_CONNECTION_FAILURE;
+    }
 
     os_free(ip_address);
     SSL_CTX_free(ctx);
@@ -272,15 +282,19 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         snprintf(buf, 2048, "OSSEC A:'%s'", lhostname);
     }
 
-    if(cfg->target_cfg->centralized_group){
+    if (cfg->target_cfg->centralized_group) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
 
-    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
+    if (w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
         return -1;
+    }
+
+    if (cfg->keys->keysize > 0) {
+        w_enrollment_concat_key(buf, cfg->keys->keyentries[0]);
     }
 
     /* Append new line character */
@@ -298,7 +312,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     mdebug1("Request sent to manager");
 
     os_free(buf);
-    if(lhostname != cfg->target_cfg->agent_name)
+    if (lhostname != cfg->target_cfg->agent_name)
         os_free(lhostname);
     return 0;
 }
@@ -373,10 +387,10 @@ static int w_enrollment_store_key_entry(const char* keys) {
 
 #ifdef WIN32
     FILE *fp;
-    fp = fopen(KEYSFILE_PATH, "w");
+    fp = fopen(KEYS_FILE, "w");
 
     if (!fp) {
-        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
         return -1;
     }
     fprintf(fp, "%s\n", keys);
@@ -385,8 +399,8 @@ static int w_enrollment_store_key_entry(const char* keys) {
 #else /* !WIN32 */
     File file;
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
-        merror(FOPEN_ERROR, isChroot() ? AUTH_FILE : KEYSFILE_PATH, errno, strerror(errno));
+    if (TempFile(&file, KEYS_FILE, 0) < 0) {
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
         return -1;
     }
 
@@ -394,17 +408,18 @@ static int w_enrollment_store_key_entry(const char* keys) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
+        os_free(file.name);
         return -1;
     }
 
     fprintf(file.fp, "%s\n", keys);
     fclose(file.fp);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
-        free(file.name);
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
+        os_free(file.name);
         return -1;
     }
-    free(file.name);
+    os_free(file.name);
 
 #endif /* !WIN32 */
 
@@ -457,23 +472,48 @@ static int w_enrollment_process_agent_key(char *buffer) {
 /**
  * Verifies the manager's ca certificate. Displays a warning message if it does not match
  * @param ssl SSL connection established with the manager
- * @param ca_cert cerificate to verify
+ * @param ca_cert certificate to verify
  * @param hostname
  * */
-static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname) {
+static int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname) {
     assert(ssl != NULL);
-
-    if (ca_cert) {
-        minfo("Verifying manager's certificate");
-        if (check_x509_cert(ssl, hostname) != VERIFY_TRUE) {
-            merror("Unable to verify server certificate");
-        } else {
-            minfo("Manager has been verified successfully");
-        }
-    }
-    else {
+    if (ca_cert == NULL) {
         mdebug1("Registering agent to unverified manager");
+        return 0;
     }
+
+    minfo("Verifying manager's certificate");
+
+    if (check_x509_cert(ssl, hostname) != VERIFY_TRUE) {
+        merror("Unable to verify server certificate");
+        return 1;
+    }
+
+    minfo("Manager has been verified successfully");
+    return 0;
+}
+
+/**
+ * @brief Concatenates the current key of the agent, if exists, as  part of the enrollment message
+ *
+ * @param buff buffer where the KEY section will be concatenated
+ * @param key_entry The key that will be concatenated
+ *
+ * @pre buff must be 69633 bytes long
+ */
+static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
+    assert(buff != NULL);
+    assert(key_entry != NULL);
+
+    os_sha1 output;
+    char* opt_buf = NULL;
+    os_calloc(OS_SIZE_512, sizeof(char), opt_buf);
+    w_get_key_hash(key_entry, output);
+    snprintf(opt_buf, OS_SIZE_512, " K:'%s'", output);
+    if (strlen(buff) < (OS_SIZE_65536 + OS_SIZE_4096)) {
+        strncat(buff, opt_buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buff));
+    }
+    free(opt_buf);
 }
 
 /**
@@ -498,20 +538,20 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
  *
  * @param buff buffer where the IP section will be concatenated
  * @param sender_ip Sender IP, if null it will be filled with "src"
+ * @param remain_size Remain size of buffer. It is buffer_size - strlen(buffer)
  * @return return code
  * @retval 0 on success
  * @retval -1 if ip is invalid
  */
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip) {
+static int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
     if(sender_ip && !use_src_ip) { // Force an IP
         /* Check if this is strictly an IP address using a regex */
-        if (OS_IsValidIP(sender_ip, NULL))
-        {
+        if (OS_IsValidIP(sender_ip, NULL)) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
-            strncat(buff,opt_buf,254);
+            strncat(buff,opt_buf, remain_size - 1);
         } else {
             merror("Invalid IP address provided for sender IP.");
             return -1;

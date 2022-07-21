@@ -1,12 +1,68 @@
 ---
-test_name: DELETE /experimental/syscheck
-
-marks:
-  - base_tests
+test_name: DELETE /experimental/rootcheck
 
 stages:
 
-  - name: Request
+  # DELETE /experimental/rootcheck
+  - name: Delete rootcheck scans in agent 001
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # DELETE /experimental/rootcheck
+  - name: Delete rootcheck scans in all agents
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "000"
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+            - "009"
+            - "010"
+            - "011"
+            - "012"
+          failed_items: []
+          total_affected_items: 13
+          total_failed_items: 0
+
+---
+test_name: DELETE /experimental/syscheck
+
+stages:
+
+  - name: Try to delete syscheck scans (Some failed, agents are newer than expected)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
@@ -18,27 +74,16 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
-            - '000'
-            - '001'
-            - '002'
-            - '003'
-            - '004'
-            - '005'
-            - '006'
-            - '007'
-            - '008'
-            - '009'
-            - '010'
-            - '011'
-            - '012'
+              - '009'
+              - '010'
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 2
           total_failed_items: 0
 
-  - name: Request
+  - name: Try to delete syscheck scans (Failed, agents are newer than expected)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
@@ -50,16 +95,19 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
-          affected_items:
-            - '001'
-            - '003'
-            - '005'
-            - '007'
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1760
+              id:
+                - '001'
+                - '003'
+                - '005'
+                - '007'
+          total_affected_items: 0
+          total_failed_items: 4
 
 ---
 test_name: GET /experimental/ciscat/results
@@ -86,9 +134,6 @@ stages:
 ---
 test_name: GET /experimental/syscollector/hardware
 
-marks:
-  - xfail # https://github.com/wazuh/wazuh-jenkins/issues/2415
-
 stages:
 
   - name: Request
@@ -106,7 +151,6 @@ stages:
           affected_items:
             - &hardware_response
               agent_id: !anystr
-              board_serial: !anystr
               cpu:
                 cores: !anyint
                 mhz: !anything
@@ -551,13 +595,17 @@ stages:
             - <<: *ports_response
               agent_id: '001'
             - <<: *ports_response
+              agent_id: '001'
+            - <<: *ports_response
+              agent_id: '003'
+            - <<: *ports_response
               agent_id: '003'
             - <<: *ports_response
               agent_id: '005'
             - <<: *ports_response
               agent_id: '007'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 6
           total_failed_items: 0
 
 ---

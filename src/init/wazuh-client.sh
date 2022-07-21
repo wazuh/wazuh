@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -11,8 +11,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
-VERSION="v4.2.0"
-REVISION="40200"
+VERSION="v4.5.0"
+REVISION="40500"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -36,7 +36,7 @@ MAX_KILL_TRIES=600
 checkpid()
 {
     for i in ${DAEMONS}; do
-        for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
+        for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
@@ -126,10 +126,27 @@ testconfig()
     done
 }
 
+# Check folders
+check_folders()
+{
+    ALERTS_FOLDER="../queue/alerts"
+
+    if [ ! -d $ALERTS_FOLDER ]
+    then
+        if rm -rf $ALERTS_FOLDER && mkdir -p $ALERTS_FOLDER && chown wazuh:wazuh $ALERTS_FOLDER && chmod 770 $ALERTS_FOLDER
+        then
+            echo "WARNING: missing folder 'queue/alerts'. Restored back."
+        else
+            echo "ERROR: missing folder 'queue/alerts', and could not restore back."
+            exit 1
+        fi
+    fi
+}
+
 # Start function
 start_service()
 {
-    echo "Starting $NAME $VERSION..."
+    echo "Starting Wazuh $VERSION..."
     checkpid;
 
     # Delete all files in temporary folder
@@ -184,9 +201,9 @@ pstatus()
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
+    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
@@ -231,7 +248,7 @@ stop_service()
         if [ $? = 1 ]; then
             echo "Killing ${i}... ";
 
-            pid=`cat ${DIR}/var/run/${i}*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
 
             if ! wait_pid $pid
@@ -243,10 +260,10 @@ stop_service()
             echo "${i} not running...";
         fi
 
-        rm -f ${DIR}/var/run/${i}*.pid
+        rm -f ${DIR}/var/run/${i}-*.pid
      done
 
-    echo "$NAME $VERSION Stopped"
+    echo "Wazuh $VERSION Stopped"
 }
 
 info()
@@ -272,6 +289,7 @@ arg=$2
 case "$1" in
 start)
     testconfig
+    check_folders
     lock
     start_service
     unlock

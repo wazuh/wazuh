@@ -4,14 +4,14 @@ import asyncio
 import itertools
 import logging
 import ssl
-import time
 import traceback
+from time import perf_counter
 from typing import Tuple, Dict, List
 
 import uvloop
 
 from wazuh.core.cluster import common
-from wazuh.core.cluster.utils import context_tag, context_subtag
+from wazuh.core.cluster.utils import context_tag
 
 
 class AbstractClientManager:
@@ -57,7 +57,6 @@ class AbstractClientManager:
         self.tag = tag
         # Modify filter tags with context vars.
         context_tag.set(self.tag)
-        context_subtag.set("Main")
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
@@ -98,13 +97,13 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await self.loop.create_connection(
-                                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
-                                                                                name=self.name, logger=self.logger,
-                                                                                fernet_key=self.configuration['key'],
-                                                                                cluster_items=self.cluster_items,
-                                                                                manager=self, **self.extra_args),
-                                    host=self.configuration['nodes'][0], port=self.configuration['port'],
-                                    ssl=ssl_context)
+                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
+                                                                name=self.name, logger=self.logger,
+                                                                fernet_key=self.configuration['key'],
+                                                                cluster_items=self.cluster_items,
+                                                                manager=self, **self.extra_args),
+                    host=self.configuration['nodes'][0], port=self.configuration['port'],
+                    ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")
@@ -123,7 +122,7 @@ class AbstractClientManager:
             finally:
                 transport.close()
 
-            self.logger.info("The connection has ben closed. Reconnecting in 10 seconds.")
+            self.logger.info("The connection has been closed. Reconnecting in 10 seconds.")
             await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
 
 
@@ -138,8 +137,6 @@ class AbstractClient(common.Handler):
 
         Parameters
         ----------
-        loop : uvloop.EventLoopPolicy
-            Asyncio loop.
         on_con_lost : asyncio.Future object
             Low-level callback to notify when the connection has ended.
         name : str
@@ -157,11 +154,11 @@ class AbstractClient(common.Handler):
         """
         super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
         self.loop = loop
+        self.server = manager
         self.name = name
         self.on_con_lost = on_con_lost
         self.connected = False
         self.client_data = self.name.encode()
-        self.manager = manager
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -176,7 +173,7 @@ class AbstractClient(common.Handler):
             self.logger.error(f"Could not connect to master: {response_msg}.")
             self.transport.close()
         else:
-            self.logger.info("Sucessfully connected to master.")
+            self.logger.info("Successfully connected to master.")
             self.connected = True
 
     def connection_made(self, transport):
@@ -206,7 +203,7 @@ class AbstractClient(common.Handler):
             self.logger.info('The master closed the connection')
         else:
             self.logger.error(f"Connection closed due to an unhandled error: {exc}\n"
-                              f"{''.join(traceback.format_tb(exc.__traceback__))}")
+                              f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
@@ -214,7 +211,7 @@ class AbstractClient(common.Handler):
 
     def _cancel_all_tasks(self):
         """Iterate asyncio tasks and cancel each of them."""
-        for task in asyncio.Task.all_tasks():
+        for task in asyncio.all_tasks():
             task.cancel()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
@@ -233,7 +230,7 @@ class AbstractClient(common.Handler):
             Result message.
         """
         if command == b'ok-m':
-            return b"Sucessful response from master: " + payload
+            return b"Successful response from master: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -313,11 +310,11 @@ class AbstractClient(common.Handler):
             Payload length.
         """
         while not self.on_con_lost.done():
-            before = time.time()
+            before = perf_counter()
             result = await self.send_request(b'echo', b'a' * test_size)
-            after = time.time()
+            after = perf_counter()
             if len(result) != test_size:
-                self.logger.error(result)
+                self.logger.error(result, exc_info=False)
             else:
                 self.logger.info(f"Received size: {len(result)} // Time: {after - before}")
             await asyncio.sleep(3)
@@ -333,10 +330,11 @@ class AbstractClient(common.Handler):
             Number of requests to send.
         """
         while not self.on_con_lost.done():
-            before = time.time()
+            before = perf_counter()
             for i in range(n_msgs):
                 await self.send_request(b'echo', f'concurrency {i}'.encode())
-            self.logger.info(f"Time sending {n_msgs} messages: {time.time() - before}")
+                after = perf_counter()
+            self.logger.info(f"Time sending {n_msgs} messages: {after - before}")
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename: str):
@@ -349,9 +347,9 @@ class AbstractClient(common.Handler):
         filename : str
             Filename to send.
         """
-        before = time.time()
+        before = perf_counter()
         response = await self.send_file(filename)
-        after = time.time()
+        after = perf_counter()
         self.logger.debug(response)
         self.logger.debug(f"Time: {after - before}")
 
@@ -365,8 +363,8 @@ class AbstractClient(common.Handler):
         string_size : int
             String length.
         """
-        before = time.time()
+        before = perf_counter()
         response = await self.send_string(my_str=b'a' * string_size)
-        after = time.time()
+        after = perf_counter()
         self.logger.debug(response)
         self.logger.debug(f"Time: {after - before}")

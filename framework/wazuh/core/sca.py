@@ -1,14 +1,11 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import re
-from datetime import datetime
-
 from wazuh.core.agent import Agent
-from wazuh.core.common import database_limit
+from wazuh.core.common import MAXIMUM_DATABASE_LIMIT
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 
 # API field -> DB field
 fields_translation_sca = {'policy_id': 'policy_id',
@@ -71,29 +68,10 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _default_count_query(self):
         return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
 
-    def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
-            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
-            # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
-            self._filter_date(q_filter, field_name)
-        else:
-            if q_filter['value'] is not None:
-                self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
-                    r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
-                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
-                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
-                                                 field_filter)
-                if not field_filter.isdigit():
-                    # filtering without being uppercase/lowercase sensitive
-                    self.query += ' COLLATE NOCASE'
-            else:
-                self.query += '{} IS null'.format(self.fields[field_name])
-
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
             if field_name in ['end_scan', 'start_scan']:
-                return datetime.utcfromtimestamp(value)
+                return get_date_from_timestamp(value)
             else:
                 return value
 
@@ -115,7 +93,7 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
 
     def _add_limit_to_query(self):
         if self.limit:
-            if self.limit > database_limit:
+            if self.limit > MAXIMUM_DATABASE_LIMIT:
                 raise WazuhError(1405, str(self.limit))
 
             # We add offset and limit only to the inner SELECT (subquery)

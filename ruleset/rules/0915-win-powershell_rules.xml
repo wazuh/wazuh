@@ -1,0 +1,55 @@
+<!--
+  Copyright (C) 2015, Wazuh Inc.
+-->
+
+<!--
+  Powershell Rules 91601 - 92000
+-->
+
+<group name="windows, powershell,">
+
+<!-- Powershell Operational grouping -->
+  <rule id="91801" level="0">
+    <if_sid>60000</if_sid>
+    <field name="win.system.channel">^Microsoft-Windows-PowerShell/Operational$</field>
+    <options>no_full_log</options>
+    <description>Group of Windows rules for the Powershell/Operational channel.</description>
+  </rule>
+
+  <!-- Powershell Script Block rules -->
+  <rule id="91802" level="0">
+    <if_sid>91801</if_sid>
+    <field name="win.eventdata.ScriptBlockId" type="pcre2">.+</field>
+    <options>no_full_log</options>
+    <description>Group of Windows rules for the Powershell/Operational channel.</description>
+  </rule>
+
+  <rule id="91803" level="14">
+    <if_sid>91802</if_sid>
+    <field name="win.system.message" type="pcre2">CopyFromScreen</field>
+    <options>no_full_log</options>
+    <description>Screen capture method invoked from PowerShell script.</description>
+     <mitre>
+      <id>T1113</id>
+    </mitre>
+  </rule>
+
+  <rule id="91805" level="3">
+    <if_sid>91802</if_sid>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ADComputer</field>
+    <description>Executed Powershell script "Get-ADComputer" executed.</description>
+    <mitre>
+      <id>T1018</id>
+    </mitre>
+  </rule>
+
+  <rule id="91806" level="3">
+    <if_sid>91802</if_sid>
+    <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-NetUser</field>
+    <description>Powershell script "Get-NetUser executed".</description>
+    <mitre>
+      <id>T1087.002</id>>
+    </mitre>
+  </rule>
+
+</group>

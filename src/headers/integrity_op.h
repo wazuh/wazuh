@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 12, 2019.
  *
  * This program is a free software; you can redistribute it
@@ -21,6 +21,16 @@
 #include "os_crypto/sha1/sha1_op.h"
 #include "debug_op.h"
 */
+
+/**
+ * @brief Synchronization status codes
+ */
+typedef enum integrity_sync_status_t {
+    INTEGRITY_SYNC_ERR      = -1,
+    INTEGRITY_SYNC_NO_DATA  = 0,
+    INTEGRITY_SYNC_CKS_FAIL = 1,
+    INTEGRITY_SYNC_CKS_OK   = 2,
+} integrity_sync_status_t;
 
 /**
  * @brief Synchronization message type

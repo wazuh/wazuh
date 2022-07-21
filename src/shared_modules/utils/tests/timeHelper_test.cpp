@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,7 @@ void TimeUtilsTest::SetUp() {};
 
 void TimeUtilsTest::TearDown() {};
 
-TEST_F(TimeUtilsTest, CheckTimestamp) 
+TEST_F(TimeUtilsTest, CheckTimestamp)
 {
     const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -12,6 +12,7 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(azure)
   add_subdirectory(ciscat)
   add_subdirectory(command)
+  add_subdirectory(database)
   add_subdirectory(docker)
   add_subdirectory(gcp)
   add_subdirectory(oscap)
@@ -19,10 +20,8 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(scheduling)
   add_subdirectory(vulnerability_detector)
   add_subdirectory(task_manager)
-elseif(${TARGET} STREQUAL "agent")
-  add_subdirectory(syscollector)
-endif()
-
-if(NOT ${uname} STREQUAL "Darwin")
   add_subdirectory(agent_upgrade)
 endif()
+
+add_subdirectory(github)
+add_subdirectory(office365)

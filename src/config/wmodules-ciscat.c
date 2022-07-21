@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December, 2017.
  *
  * This program is free software; you can redistribute it
@@ -21,6 +21,7 @@ static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_JAVA_PATH = "java_path";
 static const char *XML_CISCAT_PATH = "ciscat_path";
+static const char *XML_CISCAT_BINARY = "ciscat_binary";
 static const char *XML_DISABLED = "disabled";
 
 // Parse XML
@@ -41,6 +42,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     ciscat->flags.scan_on_start = 1;
     sched_scan_init(&(ciscat->scan_config));
     ciscat->scan_config.interval = WM_DEF_INTERVAL;
+    
+    // Set default ciscat binary
+    #ifdef WIN32
+        os_strdup(WM_CISCAT_V3_BINARY_WIN, ciscat->ciscat_binary);
+    #else
+        os_strdup(WM_CISCAT_V3_BINARY, ciscat->ciscat_binary);
+    #endif
     module->context = &WM_CISCAT_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = ciscat;
@@ -172,6 +180,21 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             ciscat->java_path = strdup(nodes[i]->content);
         } else if (!strcmp(nodes[i]->element, XML_CISCAT_PATH)) {
             ciscat->ciscat_path = strdup(nodes[i]->content);
+        } else if (!strcmp(nodes[i]->element, XML_CISCAT_BINARY)) {
+            // Free the old string (having the default value) before setting a new one.
+            os_free(ciscat->ciscat_binary);
+            ciscat->ciscat_binary = strdup(nodes[i]->content);
+            #ifdef WIN32
+                if (strcmp(ciscat->ciscat_binary, WM_CISCAT_V3_BINARY_WIN) && strcmp(ciscat->ciscat_binary, WM_CISCAT_V4_BINARY_WIN)) {
+                    mterror(WM_CISCAT_LOGTAG, "Unsupported CIS-CAT Binary '%s'.", ciscat->ciscat_binary);
+                    return OS_INVALID;
+                }
+            #else
+                if (strcmp(ciscat->ciscat_binary, WM_CISCAT_V3_BINARY) && strcmp(ciscat->ciscat_binary, WM_CISCAT_V4_BINARY)) {
+                    mterror(WM_CISCAT_LOGTAG, "Unsupported CIS-CAT Binary '%s'.", ciscat->ciscat_binary);
+                    return OS_INVALID;
+                }
+            #endif
         } else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {

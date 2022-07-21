@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -19,8 +19,7 @@
 static void print_db_info(void);
 static void cleanup();
 static void handler(int signum);
-static void help_dbd(void) __attribute__((noreturn));
-
+static void help_dbd(char *home_path) __attribute__((noreturn));
 
 /* Print information regarding enabled databases */
 static void print_db_info()
@@ -39,7 +38,7 @@ static void print_db_info()
 }
 
 /* Print help statement */
-static void help_dbd()
+static void help_dbd(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -50,29 +49,29 @@ static void help_dbd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
     print_out("  Database Support:");
     print_db_info();
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
-int main(int argc, char **argv)
-{
+int main (int argc, char **argv) {
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
     unsigned int d;
 
-    /* Use MAILUSER (read only) */
-    const char *dir  = DEFAULTDIR;
-    const char *user = MAILUSER;
+    /* Use USER (read only) */
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
+    char *home_path = w_homedir(argv[0]);
 
     /* Database Structure */
     DBConfig db_config;
@@ -87,7 +86,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_dbd();
+                help_dbd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -111,7 +110,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -123,13 +123,17 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_dbd();
+                help_dbd(home_path);
                 break;
         }
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
 
     /* Setup random */
     srandom_init();
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if ((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, OSSECCONF);
     }
 
     /* Exit here if test config is set */
@@ -207,13 +211,12 @@ int main(int argc, char **argv)
 
         d++;
         sleep(d * 60);
-
     }
 
     /* If after the maxreconnect attempts, it still didn't work, exit here */
     if (!db_config.conn) {
         merror(DB_CONFIGERR);
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, OSSECCONF);
     }
 
     /* We must notify that we connected -- easy debugging */
@@ -232,8 +235,8 @@ int main(int argc, char **argv)
     }
 
     /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
 
     /* Now in chroot */
@@ -242,12 +245,12 @@ int main(int argc, char **argv)
     /* Insert server info into the db */
     db_config.server_id = OS_Server_ReadInsertDB(&db_config);
     if (db_config.server_id <= 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, OSSECCONF);
     }
 
     /* Read rules and insert into the db */
     if (OS_InsertRulesDB(&db_config) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, OSSECCONF);
     }
 
     /* Change user */
@@ -256,7 +259,8 @@ int main(int argc, char **argv)
     }
 
     /* Basic start up completed */
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -266,6 +270,8 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     OS_DBD(&db_config);
+
+    return (0);
 }
 
 void cleanup() {
@@ -278,7 +284,7 @@ void handler(int signum) {
     case SIGINT:
     case SIGTERM:
         minfo(SIGNAL_RECV, signum, strsignal(signum));
-        break;
+        exit(EXIT_SUCCESS);
     default:
         merror("unknown signal (%d)", signum);
     }

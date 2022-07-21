@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,6 +16,7 @@
 #define NMAPG_PORT  "Ports:"
 #define NMAPG_OPEN  "open/"
 #define NMAPG_STAT  "Status:"
+#define PORT_PROTO  " %s(%s)"
 
 /* Prototypes */
 static char *__go_after(char *x, const char *y);
@@ -125,38 +126,35 @@ static char *__go_after(char *x, const char *y)
 /* Read Nmap grepable files */
 void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int final_msg_s;
+    int index = 0;
     int need_clear = 0;
 
-    char str[OS_MAXSTR + 1];
-    char final_msg[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
-    char port[17];
-    char proto[17];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char final_msg[OS_MAX_LOG_SIZE] = {0};
+    char port[17] = {0};
+    char proto[17] = {0};
 
     char *ip = NULL;
     char *p;
     char *q;
 
     int lines = 0;
+    int bytes_written = 0;
 
     *rc = 0;
-    str[OS_MAXSTR] = '\0';
-    final_msg[OS_MAXSTR] = '\0';
-    buffer[OS_MAXSTR] = '\0';
-
-    port[16] = '\0';
-    proto[16] = '\0';
 
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, current_position);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
 
-        OS_SHA1_Stream(&context, NULL, str);
+        if (is_valid_context_file) {
+            OS_SHA1_Stream(&context, NULL, str);
+        }
 
         /* If need clear is set, we need to clear the line */
         if (need_clear) {
@@ -217,9 +215,18 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         }
 
         /* Generate final msg */
-        snprintf(final_msg, OS_MAXSTR, "Host: %s, open ports:",
+        bytes_written = snprintf(final_msg, sizeof(final_msg), "Host: %s, open ports:",
                  ip);
-        final_msg_s = OS_MAXSTR - ((strlen(final_msg) + 3));
+
+        if (bytes_written < 0) {
+            final_msg_s = 0;
+            merror("Error %d (%s) formatting string from file '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 bytes_written, final_msg);
+        } else if ((size_t)bytes_written < sizeof(final_msg)) {
+            final_msg_s = OS_MAX_LOG_SIZE - strlen(final_msg);
+        } else {
+            final_msg_s = 0;
+            merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, final_msg);
+        }
 
         /* Get port and protocol */
         do {
@@ -240,9 +247,9 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Add ports */
-            snprintf(buffer, OS_MAXSTR, " %s(%s)", port, proto);
-            strncat(final_msg, buffer, final_msg_s);
-            final_msg_s -= (strlen(buffer) + 2);
+            index = strlen(final_msg);
+            index = snprintf((final_msg + index), final_msg_s, PORT_PROTO, port, proto);
+            final_msg_s -= index;
 
         } while (*p == ',' && (p++));
 
@@ -264,7 +271,9 @@ file_error:
     }
 
     current_position = w_ftell(lf->fp);
-    w_update_file_status(lf->file, current_position, &context);
+    if (is_valid_context_file) {
+        w_update_file_status(lf->file, current_position, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

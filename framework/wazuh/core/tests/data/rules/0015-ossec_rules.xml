@@ -2,8 +2,7 @@
   -  OSSEC rules
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
-  -  Copyright (C) 2009 Trend Micro Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -150,8 +149,8 @@
 
   <rule id="520" level="3">
     <if_sid>500</if_sid>
-    <match>Duplicated IP</match>
-    <description>Trying to add an agent with duplicated IP.</description>
+    <match>Duplicate IP</match>
+    <description>Trying to add an agent with duplicate IP.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 

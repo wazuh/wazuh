@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,11 +12,23 @@
 #include "localfile-config.h"
 #include "config.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 int maximum_files;
 int current_files;
 int total_files;
 
-
+/**
+ * @brief gets the type filter from the type attribute
+ * @param content type attribute string
+ * @return returns the configuration flags: activity, trace and/or log
+ */
+STATIC int w_logcollector_get_macos_log_type(const char * content);
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -33,6 +45,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_future = "only-future-events";
     const char *xml_localfile_max_size_attr = "max-size";
     const char *xml_localfile_query = "query";
+    const char *xml_localfile_query_type_attr = "type";
+    const char *xml_localfile_query_level_attr = "level";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
@@ -81,7 +95,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     memset(log_config->globs + gl, 0, sizeof(logreader_glob));
     memset(logf + pl, 0, sizeof(logreader));
 
-    logf[pl].ign = 360;
+    logf[pl].ign = DEFAULT_FREQUENCY_SECS;
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
@@ -121,6 +135,23 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
+            const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
+            if (type_attr) {
+                logf[pl].query_type = w_logcollector_get_macos_log_type(type_attr);
+            }
+
+            const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
+            if (level_attr) {
+                if ((strcmp(level_attr, MACOS_LOG_LEVEL_DEFAULT_STR) != 0) &&
+                    (strcmp(level_attr, MACOS_LOG_LEVEL_INFO_STR) != 0) &&
+                    (strcmp(level_attr, MACOS_LOG_LEVEL_DEBUG_STR) != 0)) {
+                    /* Invalid level query */
+                    mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, level_attr,
+                        xml_localfile_query_level_attr, xml_localfile_query);
+                } else {
+                    os_strdup(level_attr, logf[pl].query_level);
+                }
+            }
             os_strdup(node[i]->content, logf[pl].query);
         } else if (strcmp(node[i]->element, xml_localfile_target) == 0) {
             // Count number of targets
@@ -322,6 +353,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
+            } else if (strcmp(logf[pl].logformat, MACOS) == 0) {
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+                os_calloc(1, sizeof(w_macos_log_config_t), logf[pl].macos_log);
+                w_calloc_expression_t(&logf[pl].macos_log->log_start_regex, EXP_TYPE_OSREGEX);
+                if (!w_expression_compile(logf[pl].macos_log->log_start_regex, MACOS_LOG_START_REGEX, 0)) {
+                    merror(LOGCOLLECTOR_MACOS_LOG_IREGEX_ERROR);
+                    w_free_expression_t(&logf[pl].macos_log->log_start_regex);
+                    os_free(logf[pl].macos_log);
+                    return (OS_INVALID);
+                }
+#endif
+
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -417,19 +460,61 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         os_strdup("agent", logf[pl].target[0]);
     }
 
-    /* Missing file */
-    if (logf[pl].file == NULL) {
-        merror(MISS_FILE);
-        os_strdup("", logf[pl].file);
-        return (OS_INVALID);
-    }
-
     /* Missing log format */
-    if (!logf[pl].logformat) {
+    if (logf[pl].logformat == NULL) {
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
     }
 
+    /* Missing file */
+    if (logf[pl].file == NULL) {
+        if (strcmp(logf[pl].logformat, MACOS) == 0) {
+            mwarn(LOGCOLLECTOR_MISSING_LOCATION_MACOS);
+            // Neceesary to check duplicated blocks
+            os_strdup(MACOS, logf[pl].file);
+        } else {
+            merror(MISS_FILE);
+            os_strdup("", logf[pl].file);
+            return (OS_INVALID);
+        }
+    }
+
+    /* Verify macos log config*/
+    if (strcmp(logf[pl].logformat, MACOS) == 0) {
+
+        if (strcmp(logf[pl].file, MACOS) != 0) {
+            /* Invalid macos log configuration */
+            mwarn(LOGCOLLECTOR_INV_MACOS, logf[pl].file);
+            os_free(logf[pl].file);
+            // Neceesary to check duplicated blocks
+            w_strdup(MACOS, logf[pl].file);
+        }
+
+        if (logf[pl].reconnect_time != DEFAULT_EVENTCHANNEL_REC_TIME) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_reconnect_time);
+        }
+        if (logf[pl].age != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_age);
+        }
+        if (logf[pl].filter_binary != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_binaries);
+        }
+        if (logf[pl].exclude != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_exclude);
+        }
+        if (logf[pl].multiline != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_multiline_regex);
+        }
+        if (logf[pl].labels != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_label);
+        }
+        if (logf[pl].ign != DEFAULT_FREQUENCY_SECS) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_frequency);
+        }
+        if (logf[pl].alias != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_alias);
+        }
+    }
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
@@ -651,13 +736,14 @@ void Free_Logreader(logreader * logf) {
     int i;
 
     if (logf) {
-        free(logf->ffile);
-        free(logf->file);
-        free(logf->logformat);
-        free(logf->djb_program_name);
-        free(logf->alias);
-        free(logf->query);
-        free(logf->exclude);
+        os_free(logf->ffile);
+        os_free(logf->file);
+        os_free(logf->logformat);
+        os_free(logf->djb_program_name);
+        os_free(logf->alias);
+        os_free(logf->query);
+        os_free(logf->exclude);
+        os_free(logf->query_level);
 
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {
@@ -667,7 +753,7 @@ void Free_Logreader(logreader * logf) {
             free(logf->target);
         }
 
-        free(logf->log_target);
+        os_free(logf->log_target);
 
         labels_free(logf->labels);
 
@@ -706,6 +792,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
                 if ((*logf)[i].h && (*logf)[i].h != INVALID_HANDLE_VALUE) {
                     CloseHandle((*logf)[i].h);
                 }
+                pthread_mutex_destroy(&(*logf)[i].mutex);
             #endif
             }
 
@@ -810,4 +897,44 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     const char * const match_str[ML_MATCH_MAX] = {"start", "all", "end"};
     return match_str[match_type];
+}
+
+STATIC int w_logcollector_get_macos_log_type(const char * content) {
+
+    const size_t MAX_ARRAY_SIZE = 64;
+    const char * XML_LOCALFILE_QUERY_TYPE_ATTR = "type";
+    const char * XML_LOCALFILE_QUERY = "query";
+    size_t current = 0;
+    int retval = 0;
+
+    char ** type_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
+
+    if (type_arr) {
+        while (type_arr[current]) {
+            char * config_str = &(type_arr[current])[strspn(type_arr[current], " ")];
+            int num_words = w_word_counter(config_str);
+
+            if (num_words == 1) {
+                config_str[strcspn(config_str, " ")] = '\0';
+            }
+
+            if (strcasecmp(config_str, MACOS_LOG_TYPE_ACTIVITY_STR) == 0) {
+                retval |= MACOS_LOG_TYPE_ACTIVITY;
+            } else if (strcasecmp(config_str, MACOS_LOG_TYPE_LOG_STR) == 0) {
+                retval |= MACOS_LOG_TYPE_LOG;
+            } else if (strcasecmp(config_str, MACOS_LOG_TYPE_TRACE_STR) == 0) {
+                retval |= MACOS_LOG_TYPE_TRACE;
+            } else if (strcasecmp(config_str, "") != 0) {
+                mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, config_str, XML_LOCALFILE_QUERY_TYPE_ATTR, XML_LOCALFILE_QUERY);
+            }
+
+            os_free(type_arr[current]);
+            current++;
+        }
+
+        os_free(type_arr);
+
+    }
+
+    return retval;
 }

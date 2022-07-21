@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -25,7 +25,13 @@ static char *_os_get_runps(const char *ps, int mpid)
     command[0] = '\0';
     command[OS_SIZE_1024] = '\0';
 
-    snprintf(command, OS_SIZE_1024, "%s -p %d 2> /dev/null", ps, mpid);
+    const int size = snprintf(command, sizeof(command), "%s -p %d 2> /dev/null", ps, mpid);
+
+    if (size < 0 || (size_t)size >= sizeof(command)) {
+        return (NULL);
+    }
+
+
     fp = popen(command, "r");
     if (fp) {
         while (fgets(buf, OS_SIZE_2048, fp) != NULL) {

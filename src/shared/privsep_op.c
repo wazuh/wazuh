@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -91,7 +91,7 @@ struct group *w_getgrgid(gid_t gid, struct group *grp,  char *buf, int buflen) {
 
 uid_t Privsep_GetUser(const char *name)
 {
-    long int len =  sysconf(_SC_GETGR_R_SIZE_MAX);
+    long int len =  sysconf(_SC_GETPW_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct passwd pw = { .pw_name = NULL };
     char *buffer = NULL;

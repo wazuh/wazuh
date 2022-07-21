@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,17 +13,23 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_wdb_metadata_table_check(__attribute__((unused)) wdb_t * wdb,
-                                    const char * key) {
+int __wrap_wdb_count_tables_with_name(__attribute__((unused)) wdb_t *wdb,
+                                      const char *key,
+                                      __attribute__((unused)) int *counter) {
     check_expected(key);
+    assert_non_null(counter);
+    *counter = mock();
     return mock();
 }
 
-int __wrap_wdb_metadata_get_entry (__attribute__((unused)) wdb_t * wdb,
-                                   const char *key,
-                                   char *output) {
+int __wrap_wdb_metadata_get_entry(__attribute__((unused)) wdb_t * wdb,
+                                  const char *key,
+                                  char *output) {
     check_expected(key);
     snprintf(output, OS_SIZE_256 + 1, "%s", mock_ptr_type(char*));
     return mock();
 }
 
+int __wrap_wdb_is_older_than_v310(__attribute__((unused)) wdb_t *wdb) {
+    return mock();
+}

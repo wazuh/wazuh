@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -253,19 +253,19 @@ int __os_winreg_querykey(HKEY hKey,
 
                 case REG_SZ:
                 case REG_EXPAND_SZ:
-                    snprintf(var_storage, MAX_VALUE_NAME, "%s", data_buffer);
+                    snprintf(var_storage, sizeof(var_storage), "%s", data_buffer);
                     break;
                 case REG_MULTI_SZ:
                     /* Printing multiple strings */
-                    size_available = MAX_VALUE_NAME - 3;
+                    size_available = MAX_VALUE_NAME;
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        if (size_available > 2) {
+                        if (size_available >= (int)strlen(mt_data) + 1) {
                             strncat(var_storage, mt_data, size_available);
+                            size_available -= strlen(mt_data);
                             strncat(var_storage, " ", 2);
-                            size_available = MAX_VALUE_NAME -
-                                             (strlen(var_storage) + 2);
+                            size_available -= 1;
                         }
                         mt_data += strlen(mt_data) + 1;
                     }

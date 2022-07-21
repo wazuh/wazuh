@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * August 6, 2020.
  *
  * This program is free software; you can redistribute it
@@ -21,10 +21,10 @@ constexpr auto DATABASE_TEMP {"FIM_TEMP.db"};
 
 class CallbackMock
 {
-public:
-    CallbackMock() = default;
-    ~CallbackMock() = default;
-    MOCK_METHOD(void, callbackMock, (ReturnTypeCallback result_type, const nlohmann::json&), ());
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (ReturnTypeCallback result_type, const nlohmann::json&), ());
 };
 
 struct CJsonDeleter final
@@ -37,7 +37,7 @@ struct CJsonDeleter final
 
 struct smartDeleterJson
 {
-    void operator()(cJSON * data)
+    void operator()(cJSON* data)
     {
         cJSON_Delete(data);
     }
@@ -61,7 +61,7 @@ static void logFunction(const char* msg)
 }
 
 DBSyncFimIntegrationTest::DBSyncFimIntegrationTest()
-: m_dbHandle{ dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, FIM_SQL_DB_DUMP) }
+    : m_dbHandle{ dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, FIM_SQL_DB_DUMP) }
 {
     dbsync_initialize(&logFunction);
 }
@@ -203,48 +203,6 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_ALL_ENTRIES)
     EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
 }
 
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_COUNT)
-{
-    const auto expectedResult
-    {
-        "{\"count(inode_id)\":1}"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_path",
-           "query":{"column_list":["count(inode_id) "],
-           "row_filter":"WHERE inode_id = (select inode_id from entry_path where path = '/etc/gssproxy/24-nfs-server.conf') ",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_DATA_ROW)
-{
-    const auto expectedResult
-    {
-        R"({"rowid":1276})"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_data",
-           "query":{"column_list":["rowid"],
-           "row_filter":"WHERE inode = 51436218 AND dev = 2051",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
 TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_RANGE)
 {
     const auto expectedResult
@@ -282,7 +240,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     };
     const auto expectedResult2
     {
-       R"({"checksum":"eeb46d0e85f635cd8595afc3447b21686c8fedb3",
+        R"({"checksum":"eeb46d0e85f635cd8595afc3447b21686c8fedb3",
            "dev":2051,"entry_type":0,"gid":0,"group_name":"root",
            "hash_md5":"349e00330684b1b1443904956aa0b241",
            "hash_sha1":"f945fe1ad48aa9c367d2a131a4f7a659db6c1967",
@@ -293,7 +251,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     };
     const auto expectedResult3
     {
-       R"({"checksum":"e24f1dfcba64d3dea78c6840893c77539f44638f",
+        R"({"checksum":"e24f1dfcba64d3dea78c6840893c77539f44638f",
            "dev":2051,"entry_type":0,"gid":0,"group_name":"root",
            "hash_md5":"7449031222431c7cbac19313af55aca4",
            "hash_sha1":"640746d2388b9500b300e2a45878e81e5473aa83",
@@ -381,27 +339,6 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATHS_INODE_COUNT)
     EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
 }
 
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_INODE_ID)
-{
-    const auto expectedResult
-    {
-        R"({"inode_id":605})"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_path",
-           "query":{"column_list":["inode_id"],
-           "row_filter":"WHERE path = '/etc/yum.repos.d/CentOS-Base.repo'",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
 TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_PATH)
 {
     const auto expectedResult
@@ -422,48 +359,3 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_PATH)
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
     EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
 }
-
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_DATA)
-{
-    const auto expectedResult
-    {
-        "{\"count(*)\":1906}"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_data",
-           "query":{"column_list":["count(*) "],
-           "row_filter":"",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_INODE)
-{
-    const auto expectedResult
-    {
-        R"({"inode":2079})"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_data",
-           "query":{"column_list":["inode"],
-           "row_filter":"where rowid=(SELECT inode_id FROM entry_path WHERE path ='/etc/yum.repos.d/CentOS-Base.repo' ) ",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const auto selectJson{nlohmann::json::parse(selectSql)};
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    ASSERT_NE(nullptr, jsSelect.get());
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-

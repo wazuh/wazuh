@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -55,20 +55,20 @@ static const char GENERIC_PATH [OS_SIZE_256] =        "c:\\file\\path";
 static const char COMPRESS_FOLDER_REG [OS_SIZE_256] = "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED;
 static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/c\\file\\path";
 static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/c\\file\\path/last-entry.gz";
-static const char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
 static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
 static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #else
 
 static const char GENERIC_PATH [OS_SIZE_256] =        "/path/to/file";
-static const char COMPRESS_FOLDER [OS_SIZE_256] =     "/var/ossec/queue/diff/local/path/to/file";
-static const char COMPRESS_FILE [OS_SIZE_256] =       "/var/ossec/queue/diff/local/path/to/file/last-entry.gz";
-static const char TMP_FOLDER [OS_SIZE_256] =          "/var/ossec/queue/diff/tmp";
-static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "/var/ossec/queue/diff/tmp/tmp-entry";
-static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "/var/ossec/queue/diff/tmp/tmp-entry.gz";
+static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/path/to/file";
+static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/path/to/file/last-entry.gz";
+static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
+static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #endif
+
+static const char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
 
 static char *syscheck_nodiff[] = {"c:\\file\\nodiff", "/path/to/ignore", NULL};
 
@@ -77,42 +77,9 @@ static OSMatch *syscheck_nodiff_regex[] = { NULL, NULL };
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
-static char *dir_config[] = {
-    "c:\\file\\path",
-    "/path/to/file",
-    "C:\\path\\to\\file",
-    "c:\\file\\nodiff",
-    "/path/to/ignore",
-    NULL,
-};
-
-static char *symbolic_links_config[] = {
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-};
-
-static int diff_size_limit_config[] = {
-    1024,
-    1024,
-    1024,
-    1024,
-    1024,
-};
-
 #define DEFAULT_OPTIONS                                                                                    \
     CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
     CHECK_MTIME | CHECK_INODE
-static int opts_config[] = {
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS
-};
 
 typedef struct gen_diff_struct {
     diff_data *diff;
@@ -278,11 +245,6 @@ static int setup_group(void **state) {
     syscheck.nodiff = syscheck_nodiff;
     syscheck.nodiff_regex = syscheck_nodiff_regex;
 
-    syscheck.dir = dir_config;
-    syscheck.symbolic_links = symbolic_links_config;
-    syscheck.diff_size_limit = diff_size_limit_config;
-    syscheck.opts = opts_config;
-
 #ifdef TEST_WINAGENT
     syscheck.registry = default_reg_config;
 
@@ -312,7 +274,6 @@ static int setup_group(void **state) {
 }
 
 static int teardown_group(void **state) {
-
     test_mode = 0;
 
     return 0;
@@ -413,9 +374,7 @@ static int setup_gen_diff_str(void **state) {
 static int teardown_free_gen_diff_str(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
 
-#ifdef TEST_WINAGENT
     teardown_array_strings((void **)&gen_diff_data_container->strarray);
-#endif
 
     teardown_free_diff_data((void **)&gen_diff_data_container->diff);
     os_free(gen_diff_data_container);
@@ -594,11 +553,12 @@ void test_initialize_file_diff_data(void **state) {
 #else // END TEST_WINAGENT
 
 void test_initialize_file_diff_data(void **state) {
-    diff_data *diff = *state;
+    diff_data *diff;
 
     expect_abspath(GENERIC_PATH, 1);
 
     diff = initialize_file_diff_data(GENERIC_PATH);
+    *state = diff;
 
     assert_non_null(diff);
     assert_string_equal(diff->compress_folder, COMPRESS_FOLDER);
@@ -607,7 +567,7 @@ void test_initialize_file_diff_data(void **state) {
     assert_string_equal(diff->file_origin, GENERIC_PATH);
     assert_string_equal(diff->uncompress_file, UNCOMPRESS_FILE);
     assert_string_equal(diff->compress_tmp_file, COMPRESS_TMP_FILE);
-    assert_string_equal(diff->diff_file, "/var/ossec/queue/diff/tmp/diff-file");
+    assert_string_equal(diff->diff_file, "queue/diff/tmp/diff-file");
 }
 
 #endif // END TEST_AGENT and TEST_SERVER
@@ -625,7 +585,7 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
     expect_abspath("queue/diff", 1);
 #else
     char path[PATH_MAX] = "/aa";
-    for (int i = 0; i < PATH_MAX - 37; i++) {
+    for (int i = 0; i < PATH_MAX - 26; i++) {
         strcat (path, "a");
     }
 
@@ -1556,16 +1516,18 @@ void test_fim_registry_value_diff_generate_diff_str(void **state) {
 
 void test_fim_file_diff_wrong_initialize(void **state) {
     const char *filename = GENERIC_PATH;
+    const directory_t configuration = { .diff_size_limit = 0 };
 
     expect_initialize_file_diff_data(filename, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
 
 void test_fim_file_diff_wrong_too_big_file(void **state) {
     const char *filename = GENERIC_PATH;
+    const directory_t configuration = { .diff_size_limit = 0 };
 
     expect_initialize_file_diff_data(filename, 1);
 
@@ -1580,7 +1542,7 @@ void test_fim_file_diff_wrong_too_big_file(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
@@ -1589,6 +1551,7 @@ void test_fim_file_diff_wrong_quota_reached(void **state) {
     const char *filename = GENERIC_PATH;
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+    const directory_t configuration = { .diff_size_limit = 0 };
 
     expect_initialize_file_diff_data(filename, 1);
 
@@ -1604,7 +1567,7 @@ void test_fim_file_diff_wrong_quota_reached(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
@@ -1613,6 +1576,7 @@ void test_fim_file_diff_uncompress_fail(void **state) {
     const char *filename = GENERIC_PATH;
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+    const directory_t configuration = { .diff_size_limit = 1024 };
 
     expect_initialize_file_diff_data(filename, 1);
 
@@ -1631,7 +1595,7 @@ void test_fim_file_diff_uncompress_fail(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
@@ -1640,6 +1604,7 @@ void test_fim_file_diff_create_compress_fail(void **state) {
     const char *filename = GENERIC_PATH;
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+    const directory_t configuration = { .diff_size_limit = 1024 };
 
     expect_initialize_file_diff_data(filename, 1);
 
@@ -1662,7 +1627,7 @@ void test_fim_file_diff_create_compress_fail(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
@@ -1671,6 +1636,8 @@ void test_fim_file_diff_compare_fail(void **state) {
     const char *filename = GENERIC_PATH;
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
@@ -1693,7 +1660,7 @@ void test_fim_file_diff_compare_fail(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
@@ -1703,6 +1670,8 @@ void test_fim_file_diff_nodiff(void **state) {
     const char *filename = "c:\\file\\nodiff";
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
@@ -1723,7 +1692,7 @@ void test_fim_file_diff_nodiff(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
 }
@@ -1732,6 +1701,8 @@ void test_fim_file_diff_nodiff(void **state) {
     const char *filename = "/path/to/ignore";
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
@@ -1741,9 +1712,9 @@ void test_fim_file_diff_nodiff(void **state) {
 
     expect_fim_diff_check_limits("/path/to/ignore", "aaa", 0);
 
-    expect_w_uncompress_gzfile("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
+    expect_w_uncompress_gzfile("queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
 
-    expect_FileSize("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
+    expect_FileSize("queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
 
     expect_fim_diff_create_compress_file("/path/to/ignore", COMPRESS_TMP_FILE, 0);
 
@@ -1752,9 +1723,11 @@ void test_fim_file_diff_nodiff(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(filename);
+    char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+
+    free(diff_str);
 }
 #endif
 
@@ -1762,13 +1735,15 @@ void test_fim_file_diff_generate_fail(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
     gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
@@ -1800,7 +1775,7 @@ void test_fim_file_diff_generate_fail(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(GENERIC_PATH);
+    char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
     assert_ptr_equal(diff_str, NULL);
 }
@@ -1809,13 +1784,15 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
     gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
@@ -1843,15 +1820,19 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
 
-    char *diff_str = fim_file_diff(GENERIC_PATH);
+    char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+
+    free(diff_str);
 }
 
 void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
@@ -1861,12 +1842,12 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     memset(gen_diff_data_container->strarray[0] + input_size - 1, 'a', OS_MAXSTR - input_size);
     gen_diff_data_container->strarray[0][OS_MAXSTR - 1] = '\0';
 
-    os_realloc(gen_diff_data_container->strarray[1], strlen(gen_diff_data_container->strarray[1]) - 12 + strlen(STR_MORE_CHANGES), gen_diff_data_container->strarray[1]);
+    os_realloc(gen_diff_data_container->strarray[1], strlen(gen_diff_data_container->strarray[1]) - 12 + strlen(STR_MORE_CHANGES) + 1, gen_diff_data_container->strarray[1]);
     strcpy(gen_diff_data_container->strarray[1] + strlen(gen_diff_data_container->strarray[1]) - 12, STR_MORE_CHANGES);
 
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     strcpy(gen_diff_data_container->strarray[0], "Comparing files start.txt and end.txt\r\n"
                                                  "Error diffs\r\n"
@@ -1910,47 +1891,42 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
 
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
     will_return(__wrap_rmdir_ex, 0);
-    char *diff_str = fim_file_diff(GENERIC_PATH);
+    char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+    free(diff_str);
 }
 
 void test_fim_diff_process_delete_file_ok(void **state) {
-    const char *filename = strdup(GENERIC_PATH);
-
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, 0, 0);
 
-    int ret = fim_diff_process_delete_file(filename);
+    int ret = fim_diff_process_delete_file(GENERIC_PATH);
     assert_int_equal(ret, 0);
 }
 
 void test_fim_diff_process_delete_file_delete_error(void **state) {
-    const char *filename = strdup(GENERIC_PATH);
-
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, -1, 0);
 
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/c\\file\\path'");
 #else
-    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: '/var/ossec/queue/diff/local/path/to/file'");
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/path/to/file'");
 #endif
 
-    int ret = fim_diff_process_delete_file(filename);
+    int ret = fim_diff_process_delete_file(GENERIC_PATH);
     assert_int_equal(ret, -1);
 }
 
 void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
-    const char *filename = strdup(GENERIC_PATH);
-
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, -1, 0, 0);
 
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', it does not exist.");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder '/var/ossec/queue/diff/local/path/to/file', it does not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/path/to/file', it does not exist.");
 #endif
 
-    int ret = fim_diff_process_delete_file(filename);
+    int ret = fim_diff_process_delete_file(GENERIC_PATH);
     assert_int_equal(ret, -1);
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -176,6 +176,29 @@ typedef uint8_t u_int8_t;
 #define fallthrough ((void) 0)
 #endif
 
+/* IPv4 structure */
+typedef struct _os_ipv4 {
+    unsigned int ip_address;
+    unsigned int netmask;
+} os_ipv4;
+
+/* IPv6 structure */
+typedef struct _os_ipv6 {
+    uint8_t ip_address[16];
+    uint8_t netmask[16];
+} os_ipv6;
+
+/* IP structure */
+typedef struct _os_ip {
+    char *ip;
+    union {
+        os_ipv4 *ipv4;
+        os_ipv6 *ipv6;
+    };
+    bool is_ipv6;
+} os_ip;
+
+
 extern const char *__local_name;
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
@@ -201,7 +224,7 @@ extern const char *__local_name;
 
 #define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
 
-// Calculate the number of elements within an array. 
+// Calculate the number of elements within an array.
 // Only static arrays allowed.
 #define array_size(array) (sizeof(array)/sizeof(array[0]))
 
@@ -234,6 +257,7 @@ extern const char *__local_name;
 #include "rbtree_op.h"
 #include "queue_op.h"
 #include "queue_linked_op.h"
+#include "bqueue_op.h"
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"
@@ -272,6 +296,6 @@ extern const char *__local_name;
 #include "bzip2_op.h"
 #include "enrollment_op.h"
 #include "buffer_op.h"
-
+#include "atomic.h"
 
 #endif /* SHARED_H */

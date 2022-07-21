@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -64,6 +64,14 @@ STATIC void _w_logcollector_state_update_file(w_lc_state_storage_t * state, char
 STATIC void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fpath, char * target, bool dropped);
 
 /**
+ * @brief Removes the `fpath` file from `state`
+ *
+ * @param state state to be used
+ * @param fpath file path or locafile location value
+ */
+STATIC void _w_logcollector_state_delete_file(w_lc_state_storage_t * state, char * fpath);
+
+/**
  * @brief Dump state information to file
  *
  */
@@ -108,13 +116,13 @@ STATIC void w_logcollector_state_dump() {
 
     FILE * lc_state_file = NULL;
 
-    if (lc_state_file = fopen(LOGCOLLECTOR_STATE_PATH, "w"), lc_state_file != NULL) {
+    if (lc_state_file = fopen(LOGCOLLECTOR_STATE, "w"), lc_state_file != NULL) {
         if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
-            merror(FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+            merror(FWRITE_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
         }
         fclose(lc_state_file);
     } else {
-        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
     }
 
     os_free(lc_state_str);
@@ -259,6 +267,7 @@ void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fp
         if (OSHash_Add(state->states, fpath, data) != 2) {
             w_lc_state_target_t ** target = data->targets;
             while (*target != NULL) {
+                os_free((*target)->name);
                 os_free(*target);
                 target++;
             }
@@ -267,6 +276,44 @@ void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fp
             merror(HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
     }
+}
+
+void w_logcollector_state_delete_file(char * fpath) {
+
+    if (fpath == NULL) {
+        return;
+    }
+
+    w_mutex_lock(&g_lc_raw_stats_mutex);
+
+    if (g_lc_state_type & LC_STATE_GLOBAL) {
+        _w_logcollector_state_delete_file(g_lc_states_global, fpath);
+    }
+    if (g_lc_state_type & LC_STATE_INTERVAL) {
+        _w_logcollector_state_delete_file(g_lc_states_interval, fpath);
+    }
+
+    w_mutex_unlock(&g_lc_raw_stats_mutex);
+}
+
+void _w_logcollector_state_delete_file(w_lc_state_storage_t * state, char * fpath) {
+
+    w_lc_state_file_t * data = NULL;
+
+    if (data = (w_lc_state_file_t *) OSHash_Delete(state->states, fpath), data == NULL) {
+        return;
+    }
+
+    w_lc_state_target_t ** target = data->targets;
+    while (*target != NULL) {
+        os_free((*target)->name);
+        os_free(*target);
+        target++;
+    }
+    os_free(data->targets);
+    os_free(data);
+
+    return;
 }
 
 void w_logcollector_state_generate() {

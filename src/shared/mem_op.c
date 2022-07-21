@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -109,9 +109,7 @@ char *os_LoadString(char *at, const char *str)
         }
         at = newat;
 
-        strncat(at, str, strsize);
-        at[finalsize - 1] = '\0';
-
+        strcat(at, str);
         return (at);
     }
 

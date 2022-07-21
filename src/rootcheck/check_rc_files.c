@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -159,17 +159,23 @@ void check_rc_files(const char *basedir, FILE *fp)
             }
             continue;
         }
-
+        int bytes_written = 0;
         // Check if it is a full path
 #ifdef WIN32
         if (strlen(file) > 3 && file[1] == ':' && file[2] == '\\') {
 #else
         if (*file == '/') {
 #endif
-            snprintf(file_path, OS_SIZE_1024, "%s", file);
+            bytes_written = snprintf(file_path, sizeof(file_path), "%s", file);
         } else {
-            snprintf(file_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, file);
+            bytes_written = snprintf(file_path, sizeof(file_path), "%s%c%s", basedir, PATH_SEP, file);
         }
+
+       if (bytes_written < 0 || (size_t)bytes_written > (sizeof(file_path) - 1)) {
+            mtdebug2(ARGV0, "Path file was truncated (%s)\n", file_path);
+            continue;
+       }
+
 
         if (_file_name = strrchr(file_path, PATH_SEP), !_file_name) {
             continue;
@@ -185,15 +191,27 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         if (is_file(file_path)) {
+            const char op_msg_fmt[] = "Rootkit '%s' detected by the presence of file '%*s'.";
             char op_msg[OS_SIZE_2048];
 
+            const int size = snprintf(NULL, 0, op_msg_fmt, name, (int)strlen(file_path), file_path);
+
+            if (size >= 0) {
+                if ((size_t)size < sizeof(op_msg)) {
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, name, (int)strlen(file_path), file_path);
+                }
+                else {
+                    const unsigned int surplus = size - sizeof(op_msg) + 1;
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, name, (int)(strlen(file_path) - surplus), file_path);
+                }
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            } else {
+                mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_path);
+            }
+
             _errors = 1;
-            snprintf(op_msg, OS_SIZE_2048, "Rootkit '%s' detected "
-                     "by the presence of file '%s'.", name, file_path);
-
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         }
-
 newline:
         continue;
     }

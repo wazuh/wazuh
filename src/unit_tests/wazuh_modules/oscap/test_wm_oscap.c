@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -129,7 +129,7 @@ void test_interval_execution(void **state) {
         expect_any(__wrap_wm_exec, secs);
         expect_any(__wrap_wm_exec, add_path);
 
-        will_return(__wrap_wm_exec, strdup("TEST_STRING"));
+        will_return(__wrap_wm_exec, "TEST_STRING");
         will_return(__wrap_wm_exec, 0);
         will_return(__wrap_wm_exec, 0);
 
@@ -148,7 +148,7 @@ void test_interval_execution(void **state) {
         will_return(__wrap_wm_sendmsg, 0);
     }
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
 

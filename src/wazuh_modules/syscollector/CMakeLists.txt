@@ -80,32 +80,29 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(syscollector PROPERTIES
         PREFIX ""
         SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(syscollector PROPERTIES
-          LINK_FLAGS "-static-libgcc -static-libstdc++")
+  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
+    set_target_properties(syscollector PROPERTIES
+      LINK_FLAGS "-static-libstdc++")
+  else()
+    set_target_properties(syscollector PROPERTIES
+      LINK_FLAGS "-static-libgcc -static-libstdc++")
+  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-  if(DISABLE_SHARED)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-      target_link_libraries(syscollector dbsync rsync sysinfo cjson crypto ws2_32 ssl crypt32 pthread)
-    else()
-      target_link_libraries(syscollector dbsync rsync sysinfo cjson crypto pthread)
-    endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  else()
-    target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)
-  endif(DISABLE_SHARED)
+  target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)
 else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
   string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-  target_link_libraries(syscollector crypto dbsync rsync sysinfo cjson pthread -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
+  target_link_libraries(syscollector dbsync rsync sysinfo wazuhext -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 
 if(UNIT_TEST)

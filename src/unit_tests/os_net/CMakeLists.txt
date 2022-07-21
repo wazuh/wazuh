@@ -19,9 +19,16 @@ set_target_properties(
 
 target_link_libraries(OS_NET_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate os_net tests
 list(APPEND os_net_names "test_os_net")
-list(APPEND os_net_flags "-Wl,--wrap,socket -Wl,--wrap,listen -Wl,--wrap,bind -Wl,--wrap,setsockopt -Wl,--wrap,getsockopt -Wl,--wrap,connect -Wl,--wrap,accept -Wl,--wrap,send -Wl,--wrap,recv -Wl,--wrap,recvfrom -Wl,--wrap,chmod -Wl,--wrap,stat -Wl,--wrap,fcntl -Wl,--wrap,gethostbyname -Wl,--wrap,_merror -Wl,--wrap,_mwarn")
+list(APPEND os_net_flags "-Wl,--wrap,socket -Wl,--wrap,listen -Wl,--wrap,bind -Wl,--wrap,setsockopt \
+                          -Wl,--wrap,getsockopt -Wl,--wrap,connect -Wl,--wrap,accept -Wl,--wrap,send \
+                          -Wl,--wrap,recv -Wl,--wrap,recvfrom -Wl,--wrap,chmod -Wl,--wrap,chown -Wl,--wrap,getuid -Wl,--wrap,getgid -Wl,--wrap,stat -Wl,--wrap,fcntl \
+                          -Wl,--wrap,getaddrinfo -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_GetIPv4FromIPv6 -Wl,--wrap,OS_ExpandIPv6 \
+                          -Wl,--wrap,sleep -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH os_net_names count)

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Pagerduty Integration
 #
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ send_payload () {
         #echo  -n "-------\nSending:\n${payload}\n"
 
         # Send the pagerduty notification
-        curl -H "Content-type: application/json" -X POST --data "@$postfile" $WEBHOOK
+        curl -H "Content-type: application/json" -X POST --data "@$postfile" "$WEBHOOK"
 
         if [ ! $? = 0 ]; then
             echo "Error sending the alert to pagerduty"

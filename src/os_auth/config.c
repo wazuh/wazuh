@@ -1,6 +1,6 @@
 /*
  * Authd settings manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * May 29, 2017.
  *
  * This program is free software; you can redistribute it
@@ -16,16 +16,14 @@
 // Read configuration
 int authd_read_config(const char *path) {
     config.port = DEFAULT_PORT;
-    config.force_time = -1;
+    config.key_request.compatibility_flag = 0;
+    config.key_request.exec_path = NULL;
+    config.key_request.socket = NULL;
 
     mdebug2("Reading configuration '%s'", path);
 
     if (ReadConfig(CAUTHD, path, &config, NULL) < 0) {
         return OS_INVALID;
-    }
-
-    if (!config.flags.force_insert) {
-        config.force_time = -1;
     }
 
     if (!config.ciphers) {
@@ -52,17 +50,15 @@ cJSON *getAuthdConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *auth = cJSON_CreateObject();
+    cJSON *key_request = cJSON_CreateObject();
+    cJSON *force = cJSON_CreateObject();
+    cJSON *disconnected_time = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(auth,"port",config.port);
-    if (config.force_time ==  -1)
-        cJSON_AddStringToObject(auth,"force_time","no");
-    else if (config.force_time ==  0)
-        cJSON_AddStringToObject(auth,"force_time","always");
-    else
-        cJSON_AddNumberToObject(auth,"force_time",config.force_time);
     if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
+    if (config.flags.remote_enrollment) cJSON_AddStringToObject(auth,"remote_enrollment","yes"); else cJSON_AddStringToObject(auth,"remote_enrollment","no");
+    if (config.ipv6) cJSON_AddStringToObject(auth,"ipv6","yes"); else cJSON_AddStringToObject(auth,"ipv6","no");
     if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
-    if (config.flags.force_insert) cJSON_AddStringToObject(auth,"force_insert","yes"); else cJSON_AddStringToObject(auth,"force_insert","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
     if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
     if (config.flags.verify_host) cJSON_AddStringToObject(auth,"ssl_verify_host","yes"); else cJSON_AddStringToObject(auth,"ssl_verify_host","no");
@@ -71,7 +67,21 @@ cJSON *getAuthdConfig(void) {
     if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);
     if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
+    if (config.key_request.enabled) cJSON_AddStringToObject(key_request, "enabled", "yes"); else cJSON_AddStringToObject(key_request, "enabled", "no");
+    if (config.key_request.exec_path) cJSON_AddStringToObject(key_request, "exec_path", config.key_request.exec_path);
+    if (config.key_request.socket) cJSON_AddStringToObject(key_request, "socket", config.key_request.socket);
+    if (config.key_request.timeout) cJSON_AddNumberToObject(key_request, "timeout", config.key_request.timeout);
+    if (config.key_request.threads) cJSON_AddNumberToObject(key_request, "threads", config.key_request.threads);
+    if (config.key_request.queue_size) cJSON_AddNumberToObject(key_request, "queue_size", config.key_request.queue_size);
+    cJSON_AddItemToObject(auth, "key_request", key_request);
 
+    if (config.force_options.enabled) cJSON_AddStringToObject(force, "enabled", "yes"); else cJSON_AddStringToObject(force, "enabled", "no");
+    if (config.force_options.key_mismatch) cJSON_AddStringToObject(force, "key_mismatch", "yes"); else cJSON_AddStringToObject(force, "key_mismatch", "no");
+    if (config.force_options.disconnected_time_enabled) cJSON_AddStringToObject(disconnected_time, "enabled", "yes"); else cJSON_AddStringToObject(disconnected_time, "enabled", "no");
+    if (config.force_options.disconnected_time) cJSON_AddNumberToObject(disconnected_time, "value", config.force_options.disconnected_time);
+    cJSON_AddItemToObject(force, "disconnected_time", disconnected_time);
+    if (config.force_options.after_registration_time) cJSON_AddNumberToObject(force, "after_registration_time", config.force_options.after_registration_time);
+    cJSON_AddItemToObject(auth, "force", force);
     cJSON_AddItemToObject(root,"auth",auth);
 
     return root;

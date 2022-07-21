@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include <sys/types.h>
 
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
@@ -25,11 +26,18 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
-    wmodule *cur_module;
-    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    wmodule *cur_module;
+    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     // Get command line options
 
@@ -65,6 +73,9 @@ int main(int argc, char **argv)
             wm_debug--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     // Setup daemon
 
@@ -116,7 +127,6 @@ void wm_help()
 
 void wm_setup()
 {
-    gid_t gid;
     struct sigaction action = { .sa_handler = wm_handler };
 
     // Read XML settings and internal options
@@ -132,20 +142,12 @@ void wm_setup()
         nowDaemon();
     }
 
-    // Set group
-
-    if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
+    const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+    if (gid == (gid_t) OS_INVALID) {
         merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
-    }
-
-    // Change working directory
-
-    if (chdir(DEFAULTDIR) < 0)
-        merror_exit("chdir(): %s", strerror(errno));
+    wm_setGroupID(gid);
 
     if (wm_check() < 0) {
         minfo("No configuration defined. Exiting...");
@@ -200,11 +202,8 @@ void wm_handler(int signum)
         // For the moment only gracefull shutdown will be for syscollector, in the future
         // it will be modified for all wmodules, modifying the mainloop of each thread.
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
-            if (0 == strncmp(cur_module->context->name, "syscollector", strlen(cur_module->context->name))) {
-                cur_module->context->destroy(cur_module->data);
-                if (0 != pthread_join(cur_module->thread, NULL)) {
-                    mdebug2("Thread cannot be joined.");
-                }
+            if (cur_module->context->stop) {
+                cur_module->context->stop(cur_module->data);
             }
         }
         exit(EXIT_SUCCESS);

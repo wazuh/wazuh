@@ -3,7 +3,7 @@
   -  Author: Daniel Cid.
   -  Contributed by: Ahmet Ozturk
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -97,7 +97,7 @@
     <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
     <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
     <mitre>
-      <id>T1108</id>
+      <id>T1505.003</id>
     </mitre>
     <group>automatic_attack,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -108,7 +108,7 @@
     <url>/jk/exp.wmf$|/PopupSh.ocx$</url>
     <description>Squid: Attempt to access a worm/trojan related site.</description>
     <mitre>
-      <id>T1108</id>
+      <id>T1505.003</id>
     </mitre>
     <group>automatic_attack,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -159,8 +159,8 @@
     <same_source_ip />
     <description>Squid: Multiple unauthorized attempts to use proxy.</description>
     <mitre>
-      <id>T1110</id>
       <id>T1090</id>
+      <id>T1110</id>
     </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -183,7 +183,7 @@
     <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
     <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
     <mitre>
-      <id>T1492</id>
+      <id>T1565.001</id>
     </mitre>
     <group>pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -204,6 +204,9 @@
     <same_source_ip />
     <description>Squid: Multiple attempts to access a worm/trojan/virus </description>
     <description>related web site. System probably infected.</description>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
     <group>pci_dss_10.2.4,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -215,7 +218,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="35058" level="10" frequency="$SQUID_FREQ" timeframe="240">
@@ -226,7 +229,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="35095" level="0" frequency="4" timeframe="360">

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -37,14 +37,16 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 extern BIO *bio_err;
-#define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE "/etc/sslmanager.cert"
+#define KEYFILE  "etc/sslmanager.key"
+#define CERTFILE "etc/sslmanager.cert"
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
-#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH "."
+#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
 #define MAX_SSL_PACKET_SIZE 16384
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
@@ -53,7 +55,11 @@ extern BIO *bio_err;
 
 struct client {
     int socket;
-    struct in_addr addr;
+    union {
+        struct in_addr *addr4;
+        struct in6_addr *addr6;
+    };
+    bool is_ipv6;
 };
 
 struct keynode {
@@ -61,6 +67,7 @@ struct keynode {
     char *name;
     char *ip;
     char *group;
+    char *raw_key;
     struct keynode *next;
 };
 
@@ -72,8 +79,8 @@ int verify_callback(int ok, X509_STORE_CTX *store);
 
 /**
  * @brief Wraps SSL_read function to read block largers than a record (16K)
- * 
- * Calls SSL_read and if the return value is exactly the size of a record 
+ *
+ * Calls SSL_read and if the return value is exactly the size of a record
  * calls again with an offset in the buffer until reading is done or until
  * reaching a reading timeout
  * @param ssl ssl connection
@@ -108,38 +115,90 @@ void authd_sigblock();
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
 /**
- * @brief Parse a raw buffer from agent request into enrollment data. 
+ * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied
  * @param authpass Authentication password expected on the buffer, NULL if there isn't password
  * @param ip IP direction of the request. Can be override with IP parsed from buffer
  * @param agentname Pointer where parsed agent name will be allocated
  * @param groups Pointer where parsed groups will be allocated
+ * @param key_hash Pointer where parsed key hash will be allocated
  * */
-w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
+w_err_t w_auth_parse_data(const char* buf,
+                          char *response,
+                          const char *authpass,
+                          char *ip,
+                          char **agentname,
+                          char **groups,
+                          char **key_hash);
 
 /**
- * @brief Validates if new enrollment is possible with provided data
+ * @brief Validates if new enrollment is possible with provided data.
  * With force configuration disabled, if enrollment data is already registered, validation will fail.
  * With force configuration enabled, duplicated entry will be removed.
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
  * @param groups New enrollment groups
+ * @param hash_key Hash of the key on the agent
  * */
-w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
+w_err_t w_auth_validate_data(char *response,
+                             const char *ip,
+                             const char *agentname,
+                             const char *groups,
+                             const char *hash_key);
 
 /**
- * @brief Adds new agent with provided enrollment data
+ * @brief Validates if the old agent can be replaced and removes it.
+ * @param key Key structure of the agent to be removed
+ * @param hash_key Hash of the key on the agent
+ * @param force_options Force configuration structure to define how the agent replacement must be handled.
+ * @param str_result A message related to the result of the agent replacement. Must be freed by the caller.
+ * */
+w_err_t w_auth_replace_agent(keyentry *key,
+                             const char *key_hash,
+                             authd_force_options_t *force_options,
+                             char** str_result);
+
+/**
+ * @brief Adds new agent with provided enrollment data.
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
- * @param groups New enrollment groups
- * @param id Pointer where new Agent ID will be allocated 
- * @param key Pointer where new Agent key will be allocated 
+ * @param id Pointer where new Agent ID will be allocated
+ * @param key Pointer where new Agent key will be allocated
  * */
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
+w_err_t w_auth_add_agent(char *response,
+                         const char *ip,
+                         const char *agentname,
+                         char **id,
+                         char **key);
 
+/**
+ * @brief Adds new agent from a local request
+ * @param id Agent ID of the agent to be registered
+ * @param ip Agent IP of the agent to be registered
+ * @param groups Groups to which the agent belongs
+ * @param key Agent key if was already registered
+ * @param key_hash Hash of the agent key
+ * @param force_options Options to decide if forcing the insertion
+ * @return JSON object with the response
+ * */
+cJSON* local_add(const char *id,
+                        const char *name,
+                        const char *ip,
+                        const char *groups,
+                        const char *key,
+                        const char *key_hash,
+                        authd_force_options_t *force_options);
+
+/**
+ * @brief Returns a MD5 hash of some random data collected from different sources.
+ *        The result must be freed by the caller.
+ *
+ * @return const char* The resulting hash or NULL on error.
+ */
+char *w_generate_random_pass();
 
 extern char shost[512];
 extern keystore keys;

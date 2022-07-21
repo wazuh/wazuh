@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,8 +9,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
@@ -32,7 +32,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
     (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
     (1650, None, ['001'], None, [], False, None, 'Wazuh v4.0.0'),
     (1652, None, ['002'], 'random', [], False, None, 'Wazuh v4.0.0'),
-    (None, 1651, ['003'], 'restart-wazuh0', [], False, None, None),
+    (None, 1707, ['003'], 'restart-wazuh0', [], False, None, None),
     (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
     (None, None, ['005'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
     (None, None, ['006'], 'custom-ar', [], True, None, 'Wazuh v4.0.0'),
@@ -44,7 +44,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 @patch("wazuh.core.wazuh_queue.WazuhQueue._connect")
 @patch("wazuh.syscheck.WazuhQueue._send", return_value='1')
 @patch("wazuh.core.wazuh_queue.WazuhQueue.close")
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 @patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
 def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, message_exception,
                      send_exception, agent_id, command, arguments, custom, alert, version):
@@ -69,7 +69,7 @@ def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, mes
     """
     with patch('wazuh.core.agent.Agent.get_basic_information',
                return_value=agent_info_exception_and_version(send_exception, version)):
-        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(send_exception)):
+        with patch('wazuh.core.agent.Agent.get_config', return_value=agent_config(send_exception)):
             if message_exception:
                 ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
                 assert ret.render()['data']['failed_items'][0]['error']['code'] == message_exception

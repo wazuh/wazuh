@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -86,13 +86,9 @@ void OS_StartCounter(keystore *keys)
     for (i = 0; i <= keys->keysize; i++) {
         /* On i == keysize, we deal with the sender counter */
         if (i == keys->keysize) {
-            snprintf(rids_file, OS_FLSIZE, "%s/%s",
-                     isChroot() ? RIDS_DIR : RIDS_DIR_PATH,
-                     SENDER_COUNTER);
+            snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, SENDER_COUNTER);
         } else {
-            snprintf(rids_file, OS_FLSIZE, "%s/%s",
-                     isChroot() ? RIDS_DIR : RIDS_DIR_PATH,
-                     keys->keyentries[i]->id);
+            snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[i]->id);
         }
 
         keys->keyentries[i]->fp = fopen(rids_file, "r+");
@@ -184,7 +180,7 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
 {
     if (!keys->keyentries[id]->fp) {
         char rids_file[OS_FLSIZE + 1];
-        snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, keys->keyentries[id]->id);
+        snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
         keys->keyentries[id]->fp = fopen(rids_file, "r+");
         if (!keys->keyentries[id]->fp) {
             keys->keyentries[id]->fp = fopen(rids_file, "w");
@@ -219,7 +215,7 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
 
-    snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, cid);
+    snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
     new_inode = File_Inode(rids_file);
 
     if (keys->keyentries[id]->inode != new_inode) {
@@ -292,9 +288,16 @@ static char *CheckSum(char *msg, size_t length)
 
 int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
 {
+    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
+        return -1;
+    }
+
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
     char *f_msg;
+
+    w_mutex_lock(&keys->keyentries[id]->mutex);
 
     if(strncmp(buffer, "#AES", 4)==0){
         buffer+=4;
@@ -313,26 +316,31 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         buffer++;
     } else {
         merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_CORRUPT;
     }
 
     /* Decrypt message */
     switch(keys->keyentries[id]->crypto_method){
         case W_METH_BLOWFISH:
-            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
+            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+                w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
             break;
         case W_METH_AES:
-            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
+            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                 buffer_size-4, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+                w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
             break;
     }
+
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
 
     /* Compressed */
     if (cleartext[0] == '!') {
@@ -528,6 +536,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
  */
 size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id)
 {
+    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
+        return -1;
+    }
+
     size_t bfsize;
     size_t length;
     unsigned long int cmp_size;
@@ -650,7 +663,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
      */
     /* Encrypt everything */
     crypto_length = doEncryptByMethod(_tmpmsg + (7 - bfsize), msg_encrypted + length,
-        keys->keyentries[id]->key,
+        keys->keyentries[id]->encryption_key,
         (long) cmp_size,
         OS_ENCRYPT,crypto_method);
 

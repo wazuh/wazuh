@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * March 16, 2021.
  *
  * This program is free software; you can redistribute it
@@ -16,13 +16,13 @@
 
 class SysInfoPackagesBerkeleyDBTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    SysInfoPackagesBerkeleyDBTest() = default;
-    virtual ~SysInfoPackagesBerkeleyDBTest() = default;
+        SysInfoPackagesBerkeleyDBTest() = default;
+        virtual ~SysInfoPackagesBerkeleyDBTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_PACKAGES_BERKELEY_DB_TEST_H

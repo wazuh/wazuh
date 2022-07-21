@@ -1,19 +1,23 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Tests list and flags
 list(APPEND tests_names "test_wm_gcp")
-list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wrap,_mtwarn,--wrap,_mterror \
-                         -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_time_until_next_scan,--wrap,cJSON_CreateObject \
-                         -Wl,--wrap,FOREVER,--wrap,_mtdebug2")
+list(APPEND tests_flags "-Wl,--wrap,wm_exec \
+                         -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_time_until_next_scan \
+                         -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,FOREVER,--wrap,w_get_timestamp \
+                         -Wl,--wrap,w_sleep_until,--wrap,isDebug ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 0)
 
 list(APPEND tests_names "test_wmodules_gcp")
-list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,_mwarn,--wrap,_merror,--wrap,atexit")
+list(APPEND tests_flags "-Wl,--wrap,sched_scan_read,--wrap,realpath,--wrap,IsFile,--wrap,atexit ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 0)
 
 # Generate wazuh modules library

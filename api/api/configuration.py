@@ -1,11 +1,11 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
 import datetime
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple, Any, List
 
 import yaml
 from cryptography import x509
@@ -16,10 +16,10 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
+import wazuh.core.utils as core_utils
 from api.api_exception import APIError
-from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH
+from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
-from wazuh.core import common
 
 default_security_configuration = {
     "auth_token_exp_timeout": 900,
@@ -29,20 +29,24 @@ default_security_configuration = {
 default_api_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
-    "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "max_upload_size": 10485760,
+    "intervals": {
+        "request_timeout": 10
+    },
     "https": {
         "enabled": True,
-        "key": "api/configuration/ssl/server.key",
-        "cert": "api/configuration/ssl/server.crt",
+        "key": "server.key",
+        "cert": "server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.2"
+        "ca": "ca.crt",
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
-        "path": "logs/api.log"
+        "format": "plain"
     },
     "cors": {
         "enabled": False,
@@ -86,18 +90,24 @@ def dict_to_lowercase(mydict: Dict):
             mydict[k] = val.lower()
 
 
-def append_wazuh_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
-    """Appends wazuh path to all path fields in a dictionary
-
-    :param dictionary: dictionary to append wazuh path
-    :param path_fields: List of tuples containing path fields
-    :return: None (the dictionary's reference is modified)
+def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[str, str]]]) -> None:
+    """Append Wazuh prefix to all path fields in a dictionary.
+    
+    Parameters
+    ----------
+    dictionary : dict
+        Dictionary with the API configuration.
+    path_fields : dict of lists of tuples of string
+        Key: Prefix to append (path)
+        Values: Sections of the configuration to append the prefix to.
     """
-    for section, subsection in path_fields:
-        try:
-            dictionary[section][subsection] = os.path.join(common.wazuh_path, dictionary[section][subsection])
-        except KeyError:
-            pass
+    for prefix, configurations in path_fields.items():
+        for config in configurations:
+            try:
+                section, subsection = config
+                dictionary[section][subsection] = os.path.join(prefix, dictionary[section][subsection])
+            except KeyError:
+                pass
 
 
 def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
@@ -193,10 +203,10 @@ def generate_self_signed_certificate(private_key, certificate_path):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow()
+        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     ).not_valid_after(
-        # Our certificate will be valid for 10 days
-        datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        # Our certificate will be valid for one year
+        core_utils.get_utc_now() + datetime.timedelta(days=365)
     ).add_extension(
         x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
         critical=False,
@@ -213,6 +223,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     :return: API configuration
     """
+
     def replace_bools(conf):
         """Replace 'yes' and 'no' strings in configuration for actual booleans.
 
@@ -234,7 +245,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
     if default_conf is None:
         default_conf = default_api_configuration
 
-    if os.path.exists(config_file):
+    if config_file and os.path.exists(config_file):
         try:
             with open(config_file) as f:
                 configuration = yaml.safe_load(f)
@@ -253,8 +264,8 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
         configuration = fill_dict(default_conf, configuration, schema)
 
-    # Append wazuh_path to all paths in configuration
-    append_wazuh_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
+    # Append Wazuh prefixes to all relative paths in configuration
+    append_wazuh_prefixes(configuration, {API_SSL_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})
 
     return configuration
 
@@ -268,5 +279,5 @@ except ValidationError as e:
     raise APIError(2000, details=e.message)
 
 # Configuration - global object
-api_conf = dict()
+api_conf = read_yaml_config()
 security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)

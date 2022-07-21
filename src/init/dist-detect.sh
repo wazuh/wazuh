@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Distribution Detector
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -125,5 +125,8 @@ if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
     elif [ "X$(uname)" = "XLinux" ]; then
         DIST_NAME="Linux"
 
+    fi
+    if [ "X$DIST_SUBVER" = "X" ]; then
+        DIST_SUBVER="0"
     fi
 fi

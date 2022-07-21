@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 25, 2019.
  *
  * This program is free software; you can redistribute it
@@ -45,13 +45,18 @@ static const int RETURN_NOT_FOUND = 0;
 static const int RETURN_FOUND = 1;
 static const int RETURN_INVALID = 2;
 
+#ifdef WIN32
+static DWORD WINAPI wm_sca_main(void *arg);         // Module main function. It won't return
+static DWORD WINAPI wm_sca_destroy(void *data);     // Destroy data
+#else
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
+#endif
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number);
+static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char ** sorted_variables);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
 static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list);
 static int wm_sca_check_requirements(const cJSON * const requirements);
@@ -114,6 +119,7 @@ const wm_context WM_SCA_CONTEXT = {
     (wm_routine)wm_sca_main,
     (wm_routine)(void *)wm_sca_destroy,
     (cJSON * (*)(const void *))wm_sca_dump,
+    NULL,
     NULL
 };
 
@@ -134,7 +140,12 @@ cJSON **last_summary_json = NULL;
 static pthread_rwlock_t dump_rwlock;
 
 // Module main function. It won't return
+#ifdef WIN32
+DWORD WINAPI wm_sca_main(void *arg) {
+    wm_sca_t *data = (wm_sca_t *)arg;
+#else
 void * wm_sca_main(wm_sca_t * data) {
+#endif
     // If module is disabled, exit
     if (data->enabled) {
         minfo("Module started.");
@@ -213,7 +224,7 @@ void * wm_sca_main(wm_sca_t * data) {
 
 #ifndef WIN32
 
-    data->queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    data->queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (data->queue < 0) {
         merror("Can't connect to queue.");
@@ -239,7 +250,11 @@ void * wm_sca_main(wm_sca_t * data) {
 
     wm_sca_start(data);
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
@@ -257,16 +272,11 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-        if(data->queue >= 0){
-            close(data->queue);
-        }
-
-        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        if ((data->queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
             if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                close(data->queue);
             }
         }
     }
@@ -349,6 +359,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON * object = NULL;
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
+            char **sorted_variables = NULL;
 
             FILE *fp = fopen(data->policies[i]->policy_path, "r");
 
@@ -375,35 +386,35 @@ static void wm_sca_read_files(wm_sca_t * data) {
             yaml_document_delete(&document);
 
             cJSON *policy = cJSON_GetObjectItem(object, "policy");
-            cJSON *variables = cJSON_GetObjectItem(object, "variables");
+            cJSON *variables_policy = cJSON_GetObjectItem(object, "variables");
             cJSON *checks = cJSON_GetObjectItem(object, "checks");
             requirements_array = cJSON_CreateArray();
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
-            if(wm_sca_check_policy(policy, checks, check_list)) {
+            if (wm_sca_check_policy(policy, checks, check_list)) {
                 mwarn("Error found while validating policy file: '%s'. Skipping it.", data->policies[i]->policy_path);
                 goto next;
             }
 
-            if(requirements && wm_sca_check_requirements(requirements)) {
+            if (requirements && wm_sca_check_requirements(requirements)) {
                 mwarn("Error found while reading 'requirements' section of file: '%s'. Skipping it.", data->policies[i]->policy_path);
                 goto next;
             }
 
-            if(!data->policies[i]->policy_id) {
+            if (!data->policies[i]->policy_id) {
                 cJSON *id = cJSON_GetObjectItem(policy, "id");
                 os_strdup(id->valuestring,data->policies[i]->policy_id);
             }
 
-            if(!checks){
+            if (!checks) {
                 mwarn("Error found while reading 'checks' section of file: '%s'. Skipping it.", data->policies[i]->policy_path);
                 goto next;
             }
 
             vars = OSStore_Create();
-
-            if (wm_sca_get_vars(variables,vars) != 0){
+            sorted_variables = wm_sort_variables(variables_policy);
+            if (wm_sca_get_vars(variables_policy,vars) != 0) {
                 mwarn("Error found while reading the 'variables' section of file: '%s'. Skipping it.", data->policies[i]->policy_path);
                 goto next;
             }
@@ -461,7 +472,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(requirements) {
                 w_rwlock_rdlock(&dump_rwlock);
-                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->policies[i]->remote,first_scan,&checks_number) == 0) {
+                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->policies[i]->remote,first_scan,&checks_number,sorted_variables) == 0) {
                     requirements_satisfied = 1;
                 }
                 w_rwlock_unlock(&dump_rwlock);
@@ -476,7 +487,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->policies[i]->policy_path);
 
-                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number) != 0) {
+                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number, sorted_variables) != 0) {
                     merror("Error while evaluating the policy '%s'", data->policies[i]->policy_path);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -520,6 +531,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
             if(vars) {
                 OSStore_Free(vars);
             }
+
+            free_strarray(sorted_variables);
         }
         first_scan = 0;
         OSHash_Clean(check_list, free);
@@ -913,7 +926,7 @@ ANY and NONE aggregators are complementary.
 */
 
 static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
-    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number)
+    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char **sorted_variables)
 {
     int type = 0;
     char buf[OS_SIZE_1024 + 2];
@@ -1051,50 +1064,83 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
             if (type == WM_SCA_TYPE_FILE) {
                 /* Check files */
                 char *pattern = wm_sca_get_pattern(value);
-                char *file_list = value;
+                char *rule_location = NULL;
+                char *aux = NULL;
 
-                /* Get any variable */
-                if (value[0] == '$') {
-                    file_list = (char *) OSStore_Get(vars, value);
-                    if (!file_list) {
-                        merror("Invalid variable: '%s'. Skipping check.", value);
-                        continue;
+                os_strdup(value, rule_location);
+
+                /* If any, replace the variables by their respective values */
+                if (sorted_variables) {
+                    for (int i = 0; sorted_variables[i]; i++) {
+                        if (strstr(rule_location, sorted_variables[i])) {
+                            mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], rule_location);
+                            aux = wstr_replace(rule_location, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
+                            os_free(rule_location);
+                            rule_location = aux;
+                            if (!rule_location) {
+                                merror("Invalid variable replacement: '%s'. Skipping check.", sorted_variables[i]);
+                                break;
+                            }
+                            mdebug2("Variable replaced: '%s'", rule_location);
+                        }
                     }
                 }
 
-                const int result = wm_sca_check_file_list(file_list, pattern, &reason);
+                if (!rule_location) {
+                    continue;
+                }                   
+
+                const int result = wm_sca_check_file_list(rule_location, pattern, &reason);
                 if (result == RETURN_FOUND || result == RETURN_INVALID) {
                     found = result;
                 }
 
                 char _b_msg[OS_SIZE_1024 + 1];
                 _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " File: %s", file_list);
+                snprintf(_b_msg, OS_SIZE_1024, " File: %s", rule_location);
                 append_msg_to_vm_scat(data, _b_msg);
+                os_free(rule_location);
+
             } else if (type == WM_SCA_TYPE_COMMAND) {
                 /* Check command output */
                 char *pattern = wm_sca_get_pattern(value);
-                char *f_value = value;
+                char *rule_location = NULL;
+                char *aux = NULL;
 
+                os_strdup(value, rule_location);
+                
                 if (!data->remote_commands && remote_policy) {
                     mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                     if (reason == NULL) {
                         os_malloc(OS_MAXSTR, reason);
-                        sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
+                        sprintf(reason, "Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", rule_location);
                     }
                     found = RETURN_INVALID;
+
                 } else {
-                    /* Get any variable */
-                    if (value[0] == '$') {
-                        f_value = (char *) OSStore_Get(vars, value);
-                        if (!f_value) {
-                            merror("Invalid variable: '%s'. Skipping check.", value);
-                            continue;
+                    /* If any, replace the variables by their respective values */
+                    if (sorted_variables) {
+                        for (int i = 0; sorted_variables[i]; i++) {
+                            if (strstr(rule_location, sorted_variables[i])) {
+                                mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], rule_location);
+                                aux = wstr_replace(rule_location, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
+                                os_free(rule_location);
+                                rule_location = aux;
+                                if (!rule_location) {
+                                    merror("Invalid variable: '%s'. Skipping check.", sorted_variables[i]);
+                                    break;
+                                }
+                                mdebug2("Variable replaced: '%s'", rule_location);
+                            }
                         }
                     }
 
-                    mdebug2("Running command: '%s'", f_value);
-                    const int val = wm_sca_read_command(f_value, pattern, data, &reason);
+                    if (!rule_location) {
+                        continue;
+                    }    
+
+                    mdebug2("Running command: '%s'", rule_location);
+                    const int val = wm_sca_read_command(rule_location, pattern, data, &reason);
                     if (val == RETURN_FOUND) {
                         mdebug2("Command output matched.");
                         found = RETURN_FOUND;
@@ -1106,27 +1152,45 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 char _b_msg[OS_SIZE_1024 + 1];
                 _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
+                snprintf(_b_msg, OS_SIZE_1024, " Command: %s", rule_location);
                 append_msg_to_vm_scat(data, _b_msg);
+                os_free(rule_location);
 
             } else if (type == WM_SCA_TYPE_DIR) {
                 /* Check directory */
                 mdebug2("Processing directory rule '%s'", value);
                 char * const file = wm_sca_get_pattern(value);
-                char *f_value = value;
+                char *rule_location = NULL;
+                char *aux = NULL;
 
-                /* Get any variable */
-                if (value[0] == '$') {
-                    f_value = (char *) OSStore_Get(vars, value);
-                    if (!f_value) {
-                        merror("Invalid variable: '%s'. Skipping check.", value);
-                        continue;
+                os_strdup(value, rule_location);
+
+                /* If any, replace the variables by their respective values */
+                if (sorted_variables) {
+                    for (int i = 0; sorted_variables[i]; i++) {
+                        if (strstr(rule_location, sorted_variables[i])) {
+                            mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], rule_location);
+                            aux = wstr_replace(rule_location, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
+                            os_free(rule_location);
+                            rule_location = aux;
+                            if (!rule_location) {
+                                merror("Invalid variable: '%s'. Skipping check.", sorted_variables[i]);
+                                break;
+                            }
+                            mdebug2("Variable replaced: '%s'", rule_location);
+                        }
                     }
                 }
 
+                if (!rule_location) {
+                    continue;
+                }    
+
                 char * const pattern = wm_sca_get_pattern(file);
-                found = wm_sca_check_dir_list(data, f_value, file, pattern, &reason);
+                found = wm_sca_check_dir_list(data, rule_location, file, pattern, &reason);
                 mdebug2("Check directory rule result: %d", found);
+                os_free(rule_location);
+
             } else if (type == WM_SCA_TYPE_PROCESS) {
                 /* Check process existence */
                 if (!p_list) {
@@ -1305,6 +1369,7 @@ static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars)
         char *var_value;
         os_strdup(variable->valuestring, var_value);
         OSStore_Put(vars, variable->string, var_value);
+
     }
 
     return 0;
@@ -2001,9 +2066,15 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
 }
 
 // Destroy data
-void wm_sca_destroy(wm_sca_t * data)
-{
+#ifdef WIN32
+DWORD WINAPI wm_sca_destroy(void *data) {
+#else
+void wm_sca_destroy(wm_sca_t * data) {
+#endif
     os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 
 #ifdef WIN32
@@ -2258,7 +2329,8 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
 
             /* Write value into a string */
             switch (data_type) {
-                    int size_available;
+                int size_available;
+                size_t size_data;
 
                 case REG_SZ:
                 case REG_EXPAND_SZ:
@@ -2266,19 +2338,20 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
                 case REG_MULTI_SZ:
                     /* Printing multiple strings */
-                    size_available = MAX_VALUE_NAME - 3;
+                    size_available = MAX_VALUE_NAME;
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        if (size_available > 2) {
+                        size_data = strlen(mt_data) + strlen(" ");
+
+                        if ((size_t)size_available >= size_data) {
                             strncat(var_storage, mt_data, size_available);
-                            strncat(var_storage, " ", 2);
-                            size_available = MAX_VALUE_NAME -
-                                             (strlen(var_storage) + 2);
+                            size_available -= strlen(mt_data);
+                            strncat(var_storage, " ", size_available);
+                            size_available -= strlen(" ");
                         }
                         mt_data += strlen(mt_data) + 1;
                     }
-
                     break;
                 case REG_DWORD:
                     snprintf(var_storage, MAX_VALUE_NAME, "%u", *((uint32_t*)data_buffer));
@@ -2966,8 +3039,8 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
     /* Create request socket */
     int cfga_queue;
-    if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ, 0)) < 0) {
-        merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+    if ((cfga_queue = StartMQWithSpecificOwnerAndPerms(CFGAQUEUE, READ, 0, getuid(), wm_getGroupID(), 0660)) < 0) {
+        merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -3103,4 +3176,44 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
         os_strdup(msg, data->alert_msg[i]);
     }
     return 0;
+}
+
+/* Sort the variables from largest to smallest in size */
+char **wm_sort_variables(const cJSON * const variables) {
+    char **variables_array;
+    const cJSON *variable;
+    char *aux;
+    int i = 0;
+    int variables_array_size = cJSON_GetArraySize(variables);
+
+    if (variables == NULL || variables_array_size == 0) {
+        return NULL;
+    }
+
+    os_calloc(variables_array_size + 1, sizeof(char *), variables_array); 
+
+    // Fill array with unsorted variables
+    cJSON_ArrayForEach(variable, variables) {
+        os_strdup(variable->string, variables_array[i]);
+        i++;
+    }
+
+    // variables_array_size and i should always be the same 
+    if (variables_array_size != i) {
+        free_strarray(variables_array);
+        return NULL;
+    }
+
+    // Sorting algorithm
+    for(i = 0; i < variables_array_size; i++) {
+        for(int j = i + 1; j < variables_array_size; j++) {
+            if(strlen(variables_array[j]) > strlen(variables_array[i])) {
+                aux = variables_array[i];
+                variables_array[i] = variables_array[j];
+                variables_array[j] = aux;
+            }
+        }
+    }
+
+    return variables_array;
 }
