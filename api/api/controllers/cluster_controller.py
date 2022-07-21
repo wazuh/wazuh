@@ -391,7 +391,7 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                 'filename': common.ANALYSISD_STATS}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -416,7 +416,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                 'filename': common.REMOTED_STATS}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
