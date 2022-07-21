@@ -752,6 +752,20 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /cluster/{node_id}/daemon_stats
+
+stages:
+  - name: Try to get all daemons' statistics from a specified node (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/daemon_stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /cluster/{node_id}/stats
 
 stages:
@@ -1695,6 +1709,20 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /manager/stats
+
+stages:
+  - name: Try to get all daemons' statistics
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/daemon_stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
 
