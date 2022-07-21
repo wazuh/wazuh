@@ -98,16 +98,14 @@ def get_daemons_stats(daemons_list: list = None):
     AffectedItemsWazuhResult
         Dictionary with the stats of the input file.
     """
-    available_daemons_stats = ['wazuh-remoted', 'wazuh-analysisd', 'wazuh-db']
     daemon_socket_mapping = {'wazuh-remoted': common.REMOTED_SOCKET,
                              'wazuh-analysisd': common.ANALYSISD_SOCKET,
                              'wazuh-db': common.WDB_SOCKET}
-    daemons_list = daemons_list or available_daemons_stats
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
                                       some_msg='Could not read statistical information for some daemons',
                                       none_msg='Could not read statistical information for any daemon')
 
-    for daemon in daemons_list:
+    for daemon in daemons_list or daemon_socket_mapping.keys():
         try:
             result.affected_items.append(get_daemons_stats_socket(daemon_socket_mapping[daemon]))
         except WazuhException as e:
