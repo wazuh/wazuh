@@ -1,5 +1,142 @@
 [
     {
+        "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. The next token does include the map characters of the current token and has no modifier.",
+        "batch_test": [
+            {
+                "description": "0 size: `\\d*` match 0-0",
+                "pattern": "\\d*\\w",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "0 size: `\\d*` match 0-0. With group",
+                "pattern": "(\\d*)\\w",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "\\w matches with '1' character",
+                "pattern": "\\d*\\w",
+                "log": "12",
+                "end_match": "12",
+                "captured_groups": []
+            },
+            {
+                "description": "\\w matches with '1' character",
+                "pattern": "(\\d*)\\w",
+                "log": "12",
+                "end_match": "12",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Min size: Minimum match with capture group",
+                "pattern": "\\d*(\\w)",
+                "log": "12",
+                "end_match": "12",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern",
+                "pattern": "\\d*\\w",
+                "log": "12345",
+                "end_match": "12345",
+                "captured_groups": []
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern, only capture the first character",
+                "pattern": "(\\d*)\\w",
+                "log": "12345",
+                "end_match": "12345",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern",
+                "pattern": "\\d*(\\w)",
+                "log": "12345",
+                "end_match": "12345",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Min size: No match, no items in the log to consume (With flags).",
+                "pattern": "^\\d*\\d",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Min size: No match, no items in the log to consume (With flags).",
+                "pattern": "^(\\d*)\\d",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Min size: Minimum match with capture group (With flags).",
+                "pattern": "^(\\d*)\\w$",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Min size: Minimum match with capture group (With flags).",
+                "pattern": "^\\d*(\\w)$",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "2"
+                ]
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
+                "pattern": "^\\d*\\w$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern, capture the first 4 character, because the $ flag.",
+                "pattern": "^(\\d*)\\w$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": [
+                    "1234"
+                ]
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
+                "pattern": "^\\d*(\\w)$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": [
+                    "5"
+                ]
+            },
+            {
+                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
+                "pattern": "^\\d*(\\w)$",
+                "log": "12345&&&&&&&",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. The next token does not include the map characters of the current token and has no modifier.",
         "batch_test": [
             {
@@ -295,7 +432,6 @@
             },
             {
                 "description": "Without capture group, match 0-0",
-                "ignore_result": true,
                 "__know_issue": "Return one byte before log starts ",
                 "skip_test": true,
                 "pattern": "\\d*",
@@ -546,31 +682,26 @@
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern",
                 "pattern": "\\d+\\w",
-                "ignore_result": true,
                 "log": "12345",
-                "end_match": "5",
+                "end_match": "2345",
                 "captured_groups": []
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern, only capture the first character",
-                "ignore_result": true,
-                "__know_issue": "regex returns the pointer to '2' character. ",
                 "pattern": "(\\d+)\\w",
                 "log": "12345",
-                "end_match": "5",
+                "end_match": "2345",
                 "captured_groups": [
                     "1"
                 ]
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern",
-                "ignore_result": true,
-                "__know_issue": "regex returns the pointer to '2' character. ",
                 "pattern": "\\d+(\\w)",
                 "log": "12345",
-                "end_match": "5",
+                "end_match": "2345",
                 "captured_groups": [
-                    "5"
+                    "2"
                 ]
             },
             {
@@ -608,16 +739,12 @@
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
                 "pattern": "^\\d+\\w$",
-                "ignore_result": true,
-                "debug": true,
                 "log": "12345",
                 "end_match": "5",
                 "captured_groups": []
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern, capture the first 4 character, because the $ flag.",
-                "ignore_result": true,
-                "debug": true,
                 "__know_issue": "regex returns the pointer to '2' character. ",
                 "pattern": "^(\\d+)\\w$",
                 "log": "12345",
@@ -628,9 +755,6 @@
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "ignore_result": true,
-                "debug": true,
-                "__know_issue": "regex returns the pointer to '2' character. ",
                 "pattern": "^\\d+(\\w)$",
                 "log": "12345",
                 "end_match": "5",
@@ -640,9 +764,6 @@
             },
             {
                 "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "ignore_result": true,
-                "debug": true,
-                "__know_issue": "regex returns the pointer to '2' character. ",
                 "pattern": "^\\d+(\\w)$",
                 "log": "12345&&&&&&&",
                 "end_match": null,
@@ -894,8 +1015,6 @@
             },
             {
                 "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags) before log.",
-                "debug": true,
-                "ignore_result": true,
                 "pattern": "^\\w+ $",
                 "log": "wazuh -",
                 "end_match": null,
@@ -903,8 +1022,6 @@
             },
             {
                 "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags and capture all) before log.",
-                "debug": true,
-                "ignore_result": true,
                 "pattern": "^(\\w+ )$",
                 "log": "wazuh -",
                 "end_match": null,
