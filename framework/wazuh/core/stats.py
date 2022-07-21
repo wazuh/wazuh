@@ -137,7 +137,7 @@ def get_daemons_stats_socket(socket: str) -> dict:
     """
     # Create message
     full_message = wazuh_socket.create_wazuh_socket_message(origin={'module': common.origin_module.get()},
-                                                            command='getstats', parameters={})
+                                                            command='getstats')
 
     # Connect to socket
     try:

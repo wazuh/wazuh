@@ -10251,7 +10251,7 @@ paths:
                           global_queries_breakdown:
                             sql_queries: 0
                             backup_queries: 0
-                            agent_queries: {
+                            agent_queries:
                               insert-agent_queries: 1
                               update-agent-data_queries: 1
                               update-agent-name_queries: 1
