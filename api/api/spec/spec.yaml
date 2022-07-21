@@ -791,6 +791,19 @@ components:
               items:
                 $ref: '#/components/schemas/AgentDistinct'
 
+    AllItemsResponseWazuhDaemonStats:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/WazuhDaemonStatsItem'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroups:
       allOf:
         - type: object
@@ -2003,6 +2016,17 @@ components:
           description: "User's JWT token"
 
     # Cluster and manager models
+    WazuhDaemonStatsItem:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          $ref: '#/components/schemas/DaemonName'
+        statistics:
+          type: object
+
     WazuhDaemonsStatus:
       type: object
       properties:
@@ -8677,38 +8701,42 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseWazuhStats'
+                        $ref: '#/components/schemas/AllItemsResponseWazuhDaemonStats'
               example:
                 data:
                   affected_items:
-                    - hour: 15
-                      alerts:
-                        - sigid: 5303
-                          level: 3
-                          times: 1
-                        - sigid: 5501
-                          level: 3
-                          times: 4
-                        - sigid: 221
-                          level: 0
-                          times: 653
-                      totalAlerts: 658
-                      events: 4387
-                      firewall: 0
-                    - hour: 16
-                      alerts:
-                        - sigid: 5521
-                          level: 0
-                          times: 1
-                        - sigid: 530
-                          level: 0
-                          times: 120
-                      totalAlerts: 121
-                      events: 4379
-                      syscheck: 0
-                      firewall: 0
-                  total_affected_items: 2
-                  failed_items: [ ]
+                    - timestamp: 2022-07-21T10:48:32+00:00
+                      name: wazuh-remoted
+                      statistics:
+                        tcp_sessions: 0
+                        received_bytes: 0
+                        messages_received_breakdown:
+                          event_messages: 0
+                          control_messages: 0
+                          control_breakdown:
+                            request_messages: 0
+                            startup_messages: 0
+                            shutdown_messages: 0
+                            keepalive_messages: 0
+                          ping_messages: 0
+                          unknown_messages: 0
+                          dequeued_after_close_messages: 0
+                          discarded_messages: 0
+                        sent_bytes: 0
+                        messages_sent_breakdown:
+                          ack_messages: 0
+                          shared_file_messages: 0
+                          ar_messages: 0
+                          cfga_messages: 0
+                          request_messages: 0
+                          discarded_messages: 0
+                        queue_status:
+                          receive_queue_usage: 0
+                          receive_queue_size: 131072
+                        keys_reload_count: 0
+                        update_shared_files_count: 42
+                  total_affected_items: 1
+                  failed_items: []
                   total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10166,37 +10194,212 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllItemsResponseWazuhStats'
+                      $ref: '#/components/schemas/AllItemsResponseWazuhDaemonStats'
               example:
                 data:
                   affected_items:
-                    - hour: 15
-                      alerts:
-                        - sigid: 5303
-                          level: 3
-                          times: 1
-                        - sigid: 5501
-                          level: 3
-                          times: 4
-                        - sigid: 221
-                          level: 0
-                          times: 653
-                      totalAlerts: 658
-                      events: 4387
-                      firewall: 0
-                    - hour: 16
-                      alerts:
-                        - sigid: 5521
-                          level: 0
-                          times: 1
-                        - sigid: 530
-                          level: 0
-                          times: 120
-                      totalAlerts: 121
-                      events: 4379
-                      syscheck: 0
-                      firewall: 0
-                  total_affected_items: 2
+                    - timestamp: 2022-07-21T10:47:59+00:00
+                      name: wazuh-db
+                      statistics:
+                        queries_total: 1514
+                        queries_breakdown:
+                          wazuhdb_queries: 0
+                          wazuhdb_queries_breakdown:
+                            remove_queries: 0
+                            unknown_queries: 0
+                          agent_queries: 73
+                          agent_queries_breakdown:
+                            sql_queries: 0
+                            remove_queries: 0
+                            begin_queries: 0
+                            commit_queries: 0
+                            close_queries: 0
+                            syscheck_queries:
+                              syscheck_queries: 2
+                              fim_file_queries: 2
+                              fim_registry_queries: 0
+                            rootcheck_queries:
+                              rootcheck_queries: 2
+                            sca_queries:
+                              sca_queries: 6
+                            ciscat_queries:
+                              ciscat_queries: 0
+                            syscollector_queries:
+                              syscollector_processes_queries: 36
+                              syscollector_packages_queries: 1
+                              syscollector_hotfixes_queries: 0
+                              syscollector_ports_queries: 16
+                              syscollector_network_protocol_queries: 1
+                              syscollector_network_address_queries: 1
+                              syscollector_network_iface_queries: 2
+                              syscollector_hwinfo_queries: 2
+                              syscollector_osinfo_queries: 2
+                              process_queries: 0
+                              package_queries: 0
+                              hotfix_queries: 0
+                              port_queries: 0
+                              netproto_queries: 0
+                              netaddr_queries: 0
+                              netinfo_queries: 0
+                              hardware_queries: 0
+                              osinfo_queries: 0
+                            vulnerability_detector_queries:
+                              vuln_cves_queries: 0
+                            dbsync_queries: 0
+                            unknown_queries: 0
+                          global_queries: 161
+                          global_queries_breakdown:
+                            sql_queries: 0
+                            backup_queries: 0
+                            agent_queries: {
+                              insert-agent_queries: 1
+                              update-agent-data_queries: 1
+                              update-agent-name_queries: 1
+                              update-keepalive_queries: 0
+                              update-connection-status_queries: 0
+                              reset-agents-connection_queries: 1
+                              delete-agent_queries: 0
+                              select-agent-name_queries: 2
+                              select-agent-group_queries: 1
+                              select-keepalive_queries: 0
+                              find-agent_queries: 0
+                              get-agent-info_queries: 39
+                              get-all-agents_queries: 40
+                              get-agents-by-connection-status_queries: 0
+                              disconnect-agents_queries: 0
+                              sync-agent-info-get_queries: 0
+                              sync-agent-info-set_queries: 37
+                              sync-agent-groups-get_queries: 36
+                              set-agent-groups_queries: 0
+                              get-groups-integrity_queries: 0
+                            group_queries:
+                              insert-agent-group_queries: 0
+                              delete-group_queries: 0
+                              select-groups_queries: 1
+                              find-group_queries: 1
+                            belongs_queries:
+                              delete-agent-belong_queries: 0
+                              select-group-belong_queries: 0
+                              get-group-agents_queries: 0
+                            labels_queries:
+                              set-labels_queries: 0
+                              get-labels_queries: 0
+                            unknown_queries: 0
+                          task_queries: 3
+                          task_queries_breakdown:
+                            sql_queries: 0
+                            upgrade_queries:
+                              upgrade_queries: 0
+                              upgrade_custom_queries: 0
+                              upgrade_get_status_queries: 0
+                              upgrade_update_status_queries: 0
+                              upgrade_result_queries: 0
+                              upgrade_cancel_tasks_queries: 1
+                            set_timeout_queries: 1
+                            delete_old_queries: 1
+                            unknown_queries: 0
+                          mitre_queries: 1277
+                          mitre_queries_breakdown:
+                            sql_queries: 1277
+                            unknown_queries: 0
+                          unknown_queries: 0
+                        queries_time_total: 493
+                        queries_time_breakdown:
+                          wazuhdb_time: 0
+                          wazuhdb_time_breakdown:
+                            remove_time: 0
+                          agent_time: 351
+                          agent_time_breakdown:
+                            sql_time: 0
+                            remove_time: 0
+                            begin_time: 0
+                            commit_time: 0
+                            close_time: 0
+                            syscheck_time:
+                              syscheck_time: 49
+                              fim_file_time: 30
+                              fim_registry_time: 0
+                            rootcheck_time:
+                              rootcheck_time: 47
+                            sca_time:
+                              sca_time: 0
+                            ciscat_time:
+                              ciscat_time: 0
+                            syscollector_time:
+                              syscollector_processes_time: 17
+                              syscollector_packages_time: 33
+                              syscollector_hotfixes_time: 0
+                              syscollector_ports_time: 47
+                              syscollector_network_protocol_time: 27
+                              syscollector_network_address_time: 26
+                              syscollector_network_iface_time: 21
+                              syscollector_hwinfo_time: 20
+                              syscollector_osinfo_time: 27
+                              process_time: 0
+                              package_time: 0
+                              hotfix_time: 0
+                              port_time: 0
+                              netproto_time: 0
+                              netaddr_time: 0
+                              netinfo_time: 0
+                              hardware_time: 0
+                              osinfo_time: 0
+                            vulnerability_detector_time:
+                              vuln_cves_time: 0
+                            dbsync_time: 0
+                          global_time: 14
+                          global_time_breakdown:
+                            sql_time: 0
+                            backup_time: 0
+                            agent_time:
+                              insert-agent_time: 0
+                              update-agent-data_time: 0
+                              update-agent-name_time: 0
+                              update-keepalive_time: 0
+                              update-connection-status_time: 0
+                              reset-agents-connection_time: 0
+                              delete-agent_time: 0
+                              select-agent-name_time: 0
+                              select-agent-group_time: 0
+                              select-keepalive_time: 0
+                              find-agent_time: 0
+                              get-agent-info_time: 2
+                              get-all-agents_time: 1
+                              get-agents-by-connection-status_time: 0
+                              disconnect-agents_time: 0
+                              sync-agent-info-get_time: 0
+                              sync-agent-info-set_time: 6
+                              sync-agent-groups-get_time: 2
+                              set-agent-groups_time: 0
+                              get-groups-integrity_time: 0
+                            group_time:
+                              insert-agent-group_time: 0
+                              delete-group_time: 0
+                              select-groups_time: 0
+                              find-group_time: 0
+                            belongs_time:
+                              delete-agent-belong_time: 0
+                              select-group-belong_time: 0
+                              get-group-agents_time: 0
+                            labels_time:
+                              set-labels_time: 0
+                              get-labels_time: 0
+                          task_time: 0
+                          task_time_breakdown:
+                            sql_time: 0
+                            upgrade_time:
+                              upgrade_time: 0
+                              upgrade_custom_time: 0
+                              upgrade_get_status_time: 0
+                              upgrade_update_status_time: 0
+                              upgrade_result_time: 0
+                              upgrade_cancel_tasks_time: 0
+                            set_timeout_time: 0
+                            delete_old_time: 0
+                          mitre_time: 128
+                          mitre_time_breakdown:
+                            sql_time: 128
+                  total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
         '400':
