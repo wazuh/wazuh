@@ -57,11 +57,11 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushAndRundown)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_NO_THROW(dispatcher.setCallback(key1, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
-    EXPECT_NO_THROW(dispatcher.setCallback(key2, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
@@ -98,11 +98,11 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushSync)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_NO_THROW(dispatcher.setCallback(key1, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
-    EXPECT_NO_THROW(dispatcher.setCallback(key2, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
@@ -117,15 +117,15 @@ TEST_F(MsgDispatcherTest, MsgDispatcherAddCallbackTwice)
     const Key key1{100};
     const Key key2{200};
     TestMsgDispatcher dispatcher;
-    EXPECT_NO_THROW(dispatcher.setCallback(key1, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
-    EXPECT_NO_THROW(dispatcher.setCallback(key2, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
-    EXPECT_NO_THROW(dispatcher.setCallback(key2, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
@@ -151,11 +151,11 @@ TEST_F(MsgDispatcherTest, MsgDispatcherRemoveCallback)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_NO_THROW(dispatcher.setCallback(key1, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));
-    EXPECT_NO_THROW(dispatcher.setCallback(key2, [&dispatcher](const Value & value)
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
     {
         dispatcher.callback(value);
     }));

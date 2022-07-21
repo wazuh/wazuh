@@ -239,6 +239,9 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     wm_github_fail *org_fail;
     wm_github_state org_state_struc;
     wm_github_auth* current = github_config->auth;
+    char new_scan_time_str[80];
+    char last_scan_time_str[80];
+    struct tm tm_scan = { .tm_sec = 0 };
 
     while (current != NULL)
     {
@@ -270,23 +273,25 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     org_state_struc.last_log_time = new_scan_time;
                     if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
                         mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
+                    } else if (isDebug()) {
+                        memset(new_scan_time_str, '\0', 80);
+                        gmtime_r(&new_scan_time, &tm_scan);
+                        strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_scan);
+                        mtdebug1(WM_GITHUB_LOGTAG, "Bookmark updated to '%s' for organization '%s' and event type '%s', waiting '%ld' seconds to run first scan.",
+                            new_scan_time_str, current->org_name, event_types[event_types_it], github_config->interval);
                     }
                     continue;
                 }
 
                 last_scan_time = (time_t)org_state_struc.last_log_time + 1;
 
-                char last_scan_time_str[80];
                 memset(last_scan_time_str, '\0', 80);
-                struct tm tm_last_scan = { .tm_sec = 0 };
-                gmtime_r(&last_scan_time, &tm_last_scan);
-                strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
+                gmtime_r(&last_scan_time, &tm_scan);
+                strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_scan);
 
-                char new_scan_time_str[80];
                 memset(new_scan_time_str, '\0', 80);
-                struct tm tm_new_scan = { .tm_sec = 0 };
-                gmtime_r(&new_scan_time, &tm_new_scan);
-                strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
+                gmtime_r(&new_scan_time, &tm_scan);
+                strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_scan);
 
                 memset(url, '\0', OS_SIZE_8192);
                 snprintf(url, OS_SIZE_8192 -1, GITHUB_API_URL, current->org_name, last_scan_time_str, new_scan_time_str, event_types[event_types_it], ITEM_PER_PAGE);
@@ -375,10 +380,15 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     org_state_struc.last_log_time = new_scan_time;
                     if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
                         mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
+                    } else {
+                        mtdebug1(WM_GITHUB_LOGTAG, "Bookmark updated to '%s' for organization '%s' and event type '%s', waiting '%ld' seconds to run next scan.",
+                            new_scan_time_str, current->org_name, event_types[event_types_it], github_config->interval);
                     }
 
-                    org_fail = wm_github_get_fail_by_org_and_type(github_config->fails, current->org_name, event_types[event_types_it]);
-                    if (org_fail != NULL) {
+                    if (org_fail = wm_github_get_fail_by_org_and_type(github_config->fails,
+                        current->org_name, event_types[event_types_it]), org_fail && org_fail->fails) {
+                        mtinfo(WM_GITHUB_LOGTAG, "Github organization '%s' and event type '%s', connected successfully.",
+                            current->org_name, event_types[event_types_it]);
                         org_fail->fails = 0;
                     }
                 }
@@ -444,7 +454,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
         org_fail->fails = 1;
     } else {
-        org_fail->fails = org_fail->fails + 1;
+        org_fail->fails++;
 
         if (org_fail->fails == RETRIES_TO_SEND_ERROR) {
             // Send fail message

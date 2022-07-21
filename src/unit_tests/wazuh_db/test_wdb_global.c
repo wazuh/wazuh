@@ -875,15 +875,16 @@ void test_wdb_global_get_groups_integrity_hash_mismatch(void **state)
 {
     cJSON* j_result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    os_sha1 digest = "";
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
-    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, digest);
     will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    j_result = wdb_global_get_groups_integrity(data->wdb, "");
+    j_result = wdb_global_get_groups_integrity(data->wdb, digest);
 
     char *result = cJSON_PrintUnformatted(j_result);
     assert_string_equal(result, "[\"hash_mismatch\"]");
@@ -895,15 +896,16 @@ void test_wdb_global_get_groups_integrity_synced(void **state)
 {
     cJSON* j_result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    os_sha1 digest = "";
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
-    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, digest);
     will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    j_result = wdb_global_get_groups_integrity(data->wdb, "");
+    j_result = wdb_global_get_groups_integrity(data->wdb, digest);
 
     char *result = cJSON_PrintUnformatted(j_result);
     assert_string_equal(result, "[\"synced\"]");
@@ -4370,169 +4372,6 @@ void test_wdb_global_select_groups_success(void **state)
     wrap_wdb_exec_stmt_sized_success_call((cJSON*) 1, STMT_MULTI_COLUMN);
 
     result = wdb_global_select_groups(data->wdb);
-
-    assert_ptr_equal(result, (cJSON*) 1);
-}
-
-/* Tests wdb_global_select_agent_keepalive */
-
-void test_wdb_global_select_agent_keepalive_transaction_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_keepalive_cache_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_keepalive_bind1_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_keepalive_bind2_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_keepalive_bind3_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_keepalive_exec_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_keepalive_success(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *name = "test_name";
-    char *ip = "0.0.0.0";
-
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, name);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, ip);
-    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
-
-    result = wdb_global_select_agent_keepalive(data->wdb, name, ip);
 
     assert_ptr_equal(result, (cJSON*) 1);
 }
@@ -8709,16 +8548,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_socket_full, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_success, test_setup, test_teardown),
-        /* Tests wdb_global_select_agent_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_transaction_fail,
-                                        test_setup,
-                                        test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_bind1_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_bind2_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_bind3_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_exec_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_success, test_setup, test_teardown),
         /* Tests wdb_global_find_agent */
         cmocka_unit_test_setup_teardown(test_wdb_global_find_agent_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_find_agent_cache_fail, test_setup, test_teardown),

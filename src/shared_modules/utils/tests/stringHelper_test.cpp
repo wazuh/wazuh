@@ -263,3 +263,56 @@ TEST_F(StringUtilsTest, splitKeyValueNonEscapedComplexEnd)
     EXPECT_EQ(retVal.second, "");
 }
 
+TEST_F(StringUtilsTest, findRegexInStringNotStartWith)
+{
+    std::string matchedValue;
+    const auto valueToCheck{"PREFIX Some random content"};
+    const auto regex{std::regex(R"(PREFIX Some random content)")};
+    EXPECT_FALSE(Utils::findRegexInString(valueToCheck, matchedValue, regex, 0, "OTHERPREFIX"));
+    EXPECT_TRUE(matchedValue.empty());
+}
+
+TEST_F(StringUtilsTest, findRegexInStringStartWith)
+{
+    std::string matchedValue;
+    const auto valueToCheck{"PREFIX Some random content"};
+    const auto regex{std::regex(R"(PREFIX Some random content)")};
+    EXPECT_TRUE(Utils::findRegexInString(valueToCheck, matchedValue, regex, 0, "PREFIX"));
+    EXPECT_EQ(matchedValue, valueToCheck);
+}
+
+TEST_F(StringUtilsTest, findRegexInStringMatchingRegexWithoutGroup)
+{
+    std::string matchedValue;
+    const auto valueToCheck{"This string should not be extracted"};
+    const auto regex{std::regex(R"(^This string should not be extracted$)")};
+    EXPECT_TRUE(Utils::findRegexInString(valueToCheck, matchedValue, regex));
+    EXPECT_EQ(matchedValue, valueToCheck);
+}
+
+TEST_F(StringUtilsTest, findRegexInStringNoExtractingFirstGroup)
+{
+    std::string matchedValue;
+    const auto valueToCheck{"This string should be extracted"};
+    const auto regex{std::regex(R"(^This (\S+) should be (\S+)$)")};
+    EXPECT_TRUE(Utils::findRegexInString(valueToCheck, matchedValue, regex));
+    EXPECT_EQ(matchedValue, valueToCheck);
+}
+
+TEST_F(StringUtilsTest, findRegexInStringExtractingFirstGroup)
+{
+    std::string matchedValue;
+    const auto valueToCheck{"This string should be extracted"};
+    const auto regex{std::regex(R"(^This (\S+) should be (\S+)$)")};
+    EXPECT_TRUE(Utils::findRegexInString(valueToCheck, matchedValue, regex, 1));
+    EXPECT_EQ(matchedValue, "string");
+}
+
+TEST_F(StringUtilsTest, findRegexInStringExtractingSecondGroup)
+{
+    std::string matchedValue;
+    const auto valueToCheck{"This string should be extracted"};
+    const auto regex{std::regex(R"(^This (\S+) should be (\S+)$)")};
+    EXPECT_TRUE(Utils::findRegexInString(valueToCheck, matchedValue, regex, 2));
+    EXPECT_EQ(matchedValue, "extracted");
+}

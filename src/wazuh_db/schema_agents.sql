@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS sys_hotfixes (
     scan_time TEXT,
     hotfix TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
-    PRIMARY KEY (scan_id, scan_time, hotfix)
+    PRIMARY KEY (scan_id, hotfix)
 );
 
 CREATE INDEX IF NOT EXISTS hotfix_id ON sys_hotfixes (scan_id);

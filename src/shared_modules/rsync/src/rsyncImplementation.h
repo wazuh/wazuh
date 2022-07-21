@@ -18,6 +18,7 @@
 #include <shared_mutex>
 #include "commonDefs.h"
 #include "json.hpp"
+#include "registrationController.hpp"
 #include "msgDispatcher.h"
 #include "syncDecoder.h"
 #include "dbsyncWrapper.h"
@@ -102,6 +103,8 @@ namespace RSync
             void push(const RSYNC_HANDLE handle,
                       const std::vector<unsigned char>& data);
 
+            bool isComponentRegistered(const std::string& component);
+
 
         private:
 
@@ -149,6 +152,7 @@ namespace RSync
             RSyncImplementation& operator=(const RSyncImplementation&) = delete;
             std::map<RSYNC_HANDLE, std::shared_ptr<RSyncContext>> m_remoteSyncContexts;
             std::mutex m_mutex;
+            RegistrationController m_registrationController;
     };
 }// namespace RSync
 

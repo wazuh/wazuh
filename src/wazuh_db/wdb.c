@@ -119,6 +119,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;",
     [WDB_STMT_FIM_DELETE_AROUND] = "DELETE FROM fim_entry WHERE file < ? OR file > ?;",
     [WDB_STMT_FIM_DELETE_RANGE] = "DELETE FROM fim_entry WHERE file > ? AND file < ?;",
+    [WDB_STMT_FIM_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
     [WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY] = "UPDATE sync_info SET last_attempt = ? WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, last_agent_checksum = ?, last_manager_checksum = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
@@ -130,6 +131,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_FILE_CLEAR] = "DELETE FROM fim_entry WHERE type='file';",
     [WDB_STMT_FIM_FILE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (file < ? OR file > ?) AND type = 'file';",
     [WDB_STMT_FIM_FILE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE (file > ? AND file < ?) AND type = 'file';",
+    [WDB_STMT_FIM_FILE_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE file = ? AND type='file';",
     [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') ORDER BY full_path",
     [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND full_path BETWEEN ? AND ? ORDER BY full_path",
     [WDB_STMT_FIM_REGISTRY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key' OR type='registry_value';",
@@ -145,6 +147,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_REGISTRY_VALUE_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_value';",
     [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path < ? OR full_path > ?);",
     [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path > ? AND full_path < ?);",
+    [WDB_STMT_FIM_REGISTRY_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE full_path = ? AND type='registry_key' OR type='registry_value';",
     [WDB_STMT_ROOTCHECK_INSERT_PM] = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?);",
     [WDB_STMT_ROOTCHECK_UPDATE_PM] = "UPDATE pm_event SET date_last = ? WHERE log = ?;",
     [WDB_STMT_ROOTCHECK_DELETE_PM] = "DELETE FROM pm_event;",
@@ -171,7 +174,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT 1 FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
-    [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
@@ -204,50 +206,58 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE] = "DELETE FROM sys_processes WHERE pid > ? AND pid < ?;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_BY_PK] = "DELETE FROM sys_processes WHERE pid = ?;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR] = "DELETE FROM sys_processes;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_programs WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_programs WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ?;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK] = "DELETE FROM sys_programs WHERE item_id = ?;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR] = "DELETE FROM sys_programs;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_hotfixes WHERE checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hotfixes WHERE hotfix BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ?;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK] = "DELETE FROM sys_hotfixes WHERE hotfix = ?;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR] = "DELETE FROM sys_hotfixes;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_ports WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_ports WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND] = "DELETE FROM sys_ports WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE] = "DELETE FROM sys_ports WHERE item_id > ? AND item_id < ?;",
+    [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_BY_PK] = "DELETE FROM sys_ports WHERE item_id = ?;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR] = "DELETE FROM sys_ports;",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_netproto WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netproto WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND] = "DELETE FROM sys_netproto WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE] = "DELETE FROM sys_netproto WHERE item_id > ? AND item_id < ?;",
+    [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_BY_PK] = "DELETE FROM sys_netproto WHERE item_id = ?;",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR] = "DELETE FROM sys_netproto;",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_netaddr WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netaddr WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND] = "DELETE FROM sys_netaddr WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE] = "DELETE FROM sys_netaddr WHERE item_id > ? AND item_id < ?;",
+    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_BY_PK] = "DELETE FROM sys_netaddr WHERE item_id = ?;",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR] = "DELETE FROM sys_netaddr;",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_netiface WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netiface WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND] = "DELETE FROM sys_netiface WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE] = "DELETE FROM sys_netiface WHERE item_id > ? AND item_id < ?;",
+    [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_BY_PK] = "DELETE FROM sys_netiface WHERE item_id = ?;",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR] = "DELETE FROM sys_netiface;",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_hwinfo WHERE checksum != 'legacy' AND checksum != '' ORDER BY board_serial;",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hwinfo WHERE board_serial BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY board_serial;",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND] = "DELETE FROM sys_hwinfo WHERE board_serial < ? OR board_serial > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE] = "DELETE FROM sys_hwinfo WHERE board_serial > ? AND board_serial < ?;",
+    [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_BY_PK] = "DELETE FROM sys_hwinfo WHERE board_serial = ?;",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR] = "DELETE FROM sys_hwinfo;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_osinfo WHERE checksum != 'legacy' AND checksum != '' ORDER BY os_name;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_osinfo WHERE os_name BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY os_name;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
+    [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK] = "DELETE FROM sys_osinfo WHERE os_name = ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_VULN_CVES_INSERT] = "INSERT INTO vuln_cves (name, version, architecture, cve, reference, type, status, severity, cvss2_score, cvss3_score, detection_time, external_references, condition, title, published, updated) VALUES (?,?,?,?,?,?,?,?,?,?,strftime('%s', 'now'),?,?,?,?,?)"
                                   "ON CONFLICT (reference, cve) DO UPDATE SET type = excluded.type, status = excluded.status, severity = excluded.severity, cvss2_score = excluded.cvss2_score, cvss3_score = excluded.cvss3_score, detection_time = detection_time, external_references = excluded.external_references, condition = excluded.condition, title = excluded.title, published = excluded.published, updated = excluded.updated;",
-    [WDB_STMT_VULN_CVES_CLEAR] = "DELETE FROM vuln_cves;",
     [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_BY_TYPE] = "UPDATE vuln_cves SET status = ? WHERE type = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
@@ -572,36 +582,6 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     return 0;
-}
-
-/* Get agent name from location string */
-char* wdb_agent_loc2name(const char *location) {
-    char *name;
-    char *end;
-
-    switch (location[0]) {
-    case 'r':
-    case 's':
-        if (!(strncmp(location, "syscheck", 8) && strncmp(location, "rootcheck", 9)))
-            return strdup("localhost");
-            else
-            return NULL;
-
-    case '(':
-        name = strdup(location + 1);
-
-        if ((end = strchr(name, ')')))
-            *end = '\0';
-        else {
-            free(name);
-            name = NULL;
-        }
-
-        return name;
-
-    default:
-        return NULL;
-    }
 }
 
 /* Prepare SQL query with availability waiting */

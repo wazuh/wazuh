@@ -14,8 +14,6 @@
 #include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
 
-const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
-
 static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HOTFIXES[1] },
     { .value = {FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HOTFIXES[2] },
@@ -168,7 +166,7 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_OS[17] },
     { .value = { FIELD_TEXT, 18, false, false, "os_display_version" }, .next = &TABLE_OS[18] },
     { .value = { FIELD_INTEGER, 19, false, false, "triaged" }, .next = &TABLE_OS[19] },
-    { .value = { FIELD_TEXT, 20, false, false, "reference" }, .next = NULL },
+    { .value = { FIELD_TEXT, 20, true, false, "reference" }, .next = NULL },
 };
 #define OS_FIELD_COUNT 19
 
@@ -760,15 +758,6 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_get_agent_labels(wdb, next, output);
             }
-        } else if (strcmp(query, "set-labels") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for set-labels.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_set_agent_labels(wdb, next, output);
-            }
         } else if (strcmp(query, "update-keepalive") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for update-keepalive.");
@@ -813,15 +802,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_select_agent_group(wdb, next, output);
-            }
-        } else if (strcmp(query, "delete-agent-belong") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for delete-agent-belong.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_delete_agent_belong(wdb, next, output);
             }
         } else if (strcmp(query, "find-agent") == 0) {
             if (!next) {
@@ -879,15 +859,6 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "select-groups") == 0) {
             result = wdb_parse_global_select_groups(wdb, output);
-        } else if (strcmp(query, "select-keepalive") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for select-keepalive.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
-            }
         } else if (strcmp(query, "sync-agent-groups-get") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for sync-agent-groups-get.");
@@ -5110,22 +5081,6 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output) {
-    int agent_id = 0;
-
-    agent_id = atoi(input);
-
-    if (OS_SUCCESS != wdb_global_delete_agent_belong(wdb, agent_id)) {
-        mdebug1("Error deleting agent from belongs table in global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error deleting agent from belongs table in global.db.");
-        return OS_INVALID;
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
-
-    return OS_SUCCESS;
-}
-
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
     cJSON *agent_data = NULL;
     const char *error = NULL;
@@ -5443,37 +5398,6 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
     }
 
     return ret;
-}
-
-int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
-   char *out = NULL;
-   char *next = NULL;
-
-   if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
-    }
-    *next++ = '\0';
-
-    char* agent_name = input;
-    char* agent_ip = next;
-    cJSON *keepalive = NULL;
-
-    keepalive = wdb_global_select_agent_keepalive(wdb, agent_name, agent_ip);
-    if (!keepalive) {
-        mdebug1("Error getting agent keepalive from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent keepalive from global.db.");
-        return OS_INVALID;
-    }
-
-    out = cJSON_PrintUnformatted(keepalive);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(keepalive);
-
-    return OS_SUCCESS;
 }
 
 int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
@@ -6227,20 +6151,13 @@ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output) {
 
     if (!next){
         snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cves action");
-    }
-    else if (strcmp(next, "insert") == 0) {
+    } else if (strcmp(next, "insert") == 0) {
         result = wdb_parse_agents_insert_vuln_cves(wdb, tail, output);
-    }
-    else if (strcmp(next, "update_status") == 0) {
+    } else if (strcmp(next, "update_status") == 0) {
         result = wdb_parse_agents_update_vuln_cves_status(wdb, tail, output);
-    }
-    else if (strcmp(next, "remove") == 0) {
+    } else if (strcmp(next, "remove") == 0) {
         result = wdb_parse_agents_remove_vuln_cves(wdb, tail, output);
-    }
-    else if (strcmp(next, "clear") == 0) {
-        result = wdb_parse_agents_clear_vuln_cves(wdb, output);
-    }
-    else {
+    } else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves action: %s", next);
     }
 
@@ -6361,10 +6278,7 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     }
     else {
         cJSON* status = cJSON_GetObjectItem(data, "status");
-        cJSON* cve = cJSON_GetObjectItem(data, "cve");
-        cJSON* reference = cJSON_GetObjectItem(data, "reference");
 
-        // Checking whether we should remove by status
         if (cJSON_IsString(status)) {
             char* remove_out_str = NULL;
 
@@ -6372,37 +6286,13 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
             snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], remove_out_str);
             os_free(remove_out_str)
             ret = OS_SUCCESS;
-        }
-        // Checking whether we should remove a specific entry
-        else if (cJSON_IsString(cve) && cJSON_IsString(reference)) {
-            ret = wdb_agents_remove_vuln_cves(wdb, cve->valuestring, reference->valuestring);
-            if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cves remove command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves remove command; SQL err: %s", sqlite3_errmsg(wdb->db));
-            }
-            else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        }
-        else {
+        } else {
             mdebug1("Invalid vuln_cves JSON data to remove vulnerabilities.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data");
         }
     }
 
     cJSON_Delete(data);
-    return ret;
-}
-
-int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output) {
-    int ret = wdb_agents_clear_vuln_cves(wdb);
-    if (OS_SUCCESS != ret) {
-        mdebug1("DB(%s) Cannot execute vuln_cves clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
-    }
-    else {
-        snprintf(output, OS_MAXSTR + 1, "ok");
-    }
     return ret;
 }
 

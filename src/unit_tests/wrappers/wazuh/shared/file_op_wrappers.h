@@ -78,6 +78,10 @@ int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode);
 long long __wrap_get_UTC_modification_time(const char *file_path);
 #endif
 
+char *__wrap_GetRandomNoise();
+
+const char *__wrap_getuname();
+
 #endif
 int64_t __wrap_w_ftell (FILE *x);
 

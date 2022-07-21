@@ -218,8 +218,14 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             retval = OS_INVALID;
             goto end;
         }
+        // RHEL9
+        if (!strcmp(version, "9")) {
+            os_index = CVE_REDHAT9;
+            upd->dist_tag_ref = FEED_RHEL9;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_RHEL9];
         // RHEL8
-        if (!strcmp(version, "8")) {
+        } else if (!strcmp(version, "8")) {
             os_index = CVE_REDHAT8;
             upd->dist_tag_ref = FEED_RHEL8;
             os_strdup(version, upd->version);
@@ -266,6 +272,12 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             upd->dist_tag_ref = FEED_ALAS2;
             os_strdup(vu_feed_tag[FEED_ALAS2], upd->version);
             upd->dist_ext = vu_feed_ext[FEED_ALAS2];
+        // Amazon Linux 2022
+        } else if (!strcmp(version, "2022") || strcasestr(vu_feed_tag[FEED_ALAS2022], version)) {
+            os_index = CVE_ALAS2022;
+            upd->dist_tag_ref = FEED_ALAS2022;
+            os_strdup(vu_feed_tag[FEED_ALAS2022], upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALAS2022];
         } else {
             merror("Invalid Amazon Linux version '%s'", version);
             retval = OS_INVALID;

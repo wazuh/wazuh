@@ -52,6 +52,46 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
+void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_value) {
+    assert(wdb != NULL);
+
+    if (!pk_value) {
+        mwarn("PK value is NULL during the removal of the component '%s'", COMPONENT_NAMES[component]);
+        return;
+    }
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_BY_PK,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_BY_PK,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK };
+
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == OS_INVALID) {
+        mdebug1("Cannot cache statement");
+        return;
+    }
+
+    sqlite3_stmt *stmt = wdb->stmt[INDEXES[component]];
+
+    if (sqlite3_bind_text(stmt, 1, pk_value, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return;
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return;
+    }
+}
+
 /**
  * @brief Run checksum of the whole result of an already prepared statement
  *
@@ -59,11 +99,11 @@ extern void mock_assert(const int result, const char* const expression,
  * @param[in] stmt Statement to be executed already prepared.
  * @param[in] component Name of the component.
  * @param[out] hexdigest
+ * @param[in] pk_value Primary key value.
  * @retval 1 On success.
  * @retval 0 If no items were found.
  */
-int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest) {
-
+int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest, const char * pk_value) {
     assert(wdb != NULL);
     assert(stmt != NULL);
     assert(hexdigest != NULL);
@@ -77,10 +117,13 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
+    size_t row_count = 0;
     for (; step == SQLITE_ROW; step = sqlite3_step(stmt)) {
-        const unsigned char * checksum = sqlite3_column_text(stmt, 0);
+        ++row_count;
 
-        if (checksum == 0) {
+        char * checksum = (char *)sqlite3_column_text(stmt, 0);
+
+        if (checksum == NULL) {
             mdebug1("DB(%s) has a NULL %s checksum.", wdb->id, COMPONENT_NAMES[component]);
             continue;
         }
@@ -89,13 +132,21 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     }
 
     // Get the hex SHA-1 digest
-
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_size;
 
     EVP_DigestFinal_ex(ctx, digest, &digest_size);
     EVP_MD_CTX_destroy(ctx);
-    OS_SHA1_Hexdigest(digest, hexdigest);
+
+    if (pk_value && row_count > 1) {
+        mwarn("DB(%s) %s component has more than one element with the same PK value '%s'.",
+              wdb->id,
+              COMPONENT_NAMES[component],
+              pk_value);
+        wdbi_remove_by_pk(wdb, component, pk_value);
+    } else {
+        OS_SHA1_Hexdigest(digest, hexdigest);
+    }
 
     return 1;
 }
@@ -111,7 +162,6 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
  * @retval -1 On error.
  */
 int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
-
     assert(wdb != NULL);
     assert(hexdigest != NULL);
 
@@ -133,12 +183,13 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        mdebug1("Cannot cache statement");
         return -1;
     }
 
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
-    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest, NULL);
 }
 
 /**
@@ -154,7 +205,6 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
  * @retval -1 On error.
  */
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
-
     assert(wdb != NULL);
     assert(hexdigest != NULL);
 
@@ -176,6 +226,7 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        mdebug1("Cannot cache statement");
         return -1;
     }
 
@@ -183,7 +234,13 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     sqlite3_bind_text(stmt, 1, begin, -1, NULL);
     sqlite3_bind_text(stmt, 2, end, -1, NULL);
 
-    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
+    // If begin and end have the same value, a duplicity check will be performed.
+    const char *unique_id = NULL;
+    if (begin && end && !strcmp(begin, end)) {
+        unique_id = begin;
+    }
+
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest, unique_id);
 }
 
 /**
@@ -204,7 +261,6 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
  * @retval -1 On error.
  */
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail) {
-
     assert(wdb != NULL);
 
     const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND,
@@ -312,7 +368,6 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  * @param timestamp Synchronization event timestamp.
  */
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
-
     assert(wdb != NULL);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
@@ -503,8 +558,7 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
 }
 
 // Calculates SHA1 hash from a NULL terminated string array
-int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest)
-{
+int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest) {
     size_t it = 0;
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_size;
@@ -543,8 +597,7 @@ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest)
 }
 
  // Calculates SHA1 hash from a set of strings as parameters, with NULL as end
- int wdbi_strings_hash(os_sha1 hexdigest, ...)
- {
+ int wdbi_strings_hash(os_sha1 hexdigest, ...) {
     char* parameter = NULL;
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_size;
@@ -668,7 +721,7 @@ int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest) {
             return OS_INVALID;
         }
 
-        if(wdb_calculate_stmt_checksum(wdb, stmt, WDB_GENERIC_COMPONENT, hexdigest)) {
+        if(wdb_calculate_stmt_checksum(wdb, stmt, WDB_GENERIC_COMPONENT, hexdigest, NULL)) {
             wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, hexdigest);
             mdebug2("New global group hash calculated and stored in cache.");
             return OS_SUCCESS;

@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <memory>
+#include <regex>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -241,6 +242,28 @@ namespace Utils
         }
 
         return retVal;
+    }
+
+    static bool findRegexInString(const std::string& in,
+                                  std::string& match,
+                                  const std::regex& pattern,
+                                  const size_t matchIndex = 0,
+                                  const std::string& start = "")
+    {
+        bool ret{false};
+
+        if (start.empty() || startsWith(in, start))
+        {
+            std::smatch sm;
+            ret = std::regex_search(in, sm, pattern);
+
+            if (ret && sm.size() >= matchIndex)
+            {
+                match = sm[matchIndex];
+            }
+        }
+
+        return ret;
     }
 }
 
