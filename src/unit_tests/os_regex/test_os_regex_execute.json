@@ -1,5 +1,392 @@
 [
     {
+        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does not include the map characters of the current token and has '+' modifier.",
+        "batch_test": [
+            {
+                "description": "Min size",
+                "pattern": "\\w+\\s+",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Min size. Capture all.",
+                "pattern": "(\\w+\\s+)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Min size, with group",
+                "pattern": "(\\w+)\\s+",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": ["w"]
+            },
+            {
+                "description": "Other size",
+                "pattern": "\\w+\\s+",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Other size. With group",
+                "pattern": "(\\w+)\\s+",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": ["wazuh"]
+            },
+            {
+                "description": "Other size. With group",
+                "__know_issue": "Consecutive capture groups don't support. should match 'wazuh ' but it doesn't. But (\\w+)\\d*(\\s+) works",
+                "ignore_result": true,
+                "pattern": "(\\w+)(\\s+)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "2 groups no consecutive, and opcional",
+                "pattern": "(\\w+)\\d*(\\s+)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "2 groups no consecutive, and opcional",
+                "pattern": "(\\w+)\\d*(\\s+)",
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "2 groups no consecutive",
+                "pattern": "(\\w+)\\d+(\\s+)",
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "With literal at the end.",
+                "pattern": "\\w+\\s+1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "With literal at the end, 1 character + capture group.",
+                "pattern": "(\\w+)\\s+1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "With literal at the end, 1 character + capture all.",
+                "pattern": "(\\w+\\s+)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "With literal at the end, 1 character + capture",
+                "pattern": " (\\w+)\\s+1",
+                "log": " wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Min size. Match all. 1 character (With flags).",
+                "pattern": "^\\w+\\s+$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "pattern": "^\\w+\\s+$",
+                "log": "wazuh  ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all. 1 character + capture group. (With flags).",
+                "pattern": "^(\\w+)\\s+$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all. 1 character + capture group. (With flags).",
+                "pattern": "^(\\w+)\\s+$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
+                "pattern": "^(\\w+\\s+)$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^\\w+\\s+$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^(\\w+\\s+)$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does include the map characters of the current token and has '*' modifier.",
+        "batch_test": [
+            {
+                "description": "Min size",
+                "pattern": "\\w+\\s*",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "Min size + opt.",
+                "pattern": "\\w+\\s*",
+                "__know_issue":"Err retval.",
+                "ignore_result": true,
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Min size. Capture all.",
+                "pattern": "(\\w+\\s*)",
+                "__know_issue": "The group: 'w' cannot be found",
+                "ignore_result": true,
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Min size. Capture all.",
+                "pattern": "(\\w+\\s*)",
+                "__know_issue": "The group: 'wazuh' cannot be found",
+                "ignore_result": true,
+                "log": "wazuh",
+                "end_match": "wazuh",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Min size + opt. Capture all.",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "pattern": "(\\w+\\s*)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Min size, with group",
+                "pattern": "(\\w+)\\s*",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": ["w"]
+            },
+            {
+                "description": "Min size + opt, with group",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "pattern": "(\\w+)\\s*",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": ["w"]
+            },
+            {
+                "description": "Other size",
+                "pattern": "\\w+\\s*",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Other size. With group",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "pattern": "(\\w+\\s*)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": ["wazuh "]
+            },
+            {
+                "description": "Other size. With group",
+                "__know_issue": "Consecutive capture groups don't support. should match 'wazuh ' but it doesn't. But (\\w+)\\d*(\\s+) works",
+                "ignore_result": true,
+                "pattern": "(\\w+)(\\s*)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "2 groups no consecutive, and opcional",
+                "pattern": "(\\w+)\\d+(\\s*)",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "2 groups no consecutive, and opcional",
+                "pattern": "(\\w+)\\d+(\\s*)",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "2 groups no consecutive",
+                "pattern": "(\\w+)\\d*(\\s*)",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "debug": false,
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": ["wazuh", " "]
+            },
+            {
+                "description": "With literal at the end.",
+                "pattern": "\\w+\\s*1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "With literal at the end, 1 character + capture group.",
+                "pattern": "(\\w+)\\s*1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "With literal at the end, 1 character + capture all.",
+                "pattern": "(\\w+\\s*)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "With literal at the end, 1 character + capture",
+                "pattern": " (\\w+)\\s*1",
+                "log": " wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Min size. Match all. 1 character (With flags).",
+                "pattern": "^\\w+\\s*$",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "pattern": "^\\w+\\s*$",
+                "log": "wazuh  ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all. 1 character + capture group. (With flags).",
+                "pattern": "^(\\w+)\\s*$",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all. 1 character + capture group. (With flags).",
+                "pattern": "^(\\w+)\\s*$",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
+                "pattern": "^(\\w+\\s*)$",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^\\w+\\s*$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^(\\w+\\s*)$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
         "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. st_error, error handling, parcial match and rewind.",
         "batch_test": [
             {
