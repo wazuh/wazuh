@@ -1193,9 +1193,7 @@ class Master(server.AbstractServer):
             logger=logger, blacklisted_nodes=blacklisted_nodes,
             nodes=self.clients, master_name=self.configuration['node_name'],
             nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"][
-                "nodes_stability_threshold"],
-            max_assignments_per_node=self.cluster_items["intervals"]["master"]["agent_reconnection"][
-                "max_assignments_per_node"]
+                "nodes_stability_threshold"]
         )
 
         while True:
@@ -1216,6 +1214,11 @@ class Master(server.AbstractServer):
             except agents_reconnect.SkippingException:
                 # Skip current iteration
                 logger.info("Skipping current iteration.")
+                continue
+
+            # Balance agents
+            await self.agents_reconnect.balance_agents(
+                self.cluster_items["intervals"]["master"]["agent_reconnection"]["max_assignments_per_node"])
 
             # Check if the current phase is Halt
             if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
