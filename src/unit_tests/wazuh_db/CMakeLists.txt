@@ -6,7 +6,7 @@ list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
-                         -Wl,--wrap,time -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS}")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -133,6 +133,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,_mdebug1 -Wl,--wra
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_double \
                              -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_Parse \
                              -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_IsNumber -Wl,--wrap,cJSON_IsString -Wl,--wrap,wdb_agents_get_sys_osinfo \
+                             -Wl,--wrap,wdbi_remove_by_pk \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_task")
