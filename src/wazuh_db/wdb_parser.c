@@ -5807,12 +5807,9 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
 
     /* Get limit */
     next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'limit' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'limit' not found");
-        return OS_INVALID;
+    if (next != NULL) {
+        limit = atoi(next);
     }
-    limit = atoi(next);
 
     /* Get node name */
     node_name = strtok_r(NULL, delim, &savedptr);

@@ -231,16 +231,18 @@ void test_rem_create_state_json(void ** state) {
 
 void test_rem_create_agents_state_json(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
+    int *agents_ids = NULL;
+    os_calloc(2, sizeof(int), agents_ids);
+    agents_ids[0] = 1;
+    agents_ids[1] = OS_INVALID;
 
     will_return(__wrap_time, 123456789);
 
-    expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
+    expect_value(__wrap_OSHash_Numeric_Get_ex, self, remoted_agents_state);
+    expect_value(__wrap_OSHash_Numeric_Get_ex, key, 1);
+    will_return(__wrap_OSHash_Numeric_Get_ex, test_data->hash_node->data);
 
-    expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    test_data->state_json = rem_create_agents_state_json();
+    test_data->state_json = rem_create_agents_state_json(agents_ids);
 
     assert_non_null(test_data->state_json);
 
@@ -282,6 +284,7 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
 
     os_free(test_data->agent_state);
+    os_free(agents_ids);
 }
 
 void test_rem_get_node_new_node(void ** state) {
@@ -332,17 +335,14 @@ void test_w_remoted_clean_agents_state_completed(void ** state) {
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
-    char *cluster_node_name = NULL;
-    cluster_node_name = strdup("node01");
     int *connected_agents = NULL;
     os_calloc(1, sizeof(int), connected_agents);
     connected_agents[0] = OS_INVALID;
 
-    will_return(__wrap_get_node_name, cluster_node_name);
-
-    expect_string(__wrap_wdb_get_agents_by_connection_status, status, AGENT_CS_ACTIVE);
-    expect_string(__wrap_wdb_get_agents_by_connection_status, node_name, cluster_node_name);
-    will_return(__wrap_wdb_get_agents_by_connection_status, connected_agents);
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
     expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
     will_return(__wrap_OSHash_Next, NULL);
@@ -362,17 +362,14 @@ void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
-    char *cluster_node_name = NULL;
-    cluster_node_name = strdup("node01");
     int *connected_agents = NULL;
     os_calloc(1, sizeof(int), connected_agents);
     connected_agents[0] = 1;
 
-    will_return(__wrap_get_node_name, cluster_node_name);
-
-    expect_string(__wrap_wdb_get_agents_by_connection_status, status, AGENT_CS_ACTIVE);
-    expect_string(__wrap_wdb_get_agents_by_connection_status, node_name, cluster_node_name);
-    will_return(__wrap_wdb_get_agents_by_connection_status, connected_agents);
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
     expect_value(__wrap_OSHash_Next, self, remoted_agents_state);
     will_return(__wrap_OSHash_Next, NULL);
@@ -389,17 +386,12 @@ void test_w_remoted_clean_agents_state_query_fail(void ** state) {
     expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
-    char *cluster_node_name = NULL;
-    cluster_node_name = strdup("node01");
     int *connected_agents = NULL;
 
-    will_return(__wrap_get_node_name, cluster_node_name);
-
-    expect_string(__wrap_wdb_get_agents_by_connection_status, status, AGENT_CS_ACTIVE);
-    expect_string(__wrap_wdb_get_agents_by_connection_status, node_name, cluster_node_name);
-    will_return(__wrap_wdb_get_agents_by_connection_status, connected_agents);
-
-    expect_string(__wrap__merror, formatted_msg, "Unable to get connected agents.");
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
     w_remoted_clean_agents_state();
 

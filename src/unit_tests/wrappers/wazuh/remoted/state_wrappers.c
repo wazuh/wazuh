@@ -64,3 +64,8 @@ void __wrap_rem_inc_send_discarded(const char *agent_id) {
 cJSON* __wrap_rem_create_state_json() {
     return mock_type(cJSON *);
 }
+
+cJSON* __wrap_rem_create_agents_state_json(int *agents_ids) {
+    check_expected(agents_ids);
+    return mock_type(cJSON *);
+}

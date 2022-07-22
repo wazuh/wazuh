@@ -187,6 +187,9 @@ else()
                                 -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
 endif()
 
+list(APPEND shared_tests_names "test_json_op")
+list(APPEND shared_tests_flags " ")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")

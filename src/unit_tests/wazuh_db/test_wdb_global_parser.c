@@ -3197,29 +3197,6 @@ void test_wdb_parse_global_get_agents_by_connection_status_last_id_error(void **
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_connection_status_limit_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active ";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active ");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'limit' not found.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid arguments 'limit' not found");
-    assert_int_equal(ret, OS_INVALID);
-}
-
 void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **state)
 {
     int ret = 0;
@@ -3631,7 +3608,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_status_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_last_id_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_limit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_fail, test_setup, test_teardown),
         /* wdb_parse_global_get_backup */
