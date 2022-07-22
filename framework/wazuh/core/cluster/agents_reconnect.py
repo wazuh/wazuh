@@ -465,7 +465,7 @@ class AgentsReconnect:
 
         if not predict_info['enough_agents']:
             self.logger.warning('Not all agents that should reconnect support that feature (introduced in v4.3.0). '
-                                f'The cluster could remain unbalanced: {self.env_status}')
+                                'The cluster could remain unbalanced.')
             self.reset_counters(hard_reset=False)
 
         try:
