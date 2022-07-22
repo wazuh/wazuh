@@ -2843,9 +2843,47 @@
         "description": "[Functionality] Special characters escaping (\\$ \\( \\) \\\\ \\| \\<)",
         "batch_test": [
             {
+                "description": "Using the '\\p+' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__known_issue": "Bad end_match. Link github issue ####.",
+                "pattern": "\\p+",
+                "log": "$()|<",
+                "end_match": "<",
+                "captured_groups": []
+            },
+            {
+                "description": "Using the '\\p+' token to test matching all the special characters with capture group.",
+                "ignore_result": true,
+                "__known_issue": "Bad end_match. Link github issue ####.",
+                "pattern": "(\\p+)",
+                "log": "$()|<",
+                "end_match": "<",
+                "captured_groups": [
+                    "$()|<"
+                ]
+            },
+            {
+                "description": "Using all the tokens conditionally, except '\\p' and '\\.', to test matching all the special characters.",
+                "ignore_result": true,
+                "__known_issue": "Bad end_match. Link github issue ####.",
+                "pattern": "\\w*\\d*\\s*\\t*\\W*\\D*\\S*",
+                "log": "$()|<",
+                "end_match": "<",
+                "captured_groups": []
+            },
+            {
+                "description": "Using all the tokens conditionally, except '\\p' and '\\.', to test matching all the special characters.",
+                "ignore_result": true,
+                "__known_issue": "Bad end_match. Link github issue ####.",
+                "pattern": "\\w+|\\d+|\\s+|\\t+|\\W+|\\D+|\\S+|\\p+",
+                "log": "$()|<",
+                "end_match": "<",
+                "captured_groups": []
+            },
+            {
                 "description": "Using the '\\p+' token to test matching all the special characters with capture group. Note: the character '\\' is not captured by the token '\\p'.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "(\\p+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -2872,7 +2910,7 @@
             {
                 "description": "Using the '\\p*' token to test matching all the special characters w/o capture group. Note: the character '\\' is not captured by the token '\\p'.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\p*",
                 "log": "Special characters are $()|<\\",
                 "end_match": "<\\",
@@ -2897,7 +2935,7 @@
             {
                 "description": "Using the '\\.*' token to test matching the character '\\' with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Backslash character is (\\.*)",
                 "log": "Backslash character is \\",
                 "end_match": "\\",
@@ -2908,7 +2946,7 @@
             {
                 "description": "Using the '\\.*' token to test matching the character '\\' w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Backslash character is \\.*",
                 "log": "Backslash character is \\",
                 "end_match": "\\",
@@ -2917,7 +2955,7 @@
             {
                 "description": "Using the '\\t+' token to test NOT matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\t+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -2928,7 +2966,7 @@
             {
                 "description": "Using the '\\t+' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\t+",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -2953,7 +2991,7 @@
             {
                 "description": "Using the '\\d+' token to test NOT matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\d+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -2964,7 +3002,7 @@
             {
                 "description": "Using the '\\d+' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\d+",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -2973,7 +3011,7 @@
             {
                 "description": "Using the '\\d*' token to test NOT matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\d*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -2984,7 +3022,7 @@
             {
                 "description": "Using the '\\d*' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\d*",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -2993,7 +3031,7 @@
             {
                 "description": "Using the '\\D+' token to test matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\D+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3004,7 +3042,7 @@
             {
                 "description": "Using the '\\D+' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\D+",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3013,7 +3051,7 @@
             {
                 "description": "Using the '\\D*' token to test matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\D*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3024,7 +3062,7 @@
             {
                 "description": "Using the '\\D*' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\D*",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3033,7 +3071,7 @@
             {
                 "description": "Using the '\\w+' token to test NOT matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\w+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -3044,7 +3082,7 @@
             {
                 "description": "Using the '\\w+' token to test NOT matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\w+",
                 "log": "Special characters are $()|<\\",
                 "end_match": " $()|<\\",
@@ -3069,7 +3107,7 @@
             {
                 "description": "Using the '\\W+' token to test matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\W+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3080,7 +3118,7 @@
             {
                 "description": "Using the '\\W+' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\W+",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3089,7 +3127,7 @@
             {
                 "description": "Using the '\\W*' token to test matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\W*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3100,7 +3138,7 @@
             {
                 "description": "Using the '\\W*' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\W*",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3109,7 +3147,7 @@
             {
                 "description": "Using the '\\S+' token to test matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\S+)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3120,7 +3158,7 @@
             {
                 "description": "Using the '\\S+' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\S+",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3129,7 +3167,7 @@
             {
                 "description": "Using the '\\S*' token to test matching all the special characters with capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are (\\S*)",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3140,7 +3178,7 @@
             {
                 "description": "Using the '\\S*' token to test matching all the special characters w/o capture group.",
                 "ignore_result": true,
-                "__knownIssue": "Link github issue ####",
+                "__known_issue": "Link github issue ####",
                 "pattern": "Special characters are \\S*",
                 "log": "Special characters are $()|<\\",
                 "end_match": "\\",
@@ -3987,7 +4025,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "When there are 4 more optional tokens than characters to match, the regex doesn't match.",
+                "__known_issue:": "When there are 4 more optional tokens than characters to match, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "\\w*\\w*\\w*\\w*\\w*\\w*",
                 "log": "xy",
@@ -3996,7 +4034,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with extra optional tokens inside a capture group, it does match.",
                 "pattern": "(\\w*\\d*\\w*\\d*\\w*\\d*)",
                 "log": "xy",
                 "end_match": "y",
@@ -4006,7 +4044,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with extra optional tokens inside a capture group, it does match.",
                 "pattern": "^(\\w*\\d*\\w*\\d*\\w*\\d*)",
                 "log": "xy",
                 "end_match": "y",
@@ -4016,7 +4054,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with extra optional tokens inside a capture group, it does match.",
                 "pattern": "(\\w*\\d*\\w*\\d*\\w*\\d*)$",
                 "log": "xy",
                 "end_match": "y",
@@ -4026,7 +4064,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
                 "pattern": "(\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*)",
                 "log": "xy",
                 "end_match": "y",
@@ -4036,7 +4074,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
                 "pattern": "^(\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*)",
                 "log": "xy",
                 "end_match": "y",
@@ -4046,7 +4084,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with 10 extra optional tokens inside a capture group, it does match.",
                 "pattern": "(\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*\\w*)$",
                 "log": "xy",
                 "end_match": "y",
@@ -4056,7 +4094,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
                 "ignore_result": true,
                 "pattern": "\\w*\\p*\\d*\\w*",
                 "log": "xy",
@@ -4065,7 +4103,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
                 "ignore_result": true,
                 "pattern": "^\\w*\\p*\\d*\\w*",
                 "log": "xy",
@@ -4074,7 +4112,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
                 "ignore_result": true,
                 "pattern": "\\w*\\p*\\d*\\w*$",
                 "log": "xy",
@@ -4083,7 +4121,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 3 extra optional tokens inside a capture group, it does match.",
+                "__known_issue:": "In this case, with 3 extra optional tokens inside a capture group, it does match.",
                 "pattern": "(\\w*\\p*\\d*\\w*)",
                 "log": "xy",
                 "end_match": "y",
@@ -4093,7 +4131,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
                 "ignore_result": true,
                 "pattern": "\\w*\\d*\\w*\\p*",
                 "log": "xy",
@@ -4102,7 +4140,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 2 extra optional tokens, it does match.",
+                "__known_issue:": "In this case, with 2 extra optional tokens, it does match.",
                 "pattern": "\\w*\\d*\\w*",
                 "log": "xy",
                 "end_match": "y",
@@ -4110,7 +4148,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 2 extra optional tokens, it does match.",
+                "__known_issue:": "In this case, with 2 extra optional tokens, it does match.",
                 "pattern": "^\\w*\\d*\\w*",
                 "log": "xy",
                 "end_match": "y",
@@ -4118,7 +4156,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 2 extra optional tokens, it does match.",
+                "__known_issue:": "In this case, with 2 extra optional tokens, it does match.",
                 "pattern": "\\w*\\d*\\w*$",
                 "log": "xy",
                 "end_match": "y",
@@ -4126,7 +4164,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
                 "ignore_result": true,
                 "pattern": "\\w*\\d*\\p*\\w*",
                 "log": "xy",
@@ -4135,7 +4173,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case, with only 3 extra optional tokens, it does match.",
+                "__known_issue:": "In this case, with only 3 extra optional tokens, it does match.",
                 "pattern": "\\w*\\w*\\w*\\w*\\w*",
                 "log": "xy",
                 "end_match": "y",
@@ -4143,7 +4181,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case there are 2 exceding optional tokens, the regex doesn't match.",
+                "__known_issue:": "In this case there are 2 exceding optional tokens, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz\\d*\\w*",
                 "log": "xyz",
@@ -4152,7 +4190,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
+                "__known_issue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz(\\d*\\w*)",
                 "log": "xyz",
@@ -4163,7 +4201,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case there is 1 exceding optional token inside a capture groupe, the regex does match but the expected group is not captured.",
+                "__known_issue:": "In this case there is 1 exceding optional token inside a capture groupe, the regex does match but the expected group is not captured.",
                 "ignore_result": true,
                 "pattern": "xyz(\\w*)",
                 "log": "xyz",
@@ -4174,7 +4212,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
+                "__known_issue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
                 "pattern": "xyz(\\w*)",
                 "log": "xyz ",
                 "end_match": "z ",
@@ -4184,7 +4222,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
+                "__known_issue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz\\w*(\\w*)",
                 "log": "xyz",
@@ -4195,7 +4233,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case the regex does match.",
+                "__known_issue:": "In this case the regex does match.",
                 "pattern": "(xyz\\w*\\w*)",
                 "log": "xyz",
                 "end_match": "z",
@@ -4205,7 +4243,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__knownIssue:": "In this case the regex does match.",
+                "__known_issue:": "In this case the regex does match.",
                 "pattern": "\\d+\\w*\\w*",
                 "log": "123",
                 "end_match": "3",
@@ -4420,7 +4458,7 @@
             },
             {
                 "description": "Regex should match but does not.",
-                "__knownIssue": "Only 4 'recoverage' levels are allowed.",
+                "__known_issue": "Only 4 'recoverage' levels are allowed.",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5)",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
@@ -4514,8 +4552,71 @@
                 ]
             },
             {
+                "description": "Regex should match but does not.",
+                "ignore_result": true,
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2 x3 x4 x5x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Regex should match but does not.",
+                "ignore_result": true,
+                "pattern": "(\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6)",
+                "log": "z1 x2 x3 x4 x5x5 x6",
+                "end_match": "6",
+                "captured_groups": [
+                    "z1 x2 x3 x4 x5x5 x6"
+                ]
+            },
+            {
+                "description": "Regex should match but does not.",
+                "ignore_result": true,
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)",
+                "log": "z1 x2 x3 x4 x5x5 x6",
+                "end_match": "6",
+                "captured_groups": [
+                    "z1",
+                    "x2",
+                    "x3",
+                    "x4",
+                    "x5x5",
+                    "x6"
+                ]
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2 x3 x4x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "(\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6)",
+                "log": "z1 x2 x3 x4x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": [
+                    "z1 x2 x3 x4x4 x5 x6"
+                ]
+            },
+            {
+                "description": "This case matches.",
+                "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)",
+                "log": "z1 x2 x3 x4x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": [
+                    "z1",
+                    "x2",
+                    "x3",
+                    "x4x4",
+                    "x5",
+                    "x6"
+                ]
+            },
+            {
                 "description": "This case has 3 (non-optional) tokens but it is capturing only 2 characters.",
-                "__knownIssue": "Capture groups could be either '04T15' or '4T15', depending on the (unpredictable) behavior of the greediness.",
+                "__known_issue": "Capture groups could be either '04T15' or '4T15', depending on the (unpredictable) behavior of the greediness.",
                 "ignore_result": true,
                 "pattern": "(\\d+\\w\\d+)",
                 "log": "04T15",
@@ -4554,7 +4655,7 @@
             },
             {
                 "description": "This case matches.",
-                "__knownIssue": "Wrong end_match value.",
+                "__known_issue": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "\\d+\\w\\d+",
                 "log": "04T15",
@@ -4563,7 +4664,7 @@
             },
             {
                 "description": "This case matches.",
-                "__knownIssue": "Wrong end_match value.",
+                "__known_issue": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "(\\d+\\D\\d+)",
                 "log": "04T15",
@@ -4599,12 +4700,174 @@
             },
             {
                 "description": "This case matches.",
-                "__knownIssue": "Wrong end_match value.",
+                "__known_issue": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "\\d+\\D\\d+",
                 "log": "04T15",
                 "end_match": "5",
                 "captured_groups": []
+            },
+            {
+                "description": "Empty regex should not match but it does.",
+                "ignore_result": true,
+                "pattern": "",
+                "log": "Test",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "This case does not match, which is correct.",
+                "pattern": "()",
+                "log": "Test",
+                "end_match": null,
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "ignore_result": true,
+                "pattern": "\\.+",
+                "log": "123 test",
+                "end_match": "t",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "ignore_result": true,
+                "pattern": "\\.+$",
+                "log": "123 test",
+                "end_match": "t",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "ignore_result": true,
+                "pattern": "^\\.+",
+                "log": "123 test",
+                "end_match": "t",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "ignore_result": true,
+                "pattern": "^\\.+$",
+                "log": "123 test",
+                "end_match": "t",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "ignore_result": true,
+                "pattern": "^(\\.+)$",
+                "log": "123 test",
+                "end_match": "t",
+                "captured_groups": [
+                    "123 test"
+                ]
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "ignore_result": true,
+                "pattern": "\\.+",
+                "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "ignore_result": true,
+                "pattern": "^\\.+$",
+                "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "ignore_result": true,
+                "pattern": "\\.+$",
+                "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "ignore_result": true,
+                "pattern": "^\\.+",
+                "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": []
+            },
+            {
+                "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "ignore_result": true,
+                "pattern": "^(\\.+)$",
+                "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
+                "end_match": "~",
+                "captured_groups": [
+                    "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Complementary cases.",
+        "batch_test": [
+            {
+                "pattern": "\\(\\)",
+                "log": "()",
+                "end_match": ")",
+                "captured_groups": []
+            },
+            {
+                "pattern": "(\\(\\))",
+                "log": "()",
+                "end_match": ")",
+                "captured_groups": [
+                    "()"
+                ]
+            },
+            {
+                "pattern": "\\\\",
+                "log": "\\",
+                "end_match": "\\",
+                "captured_groups": []
+            },
+            {
+                "pattern": "(\\\\)",
+                "log": "\\",
+                "end_match": "\\",
+                "captured_groups": [
+                    "\\"
+                ]
+            },
+            {
+                "pattern": "\\(\\\\\\)",
+                "log": "(\\)",
+                "end_match": ")",
+                "captured_groups": []
+            },
+            {
+                "pattern": "(\\(\\\\\\))",
+                "log": "(\\)",
+                "end_match": ")",
+                "captured_groups": [
+                    "(\\)"
+                ]
+            },
+            {
+                "pattern": "123 \\W*",
+                "log": "123 test",
+                "end_match": " test",
+                "captured_groups": []
+            },
+            {
+                "pattern": "123 (\\W*)",
+                "log": "123 test",
+                "end_match": " test",
+                "captured_groups": [
+                    ""
+                ]
             }
         ]
     }
