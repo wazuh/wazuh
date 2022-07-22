@@ -1215,7 +1215,7 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
 
 
-@patch('wazuh.core.stats.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
@@ -1226,7 +1226,7 @@ def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
     assert result == {"test": 0}, 'Result message is not as expected.'
 
 
-@patch('wazuh.core.stats.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
