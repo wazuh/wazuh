@@ -260,7 +260,7 @@ int check_alert_trigger() {
 }
 
 int check_deletion_trigger() {
-    if (mond.delete_agents.enabled && mond_time_control.delete_counter >= mond.delete_agents.interval ) {
+    if (mond.delete_agents.enabled && mond_time_control.delete_counter >= mond.delete_agents.interval) {
         mond_time_control.delete_counter = 0;
         return 1;
     }

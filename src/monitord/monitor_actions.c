@@ -116,90 +116,88 @@ void monitor_agents_alert(){
     }
 }
 
-void monitor_agents_deletion(){
+void monitor_agents_deletion(void) {
     int *agents_array[5] = {0};
 
-    if(mond.delete_agents.status_list){
-        for(int i = 0; mond.delete_agents.status_list[i] != 0; ++i) {
+    if (mond.delete_agents.status_list) {
+        for (unsigned int i = 0; mond.delete_agents.status_list[i] != 0; i++) {
             agents_array[i] = wdb_get_agents_by_connection_status(mond.delete_agents.status_list[i], &sock);
         }
     }
 
-    for(int i = 0; agents_array[i] != 0; ++i){
-        if (agents_array[i]) {
-            for (int j = 0; agents_array[i][j] != -1; i++) {
-                const int agent_id = agents_array[i][j];
+    for (unsigned int i = 0; agents_array[i] != 0; i++) {
+        for (unsigned int j = 0; agents_array[i][j] != -1; j++) {
+            const int agent_id = agents_array[i][j];
+            cJSON *j_agent_info = wdb_get_agent_info(agent_id, &sock);
 
-                cJSON *j_agent_info = wdb_get_agent_info(agent_id, &sock);
+            if (j_agent_info) {
 
-                if (j_agent_info) {
-                    cJSON *j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+                cJSON *j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
 
-                    if(cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL){
-                        int should_delete_agent = 0;
+                if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL) {
 
-                        if(strcmp(j_agent_status->valuestring, "never_connected") == 0){
-                            cJSON *j_agent_reg_time = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+                    int should_delete_agent = 0;
 
-                            if(cJSON_IsNumber(j_agent_reg_time)){
-                                should_delete_agent = difftime(time(0), j_agent_reg_time->valueint) < mond.delete_agents.older_than;
-                            }
+                    if (strcmp(j_agent_status->valuestring, "never_connected") == 0) {
+                        cJSON *j_agent_reg_time = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+
+                        if(cJSON_IsNumber(j_agent_reg_time)) {
+                            should_delete_agent = (long int) difftime(time(0), j_agent_reg_time->valueint) > mond.delete_agents.older_than ? 1 : 0;
                         }
-                        else{
-                            cJSON *j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
+                    }
+                    else {
+                        cJSON *j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
 
-                            if(cJSON_IsNumber(j_agent_lastkeepalive)){
-                                should_delete_agent = difftime(time(0), j_agent_lastkeepalive->valueint) < mond.delete_agents.older_than;
-                            }
+                        if (cJSON_IsNumber(j_agent_lastkeepalive)) {
+                            should_delete_agent = (long int) difftime(time(0), j_agent_lastkeepalive->valueint) > mond.delete_agents.older_than ? 1 : 0;
                         }
+                    }
+                    if (should_delete_agent) {
+                        int os_matches = 1;
 
-                        if(should_delete_agent) {
-                            int os_matches = 1;
+                        if (mond.delete_agents.os_name_list) {
+                            os_matches = 0;
+                            cJSON *j_agent_os_name = cJSON_GetObjectItem(j_agent_info->child, "os_name");
 
-                            if(mond.delete_agents.os_name_list) {
-                                os_matches = 0;
-                                cJSON *j_agent_os_name = cJSON_GetObjectItem(j_agent_info->child, "os_name");
-
-                                if(cJSON_IsString(j_agent_os_name) && j_agent_os_name != 0){
-                                    for(int os_indx = 0;
-                                            mond.delete_agents.os_name_list[os_indx] != 0;
-                                            ++os_indx) {
-                                        if(strcmp(mond.delete_agents.os_name_list[os_indx], j_agent_os_name->valuestring)){
-                                            os_matches = 1;
-                                            break;
-                                        }
+                            if (cJSON_IsString(j_agent_os_name) && j_agent_os_name != 0) {
+                                for (int os_indx = 0;
+                                        mond.delete_agents.os_name_list[os_indx] != 0;
+                                        ++os_indx) {
+                                    if (strcmp(mond.delete_agents.os_name_list[os_indx], j_agent_os_name->valuestring)) {
+                                        os_matches = 1;
+                                        break;
                                     }
                                 }
                             }
+                        }
 
-                            if(os_matches && !delete_old_agent(agent_id)){
-                                cJSON *j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
-                                cJSON *j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
+                        if (os_matches && (0 == delete_old_agent(agent_id))) {
+                            cJSON *j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
+                            cJSON *j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
 
-                                if(cJSON_IsString(j_agent_name) && j_agent_name->valuestring !=0 &&
-                                        cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring !=0){
-                                    char *agent_name_ip = NULL;
+                            if (cJSON_IsString(j_agent_name) && j_agent_name->valuestring !=0 &&
+                                    cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring !=0) {
+                                char *agent_name_ip = NULL;
 
-                                    os_strdup(j_agent_name->valuestring, agent_name_ip);
-                                    wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
-                                    monitor_send_deletion_msg(agent_name_ip);
-                                    os_free(agent_name_ip);
-                                }
+                                os_strdup(j_agent_name->valuestring, agent_name_ip);
+                                wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
+                                monitor_send_deletion_msg(agent_name_ip);
+                                os_free(agent_name_ip);
                             }
                         }
-                        cJSON_Delete(j_agent_info);
                     }
-                }
-                else {
-                    char str_agent_id[12];
-                    mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agent_id);
-                    snprintf(str_agent_id, 12, "%d", agent_id);
-                    OSHash_Delete(agents_to_alert_hash, str_agent_id);
+                    cJSON_Delete(j_agent_info);
                 }
             }
-            os_free(agents_array[i]);
-            agents_array[i] = 0;
+            else {
+                char str_agent_id[12];
+                mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agent_id);
+                snprintf(str_agent_id, 12, "%d", agent_id);
+                OSHash_Delete(agents_to_alert_hash, str_agent_id);
+            }
         }
+        os_free(agents_array[i]);
+        agents_array[i] = 0;
     }
 }
 
@@ -234,7 +232,7 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
 int delete_old_agent(int agent_id) {
     int val = -1;
     char agent_id_str[16] = {0};
-    if(snprintf(agent_id_str, 16, "%d", agent_id)) {
+    if(snprintf(agent_id_str, 16, "%03d", agent_id)) {
         int sock;
         if (sock = auth_connect(), sock < 0) {
             mdebug1("Monitord could not connect to to Authd socket. Is Authd running?");
