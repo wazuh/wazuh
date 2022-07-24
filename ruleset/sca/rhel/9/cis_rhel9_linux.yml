@@ -47,7 +47,7 @@ checks:
   - id: 28000
     title: "Ensure mounting of cramfs filesystems is disabled."
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
     remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with a line that reads install cramfs /bin/false and a line the reads blacklist cramfs. Example: # printf "install cramfs /bin/false blacklist cramfs " >> /etc/modprobe.d/cramfs.conf Run the following command to unload the cramfs module: # modprobe -r cramfs '
     compliance:
       - cis: ["1.1.1.1"]
@@ -104,11 +104,11 @@ checks:
   - id: 28003
     title: "Ensure /tmp is a separate partition."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
-    rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
+    rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
     remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options:  tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment. <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0"
     compliance:
       - cis: ["1.1.2.1"]
-      - cis_csc: ["9.1"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -124,7 +124,7 @@ checks:
   - id: 28004
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
     compliance:
       - cis: ["1.1.2.2"]
@@ -141,7 +141,7 @@ checks:
     title: "Ensure noexec option set on /tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
       - cis: ["1.1.2.3"]
       - cis_csc: ["3.3", "14.6"]
@@ -157,7 +157,7 @@ checks:
     title: "Ensure nosuid option set on /tmp partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp "
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
       - cis: ["1.1.2.4"]
       - cis_csc: ["3.3", "14.6"]
@@ -176,7 +176,7 @@ checks:
   - id: 28007
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
-    rationale: "The reasoning for mounting /var on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.3.1"]
@@ -246,7 +246,7 @@ checks:
   - id: 28011
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary file residing in /var/tmp is to be preserved between reboots."
-    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.4.1"]
@@ -265,7 +265,7 @@ checks:
     title: "Ensure noexec option set on /var/tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp "
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
     compliance:
       - cis: ["1.1.4.2"]
       - cis_csc: ["3.3", "14.6"]
@@ -296,7 +296,7 @@ checks:
   - id: 28014
     title: "Ensure nodev option set on /var/tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
+    rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. Example:  <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0  Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp"
     compliance:
       - cis: ["1.1.4.4"]
@@ -316,7 +316,7 @@ checks:
   - id: 28015
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data ."
-    rationale: "The reasoning for mounting /var/log on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var/log on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.5.1"]
@@ -386,7 +386,7 @@ checks:
   - id: 28019
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
-    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.6.1"]
@@ -454,9 +454,9 @@ checks:
 
   # 1.1.7.1 Ensure separate partition exists for /home (Automated)
   - id: 28023
-    title: "Ensure separate partition exists for /var/log/audit."
+    title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
-    rationale: "The reasoning for mounting /home on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    rationale: "The reasoning for mounting /home on a separate partition is as follow. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection from exploitation: An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.7.1"]
@@ -507,7 +507,7 @@ checks:
     title: "Ensure usrquota option set on /home partition."
     description: "The usrquota mount option allows for the filesystem to have disk quotas configured."
     rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
-    remediation: "Edit the /etc/fstab file and add usrquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.user Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on "
+    remediation: "Edit the /etc/fstab file and add usrquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.user Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on."
     compliance:
       - cis: ["1.1.7.4"]
       - cis_csc: ["3.3", "14.6"]
@@ -517,13 +517,14 @@ checks:
     condition: all
     rules:
       - "c:findmnt --kernel /home -> r:usrquota"
+      - "not c:quotaon -p /home -> r:no quota enabled"
 
   # 1.1.7.5 Ensure grpquota option set on /home partition (Automated)
   - id: 28027
     title: "Ensure grpquota option set on /home partition."
     description: "The grpquota mount option allows for the filesystem to have disk quotas configured."
     rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
-    remediation: "Edit the /etc/fstab file and add grpquota to the fourth field (mounting options) for the /home partition. Example:  <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.group Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on "
+    remediation: "Edit the /etc/fstab file and add grpquota to the fourth field (mounting options) for the /home partition. Example:  <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.group Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on."
     compliance:
       - cis: ["1.1.7.5"]
       - cis_csc: ["3.3", "14.6"]
@@ -607,7 +608,7 @@ checks:
     title: "Disable USB Storage."
     description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf  Example: # vim /etc/modprobe.d/usb-storage.conf and add the following line: install usb-storage /bin/true. Run the following command to unload the usb-storage module: # rmmod usb-storage"
+    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf. Example: # vim /etc/modprobe.d/usb-storage.conf and add the following line: install usb-storage /bin/true. Run the following command to unload the usb-storage module: # rmmod usb-storage."
     compliance:
       - cis: ["1.1.10"]
       - cis_csc: ["10.3", "13.7"]
@@ -672,7 +673,7 @@ checks:
 
   # 1.3.2 Ensure filesystem integrity is regularly checked (Automated)
   - id: 28035
-    title: "Ensure filesystem integrity is regularly checked (A)"
+    title: "Ensure filesystem integrity is regularly checked (A)."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion. "
     remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
@@ -692,15 +693,16 @@ checks:
       - "c:systemctl status aidecheck.service -> r:active"
 
   - id: 28036
-    title: "Ensure filesystem integrity is regularly checked (B)"
+    title: "Ensure filesystem integrity is regularly checked (B)."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
     remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
     compliance:
       - cis: ["1.3.2"]
-      - cis_csc: ["3.5"]
-      - pci_dss: ["11.5"]
-      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cis_csc: ["3.14", "14.9"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
@@ -774,7 +776,7 @@ checks:
     title: "Ensure address space layout randomization (ASLR) is enabled."
     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
-    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " kernel.randomize_va_space = 2 " >> /etc/sysctl.d/60-kernel_sysctl.conf Run the following command to set the active kernel parameter:# sysctl -w kernel.randomize_va_space=2 '
+    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " kernel.randomize_va_space = 2 " >> /etc/sysctl.d/60-kernel_sysctl.conf Run the following command to set the active kernel parameter:# sysctl -w kernel.randomize_va_space=2.'
     compliance:
       - cis: ["1.5.3"]
       - cis_csc: ["8.3", "10.5"]
@@ -829,6 +831,7 @@ checks:
     condition: none
     rules:
       - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
 
   # 1.6.1.3 Ensure SELinux policy is configured (Automated)
   - id: 28043
@@ -850,9 +853,9 @@ checks:
   # 1.6.1.4 Ensure the SELinux mode is not disabled (Automated)
   - id: 28044
     title: "Ensure the SELinux mode is not disabled."
-    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t"
+    description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
-    remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive "
+    remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive."
     compliance:
       - cis: ["1.6.1.4"]
       - cis_csc: ["3.3", "14.6"]
@@ -868,9 +871,9 @@ checks:
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing (Automated)
   - id: 28045
-    title: "Ensure the SELinux state is enforcing."
-    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t "
-    rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
+    title: "Ensure the SELinux mode is enforcing."
+    description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
+    rationale: "Running SELinux in disabled mode the system not only avoids enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
     remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing. "
     compliance:
       - cis: ["1.6.1.5"]
@@ -892,8 +895,8 @@ checks:
   # 1.6.1.6 Ensure no unconfined services exist (Automated)
   - id: 28046
     title: "Ensure no unconfined services exist."
-    description: "Unconfined processes run in unconfined domains"
-    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them"
+    description: "Unconfined processes run in unconfined domains."
+    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them."
     remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
     compliance:
       - cis: ["1.6.1.6"]
@@ -954,14 +957,14 @@ checks:
       - tsc: ["CC6.4"]
     condition: none
     rules:
-      - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s'
+      - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s|rhel'
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
   - id: 28050
     title: "Ensure local login warning banner is configured properly."
-    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
-    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
       - cis: ["1.7.2"]
       - cis_csc: ["4.1", "5.1"]
@@ -969,7 +972,7 @@ checks:
       - tsc: ["CC6.4"]
     condition: none
     rules:
-      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s'
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|rhel'
 
   # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
   - id: 28051
@@ -984,7 +987,7 @@ checks:
       - tsc: ["CC6.4"]
     condition: none
     rules:
-      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|rhel'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
   - id: 28052
@@ -1052,7 +1055,7 @@ checks:
     title: "Ensure GNOME Display Manager is removed."
     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
     rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
-    remediation: "Run the following command to remove the gdm package # dnf remove gdm.'"
+    remediation: "Run the following command to remove the gdm package # dnf remove gdm."
     compliance:
       - cis: ["1.8.1"]
       - cis_csc: ["2.6", "4.8"]
@@ -1090,8 +1093,8 @@ checks:
   - id: 28057
     title: "Ensure last logged in user display is disabled."
     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
-    rationale: "Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Notes: - If a graphical login is not required, it should be removed to reduce the attack surface of the system. - If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the last logged on user. "
-    remediation: "Edit or create the file /etc/dconf/profile/gdm and add the following: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults. Edit or create the file /etc/dconf/db/gdm.d/ and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)  [org/gnome/login-screen] # Do not show the user list disable-user-list=true Run the following command to update the system databases: # dconf update "
+    rationale: "Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Notes: - If a graphical login is not required, it should be removed to reduce the attack surface of the system. - If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the last logged on user."
+    remediation: "Edit or create the file /etc/dconf/profile/gdm and add the following: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults. Edit or create the file /etc/dconf/db/gdm.d/ and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)  [org/gnome/login-screen] # Do not show the user list disable-user-list=true Run the following command to update the system databases: # dconf update."
     compliance:
       - cis: ["1.8.3"]
       - cis_csc: ["4.1", "5.1"]
@@ -1111,7 +1114,7 @@ checks:
     title: "Ensure XDMCP is not enabled."
     description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
     rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
-    remediation: "Edit the file /etc/gdm/custom.conf and remove the line Enable=true. "
+    remediation: "Edit the file /etc/gdm/custom.conf and remove the line Enable=true."
     compliance:
       - cis: ["1.8.4"]
       - cis_csc: ["4.8", "9.2"]
@@ -1119,16 +1122,16 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "https://help.gnome.org/admin/gdm/2.32/configuration.html.en"
-    condition: all
+    condition: any
     rules:
-      - "f:/etc/gdm/custom.conf"
-      - 'c:egrep -Eis "\s*Enable\s*=\s*true" /etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
+      - "not f:/etc/gdm/custom.conf"
+      - 'not c:egrep -Eis "\s*Enable\s*=\s*true" /etc/gdm/custom.conf -> r:Enable'
 
   # 1.8.5 Ensure automatic mounting of removable media is disabled (Automated)
   - id: 28059
     title: "Ensure automatic mounting of removable media is disabled."
     description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves. "
+    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
     remediation: "Ensure that automatic mounting of media is disabled for all GNOME users: # cat << EOF >> /etc/dconf/db/local.d/00-media-automount [org/gnome/desktop/media-handling] automount=false automount-open=false EOF. Apply the changes with: # dconf update."
     compliance:
       - cis: ["1.8.5"]
@@ -1146,7 +1149,7 @@ checks:
     title: "Ensure updates, patches, and additional security software are installed."
     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available security updates: # dnf update."
+    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available updates: # dnf update."
     compliance:
       - cis: ["1.9"]
       - cis_csc: ["3.4", "7.3", "7.4"]
@@ -1158,7 +1161,7 @@ checks:
       - tsc: ["A1.2"]
     condition: all
     rules:
-      - 'not c:sh -c "dnf check-update --security | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
+      - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
 
   # 1.10 Ensure system-wide crypto policy is not legacy (Automated)
   - id: 28061
@@ -1189,7 +1192,7 @@ checks:
   # 2.1.1 Ensure time synchronization is in use (Automated)
   - id: 28062
     title: "Ensure time synchronization is in use."
-    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: If another method for time synchronization is being used, this section may be skipped. "
+    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: If another method for time synchronization is being used, this section may be skipped."
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
     remediation: "Run the following command to install chrony: # dnf install chrony"
     compliance:
@@ -1217,7 +1220,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/chrony.conf"
-      - "f:/etc/chrony.conf -> r:server"
+      - "f:/etc/chrony.conf -> r:server|pool"
       - 'f:/etc/sysconfig/chronyd -> r:OPTIONS\.*-u chrony'
 
   ###############################################
@@ -1228,7 +1231,7 @@ checks:
   - id: 28064
     title: "Ensure xinetd is not installed."
     description: "The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
-    rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled. Note: If an xinetd service or services are required, ensure that any xinetd service not required is stopped and disabled. "
+    rationale: "If there are no xinetd services required, it is recommended that the package be removed to reduce the attack surface are of the system. Note: If an xinetd service or services are required, ensure that any xinetd service not required is stopped and disabled."
     remediation: "Run the following command to remove xinetd: # dnf remove xinetd"
     compliance:
       - cis: ["2.2.1"]
@@ -1260,13 +1263,13 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:rpm -q xorg-x11-server-common -> r:^package xinetd is not installed"
+      - "c:rpm -q xorg-x11-server-common -> r:^package xorg-x11-server-common is not installed"
 
   # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 28066
     title: "Ensure Avahi Server is not installed."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
-    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface."
+    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
     remediation: "Run the following commands to stop, mask and remove avahi-autoipd and avahi:  # systemctl stop avahi-daemon.socket avahi-daemon.service # dnf remove avahi-autoipd avahi"
     compliance:
       - cis: ["2.2.3"]
@@ -1281,10 +1284,10 @@ checks:
 
   # 2.2.4 Ensure CUPS is not installed (Automated)
   - id: 28067
-    title: "Ensure CUPS is not isntalled."
+    title: "Ensure CUPS is not installed."
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
-    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface. Note: Removing CUPS will prevent printing from the system"
-    remediation: "Run the following command to remove cups: # dnf remove cups"
+    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface. Note: Removing CUPS will prevent printing from the system."
+    remediation: "Run the following command to remove cups: # dnf remove cups."
     compliance:
       - cis: ["2.2.4"]
       - cis_csc: ["4.8", "9.2"]
@@ -1319,7 +1322,7 @@ checks:
   - id: 28069
     title: "Ensure DNS Server is not installed."
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
-    rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the service be disabled to reduce the potential attack surface."
+    rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove bind: # dnf remove bind"
     compliance:
       - cis: ["2.2.6"]
@@ -1335,7 +1338,7 @@ checks:
   - id: 28070
     title: "Ensure FTP Server is not installed."
     description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
-    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the service be disabled to reduce the potential attack surface."
+    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove ftp: # dnf remove ftp"
     compliance:
       - cis: ["2.2.7"]
@@ -1400,7 +1403,7 @@ checks:
   - id: 28074
     title: "Ensure IMAP and POP3 server is not installed."
     description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
-    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface. Note: Several IMAP/POP3 servers exist and can use other service names. These should also be audited and the packages removed if not required."
+    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface. Note: Several IMAP/POP3 servers exist and can use other service names. These should also be audited and the packages removed if not required."
     remediation: "Run the following command to remove dovecot and cyrus-imapd: # dnf remove dovecot cyrus-imapd"
     compliance:
       - cis: ["2.2.11"]
@@ -1415,9 +1418,9 @@ checks:
 
   # 2.2.12 Ensure Samba is not installed (Automated)
   - id: 28075
-    title: "Ensure Samba is not enabled."
-    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
-    rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be disabled to reduce the potential attack surface."
+    title: "Ensure Samba is not installed."
+    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Server Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
+    rationale: "If there is no need to mount directories and file systems to Windows systems, then this package can be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove samba: # dnf remove samba."
     compliance:
       - cis: ["2.2.12"]
@@ -1465,7 +1468,7 @@ checks:
   - id: 28078
     title: "Ensure NIS server is not installed."
     description: "The ypserv package provides the Network Information Service (NIS). This service, formally known as Yellow Pages, is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
-    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the ypserv package be removed, and if required a more secure services be used."
     remediation: "Run the following command to remove ypserv: # dnf remove ypserv"
     compliance:
       - cis: ["2.2.15"]
@@ -1501,7 +1504,7 @@ checks:
     title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Notes: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
-    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only. Run the following command to restart postfix:: # systemctl restart postfix"
+    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only. Run the following command to restart postfix: # systemctl restart postfix."
     compliance:
       - cis: ["2.2.17"]
       - cis_csc: ["4.8", "9.2"]
@@ -1531,7 +1534,7 @@ checks:
 
   # 2.2.19 Ensure rpcbind is not installed or the rpcbind services are masked (Automated)
   - id: 28082
-    title: "Ensure RPC is not enabled."
+    title: "Ensure rpcbind is not installed or the rpcbind services are masked."
     description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service. Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening."
     rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
     remediation: "Run the following command to remove rpcbind: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind and rpcbind.socket services: # systemctl --now mask rpcbind # systemctl --now mask rpcbind.socket"
@@ -1552,7 +1555,7 @@ checks:
     title: "Ensure rsync is not installed or the rsyncd service is masked."
     description: "The rsyncd service can be used to synchronize files between systems over network links."
     rationale: "Unless required, the rsync package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked."
-    remediation: "Run the following command to remove the rsync package: # dnf remove rsync OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd"
+    remediation: "Run the following command to remove the rsync package: # dnf remove rsync OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd."
     compliance:
       - cis: ["2.2.20"]
       - cis_csc: ["4.8", "9.2"]
@@ -1576,7 +1579,7 @@ checks:
     title: "Ensure NIS Client is not installed."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Run the following command to uninstall ypbind: # dnf remove ypbind "
+    remediation: "Run the following command to remove the ypbind package: # dnf remove ypbind."
     compliance:
       - cis: ["2.3.1"]
       - cis_csc: ["2.6", "4.8"]
@@ -1588,7 +1591,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:rpm -q ypbind -> r:^package rsync is not installed"
+      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
 
   # 2.3.2 Ensure rsh client is not installed (Automated)
   - id: 28085
@@ -1614,7 +1617,7 @@ checks:
     title: "Ensure talk client is not installed."
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
-    remediation: "Run the following command to remove the rsh package: # dnf remove rsh"
+    remediation: "Run the following command to remove the talk package: # dnf remove talk."
     compliance:
       - cis: ["2.3.3"]
       - cis_csc: ["2.6", "4.8"]
@@ -1633,7 +1636,7 @@ checks:
     title: "Ensure telnet client is not installed."
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
-    remediation: "Run the following command to uninstall telnet : # dnf remove telnet"
+    remediation: "Run the following command to remove the telnet package: # dnf remove telnet."
     compliance:
       - cis: ["2.3.4"]
       - cis_csc: ["2.6", "4.8"]
@@ -1740,8 +1743,8 @@ checks:
   - id: 28092
     title: "Ensure wireless interfaces are disabled."
     description: "Wireless networking is used when wired networks are unavailable."
-    rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-    remediation: 'Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi }'
+    rationale: "If wireless is not to be used, wireless devices should be disabled to reduce the potential attack surface."
+    remediation: 'Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi }.'
     compliance:
       - cis: ["3.1.4"]
       - cis_csc: ["4.8", "15.4", "15.5"]
