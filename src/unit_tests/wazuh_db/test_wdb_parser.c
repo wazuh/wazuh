@@ -15,7 +15,6 @@
 #include "os_err.h"
 #include "wazuh_db/wdb.h"
 
-extern const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE;
 typedef struct test_struct {
     wdb_t *wdb;
     wdb_t *wdb_global;
