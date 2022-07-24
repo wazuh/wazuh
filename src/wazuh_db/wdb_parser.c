@@ -15,8 +15,6 @@
 #include "external/cJSON/cJSON.h"
 #include "wdb_state.h"
 
-const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
-
 static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HOTFIXES[1] },
     { .value = {FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HOTFIXES[2] },
