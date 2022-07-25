@@ -36,9 +36,10 @@ def test_get_valid_fields(mock_info, os_name):
         assert 'sys_osinfo' in response[0], f'"sys_osinfo" not contained in {response}'
 
 
-@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.core.agent.Agent.get_basic_information', return_value=None)
 @patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
-def test_WazuhDBQuerySyscollector(mock_basic_info, mock_agents_info):
+def test_WazuhDBQuerySyscollector(mock_basic_info, mock_agents_info, mock_exists):
     """Verify that the method connects correctly to the database and returns the correct type."""
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')

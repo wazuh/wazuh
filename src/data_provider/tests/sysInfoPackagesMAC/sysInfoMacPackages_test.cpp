@@ -33,6 +33,7 @@ class SysInfoMacPackagesWrapperMock: public IPackageWrapper
         MOCK_METHOD(std::string, osPatch, (), (const override));
         MOCK_METHOD(std::string, source, (), (const override));
         MOCK_METHOD(std::string, location, (), (const override));
+        MOCK_METHOD(std::string, vendor, (), (const override));
 };
 
 TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
@@ -47,6 +48,7 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, format()).Times(1).WillOnce(Return("6"));
     EXPECT_CALL(*mock, source()).Times(1).WillOnce(Return("7"));
     EXPECT_CALL(*mock, location()).Times(1).WillOnce(Return("8"));
+    EXPECT_CALL(*mock, vendor()).Times(1).WillOnce(Return("9"));
 
     EXPECT_NO_THROW(std::make_unique<BSDPackageImpl>(mock)->buildPackageData(packages));
     EXPECT_EQ("1", packages.at("name").get_ref<const std::string&>());
@@ -57,4 +59,5 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_EQ("6", packages.at("format").get_ref<const std::string&>());
     EXPECT_EQ("7", packages.at("source").get_ref<const std::string&>());
     EXPECT_EQ("8", packages.at("location").get_ref<const std::string&>());
+    EXPECT_EQ("9", packages.at("vendor").get_ref<const std::string&>());
 }

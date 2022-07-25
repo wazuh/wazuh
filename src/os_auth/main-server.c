@@ -820,12 +820,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
-            if (cur->group) {
-                if (set_agent_group(cur->id,cur->group) == -1) {
-                    merror("Unable to set agent centralized group: %s (internal error)", cur->group);
-                }
-
-                set_agent_multigroup(cur->group);
+            if (cur->group && (set_agent_group(cur->id,cur->group) == -1)) {
+                merror("Unable to set agent centralized group: %s (internal error)", cur->group);
             }
 
             gettime(&t1);

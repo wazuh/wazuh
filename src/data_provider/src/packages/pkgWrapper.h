@@ -14,6 +14,7 @@
 
 #include <fstream>
 #include <istream>
+#include <regex>
 #include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
@@ -27,7 +28,9 @@ class PKGWrapper final : public IPackageWrapper
 {
     public:
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_format{"pkg"}
+            : m_architecture{UNKNOWN_VALUE}
+            , m_format{"pkg"}
+            , m_vendor{UNKNOWN_VALUE}
         {
             getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
         }
@@ -70,6 +73,10 @@ class PKGWrapper final : public IPackageWrapper
         {
             return m_location;
         }
+        std::string vendor() const override
+        {
+            return m_vendor;
+        }
 
     private:
         void getPkgData(const std::string& filePath)
@@ -85,6 +92,8 @@ class PKGWrapper final : public IPackageWrapper
                 }
             };
             const auto isBinary { isBinaryFnc() };
+            constexpr auto BUNDLEID_PATTERN{R"(^[^.]+\.([^.]+).*$)"};
+            static std::regex bundleIdRegex{BUNDLEID_PATTERN};
 
             static const auto getValueFnc
             {
@@ -125,10 +134,16 @@ class PKGWrapper final : public IPackageWrapper
                                  std::getline(data, line))
                         {
                             m_description = getValueFnc(line);
+
+                            std::string vendor;
+
+                            if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
+                            {
+                                m_vendor = vendor;
+                            }
                         }
                     }
 
-                    m_architecture = UNKNOWN_VALUE;
                     m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
                     m_location = filePath;
                 }
@@ -190,6 +205,7 @@ class PKGWrapper final : public IPackageWrapper
         std::string m_osPatch;
         std::string m_source;
         std::string m_location;
+        std::string m_vendor;
 };
 
 #endif //_PKG_WRAPPER_H

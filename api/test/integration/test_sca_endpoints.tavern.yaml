@@ -405,6 +405,18 @@ stages:
             key: "score"
       status_code: 200
 
+  - name: Try to get 012 agent's SCA data (never connected)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/012"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 2007
+
 ---
 test_name: GET /sca/001/checks/{policy}
 

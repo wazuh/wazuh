@@ -1,7 +1,63 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.5]
+## [v4.3.7]
+
+## [v4.3.6] 2022-07-20
+
+### Manager
+
+#### Added
+
+- Added support for Ubuntu 22 (Jammy) in Vulnerability Detector. ([#14085](https://github.com/wazuh/wazuh/pull/14085))
+- Addded support for Red Hat 9 in Vulnerability Detector. ([#14117](https://github.com/wazuh/wazuh/pull/14117))
+
+#### Changed
+
+- Improved the shared configuration file handling performance in wazuh-remoted. ([#14111](https://github.com/wazuh/wazuh/pull/14111))
+
+#### Fixed
+
+- Fixed potential memory leaks in Vulnerability Detector when parsing OVAL with no criteria. ([#14098](https://github.com/wazuh/wazuh/pull/14098))
+- Fixed a bug in Vulnerability Detector that skipped Windows 8.1 and Windows 8 agents. ([#13957](https://github.com/wazuh/wazuh/pull/13957))
+- Fixed a bug in wazuh-db that stored duplicate Syscollector package data. ([#14061](https://github.com/wazuh/wazuh/pull/14061))
+
+### Agent
+
+#### Changed
+
+- Updated macOS codename list in Syscollector. ([#13837](https://github.com/wazuh/wazuh/pull/13837))
+- Improved GitHub and Office365 integrations log messages. ([#14093](https://github.com/wazuh/wazuh/pull/14093))
+
+#### Fixed
+
+- Fixed agent shutdown when syncing Syscollector data. ([#13941](https://github.com/wazuh/wazuh/pull/13941))
+- Fixed a bug in the agent installer that misdetected the wazuh username. ([#14207](https://github.com/wazuh/wazuh/pull/14207))
+- Fixed macOS vendor data retrieval in Syscollector. ([#14100](https://github.com/wazuh/wazuh/pull/14100))
+- Fixed a bug in the Syscollector data sync when the agent gets disconnected. ([#14106](https://github.com/wazuh/wazuh/pull/14106))
+- Fixed a crash in the Windows agent caused by the Syscollector SMBIOS parser for Windows agents. ([#13980](https://github.com/wazuh/wazuh/pull/13980))
+
+### RESTful API
+
+#### Fixed
+
+- Return an exception when the user asks for agent inventory information where there is no database for it, such as never_connected agents. ([#14152](https://github.com/wazuh/wazuh/pull/14152))
+
+### Ruleset
+
+#### Added
+
+- Added Ubuntu Linux 22.04 SCA Policy. ([#13893](https://github.com/wazuh/wazuh/pull/13893))
+- Added Apple macOS 12.0 Monterey SCA Policy. ([#13905](https://github.com/wazuh/wazuh/pull/13905))
+
+### Other
+
+#### Changed
+
+- Disabled filebeat logging metrics. ([#14121](https://github.com/wazuh/wazuh/pull/14121))
+
+
+## [v4.3.5] 2022-06-29
 
 ### Manager
 

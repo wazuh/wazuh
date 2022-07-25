@@ -6,7 +6,7 @@ list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
-                         -Wl,--wrap,time ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror ${DEBUG_OP_WRAPPERS}")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -109,9 +109,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task
                              -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries -Wl,--wrap,wdb_open_tasks \
                              ${DEBUG_OP_WRAPPERS}")
 
-# Add extra compiling flags
-add_compile_options(-Wall)
-
 list(APPEND wdb_tests_names "test_wdb_rootcheck")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
                              -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_step \
@@ -122,6 +119,13 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl
                              -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND wdb_tests_names "test_wdb_syscollector")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_step \
+                             -Wl,--wrap,wdbi_remove_by_pk -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_bind_double \
+                             -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 ${DEBUG_OP_WRAPPERS}")
+
+# Add extra compiling flags
+add_compile_options(-Wall)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
