@@ -165,7 +165,7 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
         }
 
         if (print_on_error) {
-            printf("DEBUG (ERROR): the last matched is '%s', but the expected one is '%s'.\n", match_retval,
+            printf("DEBUG (ERROR): the last matched remanent string is '%s', but the expected one is '%s'.\n", match_retval,
                    test_case->end_match);
         }
         // Only stop if the test is not ignored
@@ -473,7 +473,7 @@ void test_regex_execute_regex_matching(void ** state) {
         - Failed tests are added (Increases)
         - Bugs are fixed (Decreases)
     */
-    result.expected_failed_tests = 5; ///< Number of tests that ignore the results and fail.
+    result.expected_failed_tests = 211; ///< Number of tests that ignore the results and fail.
 
     // Load tests suite
     cJSON * json_file = readFile();
@@ -531,7 +531,7 @@ void test_regex_execute_regex_matching(void ** state) {
     //
     printf("[ OS_REGEX ] --------------------------------\n");
 
-    // assert_int_equal(result.expected_failed_tests, result.failed_tests_count);
+    assert_int_equal(result.expected_failed_tests, result.failed_tests_count);
 }
 
 int main(void) {

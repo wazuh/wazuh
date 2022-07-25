@@ -4,84 +4,84 @@
         "batch_test": [
             {
                 "description": "Literal match. Match all.",
-                "pattern": "hi wazuh",
-                "log": "hi wazuh",
+                "pattern": "hi Wazuh",
+                "log": "hi Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
             {
                 "description": "Literal match. Match all, with capture groups.",
-                "pattern": "(hi) (wazuh)",
-                "log": "hi wazuh",
+                "pattern": "(hi) (Wazuh)",
+                "log": "hi Wazuh",
                 "end_match": "h",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Literal match, with the end flag. It does not match.",
-                "pattern": "hi wazuh$",
-                "log": "hi wazuh 123",
+                "pattern": "hi Wazuh$",
+                "log": "hi Wazuh 123",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Literal match, with groups and the end flag. It does not match.",
-                "pattern": "(hi) (wazuh)$",
-                "log": "hi wazuh 123",
+                "pattern": "(hi) (Wazuh)$",
+                "log": "hi Wazuh 123",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Dont match at all.",
-                "pattern": "hi wazuh",
-                "log": "bye wazuh",
+                "pattern": "hi Wazuh",
+                "log": "bye Wazuh",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Match with prefix and group.",
-                "pattern": "(hi) (wazuh)",
-                "log": "prefixhi wazuh",
+                "pattern": "(hi) (Wazuh)",
+                "log": "prefixhi Wazuh",
                 "end_match": "h",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Match with sufix and group.",
-                "pattern": "(hi) (wazuh)",
-                "log": "fixhi wazuhsub",
+                "pattern": "(hi) (Wazuh)",
+                "log": "fixhi Wazuhsub",
                 "end_match": "hsub",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Match with adjacent capture groups.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
-                "pattern": "(hi)(wazuh)",
-                "log": "hiwazuh",
+                "pattern": "(hi)(Wazuh)",
+                "log": "hiWazuh",
                 "end_match": "h",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Match with adjacent capture groups and context.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
-                "pattern": "(hi)(wazuh)",
-                "log": "prefixhiwazuhsub",
+                "pattern": "(hi)(Wazuh)",
+                "log": "prefixhiWazuhsub",
                 "end_match": "hsub",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             }
         ]
@@ -91,30 +91,29 @@
         "batch_test": [
             {
                 "description": "Regex match all and the END_SET is set.",
-                "pattern": "hi wazuh$",
-                "log": "hi wazuh",
+                "pattern": "hi Wazuh$",
+                "log": "hi Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
             {
                 "description": "Empty pattern END_SET and BEGIN_SET are set.",
                 "pattern": "^$",
-                "log": "hi wazuh",
+                "log": "hi Wazuh",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Empty pattern END_SET and BEGIN_SET are set.",
-                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: http://#XXXX",
-                "ignore_result": true,
+                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty.",
                 "pattern": "^$",
                 "log": "",
-                "end_match": null,
+                "end_match": "",
                 "captured_groups": []
             },
             {
                 "description": "Empty pattern END_SET and BEGIN_SET are set.",
-                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty.",
                 "ignore_result": true,
                 "pattern": "(^$)",
                 "log": "",
@@ -125,7 +124,7 @@
             },
             {
                 "description": "Empty pattern END_SET and BEGIN_SET are set.",
-                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^()$",
                 "log": "",
@@ -136,25 +135,25 @@
             },
             {
                 "description": "Pattern ends and the END_SET is not set.",
-                "pattern": "hi wazuh",
-                "log": "hi wazuh!",
+                "pattern": "hi Wazuh",
+                "log": "hi Wazuh!",
                 "end_match": "h!",
                 "captured_groups": []
             },
             {
                 "description": "Partial match and then re-match ('st_error' test).",
-                "pattern": "(hi) (wazuh)",
-                "log": "XX hi wa hi wazuhXX",
+                "pattern": "(hi) (Wazuh)",
+                "log": "XX hi Wa hi WazuhXX",
                 "end_match": "hXX",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Partial match and then re-match ('st_error' + BEGIN_SET test).",
-                "pattern": "^(hi) (wazuh)",
-                "log": "hi wa hi wazuhXX",
+                "pattern": "^(hi) (Wazuh)",
+                "log": "hi Wa hi WazuhXX",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -166,70 +165,70 @@
             {
                 "description": "Match all.",
                 "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
-                "log": "hi wazuh",
+                "log": "hi Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
             {
                 "description": "Parcial match and fail",
                 "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
-                "log": "hi waz",
+                "log": "hi Waz",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Parcial match and fail and then re-match",
                 "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
-                "log": "hi waz hi wazu.",
+                "log": "hi Waz hi Wazu.",
                 "end_match": ".",
                 "captured_groups": []
             },
             {
                 "description": "Match all with capture groups.",
                 "pattern": "\\w(\\w\\s\\S)\\S(\\S\\S\\S)",
-                "log": "hi wazuh",
+                "log": "hi Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "i w",
+                    "i W",
                     "zuh"
                 ]
             },
             {
                 "description": "Parcial match and fail  with capture group.",
                 "pattern": "(\\w\\w)\\s\\S\\S\\S\\S\\S",
-                "log": "hi waz",
+                "log": "hi Waz",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Parcial match and fail but then re-match with capture group.",
                 "pattern": "(\\w\\w)\\s(\\S\\S\\S\\S\\S)",
-                "log": "hi waz hi wazuh.",
+                "log": "hi Waz hi Wazuh.",
                 "end_match": "h.",
                 "captured_groups": [
                     "hi",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Parcial match and fail but then re-match with adjacent capture group.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w\\w\\s)(\\S\\S\\S\\S\\S)",
-                "log": "hi waz hi wazuh.",
+                "log": "hi Waz hi Wazuh.",
                 "end_match": "h.",
                 "captured_groups": [
                     "hi ",
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Parcial match and fail but then re-match with one capture group.",
                 "pattern": "(\\w\\w\\s\\S\\S\\S\\S\\S)\\p$",
-                "log": "hi waz hi wazuh.",
+                "log": "hi Waz hi Wazuh.",
                 "end_match": ".",
                 "captured_groups": [
-                    "hi wazuh"
+                    "hi Wazuh"
                 ]
             }
         ]
@@ -239,31 +238,31 @@
         "batch_test": [
             {
                 "description": "Match all.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w+",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
             {
                 "description": "Mach all with capture group.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w+)",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Mach all with capture group and flags.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "debug": false,
                 "pattern": "^\\w+$",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
@@ -272,23 +271,23 @@
                 "ignore_result": true,
                 "debug": false,
                 "pattern": "^(\\w+)$",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Parcial match and fail, with flags.",
                 "pattern": "^\\w+$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Parcial match and fail with capture group and flags.",
                 "pattern": "^(\\w+)$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": null,
                 "captured_groups": []
             },
@@ -380,7 +379,7 @@
             {
                 "description": "Match all.",
                 "pattern": "\\w+ ",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -414,7 +413,7 @@
             {
                 "description": "Match all, with a literal at the end.",
                 "pattern": "\\w+\\s1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
@@ -439,10 +438,10 @@
             {
                 "description": "Match all, with a literal at the end, capture the first word.",
                 "pattern": "(\\w+)\\s1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -455,7 +454,7 @@
             {
                 "description": "Match, with a postfix and a literal space",
                 "pattern": "\\w+ 1",
-                "log": "wazuh 123",
+                "log": "Wazuh 123",
                 "end_match": "123",
                 "captured_groups": []
             },
@@ -480,10 +479,10 @@
             {
                 "description": "Match, with a postfix and a literal space, capture the first token.",
                 "pattern": "(\\w+) 1",
-                "log": "wazuh 123",
+                "log": "Wazuh 123",
                 "end_match": "123",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -496,7 +495,7 @@
             {
                 "description": "Match all with flags.",
                 "pattern": "^\\w+\\s$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -521,10 +520,10 @@
             {
                 "description": "Match all with backslashed token and flags.",
                 "pattern": "^(\\w+)\\s$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -537,7 +536,7 @@
             {
                 "description": "Match all with flags.",
                 "pattern": "^\\w+ $",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -562,23 +561,23 @@
             {
                 "description": "Match minimum log with flags and capture the first token.",
                 "pattern": "^(\\w+) $",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Fail match becouse of flags.",
                 "pattern": "^\\w+ $",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Fail match becouse of flags.",
                 "pattern": "^(\\w+ )$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -750,65 +749,65 @@
             {
                 "description": "Match all.",
                 "pattern": "\\w+\\s+",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
                 "description": "Match all with group.",
                 "pattern": "(\\w+)\\s+",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Match all with consecutive group.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w+)(\\s+)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "Match all with no consecutive group and opcional.",
                 "pattern": "(\\w+)\\d*(\\s+)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "Match all with no consecutive group and opcional",
                 "pattern": "(\\w+)\\d*(\\s+)",
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "Match all with no consecutive group.",
                 "pattern": "(\\w+)\\d+(\\s+)",
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "Match all with literal at the end.",
                 "pattern": "\\w+\\s+1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
@@ -833,10 +832,10 @@
             {
                 "description": "Match all with literal at the end and capture the first token.",
                 "pattern": " (\\w+)\\s+1",
-                "log": " wazuh 1",
+                "log": " Wazuh 1",
                 "end_match": "1",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -851,7 +850,7 @@
                 "ignore_result": true,
                 "__know_issue": "Err retval.",
                 "pattern": "^\\w+\\s+$",
-                "log": "wazuh  ",
+                "log": "Wazuh  ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -885,14 +884,14 @@
             {
                 "description": "Dont match.",
                 "pattern": "^\\w+\\s+$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Dont match.",
                 "pattern": "^(\\w+\\s+)$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -911,7 +910,7 @@
             {
                 "description": "Minimun log to match all and patter with a optional token.",
                 "pattern": "\\w+\\s*",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "log": "w ",
                 "end_match": " ",
@@ -920,7 +919,7 @@
             {
                 "description": "Minimun log to match all and capture all.",
                 "pattern": "(\\w+\\s*)",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "log": "w",
                 "end_match": "w",
@@ -931,19 +930,19 @@
             {
                 "description": "Match all and capture all.",
                 "pattern": "(\\w+\\s*)",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "debug": false,
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Minimun log with optional token to match and capture all.",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w+\\s*)",
                 "log": "w ",
                 "end_match": " ",
@@ -963,7 +962,7 @@
             {
                 "description": "inimun log with optional token to match and capture the first token.",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w+)\\s*",
                 "log": "w ",
                 "end_match": " ",
@@ -975,31 +974,31 @@
                 "description": "Match all.",
                 "pattern": "\\w+\\s*",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
-                "log": "wazuh ",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
                 "description": "Match all, capture all.",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w+\\s*)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh "
+                    "Wazuh "
                 ]
             },
             {
                 "description": "Match all with no consecutive group.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w+)(\\s*)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
@@ -1007,8 +1006,8 @@
                 "description": "Match all with no consecutive group and opcional.",
                 "pattern": "(\\w+)\\d+(\\s*)",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
-                "log": "wazuh ",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh ",
                 "end_match": null,
                 "captured_groups": []
             },
@@ -1016,11 +1015,11 @@
                 "description": "Match all with no consecutive group and opcional.",
                 "pattern": "(\\w+)\\d+(\\s*)",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
-                "log": "wazuh123 ",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
@@ -1028,19 +1027,19 @@
                 "description": "Match all with no consecutive group and opcional.",
                 "pattern": "(\\w+)\\d*(\\s*)",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "debug": false,
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "Match all with literal at the end.",
                 "pattern": "\\w+\\s*1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
@@ -1065,17 +1064,17 @@
             {
                 "description": "Match all with literal at the end and capture the first token.",
                 "pattern": " (\\w+)\\s*1",
-                "log": " wazuh 1",
+                "log": " Wazuh 1",
                 "end_match": "1",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Minimun log to match all, with flags.",
                 "pattern": "^\\w+\\s*$",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": []
@@ -1083,9 +1082,9 @@
             {
                 "description": "Match all, with flags.",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^\\w+\\s*$",
-                "log": "wazuh  ",
+                "log": "Wazuh  ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -1093,7 +1092,7 @@
                 "description": "Minimun log to match all, with flags and capture the first token.",
                 "pattern": "^(\\w+)\\s*$",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -1104,7 +1103,7 @@
                 "description": "Minimun log to match all, with flags and capture the first token.",
                 "pattern": "^(\\w+)\\s*$",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -1115,7 +1114,7 @@
                 "description": "Minimun log to match all, with flags and capture all.",
                 "pattern": "^(\\w+\\s*)$",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -1125,14 +1124,14 @@
             {
                 "description": "Dont match.",
                 "pattern": "^\\w+\\s*$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Dont match.",
                 "pattern": "^(\\w+\\s*)$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -1215,7 +1214,7 @@
                 "description": "Saves and restores the fifth position error. But the fifth should match with the next character.",
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": []
@@ -1225,7 +1224,7 @@
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
                 "log": "z1 x2 x3 x4 x5 x6x6",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "end_match": "6",
                 "captured_groups": []
             }
@@ -1236,75 +1235,75 @@
         "batch_test": [
             {
                 "description": "Match all.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w*",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
             {
                 "description": "Match 0-0",
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG 4 Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG 4 Issue: https://github.com/Wazuh/Wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "\\d*",
-                "log": "wazuh",
-                "end_match": "wazuh",
+                "log": "Wazuh",
+                "end_match": "Wazuh",
                 "captured_groups": []
             },
             {
                 "description": "Mach all with capture group.",
                 "ignore_result": true,
                 "pattern": "(\\w*)",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Match 0-0, with capture group",
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/Wazuh/Wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "(\\d*)",
-                "log": "wazuh",
-                "end_match": "wazuh",
+                "log": "Wazuh",
+                "end_match": "Wazuh",
                 "captured_groups": [
                     ""
                 ]
             },
             {
                 "description": "Mach all with capture group and flags.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "debug": false,
                 "pattern": "^\\w*$",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": []
             },
             {
                 "description": "With capture group, match all (And flags)",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\w*)$",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Parcial match and fail, with flags.",
                 "pattern": "^\\w*$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Parcial match and fail, with flags and capture group.",
                 "pattern": "^(\\w*)$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": null,
                 "captured_groups": []
             },
@@ -1350,7 +1349,7 @@
             },
             {
                 "description": "Match 0-0 and capture all",
-                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected. BUG 5 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w*)",
                 "log": "",
@@ -1361,7 +1360,7 @@
             },
             {
                 "description": "Match 0-0 with flags and capture all",
-                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected. BUG 5 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\w*)$",
                 "log": "",
@@ -1385,7 +1384,7 @@
             {
                 "description": "Match all.",
                 "pattern": "\\w*\\s",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -1428,10 +1427,10 @@
             {
                 "description": "Mtch all, with backslashed token and capture the first token.",
                 "pattern": "(\\w*)\\s",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -1451,7 +1450,7 @@
             {
                 "description": "Match all with literal.",
                 "pattern": "\\w* ",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -1476,16 +1475,16 @@
             {
                 "description": "Match all, with literal token and capture the first token.",
                 "pattern": "(\\w*) ",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "description": "Match all, with literal token.",
                 "pattern": "\\w*\\s1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
@@ -1510,10 +1509,10 @@
             {
                 "description": "Match all, with backlashed token and capture the first token.",
                 "pattern": "(\\w*)\\s1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -1526,7 +1525,7 @@
             {
                 "description": "Match, with liteals token.",
                 "pattern": "\\w* 1",
-                "log": "wazuh 123",
+                "log": "Wazuh 123",
                 "end_match": "123",
                 "captured_groups": []
             },
@@ -1551,10 +1550,10 @@
             {
                 "description": "Match, with liteals token and capture the first token.",
                 "pattern": "(\\w*) 1",
-                "log": "wazuh 123",
+                "log": "Wazuh 123",
                 "end_match": "123",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -1567,7 +1566,7 @@
             {
                 "description": "Match all with backlashed token and flags.",
                 "pattern": "^\\w*\\s$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -1592,10 +1591,10 @@
             {
                 "description": "Match all with backlashed token and flags.",
                 "pattern": "^(\\w*)\\s$",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -1608,7 +1607,7 @@
             {
                 "description": "Match all with literal token and flags.",
                 "pattern": "^\\w* $",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -1632,21 +1631,21 @@
             },
             {
                 "pattern": "^(\\w*) $",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "pattern": "^\\w* $",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "pattern": "^(\\w* )$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -1815,98 +1814,98 @@
             },
             {
                 "pattern": "\\w*\\s+",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
                 "pattern": "(\\w*)\\s+",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w*)(\\s+)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "2 no consecutive groups, and opcional.",
                 "pattern": "(\\w*)\\d*(\\s+)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "2 no consecutive groups, and opcional.",
                 "pattern": "(\\w*)\\d*(\\s+)",
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "2 groups no consecutive",
                 "pattern": "(\\w*)\\d+(\\s+)",
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "2 groups no consecutive, and opcional",
                 "pattern": "(\\w*)\\d*(\\s*)",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "2 groups no consecutive, and opcional",
                 "pattern": "(\\w*)\\d*(\\s*)",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "description": "2 groups no consecutive",
                 "pattern": "(\\w*)\\d+(\\s*)",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
-                "log": "wazuh123 ",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "pattern": "\\w*\\s+1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
@@ -1928,10 +1927,10 @@
             },
             {
                 "pattern": " (\\w*)\\s+1",
-                "log": " wazuh 1",
+                "log": " Wazuh 1",
                 "end_match": "1",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -1942,9 +1941,9 @@
             },
             {
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^\\w*\\s+$",
-                "log": "wazuh  ",
+                "log": "Wazuh  ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -1975,14 +1974,14 @@
             {
                 "description": "Dont match.",
                 "pattern": "^\\w*\\s+$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Dont match.",
                 "pattern": "^(\\w*\\s+)$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -1999,7 +1998,7 @@
             },
             {
                 "pattern": "\\w*\\s*",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "log": "w ",
                 "end_match": " ",
@@ -2015,8 +2014,8 @@
             },
             {
                 "pattern": "(\\w*\\s*)",
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
-                "__known_issue_2:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/Wazuh/Wazuh/issues/14249",
+                "__known_issue_2:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "skip_test": true,
                 "log": " ",
                 "end_match": " ",
@@ -2026,16 +2025,16 @@
             },
             {
                 "pattern": "(\\w*\\s*)",
-                "log": "wazuh",
+                "log": "Wazuh",
                 "end_match": "h",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "ignore_result": true,
                 "debug": false,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w*\\s*)",
                 "log": "w ",
                 "end_match": " ",
@@ -2054,7 +2053,7 @@
             },
             {
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w*)\\s*",
                 "log": "w ",
                 "end_match": " ",
@@ -2066,8 +2065,8 @@
                 "pattern": "\\w*\\s*",
                 "ignore_result": true,
                 "debug": false,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
-                "log": "wazuh ",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
@@ -2075,27 +2074,27 @@
                 "description": "Other size. With group",
                 "ignore_result": true,
                 "debug": false,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w*\\s*)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh "
+                    "Wazuh "
                 ]
             },
             {
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w*)(\\s*)",
-                "log": "wazuh ",
+                "log": "Wazuh ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w*)(\\s*)",
                 "log": " ",
@@ -2106,7 +2105,7 @@
                 ]
             },
             {
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w*)(\\s*)",
                 "log": "w",
@@ -2117,7 +2116,7 @@
                 ]
             },
             {
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "debug": false,
                 "pattern": "(\\w*)(\\s*)",
@@ -2132,8 +2131,8 @@
                 "description": "2 groups no consecutive, and opcional.",
                 "pattern": "(\\w*)\\d+(\\s*)",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
-                "log": "wazuh ",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh ",
                 "end_match": null,
                 "captured_groups": []
             },
@@ -2141,11 +2140,11 @@
                 "description": "2 groups no consecutive, and opcional",
                 "pattern": "(\\w*)\\d+(\\s*)",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
-                "log": "wazuh123 ",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
@@ -2153,17 +2152,17 @@
                 "description": "2 groups no consecutive",
                 "pattern": "(\\w*)\\d*(\\s*)",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
-                "log": "wazuh123 ",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "log": "Wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
-                    "wazuh",
+                    "Wazuh",
                     " "
                 ]
             },
             {
                 "pattern": "\\w*\\s*1",
-                "log": "wazuh 1",
+                "log": "Wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
@@ -2185,32 +2184,32 @@
             },
             {
                 "pattern": " (\\w*)\\s*1",
-                "log": " wazuh 1",
+                "log": " Wazuh 1",
                 "end_match": "1",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
                 "pattern": "^\\w*\\s*$",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^\\w*\\s*$",
-                "log": "wazuh  ",
+                "log": "Wazuh  ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
                 "pattern": "^(\\w*)\\s*$",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -2220,7 +2219,7 @@
             {
                 "pattern": "^(\\w*)\\s*$",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -2229,7 +2228,7 @@
             },
             {
                 "pattern": "^(\\w*\\s*)$",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "log": "w ",
                 "end_match": " ",
@@ -2240,14 +2239,14 @@
             {
                 "description": "Dont match.",
                 "pattern": "^\\w*\\s*$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             },
             {
                 "description": "Dont match.",
                 "pattern": "^(\\w*\\s*)$",
-                "log": "wazuh -",
+                "log": "Wazuh -",
                 "end_match": null,
                 "captured_groups": []
             }
@@ -2329,7 +2328,7 @@
             {
                 "description": "Saves and restores the fifth position error. But the fifth should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
-                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
@@ -2339,7 +2338,7 @@
                 "description": "Saves and restores the sixth position error. But the sixth should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
                 "log": "z1 x2 x3 x4 x5 x6x6",
-                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "end_match": "6",
                 "captured_groups": []
@@ -2449,10 +2448,10 @@
                 "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
                 "__prts_array_2": "0x0",
                 "pattern": "hi (\\w+).",
-                "log": "Hi wazuh.",
+                "log": "Hi Wazuh.",
                 "end_match": ".",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -2531,10 +2530,10 @@
                 "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
                 "__prts_array_2": "0x0",
                 "pattern": "hi (\\w+).",
-                "log": "Hi wazuh.",
+                "log": "Hi Wazuh.",
                 "end_match": ".",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             }
         ]
@@ -2550,10 +2549,10 @@
                 "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
                 "__prts_array_2": "0x0",
                 "pattern": "hi (\\w+).",
-                "log": "Hi wazuh.",
+                "log": "Hi Wazuh.",
                 "end_match": ".",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -2620,10 +2619,10 @@
                 "__prts_items_array_1": "(1 group x2 + 1 null)  x 8 size = 24 bytes",
                 "__prts_array_2": "0x0",
                 "pattern": "hi (\\w+).",
-                "log": "Hi wazuh.",
+                "log": "Hi Wazuh.",
                 "end_match": ".",
                 "captured_groups": [
-                    "wazuh"
+                    "Wazuh"
                 ]
             },
             {
@@ -3494,7 +3493,7 @@
         "batch_test": [
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern \\w+ \\d+",
                 "log": "Pattern Wazuh 123",
@@ -3503,7 +3502,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w+ \\d+)",
                 "log": "Pattern Wazuh 123",
@@ -3514,7 +3513,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^Pattern \\w+ \\d+",
                 "log": "Pattern Wazuh 123",
@@ -3523,7 +3522,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^Pattern (\\w+ \\d+)",
                 "log": "Pattern Wazuh 123",
@@ -3534,7 +3533,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern \\w+ \\d+$",
                 "log": "Pattern Wazuh 123",
@@ -3543,7 +3542,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w+ \\d+)$",
                 "log": "Pattern Wazuh 123",
@@ -3554,7 +3553,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern \\w* \\d*",
                 "log": "Pattern Wazuh 123",
@@ -3563,7 +3562,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w* \\d*)",
                 "log": "Pattern Wazuh 123",
@@ -3574,7 +3573,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^Pattern \\w* \\d*",
                 "log": "Pattern Wazuh 123",
@@ -3583,7 +3582,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^Pattern (\\w* \\d*)",
                 "log": "Pattern Wazuh 123",
@@ -3594,7 +3593,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern \\w* \\d*$",
                 "log": "Pattern Wazuh 123",
@@ -3603,7 +3602,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w* \\d*)$",
                 "log": "Pattern Wazuh 123",
@@ -3614,7 +3613,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|Subpattern 2: \\d+",
                 "log": "Subpattern 2: 123",
@@ -3623,7 +3622,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|^Subpattern 2: \\d+",
                 "log": "Subpattern 2: 123",
@@ -3632,7 +3631,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|Subpattern 2: \\d+$",
                 "log": "Subpattern 2: 123",
@@ -3641,7 +3640,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|Subpattern 2: (\\d+)",
                 "log": "Subpattern 2: 123",
@@ -3652,7 +3651,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|^Subpattern 2: (\\d+)",
                 "log": "Subpattern 2: 123",
@@ -3663,7 +3662,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|Subpattern 2: (\\d+)$",
                 "log": "Subpattern 2: 123",
@@ -3674,7 +3673,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123subpattern",
@@ -3683,7 +3682,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "subpattern123",
@@ -3692,7 +3691,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123",
@@ -3701,7 +3700,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '9' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123456789",
@@ -3717,7 +3716,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123",
@@ -3728,7 +3727,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123subpattern",
@@ -3739,7 +3738,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "subpattern123",
@@ -3750,7 +3749,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '9' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123456789",
@@ -3770,7 +3769,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d*",
                 "log": "123",
@@ -3779,7 +3778,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d*",
                 "log": "123subpattern",
@@ -3788,7 +3787,7 @@
             },
             {
                 "description": "This test overflows the heap buffer.",
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/Wazuh/Wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "\\d*",
                 "log": "subpattern123",
@@ -3797,7 +3796,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d*)",
                 "log": "123",
@@ -3817,7 +3816,7 @@
             },
             {
                 "description": "This test overflows the heap buffer.",
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/Wazuh/Wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "(\\d*)",
                 "log": "subpattern123",
@@ -3828,7 +3827,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\d+",
                 "log": "123",
@@ -3837,7 +3836,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\d+",
                 "log": "123subpattern",
@@ -3853,7 +3852,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\d+)",
                 "log": "123",
@@ -3864,7 +3863,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\d+)",
                 "log": "123subpattern",
@@ -3882,7 +3881,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\d*",
                 "log": "123",
@@ -3892,7 +3891,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^\\d*",
                 "log": "123subpattern",
                 "end_match": "3subpattern",
@@ -3900,7 +3899,7 @@
             },
             {
                 "description": "This test overflows the heap buffer.",
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/Wazuh/Wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "^\\d*",
                 "log": "subpattern123",
@@ -3910,7 +3909,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^(\\d*)",
                 "log": "123",
                 "end_match": "3",
@@ -3930,7 +3929,7 @@
             {
                 "description": "This test overflows the heap buffer.",
                 "skip_test": true,
-                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/Wazuh/Wazuh/issues/14249",
                 "pattern": "^(\\d*)",
                 "log": "subpattern123",
                 "end_match": null,
@@ -3940,7 +3939,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+$",
                 "log": "123",
@@ -3949,7 +3948,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+$",
                 "log": "log123",
@@ -3958,7 +3957,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)$",
                 "log": "123",
@@ -3969,7 +3968,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)$",
                 "log": "log123",
@@ -3980,7 +3979,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d*$",
                 "log": "123",
@@ -4014,7 +4013,7 @@
             },
             {
                 "description": "It should match but it doesn't.",
-                "__known_issue:": "When the regex is a backlashed token with the '*' quantifier follow by the flag '$' (end of string) and the string does not start with a character that belongs to the character map of such a token, then it does not match as expected. BUG 7 of issue: http://#XXXX",
+                "__known_issue:": "When the regex is a backlashed token with the '*' quantifier follow by the flag '$' (end of string) and the string does not start with a character that belongs to the character map of such a token, then it does not match as expected. BUG 7 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d*)$",
                 "log": "pattern123",
@@ -4025,16 +4024,18 @@
             },
             {
                 "description": "This test passes.",
+                "__known_issue:": "When the regex is a backlashed token with the '*' quantifier follow by the flag '$' (end of string) and the string does not start with a character that belongs to the character map of such a token, then it does not match as expected. BUG 7 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "ignore_result": true,
                 "pattern": "(\\d*)$",
                 "log": "123pattern",
-                "end_match": null,
+                "end_match": "",
                 "captured_groups": [
                     ""
                 ]
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match when should.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\D+)(\\d+)",
                 "log": "Test123",
@@ -4046,7 +4047,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)(\\D+)",
                 "log": "123Test",
@@ -4058,7 +4059,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\D*)(\\d*)",
                 "log": "Test123",
@@ -4070,7 +4071,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match.",
-                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d*)(\\D*)",
                 "log": "123Test",
@@ -4082,7 +4083,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\D+\\d+",
                 "log": "Test123",
@@ -4091,7 +4092,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is 'T'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+\\D+",
                 "log": "123Test",
@@ -4100,7 +4101,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 't'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\D*\\d*",
                 "log": "Test123",
@@ -4109,7 +4110,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d*\\D*",
                 "log": "123Test",
@@ -4118,7 +4119,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "When there are 4 more optional tokens than characters to match, the regex doesn't match. BUG 8 of issue: http://#XXXX",
+                "__known_issue:": "When there are 4 more optional tokens than characters to match, the regex doesn't match. BUG 8 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w*\\w*\\w*\\w*\\w*\\w*",
                 "log": "xy",
@@ -4196,7 +4197,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w*\\p*\\d*\\w*",
                 "log": "xy55",
@@ -4205,7 +4206,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w+\\p*\\d*\\w*",
                 "log": "xy55",
@@ -4223,7 +4224,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\w*\\p*\\d*\\w*",
                 "log": "xy",
@@ -4232,7 +4233,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w*\\p*\\d*\\w*$",
                 "log": "xy",
@@ -4284,7 +4285,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w*\\d*\\p*\\w*",
                 "log": "xy",
@@ -4301,7 +4302,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "Maybe related with bug 9 or 8. BUG 10 of issue: http://#XXXX",
+                "__known_issue": "Maybe related with bug 9 or 8. BUG 10 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "In this case there are 2 exceding optional tokens, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz\\d*\\w*",
@@ -4311,7 +4312,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "Maybe related with bug 9 or 8. BUG 10 of issue: http://#XXXX",
+                "__known_issue": "Maybe related with bug 9 or 8. BUG 10 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz(\\d*\\w*)",
@@ -4323,7 +4324,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue": "May related with bug 5. BUG 11 of issue: http://#XXXX",
+                "__known_issue": "May related with bug 5. BUG 11 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue:_2": "In this case there is 1 exceding optional token inside a capture groupe, the regex does match but the expected group is not captured.",
                 "ignore_result": true,
                 "pattern": "xyz(\\w*)",
@@ -4346,7 +4347,7 @@
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
                 "__known_issue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
-                "__known_issue": "May related with bug 5. BUG 11 of issue: http://#XXXX",
+                "__known_issue": "May related with bug 5. BUG 11 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "xyz\\w*(\\w*)",
                 "log": "xyz",
@@ -4376,7 +4377,7 @@
             {
                 "description": "Capture group is not correctly obtained. It should be '123' but it is empty.",
                 "ignore_result": true,
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\d+)\\D*",
                 "log": "123",
                 "end_match": "3",
@@ -4395,7 +4396,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*",
                 "log": "123Test",
@@ -4406,7 +4407,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be '123' but it is empty.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*",
                 "log": "Test123",
@@ -4417,7 +4418,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)",
                 "log": "123",
@@ -4429,7 +4430,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "\\d+(\\D*)",
                 "log": "123Test",
                 "end_match": "t",
@@ -4439,7 +4440,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)",
                 "log": "Test123",
@@ -4451,7 +4452,7 @@
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
                 "ignore_result": true,
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^\\d+(\\D*)",
                 "log": "123",
                 "end_match": "3",
@@ -4462,7 +4463,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "^\\d+(\\D*)",
                 "log": "123Test",
                 "end_match": "t",
@@ -4481,7 +4482,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\d+)\\D*",
                 "log": "123",
@@ -4492,7 +4493,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\d+)\\D*",
                 "log": "123Test",
@@ -4512,7 +4513,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)$",
                 "log": "123",
@@ -4523,7 +4524,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)$",
                 "log": "123Test",
@@ -4534,7 +4535,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)$",
                 "log": "Test123",
@@ -4545,7 +4546,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*$",
                 "log": "123",
@@ -4556,7 +4557,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*$",
                 "log": "123Test",
@@ -4567,7 +4568,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*$",
                 "log": "Test123",
@@ -4578,7 +4579,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d*)\\w*",
                 "log": "123",
@@ -4589,7 +4590,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained.",
-                "__known_issue": "BUG 12 of issue: http://#XXXX",
+                "__known_issue": "BUG 12 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\d*)\\w*",
                 "log": "123Test",
@@ -4600,7 +4601,7 @@
             },
             {
                 "description": "Regex should match but does not.",
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "Only 4 'recoverage' levels are allowed.",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5)",
@@ -4615,6 +4616,23 @@
                 ]
             },
             {
+                "description": "Regex should match but does not.",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
+                "__known_issue_2": "Only 4 'recoverage' levels are allowed.",
+                "ignore_result": true,
+                "pattern": "(\\w+#) (\\w+#) (\\w+#) (\\w+#) (\\w+#) (\\w+#)",
+                "log": "a# b# c# d#d# e# f#",
+                "end_match": "#",
+                "captured_groups": [
+                    "a#",
+                    "b#",
+                    "c#",
+                    "d#d#",
+                    "e#",
+                    "f#"
+                ]
+            },
+            {
                 "description": "This case matches.",
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
@@ -4623,7 +4641,7 @@
             },
             {
                 "description": "This case does not match.",
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5$",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
@@ -4646,7 +4664,7 @@
             {
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6xyz6",
                 "end_match": "6",
@@ -4662,7 +4680,7 @@
             {
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6$",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6xyz6",
                 "end_match": "6",
@@ -4686,7 +4704,7 @@
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5 xyz6",
                 "end_match": "6",
                 "captured_groups": [
@@ -4702,7 +4720,7 @@
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": []
@@ -4711,7 +4729,7 @@
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
                 "pattern": "(\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6)",
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": [
@@ -4720,7 +4738,7 @@
             },
             {
                 "description": "Regex should match but does not.",
-                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)",
                 "log": "z1 x2 x3 x4 x5x5 x6",
@@ -4766,7 +4784,7 @@
             },
             {
                 "description": "This case has 3 (non-optional) tokens but it is capturing only 2 characters.",
-                "__known_issue": "BUG 13 of issue: http://#XXXX",
+                "__known_issue": "BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "Capture groups could be either '04T15' or '4T15', depending on the (unpredictable) behavior of the greediness.",
                 "ignore_result": true,
                 "pattern": "(\\d+\\w\\d+)",
@@ -4778,7 +4796,7 @@
             },
             {
                 "description": "This case should match but it does not.",
-                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue": "Related BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "(-\\d+\\w\\d+:)",
                 "log": "-04T15:",
@@ -4789,7 +4807,7 @@
             },
             {
                 "description": "This case should match but it does not.",
-                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue": "Related BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "-(\\d+\\w\\d+):",
                 "log": "-04T15:",
@@ -4799,7 +4817,7 @@
                 ]
             },
             {
-                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue": "Related BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "description": "This case should match but it does not.",
                 "ignore_result": true,
                 "pattern": "-\\d+\\w\\d+:",
@@ -4809,7 +4827,7 @@
             },
             {
                 "description": "This case matches.",
-                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue": "Related BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "\\d+\\w\\d+",
@@ -4819,7 +4837,7 @@
             },
             {
                 "description": "This case matches.",
-                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue": "Related BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "(\\d+\\D\\d+)",
@@ -4865,10 +4883,9 @@
             },
             {
                 "description": "This case matches.",
-                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue": "Related BUG 13 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "__known_issue_2": "Wrong end_match value.",
                 "ignore_result": true,
-                "debug": true,
                 "pattern": "(\\d+\\D\\d+)",
                 "log": "04T15",
                 "end_match": "5",
@@ -4896,7 +4913,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
                 "ignore_result": true,
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "pattern": "\\.+",
                 "log": "123 Test",
                 "end_match": "t",
@@ -4904,7 +4921,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\.+$",
                 "log": "123 test",
@@ -4913,7 +4930,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\.+",
                 "log": "123 test",
@@ -4922,7 +4939,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\.+$",
                 "log": "123 test",
@@ -4931,7 +4948,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\.+)$",
                 "log": "123 test",
@@ -4942,7 +4959,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "\\.+",
                 "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
@@ -4951,7 +4968,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^\\.+$",
                 "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
@@ -4976,7 +4993,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
-                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: https://github.com/wazuh/wazuh/issues/14420",
                 "ignore_result": true,
                 "pattern": "^(\\.+)$",
                 "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
