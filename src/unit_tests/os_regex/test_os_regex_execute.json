@@ -1350,21 +1350,25 @@
             },
             {
                 "description": "Match 0-0 and capture all",
-                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected.",
+                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected. BUG 6 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\w*)",
                 "log": "",
                 "end_match": "",
-                "captured_groups": [ "" ]
+                "captured_groups": [
+                    ""
+                ]
             },
             {
                 "description": "Match 0-0 with flags and capture all",
-                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected.",
+                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected. BUG 6 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\w*)$",
                 "log": "",
                 "end_match": "",
-                "captured_groups": [ "" ]
+                "captured_groups": [
+                    ""
+                ]
             }
         ]
     },
@@ -2115,7 +2119,7 @@
             {
                 "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
-                "debug":false,
+                "debug": false,
                 "pattern": "(\\w*)(\\s*)",
                 "log": "",
                 "end_match": "",
@@ -3490,6 +3494,7 @@
         "batch_test": [
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern \\w+ \\d+",
                 "log": "Pattern Wazuh 123",
@@ -3498,6 +3503,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w+ \\d+)",
                 "log": "Pattern Wazuh 123",
@@ -3508,6 +3514,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^Pattern \\w+ \\d+",
                 "log": "Pattern Wazuh 123",
@@ -3516,6 +3523,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^Pattern (\\w+ \\d+)",
                 "log": "Pattern Wazuh 123",
@@ -3526,6 +3534,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern \\w+ \\d+$",
                 "log": "Pattern Wazuh 123",
@@ -3534,6 +3543,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w+ \\d+)$",
                 "log": "Pattern Wazuh 123",
@@ -3544,6 +3554,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern \\w* \\d*",
                 "log": "Pattern Wazuh 123",
@@ -3552,6 +3563,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w* \\d*)",
                 "log": "Pattern Wazuh 123",
@@ -3562,6 +3574,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^Pattern \\w* \\d*",
                 "log": "Pattern Wazuh 123",
@@ -3570,6 +3583,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^Pattern (\\w* \\d*)",
                 "log": "Pattern Wazuh 123",
@@ -3580,6 +3594,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern \\w* \\d*$",
                 "log": "Pattern Wazuh 123",
@@ -3588,6 +3603,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is ' ' (before the '1').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Pattern (\\w* \\d*)$",
                 "log": "Pattern Wazuh 123",
@@ -3598,6 +3614,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|Subpattern 2: \\d+",
                 "log": "Subpattern 2: 123",
@@ -3606,6 +3623,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|^Subpattern 2: \\d+",
                 "log": "Subpattern 2: 123",
@@ -3614,6 +3632,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: \\d+|Subpattern 2: \\d+$",
                 "log": "Subpattern 2: 123",
@@ -3622,6 +3641,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|Subpattern 2: (\\d+)",
                 "log": "Subpattern 2: 123",
@@ -3632,6 +3652,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|^Subpattern 2: (\\d+)",
                 "log": "Subpattern 2: 123",
@@ -3642,6 +3663,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "Subpattern 1: (\\d+)|Subpattern 2: (\\d+)$",
                 "log": "Subpattern 2: 123",
@@ -3652,6 +3674,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123subpattern",
@@ -3660,6 +3683,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "subpattern123",
@@ -3668,6 +3692,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123",
@@ -3676,6 +3701,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '9' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+",
                 "log": "123456789",
@@ -3691,6 +3717,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123",
@@ -3701,6 +3728,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123subpattern",
@@ -3711,6 +3739,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "subpattern123",
@@ -3721,6 +3750,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '9' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)",
                 "log": "123456789",
@@ -3740,6 +3770,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d*",
                 "log": "123",
@@ -3748,6 +3779,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d*",
                 "log": "123subpattern",
@@ -3756,6 +3788,7 @@
             },
             {
                 "description": "This test overflows the heap buffer.",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "\\d*",
                 "log": "subpattern123",
@@ -3764,6 +3797,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d*)",
                 "log": "123",
@@ -3783,16 +3817,18 @@
             },
             {
                 "description": "This test overflows the heap buffer.",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "(\\d*)",
                 "log": "subpattern123",
-                "end_match": "3",
+                "end_match": "subpattern123",
                 "captured_groups": [
-                    "123"
+                    ""
                 ]
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\d+",
                 "log": "123",
@@ -3801,6 +3837,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\d+",
                 "log": "123subpattern",
@@ -3816,6 +3853,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\d+)",
                 "log": "123",
@@ -3826,6 +3864,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\d+)",
                 "log": "123subpattern",
@@ -3843,6 +3882,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\d*",
                 "log": "123",
@@ -3852,6 +3892,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 's' (After '3').",
                 "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "^\\d*",
                 "log": "123subpattern",
                 "end_match": "3subpattern",
@@ -3859,6 +3900,7 @@
             },
             {
                 "description": "This test overflows the heap buffer.",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
                 "skip_test": true,
                 "pattern": "^\\d*",
                 "log": "subpattern123",
@@ -3868,6 +3910,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
                 "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "^(\\d*)",
                 "log": "123",
                 "end_match": "3",
@@ -3887,6 +3930,7 @@
             {
                 "description": "This test overflows the heap buffer.",
                 "skip_test": true,
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
                 "pattern": "^(\\d*)",
                 "log": "subpattern123",
                 "end_match": null,
@@ -3896,6 +3940,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+$",
                 "log": "123",
@@ -3904,6 +3949,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+$",
                 "log": "log123",
@@ -3912,6 +3958,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)$",
                 "log": "123",
@@ -3922,6 +3969,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)$",
                 "log": "log123",
@@ -3932,6 +3980,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d*$",
                 "log": "123",
@@ -3965,6 +4014,7 @@
             },
             {
                 "description": "It should match but it doesn't.",
+                "__known_issue:": "When the regex is a backlashed token with the '*' quantifier follow by the flag '$' (end of string) and the string does not start with a character that belongs to the character map of such a token, then it does not match as expected. BUG 7 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d*)$",
                 "log": "pattern123",
@@ -3984,6 +4034,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match when should.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\D+)(\\d+)",
                 "log": "Test123",
@@ -3995,6 +4046,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)(\\D+)",
                 "log": "123Test",
@@ -4006,6 +4058,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\D*)(\\d*)",
                 "log": "Test123",
@@ -4017,6 +4070,7 @@
             },
             {
                 "description": "Consecutive capture groups (without something in between) do not match.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d*)(\\D*)",
                 "log": "123Test",
@@ -4028,6 +4082,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is '1'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\D+\\d+",
                 "log": "Test123",
@@ -4036,6 +4091,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is 'T'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+\\D+",
                 "log": "123Test",
@@ -4044,6 +4100,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '3' but it is 't'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\D*\\d*",
                 "log": "Test123",
@@ -4052,6 +4109,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d*\\D*",
                 "log": "123Test",
@@ -4060,7 +4118,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "When there are 4 more optional tokens than characters to match, the regex doesn't match.",
+                "__known_issue:": "When there are 4 more optional tokens than characters to match, the regex doesn't match. BUG 8 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\w*\\w*\\w*\\w*\\w*\\w*",
                 "log": "xy",
@@ -4129,7 +4187,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue:": "With 3 optional tokens do not match that do not mach, it does NOT match.",
                 "ignore_result": true,
                 "pattern": "\\w*\\p*\\d*\\w*",
                 "log": "xy",
@@ -4138,7 +4196,34 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "\\w*\\p*\\d*\\w*",
+                "log": "xy55",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "\\w+\\p*\\d*\\w*",
+                "log": "xy55",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "pattern": "(\\w*)\\p*\\d*\\w*",
+                "log": "xy",
+                "end_match": "y",
+                "captured_groups": [
+                    "xy"
+                ]
+            },
+            {
+                "description": "Tokens with optional quantifier (*) should always match, but they don't.",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\w*\\p*\\d*\\w*",
                 "log": "xy",
@@ -4147,7 +4232,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\w*\\p*\\d*\\w*$",
                 "log": "xy",
@@ -4199,7 +4284,7 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case, with 3 extra optional tokens, it does NOT match.",
+                "__known_issue": "When there are 3 tokens with the quantifier '*' consecutively, under certain circumstances, the regex does not match even though it should. BUG 8 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\w*\\d*\\p*\\w*",
                 "log": "xy",
@@ -4216,7 +4301,8 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case there are 2 exceding optional tokens, the regex doesn't match.",
+                "__known_issue": "Maybe related with bug 9 or 8. BUG 10 of issue: http://#XXXX",
+                "__known_issue_2": "In this case there are 2 exceding optional tokens, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz\\d*\\w*",
                 "log": "xyz",
@@ -4225,7 +4311,8 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
+                "__known_issue": "Maybe related with bug 9 or 8. BUG 10 of issue: http://#XXXX",
+                "__known_issue_2": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
                 "ignore_result": true,
                 "pattern": "xyz(\\d*\\w*)",
                 "log": "xyz",
@@ -4236,7 +4323,8 @@
             },
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
-                "__known_issue:": "In this case there is 1 exceding optional token inside a capture groupe, the regex does match but the expected group is not captured.",
+                "__known_issue": "May related with bug 5. BUG 11 of issue: http://#XXXX",
+                "__known_issue:_2": "In this case there is 1 exceding optional token inside a capture groupe, the regex does match but the expected group is not captured.",
                 "ignore_result": true,
                 "pattern": "xyz(\\w*)",
                 "log": "xyz",
@@ -4258,6 +4346,7 @@
             {
                 "description": "Tokens with optional quantifier (*) should always match, but they don't.",
                 "__known_issue:": "In this case there are 2 exceding optional tokens inside a capture groupe, the regex doesn't match.",
+                "__known_issue": "May related with bug 5. BUG 11 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "xyz\\w*(\\w*)",
                 "log": "xyz",
@@ -4287,6 +4376,7 @@
             {
                 "description": "Capture group is not correctly obtained. It should be '123' but it is empty.",
                 "ignore_result": true,
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "pattern": "(\\d+)\\D*",
                 "log": "123",
                 "end_match": "3",
@@ -4305,6 +4395,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*",
                 "log": "123Test",
@@ -4315,6 +4406,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be '123' but it is empty.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*",
                 "log": "Test123",
@@ -4325,6 +4417,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)",
                 "log": "123",
@@ -4336,6 +4429,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
                 "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "\\d+(\\D*)",
                 "log": "123Test",
                 "end_match": "t",
@@ -4345,6 +4439,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)",
                 "log": "Test123",
@@ -4356,6 +4451,7 @@
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
                 "ignore_result": true,
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "pattern": "^\\d+(\\D*)",
                 "log": "123",
                 "end_match": "3",
@@ -4366,6 +4462,7 @@
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
                 "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "^\\d+(\\D*)",
                 "log": "123Test",
                 "end_match": "t",
@@ -4384,6 +4481,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\d+)\\D*",
                 "log": "123",
@@ -4394,6 +4492,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\d+)\\D*",
                 "log": "123Test",
@@ -4413,6 +4512,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)$",
                 "log": "123",
@@ -4423,6 +4523,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '3'.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)$",
                 "log": "123Test",
@@ -4433,6 +4534,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\d+(\\D*)$",
                 "log": "Test123",
@@ -4443,6 +4545,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*$",
                 "log": "123",
@@ -4453,6 +4556,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*$",
                 "log": "123Test",
@@ -4463,6 +4567,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained. It should be an empty group but it is null.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d+)\\D*$",
                 "log": "Test123",
@@ -4473,6 +4578,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d*)\\w*",
                 "log": "123",
@@ -4483,6 +4589,7 @@
             },
             {
                 "description": "Capture group is not correctly obtained.",
+                "__known_issue": "BUG 12 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\d*)\\w*",
                 "log": "123Test",
@@ -4493,7 +4600,8 @@
             },
             {
                 "description": "Regex should match but does not.",
-                "__known_issue": "Only 4 'recoverage' levels are allowed.",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "__known_issue_2": "Only 4 'recoverage' levels are allowed.",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5)",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
@@ -4514,7 +4622,8 @@
                 "captured_groups": []
             },
             {
-                "description": "This case matches.",
+                "description": "This case does not match.",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5$",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5",
@@ -4537,6 +4646,7 @@
             {
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6xyz6",
                 "end_match": "6",
@@ -4552,6 +4662,7 @@
             {
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6$",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5 xyz6xyz6",
                 "end_match": "6",
@@ -4575,6 +4686,7 @@
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)$",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "log": "xyz1xyz1 xyz2xyz2 xyz3xyz3 xyz4xyz4 xyz5xyz5 xyz6",
                 "end_match": "6",
                 "captured_groups": [
@@ -4590,6 +4702,7 @@
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
                 "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": []
@@ -4598,6 +4711,7 @@
                 "description": "Regex should match but does not.",
                 "ignore_result": true,
                 "pattern": "(\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6)",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": [
@@ -4606,6 +4720,7 @@
             },
             {
                 "description": "Regex should match but does not.",
+                "__known_issue:": "It should match but does not, the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\w+1) (\\w+2) (\\w+3) (\\w+4) (\\w+5) (\\w+6)",
                 "log": "z1 x2 x3 x4 x5x5 x6",
@@ -4651,7 +4766,8 @@
             },
             {
                 "description": "This case has 3 (non-optional) tokens but it is capturing only 2 characters.",
-                "__known_issue": "Capture groups could be either '04T15' or '4T15', depending on the (unpredictable) behavior of the greediness.",
+                "__known_issue": "BUG 13 of issue: http://#XXXX",
+                "__known_issue_2": "Capture groups could be either '04T15' or '4T15', depending on the (unpredictable) behavior of the greediness.",
                 "ignore_result": true,
                 "pattern": "(\\d+\\w\\d+)",
                 "log": "04T15",
@@ -4662,6 +4778,7 @@
             },
             {
                 "description": "This case should match but it does not.",
+                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(-\\d+\\w\\d+:)",
                 "log": "-04T15:",
@@ -4672,6 +4789,7 @@
             },
             {
                 "description": "This case should match but it does not.",
+                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "-(\\d+\\w\\d+):",
                 "log": "-04T15:",
@@ -4681,6 +4799,7 @@
                 ]
             },
             {
+                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
                 "description": "This case should match but it does not.",
                 "ignore_result": true,
                 "pattern": "-\\d+\\w\\d+:",
@@ -4690,7 +4809,8 @@
             },
             {
                 "description": "This case matches.",
-                "__known_issue": "Wrong end_match value.",
+                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue_2": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "\\d+\\w\\d+",
                 "log": "04T15",
@@ -4699,7 +4819,8 @@
             },
             {
                 "description": "This case matches.",
-                "__known_issue": "Wrong end_match value.",
+                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue_2": "Wrong end_match value.",
                 "ignore_result": true,
                 "pattern": "(\\d+\\D\\d+)",
                 "log": "04T15",
@@ -4743,6 +4864,19 @@
                 "captured_groups": []
             },
             {
+                "description": "This case matches.",
+                "__known_issue": "Related BUG 13 of issue: http://#XXXX",
+                "__known_issue_2": "Wrong end_match value.",
+                "ignore_result": true,
+                "debug": true,
+                "pattern": "(\\d+\\D\\d+)",
+                "log": "04T15",
+                "end_match": "5",
+                "captured_groups": [
+                    "04T15"
+                ]
+            },
+            {
                 "description": "Empty regex should not match but it does.",
                 "ignore_result": true,
                 "pattern": "",
@@ -4762,13 +4896,15 @@
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
                 "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "\\.+",
-                "log": "123 test",
+                "log": "123 Test",
                 "end_match": "t",
                 "captured_groups": []
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\.+$",
                 "log": "123 test",
@@ -4777,6 +4913,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\.+",
                 "log": "123 test",
@@ -4785,6 +4922,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\.+$",
                 "log": "123 test",
@@ -4793,6 +4931,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be 't' but it is '1'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\.+)$",
                 "log": "123 test",
@@ -4803,6 +4942,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "\\.+",
                 "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
@@ -4811,6 +4951,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^\\.+$",
                 "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
@@ -4835,6 +4976,7 @@
             },
             {
                 "description": "Last matched character pointed (end_match) should be '~' but it is '_'",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "^(\\.+)$",
                 "log": "_-@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \r\t!\"#$%&()*+,./:;<=>?[\\]^`{|}~",
