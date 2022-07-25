@@ -3126,7 +3126,7 @@ void test_wdb_get_agents_by_connection_status_query_error(void **state)
 
 void test_wdb_get_agents_ids_of_current_node_query_error(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status 0 active -1 node01";
+    const char *query_str = "global get-agents-by-connection-status 0 active node01 -1";
     const char *response = "err";
     char *cluster_node_name = NULL;
     cluster_node_name = strdup("node01");
@@ -3167,7 +3167,7 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
 
 void test_wdb_get_agents_ids_of_current_node_parse_error(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status 0 active -1 node01";
+    const char *query_str = "global get-agents-by-connection-status 0 active node01 -1";
     const char *response = "err";
     char *cluster_node_name = NULL;
     cluster_node_name = strdup("node01");
@@ -3238,7 +3238,7 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
 
 void test_wdb_get_agents_ids_of_current_node_success(void **state)
 {
-    const char *query_str = "global get-agents-by-connection-status 0 active -1 node01";
+    const char *query_str = "global get-agents-by-connection-status 0 active node01 -1";
     char *cluster_node_name = NULL;
     cluster_node_name = strdup("node01");
 

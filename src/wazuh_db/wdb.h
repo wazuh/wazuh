@@ -2107,13 +2107,13 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] connection_status Connection status of the agents requested.
- * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
  * @param [in] node_name Cluster node name
  * @param [in] limit Limits the number of rows returned by the query.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, const char* node_name, int limit);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, const char* node_name, int limit, wdbc_result* status);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.

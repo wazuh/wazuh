@@ -37,7 +37,7 @@ static const char *global_db_commands[] = {
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
-    [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %d %s",
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s %d",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
 };
 
@@ -1153,7 +1153,7 @@ int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock
     node_name = get_node_name();
     while (status == WDBC_DUE) {
         // Query WazuhDB
-        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, limit, node_name);
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, node_name, limit);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
         }

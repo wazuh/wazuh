@@ -48,7 +48,7 @@ const char * error_messages[] = {
     [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
     [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
     [ERROR_EMPTY_LASTID] = "Empty last id",
-    [ERROR_TOO_MANY_AGENTS] = "Too many agents",
+    [ERROR_TOO_MANY_AGENTS] = "Too many agents"
 };
 
 /**

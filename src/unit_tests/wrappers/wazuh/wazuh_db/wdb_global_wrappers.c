@@ -253,13 +253,15 @@ int __wrap_wdb_global_reset_agents_connection(__attribute__((unused)) wdb_t *wdb
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)) wdb_t *wdb,
                                                                int last_agent_id,
                                                                const char* connection_status,
-                                                               wdbc_result* status,
-                                                               const char* node_name) {
+                                                               const char* node_name,
+                                                               int limit,
+                                                               wdbc_result* status) {
     check_expected(last_agent_id);
     check_expected(connection_status);
     *status = mock();
     if (node_name) {
         check_expected(node_name);
+        check_expected(limit);
     }
     return mock_ptr_type(cJSON*);
 }
