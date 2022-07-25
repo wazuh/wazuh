@@ -1,16 +1,1799 @@
 [
     {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. The next token does not include the map characters of the current token and has '+' modifier.",
+        "description": "[Functionality] Charmap without backslashed tokens.",
         "batch_test": [
             {
-                "description": "Min size",
+                "description": "Literal match. Match all.",
+                "pattern": "hi wazuh",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Literal match. Match all, with capture groups.",
+                "pattern": "(hi) (wazuh)",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Literal match, with the end flag. It does not match.",
+                "pattern": "hi wazuh$",
+                "log": "hi wazuh 123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Literal match, with groups and the end flag. It does not match.",
+                "pattern": "(hi) (wazuh)$",
+                "log": "hi wazuh 123",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Dont match at all.",
+                "pattern": "hi wazuh",
+                "log": "bye wazuh",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match with prefix and group.",
+                "pattern": "(hi) (wazuh)",
+                "log": "prefixhi wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match with sufix and group.",
+                "pattern": "(hi) (wazuh)",
+                "log": "fixhi wazuhsub",
+                "end_match": "hsub",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match with adjacent capture groups.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(hi)(wazuh)",
+                "log": "hiwazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match with adjacent capture groups and context.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(hi)(wazuh)",
+                "log": "prefixhiwazuhsub",
+                "end_match": "hsub",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Charmap + END/BEGIN flags and st_error without backslashed tokens.",
+        "batch_test": [
+            {
+                "description": "Regex match all and the END_SET is set.",
+                "pattern": "hi wazuh$",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "pattern": "^$",
+                "log": "hi wazuh",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "^$",
+                "log": "",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(^$)",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Empty pattern END_SET and BEGIN_SET are set.",
+                "__known_issue:": "It should match but does not, it is not possible to check if a log is empty. BUG 2 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "^()$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Pattern ends and the END_SET is not set.",
+                "pattern": "hi wazuh",
+                "log": "hi wazuh!",
+                "end_match": "h!",
+                "captured_groups": []
+            },
+            {
+                "description": "Partial match and then re-match ('st_error' test).",
+                "pattern": "(hi) (wazuh)",
+                "log": "XX hi wa hi wazuhXX",
+                "end_match": "hXX",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Partial match and then re-match ('st_error' + BEGIN_SET test).",
+                "pattern": "^(hi) (wazuh)",
+                "log": "hi wa hi wazuhXX",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Only backslashed tokens without quantifiers ('*', '+').",
+        "batch_test": [
+            {
+                "description": "Match all.",
+                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Parcial match and fail",
+                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
+                "log": "hi waz",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Parcial match and fail and then re-match",
+                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
+                "log": "hi waz hi wazu.",
+                "end_match": ".",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with capture groups.",
+                "pattern": "\\w(\\w\\s\\S)\\S(\\S\\S\\S)",
+                "log": "hi wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "i w",
+                    "zuh"
+                ]
+            },
+            {
+                "description": "Parcial match and fail  with capture group.",
+                "pattern": "(\\w\\w)\\s\\S\\S\\S\\S\\S",
+                "log": "hi waz",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Parcial match and fail but then re-match with capture group.",
+                "pattern": "(\\w\\w)\\s(\\S\\S\\S\\S\\S)",
+                "log": "hi waz hi wazuh.",
+                "end_match": "h.",
+                "captured_groups": [
+                    "hi",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Parcial match and fail but then re-match with adjacent capture group.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(\\w\\w\\s)(\\S\\S\\S\\S\\S)",
+                "log": "hi waz hi wazuh.",
+                "end_match": "h.",
+                "captured_groups": [
+                    "hi ",
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Parcial match and fail but then re-match with one capture group.",
+                "pattern": "(\\w\\w\\s\\S\\S\\S\\S\\S)\\p$",
+                "log": "hi waz hi wazuh.",
+                "end_match": ".",
+                "captured_groups": [
+                    "hi wazuh"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Only backslashed tokens with the '+' quantifier.",
+        "batch_test": [
+            {
+                "description": "Match all.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "\\w+",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Mach all with capture group.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(\\w+)",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Mach all with capture group and flags.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^\\w+$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Mach all with capture group and flags.",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^(\\w+)$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Parcial match and fail, with flags.",
+                "pattern": "^\\w+$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Parcial match and fail with capture group and flags.",
+                "pattern": "^(\\w+)$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match one character.",
+                "pattern": "\\w+",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "Match one character, with capture group.",
+                "pattern": "(\\w+)",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match one character and flags.",
+                "pattern": "^\\w+$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "Match one character, with capture group and flags",
+                "pattern": "^(\\w+)$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '+' quantifier followed by a token that has no quantifier, where the last token does not include the charmap of the first one.",
+        "batch_test": [
+            {
+                "description": "Minimun log to match all, with backslashed token.",
+                "pattern": "\\w+\\s",
+                "log": "X ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with backslashed token.",
+                "pattern": "\\w+\\s",
+                "log": "Wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all with capture group, with backslashed token.",
+                "pattern": "(\\w+)\\s",
+                "log": "X ",
+                "end_match": " ",
+                "captured_groups": [
+                    "X"
+                ]
+            },
+            {
+                "description": "Minimun log to match and capture all, with backslashed token.",
+                "pattern": "(\\w+\\s)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all, capture the first token, with backslashed token.",
+                "pattern": "(\\w+)\\s",
+                "log": "Wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "Wazuh"
+                ]
+            },
+            {
+                "description": "Minimun log to match all.",
+                "pattern": "\\w+ ",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all.",
+                "pattern": "\\w+ ",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all with capture group.",
+                "pattern": "(\\w+) ",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Minimun log to match and capture all.",
+                "pattern": "(\\w+ )",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all and capture the first word.",
+                "pattern": "(\\w+) ",
+                "log": "Wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "Wazuh"
+                ]
+            },
+            {
+                "description": "Match all, with a literal at the end.",
+                "pattern": "\\w+\\s1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all, with a literal at the end, capture the first word.",
+                "pattern": "(\\w+)\\s1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all, with a literal at the end, capture the first word and the second token (space).",
+                "pattern": "(\\w+\\s)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all, with a literal at the end, capture the first word.",
+                "pattern": "(\\w+)\\s1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match, with a postfix.",
+                "pattern": "\\w+\\s1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": []
+            },
+            {
+                "description": "Match, with a postfix and a literal space",
+                "pattern": "\\w+ 1",
+                "log": "wazuh 123",
+                "end_match": "123",
+                "captured_groups": []
+            },
+            {
+                "description": "Match, with a postfix and a literal space, capture the first token.",
+                "pattern": "(\\w+) 1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match, with a postfix and a literal space, capture the first token and the space.",
+                "pattern": "(\\w+ )1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match, with a postfix and a literal space, capture the first token.",
+                "pattern": "(\\w+) 1",
+                "log": "wazuh 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match, with a postfix and a literal space, capture the first token and the space..",
+                "pattern": "^\\w+\\s$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with flags.",
+                "pattern": "^\\w+\\s$",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with flags and capture the first token",
+                "pattern": "^(\\w+)\\s$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match and capture all with flags.",
+                "pattern": "^(\\w+\\s)$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all with backslashed token and flags.",
+                "pattern": "^(\\w+)\\s$",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match minimum log with flags.",
+                "pattern": "^\\w+ $",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with flags.",
+                "pattern": "^\\w+ $",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match minimum log with flags and capture the first token.",
+                "pattern": "^(\\w+) $",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match minimum log with flags and capture all.",
+                "pattern": "^(\\w+ )$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match minimum log with flags and capture the first token.",
+                "pattern": "^(\\w+) $",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Fail match becouse of flags.",
+                "pattern": "^\\w+ $",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Fail match becouse of flags.",
+                "pattern": "^(\\w+ )$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '+' quantifier followed by a token that has no quantifier, where the last token does include the charmap of the first one.",
+        "batch_test": [
+            {
+                "description": "Minimun log to match all, with backslashed token.",
+                "pattern": "\\d+\\d",
+                "log": "5",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with backslashed token.",
+                "pattern": "(\\d+)\\d",
+                "log": "5",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all with capture group, with backslashed token.",
+                "pattern": "(\\d+)\\w",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Minimun log to match and capture all, with backslashed token.",
+                "pattern": "\\d+(\\w)",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "2"
+                ]
+            },
+            {
+                "description": "Match all, with backslashed token.",
+                "pattern": "\\d+\\w",
+                "log": "12345",
+                "end_match": "2345",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, capture the first token, with backslashed token.",
+                "pattern": "(\\d+)\\w",
+                "log": "12345",
+                "end_match": "2345",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Match all, capture the second token, with backslashed token.",
+                "pattern": "\\d+(\\w)",
+                "log": "12345",
+                "end_match": "2345",
+                "captured_groups": [
+                    "2"
+                ]
+            },
+            {
+                "description": "No match, no item to consume.",
+                "pattern": "^\\d+\\d",
+                "log": "5",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "No match, no item to consume.",
+                "pattern": "^(\\d+)\\d",
+                "log": "5",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, capture the first token with flags.",
+                "pattern": "^(\\d+)\\w$",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Match all, capture the second token with flags.",
+                "pattern": "^\\d+(\\w)$",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "2"
+                ]
+            },
+            {
+                "description": "Match all with flags.",
+                "pattern": "^\\d+\\w$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with flags.",
+                "pattern": "^(\\d+)\\w$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": [
+                    "1234"
+                ]
+            },
+            {
+                "description": "Match all with flags and capture the second token.",
+                "pattern": "^\\d+(\\w)$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": [
+                    "5"
+                ]
+            },
+            {
+                "description": "Dont match with flags.",
+                "pattern": "^\\d+(\\w)$",
+                "log": "12345&&&&&&&",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '+' quantifier followed by a token that has the '+' quantifier, where the last token does not include the charmap of the first one.",
+        "batch_test": [
+            {
+                "description": "Minimun log to match all.",
+                "pattern": "\\w+\\s+",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all, with capture all.",
+                "pattern": "(\\w+\\s+)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Minimun log to match all, capture the first token.",
+                "pattern": "(\\w+)\\s+",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, capture the second token.",
+                "pattern": "\\w+(\\s+)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    " "
+                ]
+            },
+            {
+                "description": "Match all.",
+                "pattern": "\\w+\\s+",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with group.",
+                "pattern": "(\\w+)\\s+",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match all with consecutive group.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(\\w+)(\\s+)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with no consecutive group and opcional.",
+                "pattern": "(\\w+)\\d*(\\s+)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with no consecutive group and opcional",
+                "pattern": "(\\w+)\\d*(\\s+)",
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with no consecutive group.",
+                "pattern": "(\\w+)\\d+(\\s+)",
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with literal at the end.",
+                "pattern": "\\w+\\s+1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, 1 character with literal at the end and capture the first token.",
+                "pattern": "(\\w+)\\s+1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all, 1 character with literal at the end and no capture the literal.",
+                "pattern": "(\\w+\\s+)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all with literal at the end and capture the first token.",
+                "pattern": " (\\w+)\\s+1",
+                "log": " wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with flags.",
+                "pattern": "^\\w+\\s+$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with flags.",
+                "ignore_result": true,
+                "__know_issue": "Err retval.",
+                "pattern": "^\\w+\\s+$",
+                "log": "wazuh  ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all, with flags and capture the first token.",
+                "pattern": "^(\\w+)\\s+$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with flags and capture the second token.",
+                "pattern": "^\\w+(\\s+)$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    " "
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with flags and capture all.",
+                "pattern": "^(\\w+\\s+)$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^\\w+\\s+$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^(\\w+\\s+)$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '+' quantifier followed by a token that has the '*' quantifier, where the last token does include the charmap of the first one.",
+        "batch_test": [
+            {
+                "description": "Minimun log to match all.",
+                "pattern": "\\w+\\s*",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all and patter with a optional token.",
+                "pattern": "\\w+\\s*",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all and capture all.",
+                "pattern": "(\\w+\\s*)",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all and capture all.",
+                "pattern": "(\\w+\\s*)",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "debug": false,
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Minimun log with optional token to match and capture all.",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "pattern": "(\\w+\\s*)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Minimun log to match and capture the first token.",
+                "pattern": "(\\w+)\\s*",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "inimun log with optional token to match and capture the first token.",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "pattern": "(\\w+)\\s*",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all.",
+                "pattern": "\\w+\\s*",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, capture all.",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "pattern": "(\\w+\\s*)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh "
+                ]
+            },
+            {
+                "description": "Match all with no consecutive group.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(\\w+)(\\s*)",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with no consecutive group and opcional.",
+                "pattern": "(\\w+)\\d+(\\s*)",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with no consecutive group and opcional.",
+                "pattern": "(\\w+)\\d+(\\s*)",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with no consecutive group and opcional.",
+                "pattern": "(\\w+)\\d*(\\s*)",
+                "ignore_result": true,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "debug": false,
+                "log": "wazuh123 ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh",
+                    " "
+                ]
+            },
+            {
+                "description": "Match all with literal at the end.",
+                "pattern": "\\w+\\s*1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with literal at the end, 1 character and capture the first token.",
+                "pattern": "(\\w+)\\s*1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all with literal at the end, 1 character and capture the first token and te optional.",
+                "pattern": "(\\w+\\s*)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all with literal at the end and capture the first token.",
+                "pattern": " (\\w+)\\s*1",
+                "log": " wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with flags.",
+                "pattern": "^\\w+\\s*$",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with flags.",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "pattern": "^\\w+\\s*$",
+                "log": "wazuh  ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Minimun log to match all, with flags and capture the first token.",
+                "pattern": "^(\\w+)\\s*$",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with flags and capture the first token.",
+                "pattern": "^(\\w+)\\s*$",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with flags and capture all.",
+                "pattern": "^(\\w+\\s*)$",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^\\w+\\s*$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^(\\w+\\s*)$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by backslashed tokens with '*' quantifiers. Test the 'st_error', 'pt_error[]' and 'pt_error_str[]' for parcial matches and rewind.",
+        "batch_test": [
+            {
+                "description": "Saves and restores the first position error.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_11 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the second position error.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_22 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the third position error.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the fourth position error.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_3 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the fifth position error.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_3 wa_4 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the sixth position error.",
+                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
+                "log": "wa_1 wa_2 wa_3 wa_4 wa_5 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the first position error. But the first should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1x1 x2 x3 x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the second position error. But the second should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2x2 x3 x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the third position error. But the third should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2x2 x3 x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the fourth position error. But the fourth should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2 x3 x4x4 x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the fifth position error. But the fifth should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "log": "z1 x2 x3 x4 x5x5 x6",
+                "end_match": "6",
+                "captured_groups": []
+            },
+            {
+                "description": "Saves and restores the sixth position error. But the sixth should match with the next character.",
+                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
+                "log": "z1 x2 x3 x4 x5 x6x6",
+                "ignore_result": true,
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
+                "end_match": "6",
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Only backslashed tokens with the '*' quantifier.",
+        "batch_test": [
+            {
+                "description": "Match all.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "\\w*",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "Match 0-0",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG 4 Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "skip_test": true,
+                "pattern": "\\d*",
+                "log": "wazuh",
+                "end_match": "wazuh",
+                "captured_groups": []
+            },
+            {
+                "description": "Mach all with capture group.",
+                "ignore_result": true,
+                "pattern": "(\\w*)",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match 0-0, with capture group",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "skip_test": true,
+                "pattern": "(\\d*)",
+                "log": "wazuh",
+                "end_match": "wazuh",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Mach all with capture group and flags.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "debug": false,
+                "pattern": "^\\w*$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": []
+            },
+            {
+                "description": "With capture group, match all (And flags)",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "^(\\w*)$",
+                "log": "wazuh",
+                "end_match": "h",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Parcial match and fail, with flags.",
+                "pattern": "^\\w*$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Parcial match and fail, with flags and capture group.",
+                "pattern": "^(\\w*)$",
+                "log": "wazuh ",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "description": "Match one character.",
+                "pattern": "\\w*",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "Match one character with capture group.",
+                "pattern": "(\\w*)",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match one character and flags.",
+                "pattern": "^\\w*$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": []
+            },
+            {
+                "description": "Match one character, with group and flags.",
+                "pattern": "^(\\w*)$",
+                "log": "w",
+                "end_match": "w",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match 0-0 with flags.",
+                "debug": true,
+                "pattern": "^\\w*$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": []
+            },
+            {
+                "description": "Match 0-0 and capture all",
+                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected.",
+                "ignore_result": true,
+                "pattern": "(\\w*)",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [ "" ]
+            },
+            {
+                "description": "Match 0-0 with flags and capture all",
+                "__known_issue:": "If the pattern has only one token that has the quantifier '*' and it is inside a capture group, when the log is empty, it matches correctly, returning the pointer to the end of the string but does not capture the empty group as expected.",
+                "ignore_result": true,
+                "pattern": "^(\\w*)$",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [ "" ]
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '*' quantifier followed by a token that has no quantifier, where the last token does not include the charmap of the first one.er.",
+        "batch_test": [
+            {
+                "description": "Match 1 character.",
+                "pattern": "\\w*\\s",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all.",
+                "pattern": "\\w*\\s",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match 1 character with capture group.",
+                "pattern": "(\\w*)\\s",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with backslashed token and capture group",
+                "pattern": "(\\w*)\\s",
+                "log": " ",
+                "end_match": " ",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Match all, with backslashed token and capture all",
+                "pattern": "(\\w*\\s)",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with backslashed token and capture all.",
+                "pattern": "(\\w*\\s)",
+                "log": " ",
+                "end_match": " ",
+                "captured_groups": [
+                    " "
+                ]
+            },
+            {
+                "description": "Mtch all, with backslashed token and capture the first token.",
+                "pattern": "(\\w*)\\s",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Minimun log to match all, with literal token.",
+                "pattern": "\\w* ",
+                "log": " ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with 1 character and literal token.",
+                "pattern": "\\w* ",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with literal.",
+                "pattern": "\\w* ",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with literal token and capture the first token.",
+                "pattern": "(\\w*) ",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all, with literal token and capture all.",
+                "pattern": "(\\w* )",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all, with literal token and capture the first token.",
+                "pattern": "(\\w*) ",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match all, with literal token.",
+                "pattern": "\\w*\\s1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all, with backlashed token and capture the first token.",
+                "pattern": "(\\w*)\\s1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all, with backlashed token and capture the first token.",
+                "pattern": "(\\w*\\s)1",
+                "log": "w 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all, with backlashed token and capture the first token.",
+                "pattern": "(\\w*)\\s1",
+                "log": "wazuh 1",
+                "end_match": "1",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match, with backlashed token and literal.",
+                "pattern": "\\w*\\s1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": []
+            },
+            {
+                "description": "Match, with liteals token.",
+                "pattern": "\\w* 1",
+                "log": "wazuh 123",
+                "end_match": "123",
+                "captured_groups": []
+            },
+            {
+                "description": "Match, with liteals token and capture the first.",
+                "pattern": "(\\w*) 1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match, with liteals token and capture the first token and literal.",
+                "pattern": "(\\w* )1",
+                "log": "w 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match, with liteals token and capture the first token.",
+                "pattern": "(\\w*) 1",
+                "log": "wazuh 123",
+                "end_match": "123",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match all with backlashed token and flags.",
+                "pattern": "^\\w*\\s$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with backlashed token and flags.",
+                "pattern": "^\\w*\\s$",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with backlashed token, flags and capture the first group.",
+                "pattern": "^(\\w*)\\s$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all with backlashed token, flags and capture all.",
+                "pattern": "^(\\w*\\s)$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "description": "Match all with backlashed token and flags.",
+                "pattern": "^(\\w*)\\s$",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "description": "Match all with liteal token and flags.",
+                "pattern": "^\\w* $",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with literal token and flags.",
+                "pattern": "^\\w* $",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all with literal token, flags and capture the first.",
+                "pattern": "^(\\w*) $",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w"
+                ]
+            },
+            {
+                "description": "Match all with literal token and flags.",
+                "pattern": "^(\\w* )$",
+                "log": "w ",
+                "end_match": " ",
+                "captured_groups": [
+                    "w "
+                ]
+            },
+            {
+                "pattern": "^(\\w*) $",
+                "log": "wazuh ",
+                "end_match": " ",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "pattern": "^\\w* $",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            },
+            {
+                "pattern": "^(\\w* )$",
+                "log": "wazuh -",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '*' quantifier followed by a token that has no quantifier, where the last token does include the charmap of the first one.",
+        "batch_test": [
+            {
+                "description": "Match all. 0-0 and backlashed token.",
+                "pattern": "\\d*\\w",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Match all. 0-0 and backlashed token and capture group.",
+                "pattern": "(\\d*)\\w",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "\\w matches with '1' character",
+                "pattern": "\\d*\\w",
+                "log": "12",
+                "end_match": "12",
+                "captured_groups": []
+            },
+            {
+                "description": "\\w matches with '1' character",
+                "pattern": "(\\d*)\\w",
+                "log": "12",
+                "end_match": "12",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Matches and capture group.",
+                "pattern": "\\d*(\\w)",
+                "log": "12",
+                "end_match": "12",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\w matches to the first number.",
+                "pattern": "\\d*\\w",
+                "log": "12345",
+                "end_match": "12345",
+                "captured_groups": []
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\w matches to the first number.",
+                "pattern": "(\\d*)\\w",
+                "log": "12345",
+                "end_match": "12345",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\w matches to the first number.",
+                "pattern": "\\d*(\\w)",
+                "log": "12345",
+                "end_match": "12345",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\d matches to the first number.",
+                "pattern": "^\\d*\\d",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\d matches to the first number.",
+                "pattern": "^(\\d*)\\d",
+                "log": "5",
+                "end_match": "5",
+                "captured_groups": [
+                    ""
+                ]
+            },
+            {
+                "pattern": "^(\\d*)\\w$",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "1"
+                ]
+            },
+            {
+                "pattern": "^\\d*(\\w)$",
+                "log": "12",
+                "end_match": "2",
+                "captured_groups": [
+                    "2"
+                ]
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\d matches to the last number.",
+                "pattern": "^\\d*\\w$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": []
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\d matches to the last number.",
+                "pattern": "^(\\d*)\\w$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": [
+                    "1234"
+                ]
+            },
+            {
+                "description": "Matches with nothing (0-0) and \\d matches to the last number.",
+                "pattern": "^\\d*(\\w)$",
+                "log": "12345",
+                "end_match": "5",
+                "captured_groups": [
+                    "5"
+                ]
+            },
+            {
+                "description": "Dont match.",
+                "pattern": "^\\d*(\\w)$",
+                "log": "12345&&&&&&&",
+                "end_match": null,
+                "captured_groups": []
+            }
+        ]
+    },
+    {
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '*' quantifier followed by a token that has the '+' quantifier, where the last token does not include the charmap of the first one.",
+        "batch_test": [
+            {
                 "pattern": "\\w*\\s+",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Min size. Capture all.",
+                "description": "Capture all.",
                 "pattern": "(\\w*\\s+)",
                 "log": "w ",
                 "end_match": " ",
@@ -19,7 +1802,6 @@
                 ]
             },
             {
-                "description": "Min size, with group",
                 "pattern": "(\\w*)\\s+",
                 "log": "w ",
                 "end_match": " ",
@@ -28,14 +1810,12 @@
                 ]
             },
             {
-                "description": "Other size",
                 "pattern": "\\w*\\s+",
                 "log": "wazuh ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Other size. With group",
                 "pattern": "(\\w*)\\s+",
                 "log": "wazuh ",
                 "end_match": " ",
@@ -44,8 +1824,7 @@
                 ]
             },
             {
-                "description": "Other size. With group",
-                "__know_issue": "Consecutive capture groups don't support. should match 'wazuh ' but it doesn't. But (\\w+)\\d*(\\s+) works",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\w*)(\\s+)",
                 "log": "wazuh ",
@@ -56,7 +1835,7 @@
                 ]
             },
             {
-                "description": "2 groups no consecutive, and opcional",
+                "description": "2 no consecutive groups, and opcional.",
                 "pattern": "(\\w*)\\d*(\\s+)",
                 "log": "wazuh ",
                 "end_match": " ",
@@ -66,7 +1845,7 @@
                 ]
             },
             {
-                "description": "2 groups no consecutive, and opcional",
+                "description": "2 no consecutive groups, and opcional.",
                 "pattern": "(\\w*)\\d*(\\s+)",
                 "log": "wazuh123 ",
                 "end_match": " ",
@@ -88,7 +1867,7 @@
             {
                 "description": "2 groups no consecutive, and opcional",
                 "pattern": "(\\w*)\\d*(\\s*)",
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "log": "wazuh ",
                 "end_match": " ",
@@ -100,7 +1879,7 @@
             {
                 "description": "2 groups no consecutive, and opcional",
                 "pattern": "(\\w*)\\d*(\\s*)",
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "log": "wazuh123 ",
                 "end_match": " ",
@@ -112,7 +1891,7 @@
             {
                 "description": "2 groups no consecutive",
                 "pattern": "(\\w*)\\d+(\\s*)",
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "log": "wazuh123 ",
                 "end_match": " ",
@@ -122,14 +1901,12 @@
                 ]
             },
             {
-                "description": "With literal at the end.",
                 "pattern": "\\w*\\s+1",
                 "log": "wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
             {
-                "description": "With literal at the end, 1 character + capture group.",
                 "pattern": "(\\w*)\\s+1",
                 "log": "w 1",
                 "end_match": "1",
@@ -138,7 +1915,6 @@
                 ]
             },
             {
-                "description": "With literal at the end, 1 character + capture all.",
                 "pattern": "(\\w*\\s+)1",
                 "log": "w 1",
                 "end_match": "1",
@@ -147,7 +1923,6 @@
                 ]
             },
             {
-                "description": "With literal at the end, 1 character + capture",
                 "pattern": " (\\w*)\\s+1",
                 "log": " wazuh 1",
                 "end_match": "1",
@@ -156,23 +1931,20 @@
                 ]
             },
             {
-                "description": "Min size. Match all. 1 character (With flags).",
                 "pattern": "^\\w*\\s+$",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "^\\w*\\s+$",
                 "log": "wazuh  ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Match all. 1 character + capture group. (With flags).",
                 "pattern": "^(\\w*)\\s+$",
                 "log": "w ",
                 "end_match": " ",
@@ -181,7 +1953,6 @@
                 ]
             },
             {
-                "description": "Match all. 1 character + capture group. (With flags).",
                 "pattern": "^(\\w*)\\s+$",
                 "log": "w ",
                 "end_match": " ",
@@ -190,7 +1961,6 @@
                 ]
             },
             {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
                 "pattern": "^(\\w*\\s+)$",
                 "log": "w ",
                 "end_match": " ",
@@ -215,28 +1985,24 @@
         ]
     },
     {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. The next token does include the map characters of the current token and has '*' modifier.",
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by a backslashed token with a '+' quantifier followed by a token that has the '*' quantifier, where the last token does include the charmap of the first one.",
         "batch_test": [
             {
-                "description": "Min size",
                 "pattern": "\\w*\\s*",
                 "log": "w",
                 "end_match": "w",
                 "captured_groups": []
             },
             {
-                "description": "Min size + opt.",
                 "pattern": "\\w*\\s*",
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Min size. Capture all.",
                 "pattern": "(\\w*\\s*)",
-                "__know_issue": "The group: 'w' cannot be found",
                 "log": "w",
                 "end_match": "w",
                 "captured_groups": [
@@ -244,7 +2010,17 @@
                 ]
             },
             {
-                "description": "Min size. Capture all.",
+                "pattern": "(\\w*\\s*)",
+                "__known_issue:": "When the regex consists only of tokens with '*' quantifiers, then it always matches. When it matches having 0 matching characters, then it returns the pointer poiting to one byte before the beginning of the string. BUG Issue: https://github.com/wazuh/wazuh/issues/14249",
+                "__known_issue_2:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
+                "skip_test": true,
+                "log": " ",
+                "end_match": " ",
+                "captured_groups": [
+                    " "
+                ]
+            },
+            {
                 "pattern": "(\\w*\\s*)",
                 "log": "wazuh",
                 "end_match": "h",
@@ -253,9 +2029,9 @@
                 ]
             },
             {
-                "description": "Min size + opt. Capture all.",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "debug": false,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "(\\w*\\s*)",
                 "log": "w ",
                 "end_match": " ",
@@ -273,9 +2049,8 @@
                 ]
             },
             {
-                "description": "Min size + opt, with group",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "(\\w*)\\s*",
                 "log": "w ",
                 "end_match": " ",
@@ -284,10 +2059,10 @@
                 ]
             },
             {
-                "description": "Other size",
                 "pattern": "\\w*\\s*",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "debug": false,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "log": "wazuh ",
                 "end_match": " ",
                 "captured_groups": []
@@ -295,7 +2070,8 @@
             {
                 "description": "Other size. With group",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "debug": false,
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "(\\w*\\s*)",
                 "log": "wazuh ",
                 "end_match": " ",
@@ -304,8 +2080,7 @@
                 ]
             },
             {
-                "description": "Other size. With group",
-                "__know_issue": "Consecutive capture groups don't support. should match 'wazuh ' but it doesn't. But (\\w+)\\d*(\\s+) works",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "ignore_result": true,
                 "pattern": "(\\w*)(\\s*)",
                 "log": "wazuh ",
@@ -316,10 +2091,44 @@
                 ]
             },
             {
-                "description": "2 groups no consecutive, and opcional",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(\\w*)(\\s*)",
+                "log": " ",
+                "end_match": " ",
+                "captured_groups": [
+                    "",
+                    " "
+                ]
+            },
+            {
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "pattern": "(\\w*)(\\s*)",
+                "log": "w",
+                "end_match": " ",
+                "captured_groups": [
+                    "",
+                    " "
+                ]
+            },
+            {
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
+                "ignore_result": true,
+                "debug":false,
+                "pattern": "(\\w*)(\\s*)",
+                "log": "",
+                "end_match": "",
+                "captured_groups": [
+                    "",
+                    ""
+                ]
+            },
+            {
+                "description": "2 groups no consecutive, and opcional.",
                 "pattern": "(\\w*)\\d+(\\s*)",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "It should match but does not, adjacent capture groups are not supported. BUG 1 of issue: http://#XXXX",
                 "log": "wazuh ",
                 "end_match": null,
                 "captured_groups": []
@@ -328,7 +2137,7 @@
                 "description": "2 groups no consecutive, and opcional",
                 "pattern": "(\\w*)\\d+(\\s*)",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "log": "wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
@@ -340,7 +2149,7 @@
                 "description": "2 groups no consecutive",
                 "pattern": "(\\w*)\\d*(\\s*)",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "log": "wazuh123 ",
                 "end_match": " ",
                 "captured_groups": [
@@ -349,14 +2158,12 @@
                 ]
             },
             {
-                "description": "With literal at the end.",
                 "pattern": "\\w*\\s*1",
                 "log": "wazuh 1",
                 "end_match": "1",
                 "captured_groups": []
             },
             {
-                "description": "With literal at the end, 1 character + capture group.",
                 "pattern": "(\\w*)\\s*1",
                 "log": "w 1",
                 "end_match": "1",
@@ -365,7 +2172,6 @@
                 ]
             },
             {
-                "description": "With literal at the end, 1 character + capture all.",
                 "pattern": "(\\w*\\s*)1",
                 "log": "w 1",
                 "end_match": "1",
@@ -374,7 +2180,6 @@
                 ]
             },
             {
-                "description": "With literal at the end, 1 character + capture",
                 "pattern": " (\\w*)\\s*1",
                 "log": " wazuh 1",
                 "end_match": "1",
@@ -383,28 +2188,25 @@
                 ]
             },
             {
-                "description": "Min size. Match all. 1 character (With flags).",
                 "pattern": "^\\w*\\s*$",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "pattern": "^\\w*\\s*$",
                 "log": "wazuh  ",
                 "end_match": " ",
                 "captured_groups": []
             },
             {
-                "description": "Match all. 1 character + capture group. (With flags).",
                 "pattern": "^(\\w*)\\s*$",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -412,10 +2214,9 @@
                 ]
             },
             {
-                "description": "Match all. 1 character + capture group. (With flags).",
                 "pattern": "^(\\w*)\\s*$",
                 "ignore_result": true,
-                "__know_issue": "Err retval.",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "log": "w ",
                 "end_match": " ",
                 "captured_groups": [
@@ -423,8 +2224,8 @@
                 ]
             },
             {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
                 "pattern": "^(\\w*\\s*)$",
+                "__known_issue:": "Matches but if the regex ends with a token with the quantifier '+' or '*', then it does not return the pointer to the last character matched, as it should be. BUG 3 of issue: http://#XXXX",
                 "ignore_result": true,
                 "log": "w ",
                 "end_match": " ",
@@ -449,1860 +2250,94 @@
         ]
     },
     {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does not include the map characters of the current token and has '+' modifier.",
+        "description": "[Functionality] Lazy-Greedy behavior duality: Regex composed by backslashed tokens with '*' quantifiers. Test the 'st_error', 'pt_error[]' and 'pt_error_str[]' for parcial matches and rewind.",
         "batch_test": [
             {
-                "description": "Min size",
-                "pattern": "\\w+\\s+",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Min size. Capture all.",
-                "pattern": "(\\w+\\s+)",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Min size, with group",
-                "pattern": "(\\w+)\\s+",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Other size",
-                "pattern": "\\w+\\s+",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Other size. With group",
-                "pattern": "(\\w+)\\s+",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Other size. With group",
-                "__know_issue": "Consecutive capture groups don't support. should match 'wazuh ' but it doesn't. But (\\w+)\\d*(\\s+) works",
-                "ignore_result": true,
-                "pattern": "(\\w+)(\\s+)",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "2 groups no consecutive, and opcional",
-                "pattern": "(\\w+)\\d*(\\s+)",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "2 groups no consecutive, and opcional",
-                "pattern": "(\\w+)\\d*(\\s+)",
-                "log": "wazuh123 ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "2 groups no consecutive",
-                "pattern": "(\\w+)\\d+(\\s+)",
-                "log": "wazuh123 ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "With literal at the end.",
-                "pattern": "\\w+\\s+1",
-                "log": "wazuh 1",
-                "end_match": "1",
-                "captured_groups": []
-            },
-            {
-                "description": "With literal at the end, 1 character + capture group.",
-                "pattern": "(\\w+)\\s+1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "With literal at the end, 1 character + capture all.",
-                "pattern": "(\\w+\\s+)1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "With literal at the end, 1 character + capture",
-                "pattern": " (\\w+)\\s+1",
-                "log": " wazuh 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Min size. Match all. 1 character (With flags).",
-                "pattern": "^\\w+\\s+$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "pattern": "^\\w+\\s+$",
-                "log": "wazuh  ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Match all. 1 character + capture group. (With flags).",
-                "pattern": "^(\\w+)\\s+$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Match all. 1 character + capture group. (With flags).",
-                "pattern": "^(\\w+)\\s+$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
-                "pattern": "^(\\w+\\s+)$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Dont match.",
-                "pattern": "^\\w+\\s+$",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Dont match.",
-                "pattern": "^(\\w+\\s+)$",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does include the map characters of the current token and has '*' modifier.",
-        "batch_test": [
-            {
-                "description": "Min size",
-                "pattern": "\\w+\\s*",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": []
-            },
-            {
-                "description": "Min size + opt.",
-                "pattern": "\\w+\\s*",
-                "__know_issue": "Err retval.",
-                "ignore_result": true,
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Min size. Capture all.",
-                "pattern": "(\\w+\\s*)",
-                "__know_issue": "The group: 'w' cannot be found",
-                "ignore_result": true,
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Min size. Capture all.",
-                "pattern": "(\\w+\\s*)",
-                "__know_issue": "The group: 'wazuh' cannot be found",
-                "ignore_result": true,
-                "debug": false,
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Min size + opt. Capture all.",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "pattern": "(\\w+\\s*)",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Min size, with group",
-                "pattern": "(\\w+)\\s*",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Min size + opt, with group",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "pattern": "(\\w+)\\s*",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Other size",
-                "pattern": "\\w+\\s*",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Other size. With group",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "pattern": "(\\w+\\s*)",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh "
-                ]
-            },
-            {
-                "description": "Other size. With group",
-                "__know_issue": "Consecutive capture groups don't support. should match 'wazuh ' but it doesn't. But (\\w+)\\d*(\\s+) works",
-                "ignore_result": true,
-                "pattern": "(\\w+)(\\s*)",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "2 groups no consecutive, and opcional",
-                "pattern": "(\\w+)\\d+(\\s*)",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "wazuh ",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "2 groups no consecutive, and opcional",
-                "pattern": "(\\w+)\\d+(\\s*)",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "wazuh123 ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "2 groups no consecutive",
-                "pattern": "(\\w+)\\d*(\\s*)",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "debug": false,
-                "log": "wazuh123 ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh",
-                    " "
-                ]
-            },
-            {
-                "description": "With literal at the end.",
-                "pattern": "\\w+\\s*1",
-                "log": "wazuh 1",
-                "end_match": "1",
-                "captured_groups": []
-            },
-            {
-                "description": "With literal at the end, 1 character + capture group.",
-                "pattern": "(\\w+)\\s*1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "With literal at the end, 1 character + capture all.",
-                "pattern": "(\\w+\\s*)1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "With literal at the end, 1 character + capture",
-                "pattern": " (\\w+)\\s*1",
-                "log": " wazuh 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Min size. Match all. 1 character (With flags).",
-                "pattern": "^\\w+\\s*$",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "pattern": "^\\w+\\s*$",
-                "log": "wazuh  ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Match all. 1 character + capture group. (With flags).",
-                "pattern": "^(\\w+)\\s*$",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Match all. 1 character + capture group. (With flags).",
-                "pattern": "^(\\w+)\\s*$",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
-                "pattern": "^(\\w+\\s*)$",
-                "ignore_result": true,
-                "__know_issue": "Err retval.",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Dont match.",
-                "pattern": "^\\w+\\s*$",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Dont match.",
-                "pattern": "^(\\w+\\s*)$",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. st_error, error handling, parcial match and rewind.",
-        "batch_test": [
-            {
-                "description": "Save 6 token position, and restore the first.",
+                "description": "Saves and restores the first position error.",
                 "pattern": "\\w*_1 \\w*_2 \\w*_3 \\w*_4 \\w*_5 \\w*_6",
                 "log": "wa_11 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the second.",
+                "description": "Saves and restores the second position error.",
                 "pattern": "\\w*_1 \\w*_2 \\w*_3 \\w*_4 \\w*_5 \\w*_6",
                 "log": "wa_1 wa_22 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the third.",
+                "description": "Saves and restores the third position error.",
                 "pattern": "\\w*_1 \\w*_2 \\w*_3 \\w*_4 \\w*_5 \\w*_6",
                 "log": "wa_1 wa_2 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the fourth.",
+                "description": "Saves and restores the fourth position error.",
                 "pattern": "\\w*_1 \\w*_2 \\w*_3 \\w*_4 \\w*_5 \\w*_6",
                 "log": "wa_1 wa_2 wa_3 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the fifth.",
+                "description": "Saves and restores the fifth position error.",
                 "pattern": "\\w*_1 \\w*_2 \\w*_3 \\w*_4 \\w*_5 \\w*_6",
                 "log": "wa_1 wa_2 wa_3 wa_4 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the sixth.",
+                "description": "Saves and restores the sixth position error.",
                 "pattern": "\\w*_1 \\w*_2 \\w*_3 \\w*_4 \\w*_5 \\w*_6",
                 "log": "wa_1 wa_2 wa_3 wa_4 wa_5 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the first. But the first should match with the next character.",
+                "description": "Saves and restores the first position error. But the first should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
                 "log": "z1x1 x2 x3 x4 x5 x6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the second. But the second should match with the next character.",
+                "description": "Saves and restores the second position error. But the second should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
                 "log": "z1 x2x2 x3 x4 x5 x6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the third. But the third should match with the next character.",
+                "description": "Saves and restores the  third position error. But the third should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
                 "log": "z1 x2x2 x3 x4 x5 x6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the fourth. But the fourth should match with the next character.",
+                "description": "Saves and restores the fourth position error. But the fourth should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
                 "log": "z1 x2 x3 x4x4 x5 x6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the fifth. But the fifth should match with the next character.",
+                "description": "Saves and restores the fifth position error. But the fifth should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
-                "__knowIssue": "#XXXX The stacktrace has a static size",
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "ignore_result": true,
                 "log": "z1 x2 x3 x4 x5x5 x6",
                 "end_match": "6",
                 "captured_groups": []
             },
             {
-                "description": "Save 6 token position, and restore the sixth. But the sixth should match with the next character.",
+                "description": "Saves and restores the sixth position error. But the sixth should match with the next character.",
                 "pattern": "\\w*1 \\w*2 \\w*3 \\w*4 \\w*5 \\w*6",
                 "log": "z1 x2 x3 x4 x5 x6x6",
-                "__knowIssue": "#XXXX The stacktrace has a static size",
+                "__known_issue:": "It should match but does not, as the states stack is limited to 4 states. BUG 6 of issue: http://#XXXX",
                 "ignore_result": true,
                 "end_match": "6",
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. The next token does include the map characters of the current token and has no modifier.",
-        "batch_test": [
-            {
-                "description": "0 size: `\\d*` match 0-0",
-                "pattern": "\\d*\\w",
-                "log": "5",
-                "end_match": "5",
-                "captured_groups": []
-            },
-            {
-                "description": "0 size: `\\d*` match 0-0. With group",
-                "pattern": "(\\d*)\\w",
-                "log": "5",
-                "end_match": "5",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "\\w matches with '1' character",
-                "pattern": "\\d*\\w",
-                "log": "12",
-                "end_match": "12",
-                "captured_groups": []
-            },
-            {
-                "description": "\\w matches with '1' character",
-                "pattern": "(\\d*)\\w",
-                "log": "12",
-                "end_match": "12",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Min size: Minimum match with capture group",
-                "pattern": "\\d*(\\w)",
-                "log": "12",
-                "end_match": "12",
-                "captured_groups": [
-                    "1"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern",
-                "pattern": "\\d*\\w",
-                "log": "12345",
-                "end_match": "12345",
-                "captured_groups": []
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern, only capture the first character",
-                "pattern": "(\\d*)\\w",
-                "log": "12345",
-                "end_match": "12345",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern",
-                "pattern": "\\d*(\\w)",
-                "log": "12345",
-                "end_match": "12345",
-                "captured_groups": [
-                    "1"
-                ]
-            },
-            {
-                "description": "Min size: No match, no items in the log to consume (With flags).",
-                "pattern": "^\\d*\\d",
-                "log": "5",
-                "end_match": "5",
-                "captured_groups": []
-            },
-            {
-                "description": "Min size: No match, no items in the log to consume (With flags).",
-                "pattern": "^(\\d*)\\d",
-                "log": "5",
-                "end_match": "5",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Min size: Minimum match with capture group (With flags).",
-                "pattern": "^(\\d*)\\w$",
-                "log": "12",
-                "end_match": "2",
-                "captured_groups": [
-                    "1"
-                ]
-            },
-            {
-                "description": "Min size: Minimum match with capture group (With flags).",
-                "pattern": "^\\d*(\\w)$",
-                "log": "12",
-                "end_match": "2",
-                "captured_groups": [
-                    "2"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "pattern": "^\\d*\\w$",
-                "log": "12345",
-                "end_match": "5",
-                "captured_groups": []
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern, capture the first 4 character, because the $ flag.",
-                "pattern": "^(\\d*)\\w$",
-                "log": "12345",
-                "end_match": "5",
-                "captured_groups": [
-                    "1234"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "pattern": "^\\d*(\\w)$",
-                "log": "12345",
-                "end_match": "5",
-                "captured_groups": [
-                    "5"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "pattern": "^\\d*(\\w)$",
-                "log": "12345&&&&&&&",
-                "end_match": null,
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '*' modifier. The next token does not include the map characters of the current token and has no modifier.",
-        "batch_test": [
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character",
-                "pattern": "\\w*\\s",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all",
-                "pattern": "\\w*\\s",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character * capture group.",
-                "pattern": "(\\w*)\\s",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match 0-0. 1 character * capture group.",
-                "pattern": "(\\w*)\\s",
-                "log": " ",
-                "end_match": " ",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character * capture all.",
-                "pattern": "(\\w*\\s)",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character * capture all.",
-                "pattern": "(\\w*\\s)",
-                "log": " ",
-                "end_match": " ",
-                "captured_groups": [
-                    " "
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. Parcial capture group case.",
-                "pattern": "(\\w*)\\s",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character",
-                "pattern": "\\w* ",
-                "log": " ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character",
-                "pattern": "\\w* ",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all",
-                "pattern": "\\w* ",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character * capture group.",
-                "pattern": "(\\w*) ",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character * capture all.",
-                "pattern": "(\\w* )",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Parcial capture group case.",
-                "pattern": "(\\w*) ",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all",
-                "pattern": "\\w*\\s1",
-                "log": "wazuh 1",
-                "end_match": "1",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character * capture group.",
-                "pattern": "(\\w*)\\s1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character * capture all.",
-                "pattern": "(\\w*\\s)1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here ==  -1. Match all. Parcial capture group case.",
-                "pattern": "(\\w*)\\s1",
-                "log": "wazuh 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match. 1 character",
-                "pattern": "\\w*\\s1",
-                "log": "w 123",
-                "end_match": "123",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match",
-                "pattern": "\\w* 1",
-                "log": "wazuh 123",
-                "end_match": "123",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match. 1 character * capture group.",
-                "pattern": "(\\w*) 1",
-                "log": "w 123",
-                "end_match": "123",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match. 1 character * capture all.",
-                "pattern": "(\\w* )1",
-                "log": "w 123",
-                "end_match": "123",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match. Parcial capture group case.",
-                "pattern": "(\\w*) 1",
-                "log": "wazuh 123",
-                "end_match": "123",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character (With flags).",
-                "pattern": "^\\w*\\s$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
-                "pattern": "^\\w*\\s$",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character * capture group. (With flags).",
-                "pattern": "^(\\w*)\\s$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character * capture all. (With flags).",
-                "pattern": "^(\\w*\\s)$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. Parcial capture group case. (With flags).",
-                "pattern": "^(\\w*)\\s$",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character (With flags).",
-                "pattern": "^\\w* $",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all (With flags).",
-                "pattern": "^\\w* $",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character * capture group (With flags).",
-                "pattern": "^(\\w*) $",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character * capture all (With flags).",
-                "pattern": "^(\\w* )$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Parcial capture group case (With flags).",
-                "pattern": "^(\\w*) $",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags) before log.",
-                "pattern": "^\\w* $",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags and capture all) before log.",
-                "pattern": "^(\\w* )$",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Regex, only backslash with '*' modifier.",
-        "batch_test": [
-            {
-                "description": "Without capture group, match all",
-                "ignore_result": true,
-                "pattern": "\\w*",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "Without capture group, match 0-0",
-                "__know_issue": "Return one byte before log starts ",
-                "skip_test": true,
-                "pattern": "\\d*",
-                "log": "wazuh",
-                "end_match": "wazuh",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all",
-                "ignore_result": true,
-                "pattern": "(\\w*)",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "With capture group, match 0-0",
-                "ignore_result": true,
-                "__know_issue": "Return one byte before log starts ",
-                "skip_test": true,
-                "pattern": "(\\d*)",
-                "log": "wazuh",
-                "end_match": "wazuh",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Without capture group, match all (And flags)",
-                "ignore_result": true,
-                "debug": false,
-                "pattern": "^\\w*$",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all (And flags)",
-                "ignore_result": true,
-                "pattern": "^(\\w*)$",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Without capture group, parcial match (And flags)",
-                "pattern": "^\\w*$",
-                "log": "wazuh ",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all (And flags)",
-                "pattern": "^(\\w*)$",
-                "log": "wazuh ",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Without capture group, match one character.",
-                "pattern": "\\w*",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match one character.",
-                "pattern": "(\\w*)",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Without capture group, match all (And flags), match one character.",
-                "pattern": "^\\w*$",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all (And flags), match one character.",
-                "pattern": "^(\\w*)$",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Without capture group, empty (And flags)",
-                "ignore_result": true,
-                "__know_issue": "Return one byte before log starts ",
-                "pattern": "^\\w*$",
-                "log": "",
-                "end_match": "",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "With capture group, match 0-0. Empty string",
-                "ignore_result": true,
-                "__know_issue": "Return one byte before log starts ",
-                "skip_test": true,
-                "pattern": "(\\d*)",
-                "log": "",
-                "end_match": "",
-                "captured_groups": [
-                    ""
-                ]
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. st_error, error handling, parcial match and rewind.",
-        "batch_test": [
-            {
-                "description": "Save 6 token position, and restore the first.",
-                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
-                "log": "wa_11 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the second.",
-                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
-                "log": "wa_1 wa_22 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the third.",
-                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
-                "log": "wa_1 wa_2 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the fourth.",
-                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
-                "log": "wa_1 wa_2 wa_3 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the fifth.",
-                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
-                "log": "wa_1 wa_2 wa_3 wa_4 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the sixth.",
-                "pattern": "\\w+_1 \\w+_2 \\w+_3 \\w+_4 \\w+_5 \\w+_6",
-                "log": "wa_1 wa_2 wa_3 wa_4 wa_5 wa_1 wa_2 wa_3 wa_4 wa_5 wa_6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the first. But the first should match with the next character.",
-                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "log": "z1x1 x2 x3 x4 x5 x6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the second. But the second should match with the next character.",
-                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "log": "z1 x2x2 x3 x4 x5 x6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the third. But the third should match with the next character.",
-                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "log": "z1 x2x2 x3 x4 x5 x6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the fourth. But the fourth should match with the next character.",
-                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "log": "z1 x2 x3 x4x4 x5 x6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the fifth. But the fifth should match with the next character.",
-                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "ignore_result": true,
-                "__knowIssue": "#XXXX The stacktrace has a static size",
-                "log": "z1 x2 x3 x4 x5x5 x6",
-                "end_match": "6",
-                "captured_groups": []
-            },
-            {
-                "description": "Save 6 token position, and restore the sixth. But the sixth should match with the next character.",
-                "pattern": "\\w+1 \\w+2 \\w+3 \\w+4 \\w+5 \\w+6",
-                "log": "z1 x2 x3 x4 x5 x6x6",
-                "ignore_result": true,
-                "__knowIssue": "#XXXX The stacktrace has a static size",
-                "end_match": "6",
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does include the map characters of the current token and has no modifier.",
-        "batch_test": [
-            {
-                "description": "Min size: No match, no items in the log to consume",
-                "pattern": "\\d+\\d",
-                "log": "5",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Min size: No match, no items in the log to consume",
-                "pattern": "(\\d+)\\d",
-                "log": "5",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Min size: Minimum match with capture group",
-                "pattern": "(\\d+)\\w",
-                "log": "12",
-                "end_match": "2",
-                "captured_groups": [
-                    "1"
-                ]
-            },
-            {
-                "description": "Min size: Minimum match with capture group",
-                "pattern": "\\d+(\\w)",
-                "log": "12",
-                "end_match": "2",
-                "captured_groups": [
-                    "2"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern",
-                "pattern": "\\d+\\w",
-                "log": "12345",
-                "end_match": "2345",
-                "captured_groups": []
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern, only capture the first character",
-                "pattern": "(\\d+)\\w",
-                "log": "12345",
-                "end_match": "2345",
-                "captured_groups": [
-                    "1"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern",
-                "pattern": "\\d+(\\w)",
-                "log": "12345",
-                "end_match": "2345",
-                "captured_groups": [
-                    "2"
-                ]
-            },
-            {
-                "description": "Min size: No match, no items in the log to consume (With flags).",
-                "pattern": "^\\d+\\d",
-                "log": "5",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Min size: No match, no items in the log to consume (With flags).",
-                "pattern": "^(\\d+)\\d",
-                "log": "5",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Min size: Minimum match with capture group (With flags).",
-                "pattern": "^(\\d+)\\w$",
-                "log": "12",
-                "end_match": "2",
-                "captured_groups": [
-                    "1"
-                ]
-            },
-            {
-                "description": "Min size: Minimum match with capture group (With flags).",
-                "pattern": "^\\d+(\\w)$",
-                "log": "12",
-                "end_match": "2",
-                "captured_groups": [
-                    "2"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "pattern": "^\\d+\\w$",
-                "log": "12345",
-                "end_match": "5",
-                "captured_groups": []
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern, capture the first 4 character, because the $ flag.",
-                "__know_issue": "regex returns the pointer to '2' character. ",
-                "pattern": "^(\\d+)\\w$",
-                "log": "12345",
-                "end_match": "5",
-                "captured_groups": [
-                    "1234"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "pattern": "^\\d+(\\w)$",
-                "log": "12345",
-                "end_match": "5",
-                "captured_groups": [
-                    "5"
-                ]
-            },
-            {
-                "description": "Lazy pattern: Move as fast as possible over the pattern (With flags).",
-                "pattern": "^\\d+(\\w)$",
-                "log": "12345&&&&&&&",
-                "end_match": null,
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Lazy pattern, greedy match - backslash with '+' modifier. The next token does not include the map characters of the current token and has no modifier.",
-        "batch_test": [
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character",
-                "pattern": "\\w+\\s",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all",
-                "pattern": "\\w+\\s",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture group.",
-                "pattern": "(\\w+)\\s",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all.",
-                "pattern": "(\\w+\\s)",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. Parcial capture group case.",
-                "pattern": "(\\w+)\\s",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character",
-                "pattern": "\\w+ ",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all",
-                "pattern": "\\w+ ",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture group.",
-                "pattern": "(\\w+) ",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture all.",
-                "pattern": "(\\w+ )",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Parcial capture group case.",
-                "pattern": "(\\w+) ",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all",
-                "pattern": "\\w+\\s1",
-                "log": "wazuh 1",
-                "end_match": "1",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture group.",
-                "pattern": "(\\w+)\\s1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture all.",
-                "pattern": "(\\w+\\s)1",
-                "log": "w 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here ==  -1. Match all. Parcial capture group case.",
-                "pattern": "(\\w+)\\s1",
-                "log": "wazuh 1",
-                "end_match": "1",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match. 1 character",
-                "pattern": "\\w+\\s1",
-                "log": "w 123",
-                "end_match": "123",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match",
-                "pattern": "\\w+ 1",
-                "log": "wazuh 123",
-                "end_match": "123",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match. 1 character + capture group.",
-                "pattern": "(\\w+) 1",
-                "log": "w 123",
-                "end_match": "123",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match. 1 character + capture all.",
-                "pattern": "(\\w+ )1",
-                "log": "w 123",
-                "end_match": "123",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match. Parcial capture group case.",
-                "pattern": "(\\w+) 1",
-                "log": "wazuh 123",
-                "end_match": "123",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character (With flags).",
-                "pattern": "^\\w+\\s$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all (With flags).",
-                "pattern": "^\\w+\\s$",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. 1 character + capture group. (With flags).",
-                "pattern": "^(\\w+)\\s$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token with blackslash.  ok_here == -1. Match all. 1 character + capture all. (With flags).",
-                "pattern": "^(\\w+\\s)$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token with blackslash. ok_here == -1. Match all. Parcial capture group case. (With flags).",
-                "pattern": "^(\\w+)\\s$",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character (With flags).",
-                "pattern": "^\\w+ $",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all (With flags).",
-                "pattern": "^\\w+ $",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture group (With flags).",
-                "pattern": "^(\\w+) $",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. 1 character + capture all (With flags).",
-                "pattern": "^(\\w+ )$",
-                "log": "w ",
-                "end_match": " ",
-                "captured_groups": [
-                    "w "
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Parcial capture group case (With flags).",
-                "pattern": "^(\\w+) $",
-                "log": "wazuh ",
-                "end_match": " ",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags) before log.",
-                "pattern": "^\\w+ $",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Next token without blackslash. ok_here == -1. Match all. Ends pattern (With flags and capture all) before log.",
-                "pattern": "^(\\w+ )$",
-                "log": "wazuh -",
-                "end_match": null,
-                "captured_groups": []
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Regex, only backslash with '+' modifier.",
-        "batch_test": [
-            {
-                "description": "Without capture group, match all",
-                "ignore_result": true,
-                "debug": false,
-                "pattern": "\\w+",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all",
-                "ignore_result": true,
-                "debug": false,
-                "pattern": "(\\w+)",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Without capture group, match all (And flags)",
-                "ignore_result": true,
-                "debug": false,
-                "pattern": "^\\w+$",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all (And flags)",
-                "ignore_result": true,
-                "debug": false,
-                "pattern": "^(\\w+)$",
-                "log": "wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Without capture group, parcial match (And flags)",
-                "pattern": "^\\w+$",
-                "log": "wazuh ",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all (And flags)",
-                "pattern": "^(\\w+)$",
-                "log": "wazuh ",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Without capture group, match one character.",
-                "pattern": "\\w+",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match one character.",
-                "pattern": "(\\w+)",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": [
-                    "w"
-                ]
-            },
-            {
-                "description": "Without capture group, match all (And flags), match one character.",
-                "pattern": "^\\w+$",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all (And flags), match one character.",
-                "pattern": "^(\\w+)$",
-                "log": "w",
-                "end_match": "w",
-                "captured_groups": [
-                    "w"
-                ]
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Regex, only backslash without modifiers ('*', '+')",
-        "batch_test": [
-            {
-                "description": "Without capture group, match all",
-                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
-                "log": "hi wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "Without capture group, parcial match",
-                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
-                "log": "hi waz",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Without capture group, parcial match and then match all",
-                "pattern": "\\w\\w\\s\\S\\S\\S\\S\\S",
-                "log": "hi waz hi wazu.",
-                "end_match": ".",
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, match all",
-                "pattern": "\\w(\\w\\s\\S)\\S(\\S\\S\\S)",
-                "log": "hi wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "i w",
-                    "zuh"
-                ]
-            },
-            {
-                "description": "With capture group, parcial match",
-                "pattern": "(\\w\\w)\\s\\S\\S\\S\\S\\S",
-                "log": "hi waz",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "With capture group, parcial match and then match all",
-                "pattern": "(\\w\\w)\\s(\\S\\S\\S\\S\\S)",
-                "log": "hi waz hi wazuh.",
-                "end_match": "h.",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "With capture group, parcial match and then match all",
-                "__knownIssue:": "The capture groups cannot be adjacent to each other",
-                "ignore_result": true,
-                "pattern": "(\\w\\w\\s)(\\S\\S\\S\\S\\S)",
-                "log": "hi waz hi wazuh.",
-                "end_match": "h.",
-                "captured_groups": [
-                    "hi ",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "With capture group, parcial match and then match all (1 group)",
-                "pattern": "(\\w\\w\\s\\S\\S\\S\\S\\S)\\p$",
-                "log": "hi waz hi wazuh.",
-                "end_match": ".",
-                "captured_groups": [
-                    "hi wazuh"
-                ]
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Regex, only charmap without backslash",
-        "batch_test": [
-            {
-                "description": "Match between pattern and regex. pattern[0] != '('.",
-                "pattern": "hi wazuh",
-                "log": "hi wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "Match between pattern and regex. With capture group",
-                "pattern": "(hi) (wazuh)",
-                "log": "hi wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "Match pattern but fail because log dont ends.",
-                "pattern": "hi wazuh$",
-                "log": "hi wazuh 123",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Match pattern (with group) but fail because log dont ends.",
-                "pattern": "(hi) (wazuh)$",
-                "log": "hi wazuh 123",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Dont match at all .pattern[0] != '('.",
-                "pattern": "hi wazuh",
-                "log": "bye wazuh",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "match with prefix.",
-                "pattern": "(hi) (wazuh)",
-                "log": "prefixhi wazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "match with sufix.",
-                "pattern": "(hi) (wazuh)",
-                "log": "fixhi wazuhsub",
-                "end_match": "hsub",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "match with continue capture group.",
-                "ignore_result": true,
-                "__knownIssue:": "The capture groups cannot be adjacent to each other",
-                "pattern": "(hi)(wazuh)",
-                "log": "hiwazuh",
-                "end_match": "h",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "match with continue capture group and context",
-                "ignore_result": true,
-                "__knownIssue:": "The capture groups cannot be adjacent to each other",
-                "pattern": "(hi)(wazuh)",
-                "log": "prefixhiwazuhsub",
-                "end_match": "hsub",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            }
-        ]
-    },
-    {
-        "description": "[Coverage] Regex, only charmap + END/BEGIN flags and st_error without backslash",
-        "batch_test": [
-            {
-                "description": "Pattern ends and the END_SET is set. (ENDOFFILE(pt) true)",
-                "pattern": "hi wazuh",
-                "log": "hi wazuh",
-                "end_match": "h",
-                "captured_groups": []
-            },
-            {
-                "description": "Empty pattern END_SET and BEGIN_SET are set.",
-                "pattern": "^$",
-                "log": "hi wazuh",
-                "end_match": null,
-                "captured_groups": []
-            },
-            {
-                "description": "Empty pattern END_SET and BEGIN_SET are set.",
-                "ignore_result": true,
-                "__knownIssue:": "empty group?",
-                "pattern": "(^$)",
-                "log": "",
-                "end_match": "",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Empty pattern END_SET and BEGIN_SET are set.",
-                "ignore_result": true,
-                "__knownIssue:": "empty group?",
-                "pattern": "^()$",
-                "log": "",
-                "end_match": "",
-                "captured_groups": [
-                    ""
-                ]
-            },
-            {
-                "description": "Pattern ends and the END_SET is not set.",
-                "pattern": "hi wazuh",
-                "log": "hi wazuh!",
-                "end_match": "h!",
-                "captured_groups": []
-            },
-            {
-                "description": "partially matched and then backward (st error test).",
-                "pattern": "(hi) (wazuh)",
-                "log": "XX hi wa hi wazuhXX",
-                "end_match": "hXX",
-                "captured_groups": [
-                    "hi",
-                    "wazuh"
-                ]
-            },
-            {
-                "description": "partially matched and then return (st error + BEGIN_SET test).",
-                "pattern": "^(hi) (wazuh)",
-                "log": "hi wa hi wazuhXX",
-                "end_match": null,
                 "captured_groups": []
             }
         ]
@@ -2751,7 +2786,7 @@
         ]
     },
     {
-        "description": "[Functionality] Modifiers (+ and *)",
+        "description": "[Functionality] quantifiers (+ and *)",
         "batch_test": [
             {
                 "description": "[+] It should not match since there are no characters of the type `\\d`.",
