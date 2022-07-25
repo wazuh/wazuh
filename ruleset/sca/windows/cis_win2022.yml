@@ -3759,7 +3759,7 @@ checks:
     rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Require a password when a computer wakes (plugged in). Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.34.6.6"]
+      - cis: ["18.8.34.6.4"]
       - cis_csc: ["4.3"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -5169,7 +5169,7 @@ checks:
     rationale: "Indexing and allowing users to search encrypted files could potentially reveal confidential data stored within the encrypted files."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow indexing of encrypted files. Note: This Group Policy path is provided by the Group Policy template Search.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
-      - cis: ["18.9.67.5"]
+      - cis: ["18.9.67.3"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
