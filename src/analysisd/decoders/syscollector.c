@@ -2055,7 +2055,7 @@ static void fill_event_alert(Eventinfo * lf, const struct deltas_fields_match_li
                     wstr_replace(*field_values_iterator, FIELD_SEPARATOR_DBSYNC_ESCAPE, FIELD_SEPARATOR_DBSYNC);
                 fillData(lf, head->current.value, value);
                 os_free(value);
-            } else {
+            } else if (strcmp(*field_values_iterator, "NULL") != 0) {
                 fillData(lf, head->current.value, *field_values_iterator);
             }
         }

@@ -320,9 +320,9 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             w_free_expression_t(&r_node->ruleinfo->dstip);
             r_node->ruleinfo->dstip = newrule->dstip;
 #ifdef LIBGEOIP_ENABLED
-            w_free_expression_t(&ruleinfo->srcgeoip);
+            w_free_expression_t(&r_node->ruleinfo->srcgeoip);
             r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
-            w_free_expression_t(&ruleinfo->dstgeoip);
+            w_free_expression_t(&r_node->ruleinfo->dstgeoip);
             r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
 #endif
             w_free_expression_t(&r_node->ruleinfo->srcport);
@@ -396,6 +396,9 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_sid", sid);
                 }
             }
+
+            os_free(newrule->if_sid);
+
             if (newrule->if_group && !newrule->if_matched_group) {
                 if (!r_node->ruleinfo->if_group ||
                         strcmp(r_node->ruleinfo->if_group, newrule->if_group)) {
@@ -408,6 +411,8 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_level", sid);
                 }
             }
+
+            os_free(newrule->if_level);
 
             if (r_node->ruleinfo->if_matched_regex) {
                 OSRegex_FreePattern(r_node->ruleinfo->if_matched_regex);
@@ -452,7 +457,13 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             r_node->ruleinfo->mitre_technique_id = newrule->mitre_technique_id;
 
             /* Finally the reference to newrule is store so it is freed at the end */
-            r_node->ruleinfo->rule_overwrite = newrule;
+
+            if (r_node->ruleinfo->rule_overwrite == NULL) {
+                r_node->ruleinfo->rule_overwrite = OSList_Create();
+                OSList_SetFreeDataPointer(r_node->ruleinfo->rule_overwrite, free);
+            }
+
+            OSList_PushData(r_node->ruleinfo->rule_overwrite, newrule);
 
             return (1);
         }
@@ -680,7 +691,7 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     free_strarray(ruleinfo->mitre_tactic_id);
     free_strarray(ruleinfo->mitre_technique_id);
 
-    os_free(ruleinfo->rule_overwrite);
+    OSList_Destroy(ruleinfo->rule_overwrite);
     os_free(ruleinfo);
 }
 

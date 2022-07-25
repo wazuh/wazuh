@@ -72,7 +72,7 @@ else
         fi
     fi
 
-    if ! grep "^${USER}" /etc/passwd > /dev/null 2>&1; then
+    if ! grep "^${USER}:" /etc/passwd > /dev/null 2>&1; then
         if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
             ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
         elif [ "$UNAME" = "AIX" ]; then

@@ -192,6 +192,14 @@ cJSON* local_add(const char *id,
                         const char *key_hash,
                         authd_force_options_t *force_options);
 
+/**
+ * @brief Returns a MD5 hash of some random data collected from different sources.
+ *        The result must be freed by the caller.
+ *
+ * @return const char* The resulting hash or NULL on error.
+ */
+char *w_generate_random_pass();
+
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;

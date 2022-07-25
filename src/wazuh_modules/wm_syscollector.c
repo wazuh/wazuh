@@ -82,9 +82,7 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
 }
 
 static void wm_sys_send_diff_message(const void* data) {
-    if (!os_iswait()) {
-        wm_sys_send_message(data, SYSCOLLECTOR_MQ);
-    }
+    wm_sys_send_message(data, SYSCOLLECTOR_MQ);
 }
 
 static void wm_sys_send_dbsync_message(const void* data) {
