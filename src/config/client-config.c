@@ -58,7 +58,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         }
         /* Get local IP */
         else if (strcmp(node[i]->element, xml_local_ip) == 0) {
-            mwarn("The <%s> tag is useless.", xml_local_ip);
+            mwarn("The <%s> tag has no functionality, so it will have no effect.", xml_local_ip);
         }
         /* Get server IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
