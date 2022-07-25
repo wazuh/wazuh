@@ -23,22 +23,32 @@
 
 typedef enum _error_codes {
     ERROR_OK = 0,
+    ERROR_DUE,
     ERROR_INVALID_INPUT,
     ERROR_EMPTY_COMMAND,
     ERROR_UNRECOGNIZED_COMMAND,
     ERROR_EMPTY_PARAMATERS,
     ERROR_EMPTY_SECTION,
-    ERROR_UNRECOGNIZED_SECTION
+    ERROR_UNRECOGNIZED_SECTION,
+    ERROR_INVALID_AGENTS,
+    ERROR_EMPTY_AGENTS,
+    ERROR_EMPTY_LASTID,
+    ERROR_TOO_MANY_AGENTS
 } error_codes;
 
 const char * error_messages[] = {
     [ERROR_OK] = "ok",
+    [ERROR_DUE] = "due",
     [ERROR_INVALID_INPUT] = "Invalid JSON input",
     [ERROR_EMPTY_COMMAND] = "Empty command",
     [ERROR_UNRECOGNIZED_COMMAND] = "Unrecognized command",
     [ERROR_EMPTY_PARAMATERS] = "Empty parameters",
     [ERROR_EMPTY_SECTION] = "Empty section",
-    [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section"
+    [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section",
+    [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
+    [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
+    [ERROR_EMPTY_LASTID] = "Empty last id",
+    [ERROR_TOO_MANY_AGENTS] = "Too many agents"
 };
 
 /**
@@ -84,8 +94,13 @@ STATIC size_t asyscom_dispatch(char* request, char** output) {
     cJSON *command_json = NULL;
     cJSON *parameters_json = NULL;
     cJSON *section_json = NULL;
-    cJSON* config_json = NULL;
+    cJSON *config_json = NULL;
+    cJSON *agents_json = NULL;
+    cJSON *last_id_json = NULL;
     const char *json_err;
+    int *agents_ids;
+    int count;
+    int sock = -1;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
         *output = asyscom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL);
@@ -96,7 +111,44 @@ STATIC size_t asyscom_dispatch(char* request, char** output) {
         if (strcmp(command_json->valuestring, "getstats") == 0) {
             *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_state_json());
         } else if (strcmp(command_json->valuestring, "getagentsstats") == 0) {
-            *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_agents_state_json());
+            if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
+                agents_json = cJSON_GetObjectItem(parameters_json, "agents");
+                if (cJSON_IsArray(agents_json)) {
+                    if (cJSON_GetArraySize(agents_json) <  ASYS_MAX_NUM_AGENTS_STATS) {
+                        agents_ids = json_parse_agents(agents_json);
+                        if (agents_ids != NULL) {
+                            *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_agents_state_json(agents_ids));
+                            os_free(agents_ids);
+                        } else {
+                            *output = asyscom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
+                        }
+                    } else {
+                        *output = asyscom_output_builder(ERROR_TOO_MANY_AGENTS, error_messages[ERROR_TOO_MANY_AGENTS], NULL);
+                    }
+                } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
+                    last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
+                    if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
+                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, ASYS_MAX_NUM_AGENTS_STATS);
+                        if (agents_ids != NULL) {
+                            for (count = 0; agents_ids[count] != -1; count++);
+                            if (count < ASYS_MAX_NUM_AGENTS_STATS) {
+                                *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_agents_state_json(agents_ids));
+                            } else {
+                                *output = asyscom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], asys_create_agents_state_json(agents_ids));
+                            }
+                            os_free(agents_ids);
+                        } else {
+                            *output = asyscom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
+                        }
+                    } else {
+                        *output = asyscom_output_builder(ERROR_EMPTY_LASTID, error_messages[ERROR_EMPTY_LASTID], NULL);
+                    }
+                } else {
+                    *output = asyscom_output_builder(ERROR_INVALID_AGENTS, error_messages[ERROR_INVALID_AGENTS], NULL);
+                }
+            } else {
+                *output = asyscom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
+            }
         } else if (strcmp(command_json->valuestring, "getconfig") == 0) {
             if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
                 if (section_json = cJSON_GetObjectItem(parameters_json, "section"), cJSON_IsString(section_json)) {

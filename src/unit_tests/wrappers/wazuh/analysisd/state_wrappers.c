@@ -17,3 +17,8 @@
 cJSON* __wrap_asys_create_state_json() {
     return mock_type(cJSON *);
 }
+
+cJSON* __wrap_asys_create_agents_state_json(int *agents_ids) {
+    check_expected(agents_ids);
+    return mock_type(cJSON *);
+}

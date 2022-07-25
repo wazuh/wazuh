@@ -38,4 +38,6 @@ void __wrap_rem_inc_send_discarded(const char *agent_id);
 
 cJSON* __wrap_rem_create_state_json();
 
+cJSON* __wrap_rem_create_agents_state_json(int *agents_ids);
+
 #endif /* REM_STATE_WRAPPERS_H */

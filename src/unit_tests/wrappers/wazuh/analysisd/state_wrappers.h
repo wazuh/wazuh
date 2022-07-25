@@ -16,4 +16,6 @@
 
 cJSON* __wrap_asys_create_state_json();
 
+cJSON* __wrap_asys_create_agents_state_json(int *agents_ids);
+
 #endif /* ASYS_STATE_WRAPPERS_H */

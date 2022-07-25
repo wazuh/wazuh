@@ -11,7 +11,10 @@
 #ifndef STATEREMOTE_H
 #define STATEREMOTE_H
 
+#define REM_MAX_NUM_AGENTS_STATS 150
+
 #include <stdint.h>
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 /* Status structures */
 
@@ -196,8 +199,9 @@ cJSON* rem_create_state_json();
 
 /**
  * @brief Create a JSON object with all the remoted agents state information
+ * @param agents_ids Ids of the requested agents
  * @return JSON object
  */
-cJSON* rem_create_agents_state_json();
+cJSON* rem_create_agents_state_json(int* agents_ids);
 
 #endif

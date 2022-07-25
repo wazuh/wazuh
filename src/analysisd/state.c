@@ -15,7 +15,6 @@
 #include "shared.h"
 #include "analysisd.h"
 #include "state.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -529,7 +528,6 @@ STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
 }
 
 STATIC void w_analysisd_clean_agents_state() {
-    char *node_name = NULL;
     int *active_agents = NULL;
     int sock = -1;
     OSHashNode *hash_node;
@@ -541,11 +539,7 @@ STATIC void w_analysisd_clean_agents_state() {
         return;
     }
 
-    node_name = get_node_name();
-    active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock, node_name);
-    os_free(node_name);
-    if(!active_agents) {
-        merror("Unable to get connected agents.");
+    if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, 0, -1), active_agents == NULL) {
         return;
     }
 
@@ -1607,100 +1601,95 @@ cJSON* asys_create_state_json() {
     return asys_state_json;
 }
 
-cJSON* asys_create_agents_state_json() {
-    OSHashNode *hash_node;
-    unsigned int index = 0;
+cJSON* asys_create_agents_state_json(int* agents_ids) {
+    analysisd_agent_state_t * agent_state;
 
     cJSON *asys_state_json = cJSON_CreateObject();
+    cJSON *_array = cJSON_CreateArray();
 
     cJSON_AddNumberToObject(asys_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(asys_state_json, "name", ARGV0);
 
     w_mutex_lock(&agents_state_mutex);
 
-    if (hash_node = OSHash_Begin(analysisd_agents_state, &index), hash_node != NULL) {
-        analysisd_agent_state_t * data = NULL;
+    if (agents_ids != NULL) {
+        for (int i = 0; agents_ids[i] != -1; i++) {
+            char agent_id[OS_SIZE_16] = {0};
+            snprintf(agent_id, OS_SIZE_16, "%.3d", agents_ids[i]);
+            if (agent_state = (analysisd_agent_state_t *) OSHash_Get_ex(analysisd_agents_state, agent_id), agent_state != NULL) {
+                cJSON *_item = cJSON_CreateObject();
 
-        cJSON *_array = cJSON_CreateArray();
+                cJSON_AddNumberToObject(_item, "id", agents_ids[i]);
 
-        while (hash_node != NULL) {
-            data = hash_node->data;
+                cJSON *_metrics = cJSON_CreateObject();
+                cJSON_AddItemToObject(_item, "metrics", _metrics);
 
-            cJSON *_item = cJSON_CreateObject();
+                // Fields within metrics are sorted alphabetically
 
-            cJSON_AddNumberToObject(_item, "id", atoi(hash_node->key));
+                cJSON *_events = cJSON_CreateObject();
+                cJSON_AddItemToObject(_metrics, "events", _events);
 
-            cJSON *_metrics = cJSON_CreateObject();
-            cJSON_AddItemToObject(_item, "metrics", _metrics);
+                cJSON_AddNumberToObject(_events, "processed", agent_state->events_processed);
 
-            // Fields within metrics are sorted alphabetically
+                cJSON *_received_breakdown = cJSON_CreateObject();
+                cJSON_AddItemToObject(_events, "received_breakdown", _received_breakdown);
 
-            cJSON *_events = cJSON_CreateObject();
-            cJSON_AddItemToObject(_metrics, "events", _events);
+                cJSON *_decoded_breakdown = cJSON_CreateObject();
+                cJSON_AddItemToObject(_received_breakdown, "decoded_breakdown", _decoded_breakdown);
 
-            cJSON_AddNumberToObject(_events, "processed", data->events_processed);
+                cJSON_AddNumberToObject(_decoded_breakdown, "agent", agent_state->events_decoded_breakdown.agent);
+                cJSON_AddNumberToObject(_decoded_breakdown, "dbsync", agent_state->events_decoded_breakdown.dbsync);
 
-            cJSON *_received_breakdown = cJSON_CreateObject();
-            cJSON_AddItemToObject(_events, "received_breakdown", _received_breakdown);
+                cJSON *_decoded_integrations = cJSON_CreateObject();
+                cJSON_AddItemToObject(_decoded_breakdown, "integrations_breakdown", _decoded_integrations);
 
-            cJSON *_decoded_breakdown = cJSON_CreateObject();
-            cJSON_AddItemToObject(_received_breakdown, "decoded_breakdown", _decoded_breakdown);
+                cJSON_AddNumberToObject(_decoded_integrations, "virustotal", agent_state->events_decoded_breakdown.integrations.virustotal);
 
-            cJSON_AddNumberToObject(_decoded_breakdown, "agent", data->events_decoded_breakdown.agent);
-            cJSON_AddNumberToObject(_decoded_breakdown, "dbsync", data->events_decoded_breakdown.dbsync);
+                cJSON *_decoded_modules = cJSON_CreateObject();
+                cJSON_AddItemToObject(_decoded_breakdown, "modules_breakdown", _decoded_modules);
 
-            cJSON *_decoded_integrations = cJSON_CreateObject();
-            cJSON_AddItemToObject(_decoded_breakdown, "integrations_breakdown", _decoded_integrations);
+                cJSON_AddNumberToObject(_decoded_modules, "aws", agent_state->events_decoded_breakdown.modules.aws);
+                cJSON_AddNumberToObject(_decoded_modules, "azure", agent_state->events_decoded_breakdown.modules.azure);
+                cJSON_AddNumberToObject(_decoded_modules, "ciscat", agent_state->events_decoded_breakdown.modules.ciscat);
+                cJSON_AddNumberToObject(_decoded_modules, "command", agent_state->events_decoded_breakdown.modules.command);
+                cJSON_AddNumberToObject(_decoded_modules, "docker", agent_state->events_decoded_breakdown.modules.docker);
+                cJSON_AddNumberToObject(_decoded_modules, "gcp", agent_state->events_decoded_breakdown.modules.gcp);
+                cJSON_AddNumberToObject(_decoded_modules, "github", agent_state->events_decoded_breakdown.modules.github);
 
-            cJSON_AddNumberToObject(_decoded_integrations, "virustotal", data->events_decoded_breakdown.integrations.virustotal);
+                cJSON *_decoded_modules_logcollector = cJSON_CreateObject();
+                cJSON_AddItemToObject(_decoded_modules, "logcollector_breakdown", _decoded_modules_logcollector);
 
-            cJSON *_decoded_modules = cJSON_CreateObject();
-            cJSON_AddItemToObject(_decoded_breakdown, "modules_breakdown", _decoded_modules);
+                cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventchannel", agent_state->events_decoded_breakdown.modules.logcollector.eventchannel);
+                cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventlog", agent_state->events_decoded_breakdown.modules.logcollector.eventlog);
+                cJSON_AddNumberToObject(_decoded_modules_logcollector, "macos", agent_state->events_decoded_breakdown.modules.logcollector.macos);
+                cJSON_AddNumberToObject(_decoded_modules_logcollector, "others", agent_state->events_decoded_breakdown.modules.logcollector.others);
 
-            cJSON_AddNumberToObject(_decoded_modules, "aws", data->events_decoded_breakdown.modules.aws);
-            cJSON_AddNumberToObject(_decoded_modules, "azure", data->events_decoded_breakdown.modules.azure);
-            cJSON_AddNumberToObject(_decoded_modules, "ciscat", data->events_decoded_breakdown.modules.ciscat);
-            cJSON_AddNumberToObject(_decoded_modules, "command", data->events_decoded_breakdown.modules.command);
-            cJSON_AddNumberToObject(_decoded_modules, "docker", data->events_decoded_breakdown.modules.docker);
-            cJSON_AddNumberToObject(_decoded_modules, "gcp", data->events_decoded_breakdown.modules.gcp);
-            cJSON_AddNumberToObject(_decoded_modules, "github", data->events_decoded_breakdown.modules.github);
+                cJSON_AddNumberToObject(_decoded_modules, "office365", agent_state->events_decoded_breakdown.modules.office365);
+                cJSON_AddNumberToObject(_decoded_modules, "oscap", agent_state->events_decoded_breakdown.modules.oscap);
+                cJSON_AddNumberToObject(_decoded_modules, "osquery", agent_state->events_decoded_breakdown.modules.osquery);
+                cJSON_AddNumberToObject(_decoded_modules, "rootcheck", agent_state->events_decoded_breakdown.modules.rootcheck);
+                cJSON_AddNumberToObject(_decoded_modules, "sca", agent_state->events_decoded_breakdown.modules.sca);
+                cJSON_AddNumberToObject(_decoded_modules, "syscheck", agent_state->events_decoded_breakdown.modules.syscheck);
+                cJSON_AddNumberToObject(_decoded_modules, "syscollector", agent_state->events_decoded_breakdown.modules.syscollector);
+                cJSON_AddNumberToObject(_decoded_modules, "upgrade", agent_state->events_decoded_breakdown.modules.upgrade);
+                cJSON_AddNumberToObject(_decoded_modules, "vulnerability", agent_state->events_decoded_breakdown.modules.vulnerability);
 
-            cJSON *_decoded_modules_logcollector = cJSON_CreateObject();
-            cJSON_AddItemToObject(_decoded_modules, "logcollector_breakdown", _decoded_modules_logcollector);
+                cJSON_AddNumberToObject(_decoded_breakdown, "monitor", agent_state->events_decoded_breakdown.monitor);
+                cJSON_AddNumberToObject(_decoded_breakdown, "remote", agent_state->events_decoded_breakdown.remote);
 
-            cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventchannel", data->events_decoded_breakdown.modules.logcollector.eventchannel);
-            cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventlog", data->events_decoded_breakdown.modules.logcollector.eventlog);
-            cJSON_AddNumberToObject(_decoded_modules_logcollector, "macos", data->events_decoded_breakdown.modules.logcollector.macos);
-            cJSON_AddNumberToObject(_decoded_modules_logcollector, "others", data->events_decoded_breakdown.modules.logcollector.others);
+                cJSON *_written_breakdown = cJSON_CreateObject();
+                cJSON_AddItemToObject(_events, "written_breakdown", _written_breakdown);
 
-            cJSON_AddNumberToObject(_decoded_modules, "office365", data->events_decoded_breakdown.modules.office365);
-            cJSON_AddNumberToObject(_decoded_modules, "oscap", data->events_decoded_breakdown.modules.oscap);
-            cJSON_AddNumberToObject(_decoded_modules, "osquery", data->events_decoded_breakdown.modules.osquery);
-            cJSON_AddNumberToObject(_decoded_modules, "rootcheck", data->events_decoded_breakdown.modules.rootcheck);
-            cJSON_AddNumberToObject(_decoded_modules, "sca", data->events_decoded_breakdown.modules.sca);
-            cJSON_AddNumberToObject(_decoded_modules, "syscheck", data->events_decoded_breakdown.modules.syscheck);
-            cJSON_AddNumberToObject(_decoded_modules, "syscollector", data->events_decoded_breakdown.modules.syscollector);
-            cJSON_AddNumberToObject(_decoded_modules, "upgrade", data->events_decoded_breakdown.modules.upgrade);
-            cJSON_AddNumberToObject(_decoded_modules, "vulnerability", data->events_decoded_breakdown.modules.vulnerability);
+                cJSON_AddNumberToObject(_written_breakdown, "alerts", agent_state->alerts_written);
+                cJSON_AddNumberToObject(_written_breakdown, "archives", agent_state->archives_written);
+                cJSON_AddNumberToObject(_written_breakdown, "firewall", agent_state->firewall_written);
 
-            cJSON_AddNumberToObject(_decoded_breakdown, "monitor", data->events_decoded_breakdown.monitor);
-            cJSON_AddNumberToObject(_decoded_breakdown, "remote", data->events_decoded_breakdown.remote);
-
-            cJSON *_written_breakdown = cJSON_CreateObject();
-            cJSON_AddItemToObject(_events, "written_breakdown", _written_breakdown);
-
-            cJSON_AddNumberToObject(_written_breakdown, "alerts", data->alerts_written);
-            cJSON_AddNumberToObject(_written_breakdown, "archives", data->archives_written);
-            cJSON_AddNumberToObject(_written_breakdown, "firewall", data->firewall_written);
-
-            cJSON_AddItemToArray(_array, _item);
-
-            hash_node = OSHash_Next(analysisd_agents_state, &index, hash_node);
+                cJSON_AddItemToArray(_array, _item);
+            }
         }
-
-        cJSON_AddItemToObject(asys_state_json, "agents", _array);
     }
 
+    cJSON_AddItemToObject(asys_state_json, "agents", _array);
     w_mutex_unlock(&agents_state_mutex);
 
     return asys_state_json;

@@ -93,7 +93,7 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
 
             int *id_array = NULL;
 
-            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, sock, NULL);
+            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, sock);
             if(!id_array) {
                 merror("Unable to get agent's ID array.");
                 goto cleanup;

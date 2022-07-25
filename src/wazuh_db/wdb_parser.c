@@ -5779,6 +5779,7 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
+    int limit = 0;
     char *connection_status = NULL;
     char *node_name = NULL;
     char *next = NULL;
@@ -5803,11 +5804,23 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
     connection_status = next;
 
     /* Get node name */
-    node_name = strtok_r(NULL, delim, &savedptr);
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next != NULL) {
+        node_name = next;
+
+        /* Get limit */
+        next = strtok_r(NULL, delim, &savedptr);
+        if (next == NULL) {
+            mdebug1("Invalid arguments 'limit' not found.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'limit' not found");
+            return OS_INVALID;
+        }
+        limit = atoi(next);
+    }
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &status, node_name);
+    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, node_name, limit, &status);
     if (!result) {
         mdebug1("Error getting agents by connection status from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents by connection status from global.db.");

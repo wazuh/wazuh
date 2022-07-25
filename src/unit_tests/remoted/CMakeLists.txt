@@ -84,12 +84,12 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,r
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
-                            -Wl,--wrap,wdb_get_agents_by_connection_status -Wl,--wrap,get_node_name -Wl,--wrap,_merror")
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror")
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
-                           -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
-                           -Wl,--wrap,getRemoteConfig")
+                           -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
+                           -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")
