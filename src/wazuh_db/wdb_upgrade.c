@@ -32,10 +32,17 @@ static const char *SQL_GLOBAL_STMT[] = {
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
-    const char *UPDATES[] = { schema_upgrade_v1_sql, schema_upgrade_v2_sql,
-                              schema_upgrade_v3_sql, schema_upgrade_v4_sql,
-                              schema_upgrade_v5_sql, schema_upgrade_v6_sql,
-                              schema_upgrade_v7_sql, schema_upgrade_v8_sql };
+    const char * UPDATES[] = {
+        schema_upgrade_v1_sql,
+        schema_upgrade_v2_sql,
+        schema_upgrade_v3_sql,
+        schema_upgrade_v4_sql,
+        schema_upgrade_v5_sql,
+        schema_upgrade_v6_sql,
+        schema_upgrade_v7_sql,
+        schema_upgrade_v8_sql,
+        schema_upgrade_v9_sql
+    };
 
     char db_version[OS_SIZE_256];
     int version = 0;

@@ -318,7 +318,8 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                 continue;
             } else {
                 if (tenant_fail = wm_office365_get_fail_by_tenant_and_subscription(office365_config->fails,
-                    current_auth->tenant_id, NULL), tenant_fail) {
+                    current_auth->tenant_id, NULL), tenant_fail && tenant_fail->fails) {
+                    mtinfo(WM_OFFICE365_LOGTAG, "Office365 tenant '%s', connected successfully.", current_auth->tenant_id);
                     tenant_fail->fails = 0;
                 }
             }
@@ -783,7 +784,7 @@ STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, 
 
         tenant_fail->fails = 1;
     } else {
-        tenant_fail->fails = tenant_fail->fails + 1;
+        tenant_fail->fails++;
 
         if (tenant_fail->fails == WM_OFFICE365_RETRIES_TO_SEND_ERROR) {
             // Send fail message
