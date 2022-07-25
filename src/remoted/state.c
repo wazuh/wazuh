@@ -610,7 +610,9 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
 
     if (agents_ids != NULL) {
         for (int i = 0; agents_ids[i] != -1; i++) {
-            if (agent_state = (remoted_agent_state_t *) OSHash_Numeric_Get_ex(remoted_agents_state, agents_ids[i]), agent_state != NULL) {
+            char agent_id[OS_SIZE_16] = {0};
+            snprintf(agent_id, OS_SIZE_16, "%.3d", agents_ids[i]);
+            if (agent_state = (remoted_agent_state_t *) OSHash_Get_ex(remoted_agents_state, agent_id), agent_state != NULL) {
                 cJSON *_item = cJSON_CreateObject();
 
                 cJSON_AddNumberToObject(_item, "id", agents_ids[i]);

@@ -559,12 +559,13 @@ void test_asys_create_agents_state_json(void ** state) {
     os_calloc(2, sizeof(int), agents_ids);
     agents_ids[0] = 1;
     agents_ids[1] = OS_INVALID;
+    const char *agent_id = "001";
 
     will_return(__wrap_time, 123456789);
 
-    expect_value(__wrap_OSHash_Numeric_Get_ex, self, analysisd_agents_state);
-    expect_value(__wrap_OSHash_Numeric_Get_ex, key, 1);
-    will_return(__wrap_OSHash_Numeric_Get_ex, test_data->hash_node->data);
+    expect_value(__wrap_OSHash_Get_ex, self, analysisd_agents_state);
+    expect_string(__wrap_OSHash_Get_ex, key, agent_id);
+    will_return(__wrap_OSHash_Get_ex, test_data->hash_node->data);
 
     test_data->state_json = asys_create_agents_state_json(agents_ids);
 
