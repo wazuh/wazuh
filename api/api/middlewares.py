@@ -145,14 +145,17 @@ async def response_postprocessing(request, handler):
                                     ex.reason if ex.reason else '',
                                     type=ex.reason if ex.reason else '',
                                     detail=ex.text if ex.text else '')
-    except (OAuthProblem, Unauthorized):
+    except (OAuthProblem, Unauthorized) as auth_exception:
         if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
                 request.method in {'GET', 'POST'}:
             await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
             problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
         else:
-            problem = connexion_problem(401, "Unauthorized", type="about:blank",
-                                        detail="No authorization token provided")
+            if isinstance(auth_exception, OAuthProblem):
+                problem = connexion_problem(401, "Unauthorized", type="about:blank",
+                                            detail="No authorization token provided")
+            else:
+                problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid token")
     finally:
         problem and remove_unwanted_fields()
 
