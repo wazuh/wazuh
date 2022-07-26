@@ -1174,7 +1174,7 @@ class Master(server.AbstractServer):
     async def cluster_agents_reconnect_controller(self):
         """Controller task in charge of maintaining agents balance in the cluster."""
         logger = self.setup_task_logger("Agents reconnect")
-        if self.configuration['agent_reconnection']['disabled'] != 'no':
+        if not self.configuration['agent_reconnection']['enabled']:
             logger.info("Agents reconnect task is disabled.")
             return
 
@@ -1348,7 +1348,7 @@ class Master(server.AbstractServer):
                                                   ).strftime(DECIMALS_DATE_FORMAT))
 
         # Get master agents reconnect process information
-        if self.configuration['agent_reconnection']['disabled'] == 'no':
+        if self.configuration['agent_reconnection']['enabled']:
             nodes_info["master-node"]["status"] = self.get_health_agents_reconnect()
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": nodes_info}

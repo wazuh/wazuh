@@ -17,6 +17,7 @@
 int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     static const char *disabled = "disabled";
+    static const char *enabled = "enabled";
     static const char *cluster_name = "name";
     static const char *node_name = "node_name";
     static const char *agent_reconnection = "agent_reconnection";
@@ -79,6 +80,14 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, disabled)) {
             if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
                 merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
+                return OS_INVALID;
+            }
+            if (strcmp(node[i]->content, "yes") == 0) {
+                disable_cluster_info = 1;
+            }
+        } else if (!strcmp(node[i]->element, enabled)) {
+            if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
+                merror("Detected a not allowed value for enabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
                 return OS_INVALID;
             }
             if (strcmp(node[i]->content, "yes") == 0) {

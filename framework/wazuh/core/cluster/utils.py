@@ -57,7 +57,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         'nodes': ['NODE_IP'],
         'hidden': 'no',
         'agent_reconnection': {
-            'disabled': 'yes',
+            'enabled': 'no',
             'node_blacklist': set(),
         }
     }
@@ -90,6 +90,15 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004,
                          extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
                                        f"Found: '{config_cluster['disabled']}'")
+
+    if config_cluster['agent_reconnection']['enabled'] == 'no':
+        config_cluster['agent_reconnection']['enabled'] = False
+    elif config_cluster['agent_reconnection']['enabled'] == 'yes':
+        config_cluster['agent_reconnection']['enabled'] = True
+    elif not isinstance(config_cluster['agent_reconnection']['enabled'], bool):
+        raise WazuhError(3004,
+                         extra_message=f"Allowed values for 'enabled' field are 'yes' and 'no'. "
+                                       f"Found: '{config_cluster['agent_reconnection']['enabled']}'")
 
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")

@@ -11,7 +11,7 @@
     <hidden>no</hidden>
     <disabled>yes</disabled>
     <agent_reconnection>
-      <disabled>yes</disabled>
+      <enabled>no</enabled>
       <node_blacklist></node_blacklist>
     </agent_reconnection>
   </cluster>
