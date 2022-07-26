@@ -74,8 +74,8 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
 
 
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                        raw: bool = False):
-    """"Get content of one CDB list file, in raw or dict format.
+                   raw: bool = False):
+    """Get content of one CDB list file, in raw or dict format.
 
     Parameters
     ----------
