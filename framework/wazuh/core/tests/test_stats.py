@@ -130,7 +130,7 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
             mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "logcollector"))
             mock_send.assert_called_once_with(b'getstate')
         else:
-            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "request"))
+            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "remote"))
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 
@@ -147,11 +147,11 @@ def test_get_daemons_stats_from_socket_ko():
 
     with patch('wazuh.core.stats.WazuhSocket.__init__', return_value=None):
         with patch('wazuh.core.stats.WazuhSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.WazuhSocket.receive', side_effect=ValueError):
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', side_effect=ValueError):
                 with pytest.raises(WazuhInternalError, match=r'\b1118\b'):
                     stats.get_daemons_stats_from_socket('000', 'logcollector')
 
-            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value="err Error message test".encode()):
+            with patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value="err Error message test".encode()):
                 with patch('wazuh.core.stats.WazuhSocket.close', side_effect=None):
                     with pytest.raises(WazuhError, match=r'\b1117\b'):
                         stats.get_daemons_stats_from_socket('000', 'logcollector')

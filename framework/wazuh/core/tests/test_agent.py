@@ -1182,7 +1182,7 @@ def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_mock):
             Agent.unset_single_group_agent('002', 'default', force=True)
 
 
-@patch('wazuh.core.configuration.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
@@ -1193,7 +1193,7 @@ def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
     assert result == {"test": "conf"}, 'Result message is not as expected.'
 
 
-@patch('wazuh.core.configuration.WazuhSocket')
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
