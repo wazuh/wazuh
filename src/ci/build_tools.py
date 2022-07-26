@@ -38,11 +38,13 @@ def cleanAll():
     Raises:
         - ValueError: Raises an exception.
     """
+    os.chdir(utils.rootPath())
     out = subprocess.run("make clean",
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=True,
+                         text=True)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanAll: PASSED]")
     else:
@@ -137,11 +139,13 @@ def cleanInternals():
     Raises:
         - ValueError: Raises an exception.
     """
+    os.chdir(utils.rootPath())
     out = subprocess.run("make clean-internals",
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=True,
+                         text=True)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanInternals: PASSED]")
     else:
@@ -209,12 +213,12 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
     """
     utils.printSubHeader(moduleName=moduleName,
                          headerKey="configurecmake")
-    currentModuleNameDir = utils.moduleDirPath(moduleName=moduleName)
+    os.chdir(utils.moduleDirPath(moduleName=moduleName))
     currentPathDir = utils.moduleDirPathBuild(moduleName=moduleName)
     if not os.path.exists(currentPathDir):
         os.mkdir(currentPathDir)
     configureCMakeCommand = "cmake -S {} -B {}"\
-                            .format(currentModuleNameDir, currentPathDir)
+                            .format(".", currentPathDir)
     if debugMode:
         configureCMakeCommand += " -DCMAKE_BUILD_TYPE=Debug"
 
@@ -228,6 +232,7 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
                          stderr=subprocess.PIPE,
                          shell=True,
                          check=True)
+    os.chdir(utils.rootPath())
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[ConfigureCMake: PASSED]")
     else:

@@ -304,59 +304,60 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="rtr")
-    try:
-        runCppCheck(moduleName=moduleName)
-        build_tools.makeDeps(targetName=target, srcOnly=False)
-        build_tools.makeTarget(targetName=target, tests=True, debug=True)
-        runTests(moduleName=moduleName)
-        build_tools.cleanFolder(moduleName=moduleName,
-                                additionalFolder="build")
-        build_tools.configureCMake(moduleName=moduleName,
-                                   debugMode=True,
-                                   testMode=(False, True)
-                                   [moduleName != "shared_modules/utils"],
-                                   withAsan=False)
-        if target != "winagent":
-            build_tools.makeLib(moduleName=moduleName)
-            runValgrind(moduleName=moduleName)
-            runCoverage(moduleName=moduleName)
-        runAStyleCheck(moduleName=moduleName)
-        configPath = os.path.join(utils.currentPath(),
-                                  "input/test_tool_config.json")
-        smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-        if target == "winagent":
-            build_tools.cleanAll()
-            build_tools.cleanExternals()
-            build_tools.makeDeps(targetName="agent", srcOnly=False)
-            build_tools.makeTarget(targetName="agent", tests=False, debug=True)
-            build_tools.cleanFolder(moduleName=moduleName,
-                                    additionalFolder="build")
-        if moduleName != "shared_modules/utils":
-            runASAN(moduleName=moduleName,
-                    testToolConfig=smokeTestConfig)
-        if moduleName == "syscheckd":
-            runTestToolForWindows(moduleName=moduleName,
-                                  testToolConfig=smokeTestConfig)
-            runTestToolCheck(moduleName=moduleName)
-        if moduleName != "syscheckd":
-            build_tools.cleanAll()
-            build_tools.cleanExternals()
-        if target != "winagent":
-            utils.printHeader(moduleName=moduleName,
-                              headerKey="winagentTests")
-            build_tools.makeDeps(targetName="winagent",
-                                 srcOnly=False)
-            build_tools.makeTarget(targetName="winagent",
-                                   tests=True,
-                                   debug=True)
-            runTests(moduleName=moduleName)
-        if clean:
-            utils.deleteLogs(moduleName=moduleName)
-        utils.printGreen(msg="[RTR: PASSED]",
-                         module=moduleName)
-    except Exception as e:
-        utils.printFail(msg="[RTR: FAILED]")
-        print(e)
+    runCppCheck(moduleName=moduleName)
+    runAStyleCheck(moduleName=moduleName)
+    build_tools.makeDeps(targetName=target,
+                         srcOnly=False)
+    build_tools.makeTarget(targetName=target,
+                           tests=True,
+                           debug=True)
+    runTests(moduleName=moduleName)
+    build_tools.cleanFolder(moduleName=moduleName,
+                            additionalFolder="build")
+    build_tools.configureCMake(moduleName=moduleName,
+                               debugMode=True,
+                               testMode=(False, True)
+                               [moduleName != "shared_modules/utils"],
+                               withAsan=False)
+    if target != "winagent":
+        build_tools.makeLib(moduleName=moduleName)
+        runValgrind(moduleName=moduleName)
+        runCoverage(moduleName=moduleName)
+    configPath = os.path.join(utils.currentPath(),
+                              "input/test_tool_config.json")
+    smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
+    ### Uncomment after close https://github.com/wazuh/wazuh/issues/11025
+    # if target == "winagent":
+    #     build_tools.cleanAll()
+    #     build_tools.cleanExternals()
+    #     build_tools.makeDeps(targetName="agent", srcOnly=False)
+    #     build_tools.makeTarget(targetName="agent", tests=False, debug=True)
+    #     build_tools.cleanFolder(moduleName=moduleName,
+    #                             additionalFolder="build")
+    if moduleName != "shared_modules/utils":
+        runASAN(moduleName=moduleName,
+                testToolConfig=smokeTestConfig)
+    ### Uncomment after close https://github.com/wazuh/wazuh/issues/11025
+    # if moduleName == "syscheckd":
+    #     runTestToolForWindows(moduleName=moduleName,
+    #                           testToolConfig=smokeTestConfig)
+    #     runTestToolCheck(moduleName=moduleName)
+    # if moduleName != "syscheckd":
+    #     build_tools.cleanAll()
+    #     build_tools.cleanExternals()
+    # if target != "winagent":
+    #     utils.printHeader(moduleName=moduleName,
+    #                       headerKey="winagentTests")
+    #     build_tools.makeDeps(targetName="winagent",
+    #                          srcOnly=False)
+    #     build_tools.makeTarget(targetName="winagent",
+    #                            tests=True,
+    #                            debug=True)
+    #     runTests(moduleName=moduleName)
+    if clean:
+        utils.deleteLogs(moduleName=moduleName)
+    utils.printGreen(msg="[RTR: PASSED]",
+                     module=moduleName)
 
 
 def runScanBuild(targetName):
@@ -383,7 +384,7 @@ def runScanBuild(targetName):
                                tests=False,
                                debug=True)
         build_tools.cleanInternals()
-        scanBuildCommand = "scan-build-10 --status-bugs \
+        scanBuildCommand = "scan-build --status-bugs \
                             --use-cc=/usr/bin/i686-w64-mingw32-gcc \
                             --use-c++=/usr/bin/i686-w64-mingw32-g++-posix \
                             --analyzer-target=i686-w64-mingw32 \
@@ -392,7 +393,7 @@ def runScanBuild(targetName):
     else:
         build_tools.makeDeps(targetName=targetName,
                              srcOnly=False)
-        scanBuildCommand = "scan-build-10 --status-bugs \
+        scanBuildCommand = "scan-build --status-bugs \
                             --force-analyze-debug-code \
                             --exclude external/ make TARGET={} \
                             DEBUG=1 -j4".format(targetName)
@@ -548,6 +549,7 @@ def runTests(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     if len(tests) > 0:
+        os.chdir(currentDir)
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
