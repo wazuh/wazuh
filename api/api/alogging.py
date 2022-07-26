@@ -24,6 +24,11 @@ class AccessLogger(AbstractAccessLogger):
     """
     Define the log writter used by aiohttp.
     """
+    def check_stream(self):
+        """Renew logger handler stream if it has been closed."""
+        for handler in self.logger.handlers:
+            if not handler.stream or handler.stream.closed:
+                handler.stream = handler._open()
 
     def custom_logging(self, user, remote, method, path, query, body, time, status):
         """Provide the log entry structure depending on the logging format.
@@ -69,6 +74,7 @@ class AccessLogger(AbstractAccessLogger):
                          )
 
     def log(self, request, response, time):
+        self.check_stream()
         query = dict(request.query)
         body = request.get("body", dict())
         if 'password' in query:
