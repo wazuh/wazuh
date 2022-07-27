@@ -425,98 +425,66 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
         });
 }
 
-// <field>: +s_concat/<string1>|$<ref1>/<string2>|$<ref2>
-base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
-                                         types::TracerFn tr)
+// field: +s_concat/string1|$ref1/string2|$ref2
+base::Expression opBuilderHelperStringConcat(const std::any& definition)
 {
 
-    // Get field path to concat
-    std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};
-
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
-    {
-        // Logical error
-        throw std::runtime_error(
-            "Invalid parameter type for s_concat operator (str expected)");
-    }
-
-    // Parse parameters
-    std::string parm {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(parm, '/')};
-    if (parametersArr.size() < 3)
+    // Extract parameters from any
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters = helper::base::processParameters(raw_parameters);
+    // Assert expected number of parameters
+    // helper::base::checkParametersSize(parameters, 3);
+    if (parameters.size() < 3)
     {
         throw std::runtime_error("Invalid number of parameters for s_concat operator");
     }
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    // removing first element (helper function name)
-    parametersArr.erase(parametersArr.begin());
+    // Tracing messages
+    const auto successTrace = fmt::format("[{}] -> Success", name);
 
-    // check if parameters aren't empty
-    for (auto param : parametersArr)
-    {
-        if (param.empty())
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value);
+    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
         {
-            throw std::runtime_error("one parameter is an empty string");
-        }
-    }
-
-    base::Document doc {def};
-    std::string successTrace = fmt::format("{} s_concat Success", doc.str());
-    std::string failureTrace = fmt::format("{} s_concat Failure", doc.str());
-
-    // Return Lifter
-    return [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](
-               base::Observable o) {
-        // Append rxcpp operation
-        return o.map([=, parametersArr = std::move(parametersArr), tr = std::move(tr)](
-                         base::Event e) {
             std::string result {};
 
-            for (auto parameter : parametersArr)
+            for (auto parameter : parameters)
             {
-                if (parameter.at(0) == REFERENCE_ANCHOR)
+                if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
                 {
-                    auto param = json::formatJsonPath(parameter.substr(1));
-                    try
+                    // Get field value
+                    auto resolvedField = event->getString(parameter.m_value);
+
+                    // Check if field is a string
+                    if (!resolvedField.has_value())
                     {
-                        const auto &value = e->getEvent()->get(param);
-                        if (value.IsString())
-                        {
-                            result.append(value.GetString());
-                        }
-                        else
-                        {
-                            tr(failureTrace);
-                            return e;
-                        }
+                        return base::result::makeFailure(event, failureTrace1);
                     }
-                    catch (std::exception& ex)
+                    else
                     {
-                        tr(failureTrace);
-                        return e;
+                        result.append(resolvedField.value());
                     }
                 }
                 else
                 {
-                    result.append(parameter);
+                    result.append(parameter.m_value);
                 }
             }
 
-            try
-            {
-                tr(successTrace);
-                e->getEvent()->set(
-                    field,
-                    rapidjson::Value(result.c_str(), e->getEventDocAllocator()).Move());
-                return e;
-            }
-            catch (std::exception& ex)
-            {
-                return e;
-            }
+            event->setString(result, targetField);
+
+            return base::result::makeSuccess(event, successTrace);
         });
-    };
 }
 
 //*************************************************
@@ -663,62 +631,41 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
 //*             JSON tranform                     *
 //*************************************************
 
-// <key>: +delete_field
-base::Lifter opBuilderHelperDeleteField(const base::DocumentValue& def,
-                                        types::TracerFn tr)
+// field: +delete_field
+base::Expression opBuilderHelperDeleteField(const std::any& definition)
 {
-    // Get the name of the field which will be deleted
-    std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    // Extract parameters from any
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters = helper::base::processParameters(raw_parameters);
+    // Assert expected number of parameters
+    helper::base::checkParametersSize(parameters, 0);
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    if (key.empty())
-    {
-        throw std::runtime_error("Key shouldn't be emoty for delete_field operator");
-    }
+    // Tracing messages
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto failureTrace = fmt::format("[{}] -> Failure", name);
 
-    // Parse parameters
-    std::string param {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(param, '/')};
-    if (parametersArr.size() > 1)
-    {
-        throw std::runtime_error(
-            "Invalid number of parameters for delete_field operator");
-    }
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Get field value
+            auto resolvedField = event->getString(targetField);
 
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
-    {
-        // Logical error
-        throw std::runtime_error(
-            "Invalid parameter type for delete_field operator (str expected)");
-    }
-
-    base::Document doc {def};
-    std::string successTrace = fmt::format("{} delete_field Success", doc.str());
-    std::string failureTrace = fmt::format("{} delete_field Failure", doc.str());
-
-    // Return Lifter
-    return [=, tr = std::move(tr)](base::Observable o) {
-        // Append rxcpp operation
-        return o.map([=, tr = std::move(tr)](base::Event e) {
-            try
+            if (event->erase(targetField))
             {
-                if (e->getEvent()->erase(key))
-                {
-                    tr(successTrace);
-                }
-                else
-                {
-                    tr(failureTrace);
-                }
+                return base::result::makeSuccess(event, successTrace);
             }
-            catch (const std::exception& ex)
+            else
             {
-                tr(failureTrace + ": " + ex.what());
+                return base::result::makeFailure(event, failureTrace);
             }
-
-            return e;
         });
-    };
 }
 
 } // namespace builder::internals::builders

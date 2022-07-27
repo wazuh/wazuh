@@ -33,25 +33,26 @@ TEST(protocolHandler, FormI)
     const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
                         + TEST_AGENT_NAME + ") " + TEST_AGENT_REGISTEREDIP_TXT + "->"
                         + TEST_ORIGINAL_ROUTE + ":" + TEST_ORIGINAL_LOG};
+
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
-    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
+    auto value = e->getInt(EVENT_QUEUE_ID);
+    ASSERT_EQ(value.value(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get(EVENT_AGENT_ID);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_ID);
+    auto valueStr = e->getString(EVENT_AGENT_ID);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_ID);
 
-    value = &e->getEvent()->get(EVENT_AGENT_NAME);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_NAME);
+    valueStr = e->getString(EVENT_AGENT_NAME);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_NAME);
 
-    value = &e->getEvent()->get(EVENT_REGISTERED_IP);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_REGISTEREDIP_TXT);
+    valueStr = e->getString(EVENT_REGISTERED_IP);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_REGISTEREDIP_TXT);
 
-    value = &e->getEvent()->get(EVENT_ROUTE);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_ROUTE);
+    valueStr = e->getString(EVENT_ORIGIN);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_ROUTE);
 
-    value = &e->getEvent()->get(EVENT_LOG);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
+    valueStr = e->getString(EVENT_LOG);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormII)
@@ -59,25 +60,26 @@ TEST(protocolHandler, FormII)
     const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
                         + TEST_AGENT_NAME + ") " + TEST_IPV4 + "->" + TEST_ORIGINAL_ROUTE
                         + ":" + TEST_ORIGINAL_LOG};
+
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
-    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
+    auto value = e->getInt(EVENT_QUEUE_ID);
+    ASSERT_EQ(value.value(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get(EVENT_AGENT_ID);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_ID);
+    auto valueStr = e->getString(EVENT_AGENT_ID);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_ID);
 
-    value = &e->getEvent()->get(EVENT_AGENT_NAME);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_NAME);
+    valueStr = e->getString(EVENT_AGENT_NAME);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_NAME);
 
-    value = &e->getEvent()->get(EVENT_REGISTERED_IP);
-    ASSERT_STREQ(value->GetString(), TEST_IPV4);
+    valueStr = e->getString(EVENT_REGISTERED_IP);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_IPV4);
 
-    value = &e->getEvent()->get(EVENT_ROUTE);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_ROUTE);
+    valueStr = e->getString(EVENT_ORIGIN);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_ROUTE);
 
-    value = &e->getEvent()->get(EVENT_LOG);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
+    valueStr = e->getString(EVENT_LOG);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormIII)
@@ -85,55 +87,58 @@ TEST(protocolHandler, FormIII)
     const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
                         + TEST_AGENT_NAME + ") " + TEST_EXTENDED_IPV6 + "->"
                         + TEST_ORIGINAL_ROUTE + ":" + TEST_ORIGINAL_LOG};
+
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
-    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
+    auto value = e->getInt(EVENT_QUEUE_ID);
+    ASSERT_EQ(value.value(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get(EVENT_AGENT_ID);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_ID);
+    auto valueStr = e->getString(EVENT_AGENT_ID);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_ID);
 
-    value = &e->getEvent()->get(EVENT_AGENT_NAME);
-    ASSERT_STREQ(value->GetString(), TEST_AGENT_NAME);
+    valueStr = e->getString(EVENT_AGENT_NAME);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_AGENT_NAME);
 
-    value = &e->getEvent()->get(EVENT_REGISTERED_IP);
-    ASSERT_STREQ(value->GetString(), TEST_EXTENDED_IPV6);
+    valueStr = e->getString(EVENT_REGISTERED_IP);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_EXTENDED_IPV6);
 
-    value = &e->getEvent()->get(EVENT_ROUTE);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_ROUTE);
+    valueStr = e->getString(EVENT_ORIGIN);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_ROUTE);
 
-    value = &e->getEvent()->get(EVENT_LOG);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
+    valueStr = e->getString(EVENT_LOG);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormIV)
 {
     const string event {string {} + TEST_QUEUE_ID + ":" + TEST_IPV4 + ":"
                         + TEST_ORIGINAL_LOG};
+
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
-    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
+    auto value = e->getInt(EVENT_QUEUE_ID);
+    ASSERT_EQ(value.value(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get(EVENT_ROUTE);
-    ASSERT_STREQ(value->GetString(), TEST_IPV4);
+    auto valueStr = e->getString(EVENT_ORIGIN);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_IPV4);
 
-    value = &e->getEvent()->get(EVENT_LOG);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
+    valueStr = e->getString(EVENT_LOG);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormV)
 {
     const string event {string {} + TEST_QUEUE_ID + ":" + TEST_EXTENDED_IPV6 + ":"
                         + TEST_ORIGINAL_LOG};
+
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
-    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
+    auto value = e->getInt(EVENT_QUEUE_ID);
+    ASSERT_EQ(value.value(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get(EVENT_ROUTE);
-    ASSERT_STREQ(value->GetString(), TEST_EXTENDED_IPV6);
+    auto valueStr = e->getString(EVENT_ORIGIN);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_EXTENDED_IPV6);
 
-    value = &e->getEvent()->get(EVENT_LOG);
-    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
+    valueStr = e->getString(EVENT_LOG);
+    ASSERT_STREQ(valueStr.value().c_str(), TEST_ORIGINAL_LOG);
 }
