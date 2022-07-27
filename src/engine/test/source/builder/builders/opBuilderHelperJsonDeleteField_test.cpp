@@ -4,7 +4,6 @@
 
 #include <baseTypes.hpp>
 
-#include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "opBuilderHelperMap.hpp"

@@ -57,9 +57,8 @@ base::Event ProtocolHandler::parse(const string& event)
 {
     int msgStartIndex {0};
 
-    auto doc = std::make_shared<json::Document>();
-    doc->m_doc.SetObject();
-    rapidjson::Document::AllocatorType& allocator = doc->getAllocator();
+    auto parseEvent = std::make_shared<json::Json>();
+    parseEvent->setObject();
 
     /**
      * There are two possible formats of events:
@@ -96,8 +95,7 @@ base::Event ProtocolHandler::parse(const string& event)
     }
 
     const int queue {event[0]};
-    rapidjson::Value queueValue {queue};
-    doc->set("/original/queue", queueValue);
+    parseEvent->setInt(queue, EVENT_QUEUE_ID);
 
     const bool isFullLocation = (FIRST_FULL_LOCATION_CHAR == event[2]);
 
@@ -117,25 +115,21 @@ base::Event ProtocolHandler::parse(const string& event)
             endIdx = event.find("]", startIdx);
             uint32_t valueSize = (endIdx - startIdx) - 1;
             const auto agentId = event.substr(startIdx + 1, valueSize).c_str();
-            rapidjson::Value agentIdValue {agentId, valueSize, allocator};
-            doc->set(EVENT_AGENT_ID, agentIdValue);
+            parseEvent->setString(agentId, EVENT_AGENT_ID);
 
             // Agent_Name is between '(' and ')'
             startIdx = endIdx + 2; // As the format goes like: ...] (<Agent_Name>...
             endIdx = event.find(")", startIdx);
             valueSize = (endIdx - startIdx) - 1;
             const auto agentName = event.substr(startIdx + 1, valueSize).c_str();
-            rapidjson::Value agentNameValue {agentName, valueSize, allocator};
-            doc->set(EVENT_AGENT_NAME, agentNameValue);
+            parseEvent->setString(agentName, EVENT_AGENT_NAME);
 
             // Registered_IP is between ' ' (a space) and "->" (an arrow)
             startIdx = endIdx + 1; // As the format goes like: ...) <Registered_IP>...
             endIdx = event.find("->", startIdx);
             valueSize = (endIdx - startIdx) - 1;
             const auto registeredIP = event.substr(startIdx + 1, valueSize);
-            rapidjson::Value registeredIPValue {
-                registeredIP.c_str(), valueSize, allocator};
-            doc->set(EVENT_REGISTERED_IP, registeredIPValue);
+            parseEvent->set(registeredIP, EVENT_REGISTERED_IP);
 
             // Route is between "->" (an arrow) and ':'
             startIdx = endIdx + 1; // As the format goes like: ...-><Route>...
@@ -149,9 +143,8 @@ base::Event ProtocolHandler::parse(const string& event)
                 endIdx = secondColonIdx;
             }
             valueSize = (endIdx - startIdx) - 1;
-            const auto Route = event.substr(startIdx + 1, valueSize).c_str();
-            rapidjson::Value RouteValue {Route, valueSize, allocator};
-            doc->set(EVENT_ROUTE, RouteValue);
+            const auto route = event.substr(startIdx + 1, valueSize).c_str();
+            parseEvent->setString(route, EVENT_ORIGIN);
         }
         catch (std::runtime_error& e)
         {
@@ -193,9 +186,7 @@ base::Event ProtocolHandler::parse(const string& event)
             {
                 const auto locationLength = LAST_COLON_INDEX - LOCATION_OFFSET;
                 const string ipv6 = event.substr(LOCATION_OFFSET, locationLength);
-                rapidjson::Value ipValue {
-                    ipv6.c_str(), (uint32_t)ipv6.length(), allocator};
-                doc->set(EVENT_ROUTE, ipValue);
+                parseEvent->set(ipv6, EVENT_ORIGIN);
             }
             catch (std::runtime_error& e)
             {
@@ -214,9 +205,7 @@ base::Event ProtocolHandler::parse(const string& event)
             {
                 const auto locationLength = secondColonIdx - LOCATION_OFFSET;
                 const string ipv4 = event.substr(LOCATION_OFFSET, locationLength);
-                rapidjson::Value ipValue {
-                    ipv4.c_str(), (uint32_t)ipv4.length(), allocator};
-                doc->set(EVENT_ROUTE, ipValue);
+                parseEvent->setString(ipv4, EVENT_ORIGIN);
             }
             catch (std::runtime_error& e)
             {
@@ -233,9 +222,7 @@ base::Event ProtocolHandler::parse(const string& event)
     try
     {
         const string message = event.substr(msgStartIndex, string::npos);
-        rapidjson::Value msg {
-            message.c_str(), (rapidjson::SizeType)message.length(), allocator};
-        doc->set(EVENT_LOG, msg);
+        parseEvent->setString(message, EVENT_LOG);
     }
     catch (std::runtime_error& e)
     {
@@ -246,7 +233,7 @@ base::Event ProtocolHandler::parse(const string& event)
     }
 
     // TODO Create event here
-    return  std::make_shared<json::Json>(std::move(doc));
+    return parseEvent;
 }
 
 std::optional<vector<string>> ProtocolHandler::process(const char* data,
