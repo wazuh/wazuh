@@ -33,8 +33,9 @@ Where `batch_test` contains a `unit tests` array grouped by functionality.
 The `unit tests` are also JSON objects that have a format similar to the following one:
 ```json
 {
-  "description" : "Optional description of the unit test",
-  "ignore_result" : false,
+  "description": "Optional description of the unit test",
+  "skip_test": false,
+  "ignore_result": false,
   "debug": false,
   "pattern": "^Some pattern in a (\\w+) ",
   "log": "Some pattern in a Wazuh log.",
@@ -47,7 +48,8 @@ The `unit tests` are also JSON objects that have a format similar to the followi
 
 Where:
 - `description` (string/optional): Unit test description.
-- `ignore_result` (bool/optional): If true, the test is executed but if it fails then such failures are ignored. This allows having tests for known buggy cases.
+- `skip_test` (bool/optional): If true, the test is skipped. This allows developing tests that should work but are not, until fixed, given known buggy cases. This option is used in tests that produce segmentation faults or conditions that abort the tests and can not be handled.
+- `ignore_result` (bool/optional): If true, the test is executed but if it fails then such failures are ignored. This allows having tests for known buggy cases but prevents them to fail. This option is used in tests that fail but still can be bypassed.
 - `debug` (bool/optional): If true, it prints a verbose description of the errors.
 - `pattern` (string) : OS Regex pattern.
 - `log` (string): Log to be analyzed.
