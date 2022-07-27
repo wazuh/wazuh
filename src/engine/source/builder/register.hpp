@@ -1,17 +1,19 @@
 #ifndef _REGISTER_H
 #define _REGISTER_H
 
+#include "builders/opBuilderARWrite.hpp"
 #include "builders/opBuilderFileOutput.hpp"
+#include "builders/opBuilderHelperFilter.hpp"
+#include "builders/opBuilderHelperMap.hpp"
+#include "builders/opBuilderKVDB.hpp"
+#include "builders/opBuilderLogqlParser.hpp"
+#include "builders/opBuilderWdbSync.hpp"
 #include "builders/operationBuilder.hpp"
 #include "builders/stageBuilderCheck.hpp"
 #include "builders/stageBuilderMap.hpp"
 #include "builders/stageBuilderNormalize.hpp"
 #include "builders/stageBuilderOutputs.hpp"
 #include "builders/stageBuilderParse.hpp"
-#include "builders/opBuilderLogqlParser.hpp"
-#include "builders/opBuilderKVDB.hpp"
-#include "builders/opBuilderHelperFilter.hpp"
-#include "builders/opBuilderHelperMap.hpp"
 #include "registry.hpp"
 
 namespace builder::internals
@@ -46,21 +48,26 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperIntEqual, "helper.i_eq");
     Registry::registerBuilder(builders::opBuilderHelperIntNotEqual, "helper.i_ne");
     Registry::registerBuilder(builders::opBuilderHelperIntGreaterThan, "helper.i_gt");
-    Registry::registerBuilder(builders::opBuilderHelperIntGreaterThanEqual, "helper.i_ge");
+    Registry::registerBuilder(builders::opBuilderHelperIntGreaterThanEqual,
+                              "helper.i_ge");
     Registry::registerBuilder(builders::opBuilderHelperIntLessThan, "helper.i_lt");
     Registry::registerBuilder(builders::opBuilderHelperIntLessThanEqual, "helper.i_le");
     Registry::registerBuilder(builders::opBuilderHelperStringEqual, "helper.s_eq");
     Registry::registerBuilder(builders::opBuilderHelperStringNotEqual, "helper.s_ne");
     Registry::registerBuilder(builders::opBuilderHelperStringGreaterThan, "helper.s_gt");
-    Registry::registerBuilder(builders::opBuilderHelperStringGreaterThanEqual, "helper.s_ge");
+    Registry::registerBuilder(builders::opBuilderHelperStringGreaterThanEqual,
+                              "helper.s_ge");
     Registry::registerBuilder(builders::opBuilderHelperStringLessThan, "helper.s_lt");
-    Registry::registerBuilder(builders::opBuilderHelperStringLessThanEqual, "helper.s_le");
+    Registry::registerBuilder(builders::opBuilderHelperStringLessThanEqual,
+                              "helper.s_le");
     Registry::registerBuilder(builders::opBuilderHelperRegexMatch, "helper.r_match");
-    Registry::registerBuilder(builders::opBuilderHelperRegexNotMatch, "helper.r_not_match");
+    Registry::registerBuilder(builders::opBuilderHelperRegexNotMatch,
+                              "helper.r_not_match");
     Registry::registerBuilder(builders::opBuilderHelperIPCIDR, "helper.ip_cidr");
-    Registry::registerBuilder(builders::opBuilderHelperContainsString, "helper.s_contains");
-    Registry::registerBuilder("helper.delete_field",
-                              builders::opBuilderHelperDeleteField);
+    Registry::registerBuilder(builders::opBuilderHelperContainsString,
+                              "helper.s_contains");
+    Registry::registerBuilder(builders::opBuilderHelperDeleteField,
+                              "helper.delete_field");
     // Registry::registerBuilder(builders::opBuilderHelperNotNull, "helper.not_null");
 
     // Map Helpers
@@ -73,13 +80,9 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
     // DB sync
-    Registry::registerBuilder("helper.wdb_query", builders::opBuilderWdbSyncQuery);
-    Registry::registerBuilder("helper.wdb_update", builders::opBuilderWdbSyncUpdate);
-    Registry::registerBuilder("helper.ar_write", builders::opBuilderARWrite);
-    // Combinators
-    Registry::registerBuilder("combinator.chain", builders::combinatorBuilderChain);
-    Registry::registerBuilder("combinator.broadcast",
-                              builders::combinatorBuilderBroadcast);
+    Registry::registerBuilder(builders::opBuilderWdbSyncQuery, "helper.wdb_query");
+    Registry::registerBuilder(builders::opBuilderWdbSyncUpdate, "helper.wdb_update");
+    Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
 
 }
 } // namespace builder::internals

@@ -32,7 +32,7 @@ include_directories(
 )
 
 # TODO do this better
-# link_libraries(gtest engine_test_main hlp kvdb builders logicExpression)
+link_libraries(gtest engine_test_main hlp kvdb builders logicExpression)
 
 # ###################################################################################################
 # Builder targets
@@ -56,14 +56,11 @@ target_link_libraries(registry_test
 )
 gtest_discover_tests(registry_test)
 
-add_executable(opBuilderHelperMapTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLO_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
+# Operation Builder test
+add_executable(operationBuilder_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/operationBuilder_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
 )
 target_link_libraries(operationBuilder_test
   gtest_main base
@@ -254,6 +251,11 @@ add_executable(opBuilderHelperMapTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
+)
+target_link_libraries(opBuilderHelperMapTest
+  gtest_main base re2
+)
+gtest_discover_tests(opBuilderHelperMapTest)
 
 add_executable(opBuilderWdbSyncUpdateTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbSyncUpdate_test.cpp
@@ -272,14 +274,6 @@ add_executable(opBuilderARWriteTestSuite
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
 gtest_discover_tests(opBuilderARWriteTestSuite)
-
-add_executable(combinatorBuilderBroadcastTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/combinatorBuilderBroadcast_test.cpp
-)
-target_link_libraries(opBuilderHelperMapTest
-  gtest_main base re2
-)
-gtest_discover_tests(opBuilderHelperMapTest)
 
 # TODO: Updated KVDB tests
 # add_executable(opBuilderKVDBTest
