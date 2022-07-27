@@ -61,10 +61,10 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition);
  *
  * @param def The transformation definition.
  * i.e : '<field>: +s_concat/<stringA>|$<referenceA>/<stringB>|$<referenceB>/...'
- * @return base::Lifter The lifter with the `concat` transformation.
+ * @return base::Expression The lifter with the `concat` transformation.
  */
-base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
-                                         types::TracerFn tr);
+base::Expression opBuilderHelperStringConcat(const std::any& definition);
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
@@ -83,9 +83,15 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition);
 //*             JSON tranform                     *
 //*************************************************
 
-// <key>: +delete_field/<string1>/<string2>
-base::Lifter opBuilderHelperDeleteField(const base::DocumentValue& def,
-                                             types::TracerFn tr);
+// <field>: +delete_field/
+/**
+ * @brief Delete a field of the json event
+ *
+ * @param def The transformation definition.
+ * i.e : '<field>: +delete_field/<string1>/<string2>'
+ * @return base::Expression The lifter with the `delete_field` transformation.
+ */
+base::Expression opBuilderHelperDeleteField(const std::any& definition);
 
 //*************************************************
 //*           Regex tranform                      *
