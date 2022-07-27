@@ -29,7 +29,8 @@ enum class Operator
     GT,
     GE,
     LT,
-    LE
+    LE,
+    ST
 };
 
 /**
@@ -249,6 +250,13 @@ getStringCmpFunction(const std::string& targetField,
                 return l <= r;
             };
             break;
+        case Operator::ST:
+            cmpFunction = [](const std::string& l, const std::string& r)
+            {
+                return l.substr(0, r.length()) == r;
+            };
+            break;
+
         default: break;
     }
 
@@ -302,7 +310,6 @@ getStringCmpFunction(const std::string& targetField,
                 return base::result::makeFailure(event, failureTrace3);
             }
 
-            tr(retVal ? successTrace : failureTrace);
         }
     };
 }
@@ -435,6 +442,13 @@ base::Expression opBuilderHelperStringLessThan(const std::any& definition)
 base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::LE, Type::STRING);
+    return expression;
+}
+
+// field: +s_eq/value|$ref
+base::Expression opBuilderHelperStringStarts(const std::any& definition)
+{
+    auto expression = opBuilderComparison(definition, Operator::ST, Type::STRING);
     return expression;
 }
 
@@ -579,7 +593,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     }
     catch (std::exception& e)
     {
-        throw runtime_error("Invalid IPv4 address: " + network);
+        throw std::runtime_error("Invalid IPv4 address: " + network);
     }
 
     uint32_t mask {};
@@ -589,7 +603,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     }
     catch (std::exception& e)
     {
-        throw runtime_error("Invalid IPv4 mask: " + mask);
+        throw std::runtime_error("Invalid IPv4 mask: " + mask);
     }
 
     uint32_t net_lower {network & mask};

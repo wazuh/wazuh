@@ -8,92 +8,79 @@
  */
 #include "opBuilderWdbSync.hpp"
 
+#include <algorithm>
+#include <optional>
 #include <string>
-
-#include <fmt/format.h>
+#include <variant>
 
 #include "syntax.hpp"
+
+#include <baseHelper.hpp>
 #include <utils/stringUtils.hpp>
 #include <wdb/wdb.hpp>
-
-using builder::internals::syntax::REFERENCE_ANCHOR;
 
 namespace builder::internals::builders
 {
 
-static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValue& def,
-                                                        types::TracerFn tr,
+static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& definition,
                                                         bool doReturnPayload)
 {
-    // Get wdb_result of the extraction
-    std::string wdb_result {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    // Extract parameters from any
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters = helper::base::processParameters(raw_parameters);
+    // Assert expected number of parameters
+    helper::base::checkParametersSize(parameters, 1);
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
-    {
-        throw std::runtime_error("Invalid parameter type for wDB sync update "
-                                 "operator (str expected)");
-    }
+    // Depending on rValue type we store the reference or the string value, string in both
+    // cases
+    std::string rValue {};
+    const helper::base::Parameter rightParameter = parameters[1];
+    auto rValueType = rightParameter.m_type;
+    rValue = rightParameter.m_value;
 
-    // Parse parameters
-    auto parametersArr {utils::string::split(def.MemberBegin()->value.GetString(), '/')};
-    if (parametersArr.size() != 2)
-    {
-        throw std::runtime_error(
-            "Invalid number of parameters for wDB sync update operator");
-    }
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", name);
 
-    // Check for empty parameter
-    if (parametersArr.at(1).empty())
-    {
-        throw std::runtime_error("parameter can't be an empty string");
-    }
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
+    const auto failureTrace2 =
+        fmt::format("[{}] -> Failure: [{}] is empty", name, targetField);
+    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
 
-    // Assigned to parameter in order to avoid handling array with 1 value
-    const std::string parameter = parametersArr.at(1);
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
 
-    base::Document doc {def};
-    std::string successTrace = fmt::format("{} wdb_update Success", doc.str());
-    std::string failureTrace = fmt::format("{} wdb_update Failure", doc.str());
-
-    // Return Lifter
-    return [=, tr = std::move(tr)](base::Observable o) {
-        // Append rxcpp operation
-        return o.map([=, tr = std::move(tr)](base::Event e) {
             std::string completeQuery {};
 
-            // Get reference key value
-            if (parameter[0] == REFERENCE_ANCHOR)
+            // Check if the value comes from a reference
+            if (helper::base::Parameter::Type::REFERENCE == rValueType)
             {
-                auto key = json::formatJsonPath(parameter.substr(1));
-                try
+                auto resolvedRValue = event->getString(rValue);
+
+                if (!resolvedRValue.has_value())
                 {
-                    const auto& value = e->getEvent()->get(key);
-                    if (value.IsString())
-                    {
-                        std::string auxVal {value.GetString()};
-                        if (auxVal.empty())
-                        {
-                            tr(failureTrace);
-                            return e;
-                        }
-                        completeQuery = auxVal;
-                    }
-                    else
-                    {
-                        tr(failureTrace);
-                        return e;
-                    }
+                    return base::result::makeFailure(event, failureTrace1);
                 }
-                catch (std::exception& ex)
+                else
                 {
-                    tr(failureTrace);
-                    return e;
+                    completeQuery = resolvedRValue.value();
+                    if (completeQuery.empty())
+                    {
+                        return base::result::makeFailure(event, failureTrace2);
+                    }
                 }
             }
-            else
+            else // Direct value
             {
-                completeQuery = parameter;
+                completeQuery = rValue;
             }
 
             // instantiate wDB
@@ -108,55 +95,46 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
             auto resultCode = std::get<0>(returnTuple);
 
             // Store value on json
-            try
+            if (doReturnPayload)
             {
-                if (doReturnPayload)
+                queryResponse = std::get<1>(returnTuple).value();
+                if (resultCode == wazuhdb::QueryResultCodes::OK)
                 {
-                    queryResponse = std::get<1>(returnTuple).value();
-                    if (resultCode == wazuhdb::QueryResultCodes::OK
-                        && !queryResponse.empty())
+                    if(!queryResponse.empty())
                     {
-                        e->setEventValue(wdb_result,
-                                         rapidjson::Value(queryResponse.c_str(),
-                                                          e->getEventDocAllocator())
-                                             .Move());
-                        tr(successTrace);
+                        event->setString(queryResponse, targetField);
                     }
                     else
                     {
-                        tr(failureTrace);
+                        event->setString("", targetField);
                     }
+                    return base::result::makeSuccess(event, successTrace);
                 }
                 else
                 {
-                    e->setEventValue(
-                        wdb_result,
-                        rapidjson::Value()
-                            .SetBool(resultCode == wazuhdb::QueryResultCodes::OK)
-                            .Move());
-                    tr(successTrace);
+                    return base::result::makeFailure(event, failureTrace3);
                 }
             }
-            catch (std::exception& ex)
+            else
             {
-                tr(failureTrace);
+                event->setBool(resultCode == wazuhdb::QueryResultCodes::OK, targetField);
+                return base::result::makeSuccess(event, successTrace);
             }
 
-            return e;
         });
-    };
+
 }
 
 // <wdb_result>: +wdb_update/<quey>|$<quey>
-base::Lifter opBuilderWdbSyncUpdate(const base::DocumentValue& def, types::TracerFn tr)
+base::Expression opBuilderWdbSyncUpdate(const std::any& definition)
 {
-    return opBuilderWdbSyncGenericQuery(def, tr, false);
+    return opBuilderWdbSyncGenericQuery(definition, false);
 }
 
 // <wdb_result>: +wdb_query/<quey>|$<quey>
-base::Lifter opBuilderWdbSyncQuery(const base::DocumentValue& def, types::TracerFn tr)
+base::Expression opBuilderWdbSyncQuery(const std::any& definition)
 {
-    return opBuilderWdbSyncGenericQuery(def, tr, true);
+    return opBuilderWdbSyncGenericQuery(definition, true);
 }
 
 } // namespace builder::internals::builders
