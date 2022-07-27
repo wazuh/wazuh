@@ -10,7 +10,12 @@
 #ifndef _OP_BUILDER_WDB_SYNC_H
 #define _OP_BUILDER_WDB_SYNC_H
 
-#include "builderTypes.hpp"
+#include <any>
+
+#include <baseTypes.hpp>
+
+#include "expression.hpp"
+#include <utils/stringUtils.hpp>
 
 constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
 
@@ -19,21 +24,19 @@ namespace builder::internals::builders
 
 /**
  * @brief Executes query on WDB returning status ok or not ok.
- * @param def Json Doc
- * @param tr Tracer
- * @return base::Lifter true when executes without any problem, false otherwise.
+ * @param definition The filter definition.
+ * @return base::Expression true when executes without any problem, false otherwise.
  */
-base::Lifter opBuilderWdbSyncUpdate(const base::DocumentValue& def,
-                                types::TracerFn tr);
+base::Expression opBuilderWdbSyncUpdate(const std::any& definition);
 
 /**
  * @brief Executes query on WDB returning status and payload.
- * @param def Json Doc
+ * @param definition The filter definition.
  * @param tr Tracer
- * @return base::Lifter when true returns string of payload, false none.
+ * @return base::Expression when true returns string of payload, false none.
  */
-base::Lifter opBuilderWdbSyncQuery(const base::DocumentValue& def,
-                                   types::TracerFn tr);
+base::Expression opBuilderWdbSyncQuery(const std::any& definition);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_WDB_SYNC_H

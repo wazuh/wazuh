@@ -30,7 +30,7 @@ base::Expression opBuilderHelperExists(const std::any& definition);
  * specified field.
  *
  * The filter checks if a field not exists in the JSON event `e`.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `not_exists` filter.
  */
 base::Expression opBuilderHelperNotExists(const std::any& definition);
@@ -45,7 +45,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal (case sensitive) and the values are a string.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -58,7 +58,7 @@ base::Expression opBuilderHelperStringEqual(const std::any& definition);
  * The filter checks if a field in the JSON event is not  equal to a value.
  * Only do not pass events if the fields are equal (case sensitive) and the values are a
  * string.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `s_ne` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -71,7 +71,7 @@ base::Expression opBuilderHelperStringNotEqual(const std::any& definition);
  * The filter checks if the JSON event field <field> is greater than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `s_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -84,7 +84,7 @@ base::Expression opBuilderHelperStringGreaterThan(const std::any& definition);
  * The filter checks if the JSON event field <field> is greater or equals than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `s_ge` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -97,7 +97,7 @@ base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definitio
  * The filter checks if the JSON event field <field> is less than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `s_lt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -110,11 +110,22 @@ base::Expression opBuilderHelperStringLessThan(const std::any& definition);
  * The filter checks if the JSON event field <field> is less or equals than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `s_le` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition);
+
+/**
+ * @brief Create the `s_starts` helper function that allows to check if a field string
+ * starts as a given one.
+ *
+ * The filter passes if both strings are equal (case sensitive) on the first N characters.
+ * @param definition The filter definition.
+ * @return xpression The lifter with the `s_starts` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+base::Expression opBuilderHelperStringStarts(const std::any& definition);
 
 //*************************************************
 //*              Int filters                      *
@@ -126,7 +137,7 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal and the values are a integer.
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `i_eq` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -138,7 +149,7 @@ base::Expression opBuilderHelperIntEqual(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is not equal to a value.
  * Only pass events if the fields are not equal and the values are a integer.
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `i_ne` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -150,7 +161,7 @@ base::Expression opBuilderHelperIntNotEqual(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is less than a value.
  * Only pass events if the fields are less than and the values are a integer.
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `i_lt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -162,7 +173,7 @@ base::Expression opBuilderHelperIntLessThan(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is less than equal a value.
  * Only pass events if the fields are less than equal and the values are a integer.
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `i_le` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -174,7 +185,7 @@ base::Expression opBuilderHelperIntLessThanEqual(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is greater than a value.
  * Only pass events if the fields are greater than and the values are a integer.
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `i_gt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -187,7 +198,7 @@ base::Expression opBuilderHelperIntGreaterThan(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is greater than equal a value.
  * Only pass events if the fields are greater than equal and the values are a integer.
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `i_ge` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -197,7 +208,7 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition);
  * @brief Builds helper regex match operation.
  * Checks that the field value matches a regular expression
  *
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `regex` filter.
  */
 base::Expression opBuilderHelperRegexMatch(const std::any& definition);
@@ -206,7 +217,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition);
  * @brief Builds helper regex not match operation.
  * Checks that the field value doesn't match a regular expression
  *
- * @param def Definition of the operation to be built
+ * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `regex_not` filter.
  */
 base::Expression opBuilderHelperRegexNotMatch(const std::any& definition);
@@ -215,7 +226,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition);
  * @brief Create `ip_cidr` helper function that filters events if the field
  * is in the specified CIDR range.
  *
- * @param def The filter definition.
+ * @param definition The filter definition.
  * @return Expression The lifter with the `ip_cidr` filter.
  * @throw  std::runtime_error if the parameter is not a cidr.
  */
