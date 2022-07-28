@@ -3,255 +3,247 @@
  *
  */
 
-#include <gtest/gtest.h>
-
+#include <any>
 #include <vector>
+
+#include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
 
 #include "opBuilderHelperFilter.hpp"
-#include "testUtils.hpp"
 
 using namespace base;
-using namespace builder::internals::builders;
-
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
+namespace bld = builder::internals::builders;
 
 // Build ok
 TEST(opBuilderHelperStringStarts, Build)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value"}
-    })"};
-    ASSERT_NO_THROW(opBuilderHelperStringStarts(doc.get("/check"), tr));
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"test_value"});
+
+    ASSERT_NO_THROW(bld::opBuilderHelperStringStarts(tuple));
 }
 
 // Build incorrect number of arguments
 TEST(opBuilderHelperStringStarts, BuildManyParametersError)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value/test_value2"}
-    })"};
-    ASSERT_THROW(opBuilderHelperStringStarts(doc.get("/check"), tr), std::runtime_error);
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"test_value", "test_value2"});
+
+    ASSERT_THROW(bld::opBuilderHelperStringStarts(tuple), std::runtime_error);
 }
 
 // Test ok: static values
 TEST(opBuilderHelperStringStarts, RawString)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"test_value"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"sample_value"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"sample_value_test_value"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_valu"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_value_extended"}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"otherfield":"value"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"otherfield":"test_"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"otherfield":"test_value"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_value_extended"}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_valu"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":""}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_value"}
-            )")); // Shall pass
-        s.on_completed();
-    });
+    auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
+    auto event1 = std::make_shared<json::Json>(
+        R"({"sourceField":"sample_value"})"); // Shall not pass
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
+
+    auto event2 = std::make_shared<json::Json>(
+        R"({"sourceField":"sample_value_test_value"})"); // Shall not pass
+    result::Result<Event> result2 = op(event2);
+    ASSERT_FALSE(result2);
+
+    auto event3 =
+        std::make_shared<json::Json>(R"({"sourceField":"test_valu"})"); // Shall not pass
+    result::Result<Event> result3 = op(event3);
+    ASSERT_FALSE(result3);
+
+    auto event4 = std::make_shared<json::Json>(
+        R"({"sourceField":"test_value_extended"})"); // Shall pass
+    result::Result<Event> result4 = op(event4);
+    ASSERT_TRUE(result4);
+
+    auto event5 =
+        std::make_shared<json::Json>(R"({"otherfield":"value"})"); // Shall not pass
+    result::Result<Event> result5 = op(event5);
+    ASSERT_FALSE(result5);
+
+    auto event6 =
+        std::make_shared<json::Json>(R"({"otherfield":"test_"})"); // Shall not pass
+    result::Result<Event> result6 = op(event6);
+    ASSERT_FALSE(result6);
+
+    auto event7 =
+        std::make_shared<json::Json>(R"({"otherfield":"test_value"})"); // Shall not pass
+    result::Result<Event> result7 = op(event7);
+    ASSERT_FALSE(result7);
+
+    auto event8 = std::make_shared<json::Json>(
+        R"({"sourceField":"test_value_extended"})"); // Shall pass
+    result::Result<Event> result8 = op(event8);
+    ASSERT_TRUE(result8);
+
+    auto event9 =
+        std::make_shared<json::Json>(R"({"sourceField":"test_valu"})"); // Shall not pass
+    result::Result<Event> result9 = op(event9);
+    ASSERT_FALSE(result9);
+
+    auto event10 =
+        std::make_shared<json::Json>(R"({"sourceField":""})"); // Shall not pass
+    result::Result<Event> result10 = op(event10);
+    ASSERT_FALSE(result10);
+
+    auto event11 =
+        std::make_shared<json::Json>(R"({"sourceField":"test_value"})"); // Shall pass
+    result::Result<Event> result11 = op(event11);
+    ASSERT_TRUE(result11);
 }
 
 // Test ok: static values
 TEST(opBuilderHelperStringStarts, NotStrings)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value"}
-    })"};
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": null}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": true}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": 10}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": ["hi", "bye"]}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": { "a": "b" }}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": "test_value"}
-            )")); // Shall pass
-        s.on_completed();
-    });
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"test_value"});
 
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
+    auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    auto event1 = std::make_shared<json::Json>(R"({"sourceField":null})");
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
+
+    auto event2 = std::make_shared<json::Json>(R"({"sourceField":true})");
+    result::Result<Event> result2 = op(event2);
+    ASSERT_FALSE(result2);
+
+    auto event3 = std::make_shared<json::Json>(R"({"sourceField":10})");
+    result::Result<Event> result3 = op(event3);
+    ASSERT_FALSE(result3);
+
+    auto event4 = std::make_shared<json::Json>(R"({"sourceField":{}})");
+    result::Result<Event> result4 = op(event4);
+    ASSERT_FALSE(result4);
+
+    auto event5 = std::make_shared<json::Json>(R"({"sourceField":[]})");
+    result::Result<Event> result5 = op(event5);
+    ASSERT_FALSE(result5);
+
+    auto event6 = std::make_shared<json::Json>(R"({"sourceField":["hi", "bye"]})");
+    result::Result<Event> result6 = op(event6);
+    ASSERT_FALSE(result6);
+
+    auto event7 = std::make_shared<json::Json>(R"({"sourceField":{"test": "value"}})");
+    result::Result<Event> result7 = op(event7);
+    ASSERT_FALSE(result7);
 }
 
 TEST(opBuilderHelperStringStarts, EmptyString)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"test_value"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": ""}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": "test_value"}
-            )")); // Shall pass
-        s.on_completed();
-    });
+    auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
+    auto event1 = std::make_shared<json::Json>(R"({"sourceField":""})");
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
+
+    auto event2 = std::make_shared<json::Json>(R"({"sourceField":"test_value"})");
+    result::Result<Event> result2 = op(event2);
+    ASSERT_TRUE(result2);
 }
 
 // TODO: check if this is the expected result
 TEST(opBuilderHelperStringStarts, EmptyStartString)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/$testField"}
-    })"};
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": "", "testField": ""}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": "test_value", "testField": ""}
-            )")); // Shall pass
-        s.on_completed();
-    });
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"$testField"});
 
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
+    auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    auto event1 = std::make_shared<json::Json>(R"({"sourceField": "", "testField": ""})");
+    result::Result<Event> result1 = op(event1);
+    ASSERT_TRUE(result1);
+
+    auto event2 =
+        std::make_shared<json::Json>(R"({"sourceField": "test_value", "testField": ""})");
+    result::Result<Event> result2 = op(event2);
+    ASSERT_TRUE(result2);
 }
 
 // Test ok: dynamic values (string)
 TEST(opBuilderHelperStringStarts, ReferencedString)
 {
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/$ref_key"}
-    })"};
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"s_starts"},
+                                 std::vector<std::string> {"$ref_key"});
+
+    auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    auto event1 = std::make_shared<json::Json>(R"({
                     "sourceField":"sample_value",
                     "ref_key":"test_value"
-                }
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {
+                })");
+
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
+
+    auto event2 = std::make_shared<json::Json>(R"({
                     "sourceField":"test_value",
                     "ref_key":"test_value"
-                }
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {
+                })");
+    result::Result<Event> result2 = op(event2);
+    ASSERT_TRUE(result2);
+
+    auto event3 = std::make_shared<json::Json>(R"({
                     "otherfield":"value",
                     "ref_key":"test_value"
-                }
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {
+                })");
+    result::Result<Event> result3 = op(event3);
+    ASSERT_FALSE(result3);
+
+    auto event4 = std::make_shared<json::Json>(R"({
                     "otherfield":"test_value",
                     "ref_key":"test_value"
-                }
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {
+                })");
+    result::Result<Event> result4 = op(event4);
+    ASSERT_FALSE(result4);
+
+    auto event5 = std::make_shared<json::Json>(R"({
                     "sourceField":"test_value_extended",
                     "ref_key":"test_value"
-                }
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {
+                })");
+    result::Result<Event> result5 = op(event5);
+    ASSERT_TRUE(result5);
+
+    auto event6 = std::make_shared<json::Json>(R"({
                     "sourceField":"test_value_extra_extended",
                     "ref_key":"test_value"
-                }
-            )")); // Shall pass
-        s.on_completed();
-    });
+                })");
 
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
+    result::Result<Event> result6 = op(event6);
+    ASSERT_TRUE(result6);
 }
 
 // Test ok: multilevel referenced values (string)
 TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
 {
-    Document doc {R"({
-        "check":
-            {"rootKey1.sourceField": "+s_starts/$rootKey2.ref_key"}
-    })"};
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
+    auto tuple = std::make_tuple(
+        std::string {"/rootKey1/sourceField"}, // TODO check if this is the expected
+                                               // argument with '/'
+        std::string {"s_starts"},
+        std::vector<std::string> {"$rootKey2.ref_key"});
+
+    auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    auto event1 = std::make_shared<json::Json>(R"(
                 {
                     "rootKey2": {
                         "sourceField": "test_value",
@@ -262,8 +254,11 @@ TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
                         "ref_key": "sample_value"
                     }
                 }
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
+            )");
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
+
+    auto event2 = std::make_shared<json::Json>(R"(
                 {
                     "rootKey2": {
                         "sourceField": "test_value",
@@ -274,8 +269,11 @@ TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
                         "ref_key": "test_value"
                     }
                 }
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
+            )"); // Shall pass
+    result::Result<Event> result2 = op(event2);
+    ASSERT_TRUE(result2);
+
+    auto event3 = std::make_shared<json::Json>(R"(
                 {
                     "rootKey2": {
                         "sourceField": "test_value_extended",
@@ -286,8 +284,11 @@ TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
                         "ref_key": "test_value"
                     }
                 }
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
+            )"); // Shall pass
+    result::Result<Event> result3 = op(event3);
+    ASSERT_TRUE(result3);
+
+    auto event4 = std::make_shared<json::Json>(R"(
                 {
                     "rootKey2": {
                         "sourceField": "test_value_extended",
@@ -298,15 +299,7 @@ TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
                         "ref_key": "test_value_extra_extended"
                     }
                 }
-            )")); // Shall pass
-        s.on_completed();
-    });
-
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
+            )"); // Shall pass
+    result::Result<Event> result4 = op(event4);
+    ASSERT_TRUE(result4);
 }

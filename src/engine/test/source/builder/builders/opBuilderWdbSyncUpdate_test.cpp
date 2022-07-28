@@ -7,292 +7,116 @@
  * Foundation.
  */
 
-#include <thread>
+#include <any>
 #include <vector>
+#include <thread>
 
 #include <gtest/gtest.h>
+
+#include <baseTypes.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/socketInterface/unixSecureStream.hpp>
+#include <wdb/wdb.hpp>
 
-#include "combinatorBuilderChain.hpp"
-#include "opBuilderCondition.hpp"
-#include "opBuilderHelperFilter.hpp"
-#include "opBuilderHelperMap.hpp"
-#include "opBuilderMapValue.hpp"
 #include "opBuilderWdbSync.hpp"
 #include "socketAuxiliarFunctions.hpp"
-#include "stageBuilderCheck.hpp"
-#include "stageBuilderNormalize.hpp"
-#include "testUtils.hpp"
-#include "wdb/wdb.hpp"
-
-namespace
-{
 
 using namespace base;
 using namespace wazuhdb;
 namespace bld = builder::internals::builders;
 namespace unixStream = base::utils::socketInterface;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
-
-class opBuilderWdbSyncUpdate : public ::testing::Test
-{
-
-protected:
-    // Per-test-suite set-up.
-    // Called before the first test in this test suite.
-    static void SetUpTestSuite()
-    {
-
-        Registry::registerBuilder(
-            "helper.s_concat", builder::internals::builders::opBuilderHelperStringConcat);
-        Registry::registerBuilder("check",
-                                  builder::internals::builders::stageBuilderCheck);
-        Registry::registerBuilder("condition",
-                                  builder::internals::builders::opBuilderCondition);
-        Registry::registerBuilder("middle.condition",
-                                  builder::internals::builders::middleBuilderCondition);
-        Registry::registerBuilder("middle.helper.exists",
-                                  builder::internals::builders::opBuilderHelperExists);
-        Registry::registerBuilder("combinator.chain",
-                                  builder::internals::builders::combinatorBuilderChain);
-        Registry::registerBuilder("map.value",
-                                  builder::internals::builders::opBuilderMapValue);
-        Registry::registerBuilder("helper.wdb_update", builders::opBuilderWdbSyncUpdate);
-    }
-
-    // Per-test-suite tear-down.
-    // Called after the last test in this test suite.
-    static void TearDownTestSuite() { return; }
-};
-
 // Build ok
-TEST_F(opBuilderWdbSyncUpdate, Build)
+TEST(opBuilderWdbSyncUpdate, Build)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "wdb.result": "+wdb_update/agent 007 syscheck integrity_clear algo"
-                }
-            }
-        ]
-    })"};
 
-    ASSERT_NO_THROW(bld::opBuilderWdbSyncUpdate(doc.get("/normalize/0/map"), tr));
+    auto tuple = std::make_tuple(
+        std::string {"/sourceField"},
+        std::string {"wdb_update"},
+        std::vector<std::string> {"agent 007 syscheck integrity_clear ...."});
+
+    ASSERT_NO_THROW(bld::opBuilderWdbSyncUpdate(tuple));
 }
 
 // TODO: the "/" of the path inside the json should be escaped.
-TEST_F(opBuilderWdbSyncUpdate, BuildsWithJson)
+TEST(opBuilderWdbSyncUpdate, BuildsWithJson)
 {
-    GTEST_SKIP();
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "wdb.result": "+wdb_update/agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"\/a\/path\", \"end\": \"\/z\/path\"}"
-                }
-            }
-        ]
-    })"};
+    // GTEST_SKIP();
 
-    ASSERT_NO_THROW(bld::opBuilderWdbSyncUpdate(doc.get("/normalize/0/map"), tr));
+    auto tuple = std::make_tuple(
+        std::string {"/sourceField"},
+        std::string {"wdb_update"},
+        std::vector<std::string> {
+            "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\":\"checksum\", \"begin\": \"/a/path\", \"end\": \"/z/path\"}"});
+
+    ASSERT_NO_THROW(bld::opBuilderWdbSyncUpdate(tuple));
 }
 
-TEST_F(opBuilderWdbSyncUpdate, BuildsWithQueryRef)
+TEST(opBuilderWdbSyncUpdate, BuildsWithQueryRef)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "wdb.query_parameters": "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"
-                }
-            },
-            {
-                "check":
-                [
-                    {"wdb.query_parameters": "+exists"}
-                ],
-                "map":
-                {
-                    "wdb.result": "+wdb_update/$wdb.query_parameters"
-                }
-            }
-        ]
-    })"};
 
-    ASSERT_NO_THROW(bld::stageBuilderNormalize(doc.get("/normalize"), tr));
+    auto tuple = std::make_tuple(std::string {"/wdb/result"},
+                                 std::string {"wdb_update"},
+                                 std::vector<std::string> {"$wdb.query_parameters"});
+
+    ASSERT_NO_THROW(bld::opBuilderWdbSyncUpdate(tuple));
 }
 
-TEST_F(opBuilderWdbSyncUpdate, BuildsWithQueryRefByConcat)
+TEST(opBuilderWdbSyncUpdate, checkWrongQttyParams)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "wdb.query_parameters": "+s_concat/agent /007 /syscheck /integrity_clear /{\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"
-                }
-            },
-            {
-                "check":
-                [
-                    {"wdb.query_parameters": "+exists"}
-                ],
-                "map":
-                {
-                    "wdb.result": "+wdb_update/$wdb.query_parameters"
-                }
-            }
-        ]
-    })"};
 
-    ASSERT_NO_THROW(bld::stageBuilderNormalize(doc.get("/normalize"), tr));
+    auto tuple =
+        std::make_tuple(std::string {"/wdb/result"},
+                        std::string {"wdb_update"},
+                        std::vector<std::string> {"$wdb.query_parameters", "param2"});
+
+    ASSERT_THROW(bld::opBuilderWdbSyncUpdate(tuple), std::runtime_error);
 }
 
-TEST_F(opBuilderWdbSyncUpdate, checkWrongQttyParams)
+TEST(opBuilderWdbSyncUpdate, gettingEmptyReference)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "wdb.query_parameters": "+s_concat/agent /007 /syscheck /integrity_clear /{\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"
-                }
-            },
-            {
-                "check":
-                [
-                    {"wdb.query_parameters": "+exists"}
-                ],
-                "map":
-                {
-                    "wdbresult": "+wdb_update/$wdb.query_parameters/Another"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/wdb/result"},
+                                 std::string {"wdb_update"},
+                                 std::vector<std::string> {"$wdb.query_parameters"});
 
-    ASSERT_THROW(bld::stageBuilderNormalize(doc.get("/normalize"), tr),
-                 std::runtime_error);
+    auto op = bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto event1 = std::make_shared<json::Json>(R"({"wdb": {
+        "query_parameters": ""}
+    })");
+
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
+
 }
 
-TEST_F(opBuilderWdbSyncUpdate, gettingEmptyReference)
+TEST(opBuilderWdbSyncUpdate, gettingNonExistingReference)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "wdb.query_parameters": ""
-                }
-            },
-            {
-                "check":
-                [
-                    {"wdb.query_parameters": "+exists"}
-                ],
-                "map":
-                {
-                    "wdbresult": "+wdb_update/$wdb.query_parameters"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/wdb/result"},
+                                 std::string {"wdb_update"},
+                                 std::vector<std::string> {"$wdb.query_parameters"});
 
-    auto normalize = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto op = bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto event1 = std::make_shared<json::Json>(R"({"wdb": {
+        "not_query_parameters": "something"}
+    })");
 
-    rxcpp::subjects::subject<Event> inputSubject;
-    inputSubject.get_observable().subscribe([](Event e) {});
-    auto inputObservable = inputSubject.get_observable();
-    auto output = normalize(inputObservable);
-
-    std::vector<Event> expected;
-    output.subscribe([&expected](Event e) { expected.push_back(e); });
-
-    auto eventsCount = 1;
-    auto inputObjectOne = createSharedEvent(R"({"FieldB": "something"})");
-
-    inputSubject.get_subscriber().on_next(inputObjectOne);
-
-    ASSERT_EQ(expected.size(), eventsCount);
-    ASSERT_THROW(expected[0]->getEvent()->get("/wdbresult"), std::invalid_argument);
+    result::Result<Event> result1 = op(event1);
+    ASSERT_FALSE(result1);
 }
 
-TEST_F(opBuilderWdbSyncUpdate, gettingNonExistingReference)
+TEST(opBuilderWdbSyncUpdate, completeFunctioningWithBadResponse)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "wdb.query_AnotherName": "+s_concat/agent /007 /syscheck /integrity_clear /{\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"
-                }
-            },
-            {
-                "check":
-                [
-                    {"wdb.query_AnotherName": "+exists"}
-                ],
-                "map":
-                {
-                    "wdbresult": "+wdb_update/$wdb.query_parameters"
-                }
-            }
-        ]
-    })"};
 
-    auto normalize = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto tuple = std::make_tuple(std::string {"/wdb/result"},
+                                 std::string {"wdb_update"},
+                                 std::vector<std::string> {"$wdb.query_parameters"});
 
-    rxcpp::subjects::subject<Event> inputSubject;
-    inputSubject.get_observable().subscribe([](Event e) {});
-    auto inputObservable = inputSubject.get_observable();
-    auto output = normalize(inputObservable);
+    auto op = bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto event1 = std::make_shared<json::Json>(R"({"wdb": {
+        "query_parameters": "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"}
+    })");
 
-    std::vector<Event> expected;
-    output.subscribe([&expected](Event e) { expected.push_back(e); });
-
-    auto eventsCount = 1;
-    auto inputObjectOne = createSharedEvent(R"({"FieldB": "something"})");
-
-    inputSubject.get_subscriber().on_next(inputObjectOne);
-
-    ASSERT_EQ(expected.size(), eventsCount);
-    ASSERT_THROW(expected[0]->getEvent()->get("/wdbresult"), std::invalid_argument);
-}
-
-TEST_F(opBuilderWdbSyncUpdate, completeFunctioningWithBadResponse)
-{
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "wdb.query_parameters": "+s_concat/agent /007 /syscheck /integrity_clear /{\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"
-                }
-            },
-            {
-                "check":
-                [
-                    {"wdb.query_parameters": "+exists"}
-                ],
-                "map":
-                {
-                    "wdbresult": "+wdb_update/$wdb.query_parameters"
-                }
-            }
-        ]
-    })"};
-
-    auto normalize = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
+    // Create the endpoint for test
 
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
@@ -304,26 +128,19 @@ TEST_F(opBuilderWdbSyncUpdate, completeFunctioningWithBadResponse)
         close(clientRemote);
     });
 
-    rxcpp::subjects::subject<Event> inputSubject;
-    inputSubject.get_observable().subscribe([](Event e) {});
-    auto inputObservable = inputSubject.get_observable();
-    auto output = normalize(inputObservable);
-
-    std::vector<Event> expected;
-    output.subscribe([&expected](Event e) { expected.push_back(e); });
-
-    auto eventsCount = 1;
-    auto inputObjectOne = createSharedEvent(R"({"FieldB": "something"})");
-
-    inputSubject.get_subscriber().on_next(inputObjectOne);
+    // Test
+    result::Result<Event> result1 = op(event1);
+    ASSERT_TRUE(result1);
+    ASSERT_TRUE(result1.payload()->exists("/wdb/result"));
+    auto a123 = result1.payload()->isNull("/wdb/result");
+    auto res = result1.payload()->getString("/wdb/result").value();
 
     t.join();
     close(serverSocketFD);
 
-    ASSERT_EQ(expected.size(), eventsCount);
-    ASSERT_FALSE(expected[0]->getEvent()->get("/wdbresult").GetBool());
 }
 
+/*
 TEST_F(opBuilderWdbSyncUpdate, completeFunctioningWithtDB)
 {
     Document doc {R"({
@@ -434,6 +251,7 @@ TEST_F(opBuilderWdbSyncUpdate, QueryResultCodeNotOkWithPayload)
     ASSERT_FALSE(expected[0]->getEvent()->get("/wdbresult").GetBool());
 }
 
+
 TEST_F(opBuilderWdbSyncUpdate, QueryResultCodeOkPayloadEmpty)
 {
     Document doc {R"({
@@ -489,4 +307,4 @@ TEST_F(opBuilderWdbSyncUpdate, QueryResultCodeOkPayloadEmpty)
     ASSERT_TRUE(expected[0]->getEvent()->get("/wdbresult").GetBool());
 }
 
-} // namespace
+*/
