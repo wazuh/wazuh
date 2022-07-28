@@ -282,7 +282,7 @@ checks:
       - cis: ["2.3.4.1"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    condition: all
+    condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
@@ -310,8 +310,9 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: Allow server operators to schedule tasks"
     compliance:
       - cis: ["2.3.5.1"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl -> 0'
 
   - id: 27020
