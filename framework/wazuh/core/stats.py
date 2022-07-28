@@ -117,13 +117,16 @@ def totals_(date=utils.get_utc_now()):
     return affected
 
 
-def get_daemons_stats_socket(socket: str) -> dict:
+def get_daemons_stats_socket(socket: str, agents_list: list[int] = None) -> dict:
     """Send message to Wazuh socket to get statistical information.
 
     Parameters
     ----------
     socket : str
         Full path of the socket to communicate with.
+    agents_list : list[int], optional
+        List of IDs of the agents to get the statistics from.
+        If agents_list is None or empty, the global statistics are requested.
 
     Raises
     ------
@@ -136,8 +139,10 @@ def get_daemons_stats_socket(socket: str) -> dict:
         Dictionary with daemon's statistical information.
     """
     # Create message
-    full_message = wazuh_socket.create_wazuh_socket_message(origin={'module': common.origin_module.get()},
-                                                            command='getstats')
+    full_message = wazuh_socket.create_wazuh_socket_message(
+        origin={'module': common.origin_module.get()},
+        command='getstats' if not agents_list else 'getagentsstats',
+        parameters={} if not agents_list else {'agents': agents_list})
 
     # Connect to socket
     try:
