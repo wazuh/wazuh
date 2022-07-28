@@ -121,9 +121,13 @@ class EXPORTED DB final
         * @param resultJson The json structure with the result of the dbsync querie.
         * @param type Represents the result type of the database operation events.
         * @param ctx Context struct with data related to the fim_entry.
+        *
         * @return jsonEvent The json structure with the event information.
         */
-        nlohmann::json createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, create_json_event_ctx* ctx);
+        nlohmann::json createJsonEvent(const nlohmann::json& fileJson,
+                                       const nlohmann::json& resultJson,
+                                       ReturnTypeCallback type,
+                                       create_json_event_ctx* ctx);
 
         /**
         * @brief removeFile Remove a file from the database.
@@ -138,7 +142,8 @@ class EXPORTED DB final
         * @param path File to get.
         * @param callback Callback return the file data.
         */
-        void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
+        void getFile(const std::string& path,
+                     std::function<void(const nlohmann::json&)> callback);
 
         /**
         * @brief countEntries Count files in the database.
@@ -147,7 +152,8 @@ class EXPORTED DB final
         * @param selectType Type of count.
         * @return Number of files.
         */
-        int countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType);
+        int countEntries(const std::string& tableName,
+                         const COUNT_SELECT_TYPE selectType);
 
         /**
         * @brief updateFile Update/insert a file in the database.
@@ -156,7 +162,9 @@ class EXPORTED DB final
         * @param ctx Context struct with data related to the fim_entry.
         * @param callback Callback to send the fim message.
         */
-        void updateFile(const nlohmann::json& file, create_json_event_ctx* ctx, std::function<void(nlohmann::json)> callbackPrimitive);
+        void updateFile(const nlohmann::json& file,
+                        create_json_event_ctx* ctx,
+                        std::function<void(nlohmann::json)> callbackPrimitive);
 
         /**
         * @brief searchFiles Search files in the database.
@@ -164,7 +172,8 @@ class EXPORTED DB final
         * @param searchData parameter to search information.
         * @param callback Callback return the file data.
         */
-        void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);
+        void searchFile(const SearchData& data,
+                        std::function<void(const std::string&)> callback);
 
         /**
         * @brief teardown Close the fimdb instances.
