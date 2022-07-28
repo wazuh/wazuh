@@ -38,7 +38,7 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
     std::string rValue {};
-    const helper::base::Parameter rightParameter = parameters[1];
+    const helper::base::Parameter rightParameter = parameters[0];
     auto rValueType = rightParameter.m_type;
     rValue = rightParameter.m_value;
 
