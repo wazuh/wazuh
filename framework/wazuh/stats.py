@@ -135,10 +135,10 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
 
-        # TODO FIX VALUE 64 kb
-        agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
+        # To avoid the socket error 'Error 11 - Too many agents', we must use chunks of less than 75 agents
+        agents_chunks = [eligible_agents[x:x + 74] for x in range(0, len(eligible_agents), 74)]
 
-        for agents_chunk in agents_result_chunks:
+        for agents_chunk in agents_chunks:
             for daemon in daemons_list or daemon_socket_mapping.keys():
                 try:
                     result.affected_items.append(
