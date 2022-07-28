@@ -152,17 +152,13 @@ add_executable(opBuilderHelperMap_test
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 
-add_executable(opBuilderWdbSyncUpdate_test
+add_executable(opBuilderWdbSync_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbSyncUpdate_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbSyncQuery_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
-gtest_discover_tests(opBuilderWdbSyncUpdate_test)
+gtest_discover_tests(opBuilderWdbSync_test)
 
-# add_executable(opBuilderWdbSyncQuery_test
-#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbSyncQuery_test.cpp
-#   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-# )
-# gtest_discover_tests(opBuilderWdbSyncQuery_test)
 
 # add_executable(opBuilderARWrite_test
 #   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderARWrite_test.cpp
