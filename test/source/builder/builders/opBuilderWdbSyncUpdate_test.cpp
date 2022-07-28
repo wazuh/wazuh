@@ -1,10 +1,6 @@
 /* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
  */
 
 #include <any>
@@ -17,8 +13,8 @@
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/socketInterface/unixSecureStream.hpp>
 
-#include <wdb/wdb.hpp>
 #include <logging/logging.hpp>
+#include <wdb/wdb.hpp>
 
 #include "opBuilderWdbSync.hpp"
 #include "socketAuxiliarFunctions.hpp"
@@ -31,7 +27,6 @@ namespace unixStream = base::utils::socketInterface;
 // Build ok
 TEST(opBuilderWdbSyncUpdate, Build)
 {
-
     auto tuple {std::make_tuple(
         std::string {"/sourceField"},
         std::string {"wdb_update"},
@@ -66,8 +61,8 @@ TEST(opBuilderWdbSyncUpdate, BuildsWithQueryRef)
 TEST(opBuilderWdbSyncUpdate, checkWrongQttyParams)
 {
 
-    auto tuple
-        {std::make_tuple(std::string {"/wdb/result"},
+    auto tuple {
+        std::make_tuple(std::string {"/wdb/result"},
                         std::string {"wdb_update"},
                         std::vector<std::string> {"$wdb.query_parameters", "param2"})};
 
@@ -77,8 +72,8 @@ TEST(opBuilderWdbSyncUpdate, checkWrongQttyParams)
 TEST(opBuilderWdbSyncUpdate, gettingEmptyReference)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -92,8 +87,8 @@ TEST(opBuilderWdbSyncUpdate, gettingEmptyReference)
 TEST(opBuilderWdbSyncUpdate, gettingNonExistingReference)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -108,8 +103,8 @@ TEST(opBuilderWdbSyncUpdate, completeFunctioningWithBadResponse)
 {
 
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -143,12 +138,11 @@ TEST(opBuilderWdbSyncUpdate, completeFunctioningWithBadResponse)
     close(serverSocketFD);
 }
 
-
 TEST(opBuilderWdbSyncUpdate, completeFunctioningWithOkResponse)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -176,12 +170,11 @@ TEST(opBuilderWdbSyncUpdate, completeFunctioningWithOkResponse)
     close(serverSocketFD);
 }
 
-
 TEST(opBuilderWdbSyncUpdate, completeFunctioningWithOkResponseWPayload)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -208,12 +201,11 @@ TEST(opBuilderWdbSyncUpdate, completeFunctioningWithOkResponseWPayload)
     close(serverSocketFD);
 }
 
-
 TEST(opBuilderWdbSyncUpdate, QueryResultCodeNotOkWithPayload)
 {
-     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -247,12 +239,11 @@ TEST(opBuilderWdbSyncUpdate, QueryResultCodeNotOkWithPayload)
     close(serverSocketFD);
 }
 
-
 TEST(opBuilderWdbSyncUpdate, QueryResultCodeOkPayloadEmpty)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
-                                 std::string {"wdb_update"},
-                                 std::vector<std::string> {"$wdb.query_parameters"})};
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"})};
 
     auto op {bld::opBuilderWdbSyncUpdate(tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
