@@ -804,6 +804,19 @@ components:
                 $ref: '#/components/schemas/WazuhDaemonStatsItem'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseWazuhDaemonStatsAgents:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/WazuhDaemonStatsAgentsItem'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroups:
       allOf:
         - type: object
@@ -1548,6 +1561,16 @@ components:
       description: "Agent ID|all"
       format: numbers_or_all
 
+    DaemonName:
+      type: string
+      description: "Daemon name"
+      format: daemon_names
+
+    DaemonNameAgent:
+      type: string
+      description: "Daemon name"
+      format: daemon_names_agents
+
     NodeID:
       type: string
       description: "Node ID"
@@ -1622,6 +1645,17 @@ components:
           default: "1h"
           description: "Time the agent must has been registered to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
           format: timeframe
+
+    WazuhDaemonStatsAgentsItem:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          $ref: '#/components/schemas/DaemonNameAgent'
+        statistics:
+          type: object
 
     ## CisCat models
     CiscatResults:
@@ -3872,6 +3906,14 @@ components:
             - wazuh-analysisd
             - wazuh-remoted
             - wazuh-db
+    daemons_list_agents:
+      in: query
+      name: daemons_list
+      description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/DaemonNameAgent'
     decoder_name:
       in: query
       name: decoder_names
@@ -6132,6 +6174,113 @@ paths:
                     failed_items: []
                   message: "Restart command sent to all agents"
                   error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/{agent_id}/daemon_stats:
+    get:
+      tags:
+        - Agents
+      summary: "Get Wazuh daemon stats from an agent"
+      description: "Return Wazuh statistical information from specified daemons in a specified agent"
+      operationId: api.controllers.agent_controller.get_daemon_stats
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/daemons_list_agents'
+      responses:
+        '200':
+          description: "Wazuh daemon stats"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseWazuhDaemonStatsAgents'
+              example:
+                data:
+                  affected_items:
+                    - timestamp: 2022-07-27T14:09:20+00:00
+                      name: wazuh-remoted
+                      agents:
+                        - id: 1
+                          metrics:
+                            messages:
+                              received_breakdown:
+                                control: 2
+                                control_breakdown:
+                                  keepalive: 1
+                                  request: 0
+                                  shutdown: 0
+                                  startup: 1
+                                event: 195
+                              sent_breakdown:
+                                ack: 2
+                                ar: 0
+                                cfga: 2
+                                discarded: 0
+                                request: 0
+                                shared: 0
+                    - timestamp: 2022-07-27T14:09:20+00:00
+                      name: wazuh-analysisd
+                      agents:
+                        - id: 1
+                          metrics:
+                            events:
+                              processed: 195
+                              received_breakdown:
+                                decoded_breakdown:
+                                  agent: 0
+                                  dbsync: 0
+                                  integrations_breakdown:
+                                    virustotal: 0
+                                  modules_breakdown:
+                                    aws: 0
+                                    azure: 0
+                                    ciscat: 0
+                                    command: 0
+                                    docker: 0
+                                    gcp: 0
+                                    github: 0
+                                    logcollector_breakdown:
+                                      eventchannel: 0
+                                      eventlog: 0
+                                      macos: 0
+                                      others: 0
+                                    office365: 0
+                                    oscap: 0
+                                    osquery: 0
+                                    rootcheck: 1
+                                    sca: 194
+                                    syscheck: 0
+                                    syscollector: 0
+                                    upgrade: 0
+                                    vulnerability: 0
+                                  monitor: 0
+                                  remote: 0
+                              written_breakdown:
+                                alerts: 191
+                                archives: 0
+                                firewall: 0
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: Statistical information for each daemon was successfully read
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
