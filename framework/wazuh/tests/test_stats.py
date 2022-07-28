@@ -8,6 +8,8 @@ from unittest.mock import call, MagicMock, patch
 
 import pytest
 
+from test_agent import send_msg_to_wdb
+
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -18,6 +20,11 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+SOCKET_PATH_DAEMONS_MAPPING = {'/var/ossec/queue/sockets/remote': 'wazuh-remoted',
+                               '/var/ossec/queue/sockets/analysis': 'wazuh-analysisd'}
+DAEMON_SOCKET_PATHS_MAPPING = {'wazuh-remoted': '/var/ossec/queue/sockets/remote',
+                               'wazuh-analysisd': '/var/ossec/queue/sockets/analysis'}
 
 
 def test_totals():
@@ -64,6 +71,48 @@ def test_get_daemons_stats_ko():
 
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.render()['data']['failed_items'][0]['error']['code'] == 1121, 'Expected error code was not returned'
+
+
+def side_effect_get_test_daemons_stats(daemon_path, agents_list):
+    return {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [{'id': a} for a in agents_list]}
+
+
+@pytest.mark.parametrize('daemons_list, expected_daemons_list', [
+    ([], ['wazuh-remoted', 'wazuh-analysisd']),
+    (['wazuh-remoted'], ['wazuh-remoted']),
+    (['wazuh-remoted', 'wazuh-analysisd'], ['wazuh-remoted', 'wazuh-analysisd'])
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+@patch('wazuh.stats.get_agents_info', return_value={'000', '001', '002', '003', '004', '005'})
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
+@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
+@patch('wazuh.core.common.WDB_SOCKET', '/var/ossec/queue/db/wdb')
+@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_get_test_daemons_stats)
+def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info, mock_socket_connect,
+                                  mock_send_wdb, daemons_list, expected_daemons_list):
+    """Makes sure get_daemons_stats_agents() fit with the expected."""
+    agents_list = ['000', '001', '004', '999']  # Only stats from 001 are obtained
+    expected_errors_and_items = {'1703': {'000'}, '1701': {'999'}, '1707': {'004'}}
+    result = stats.get_daemons_stats_agents(daemons_list, agents_list)
+
+    # get_daemons_stats_socket called with the expected parameters
+    calls = [call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list=[1]) for daemon in expected_daemons_list]
+    mock_get_daemons_stats_socket.assert_has_calls(calls)
+
+    # Check affected_items
+    assert result.affected_items == [{'name': daemon, 'agents': [{'id': 1}]} for daemon in expected_daemons_list]
+    assert result.total_affected_items == len(expected_daemons_list)
+
+    # Check failed items
+    error_codes_in_failed_items = [error.code for error in result.failed_items.keys()]
+    failed_items = list(result.failed_items.values())
+    errors_and_items = {}
+    for i, error in enumerate(error_codes_in_failed_items):
+        errors_and_items[str(error)] = failed_items[i]
+    assert expected_errors_and_items == errors_and_items
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
 
 
 @patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
