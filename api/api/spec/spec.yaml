@@ -9032,6 +9032,7 @@ paths:
     get:
       tags:
       - Cluster
+      deprecated: true
       summary: "Get node stats analysisd"
       description: "Return Wazuh analysisd statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_analysisd_node
@@ -9113,6 +9114,7 @@ paths:
     get:
       tags:
       - Cluster
+      deprecated: true
       summary: "Get node stats remoted"
       description: "Return Wazuh remoted statistical information in node {node_id}"
       operationId: api.controllers.cluster_controller.get_stats_remoted_node
@@ -10430,6 +10432,7 @@ paths:
     get:
       tags:
       - Manager
+      deprecated: true
       summary: "Get stats analysisd"
       description: "Return Wazuh analysisd statistical information"
       operationId: api.controllers.manager_controller.get_stats_analysisd
@@ -10508,6 +10511,7 @@ paths:
     get:
       tags:
       - Manager
+      deprecated: true
       summary: "Get stats remoted"
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
