@@ -125,6 +125,21 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /agents/{agent_id}/daemon_stats
+
+stages:
+  - name: Try to get daemon stats from agent 001
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemon_stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
