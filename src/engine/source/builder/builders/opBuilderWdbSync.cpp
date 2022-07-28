@@ -65,17 +65,17 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
             {
                 auto resolvedRValue = event->getString(rValue);
 
-                if (!resolvedRValue.has_value())
-                {
-                    return base::result::makeFailure(event, failureTrace1);
-                }
-                else
+                if (resolvedRValue.has_value())
                 {
                     completeQuery = resolvedRValue.value();
                     if (completeQuery.empty())
                     {
                         return base::result::makeFailure(event, failureTrace2);
                     }
+                }
+                else
+                {
+                    return base::result::makeFailure(event, failureTrace1);
                 }
             }
             else // Direct value
@@ -91,18 +91,17 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
             auto returnTuple = wdb.tryQueryAndParseResult(completeQuery);
 
             // Handle response
-            std::string queryResponse;
             auto resultCode = std::get<0>(returnTuple);
 
             // Store value on json
             if (doReturnPayload)
             {
-                queryResponse = std::get<1>(returnTuple).value();
                 if (resultCode == wazuhdb::QueryResultCodes::OK)
                 {
-                    if(!queryResponse.empty())
+                    const auto& queryResponse {std::get<1>(returnTuple)};
+                    if(queryResponse.has_value() && !queryResponse.value().empty())
                     {
-                        event->setString(queryResponse, targetField);
+                        event->setString(queryResponse.value(), targetField);
                     }
                     else
                     {
