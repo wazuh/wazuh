@@ -160,11 +160,11 @@ add_executable(opBuilderWdbSync_test
 gtest_discover_tests(opBuilderWdbSync_test)
 
 
-# add_executable(opBuilderARWrite_test
-#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderARWrite_test.cpp
-#   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
-# )
-# gtest_discover_tests(opBuilderARWrite_test)
+add_executable(opBuilderARWrite_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderARWrite_test.cpp
+  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+)
+gtest_discover_tests(opBuilderARWrite_test)
 
 # TODO: Updated KVDB tests
 # add_executable(opBuilderKVDBTest
