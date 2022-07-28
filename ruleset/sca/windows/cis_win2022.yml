@@ -910,7 +910,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares'
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> \S+'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> r:\S+'
 
   - id: 27059
     title: "Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'"
