@@ -1016,7 +1016,7 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
             f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]
                         }
             mock_dapi.assert_has_calls(calls_get_agents,
-                                       calls_restart_agents_by_group, )
+                                       calls_restart_agents_by_group)
             assert mock_dapi.call_count == 2
             mock_exc.assert_has_calls([call(mock_dfunc.return_value),
                                        call(mock_dfunc.return_value)])
