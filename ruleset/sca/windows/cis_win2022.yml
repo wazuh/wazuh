@@ -1268,7 +1268,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Print Spooler"
     compliance:
       - cis: ["5.1"]
-      - cis_csc: ["9.2", "4.8"]
+      - cis_csc: ["4.8"]
     references:
       - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
     condition: all
@@ -1282,7 +1282,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Print Spooler"
     compliance:
       - cis: ["5.2"]
-      - cis_csc: ["9.2", "4.8"]
+      - cis_csc: ["4.8"]
     references:
       - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
     condition: all
@@ -1772,7 +1772,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Kerberos Authentication Service"
     compliance:
       - cis: ["17.1.2"]
-      - cis_csc: ["8.5", "6.3"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Kerberos Authentication Service" -> r:Success and Failure'
@@ -1784,7 +1784,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Kerberos Service Ticket Operations"
     compliance:
       - cis: ["17.1.3"]
-      - cis_csc: ["8.5", "6.3"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Kerberos Authentication Service" -> r:Success and Failure'
@@ -1808,7 +1808,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Computer Account Management"
     compliance:
       - cis: ["17.2.2"]
-      - cis_csc: ["8.5", "6.3"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Computer Account Management" -> r:Success'
@@ -1820,7 +1820,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Distribution Group Management"
     compliance:
       - cis: ["17.2.3"]
-      - cis_csc: ["8.5", "6.3"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Distribution Group Management" -> r:Success'
@@ -1832,7 +1832,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Other Account Management Events"
     compliance:
       - cis: ["17.2.4"]
-      - cis_csc: [""]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Other Account Management Events" -> r:Success'
@@ -1844,7 +1844,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Security Group Management"
     compliance:
       - cis: ["17.2.5"]
-      - cis_csc: ["6.3", "16.6"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Security Group Management" -> r:Success'
@@ -1892,7 +1892,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\DS Access\\Audit Directory Service Access"
     compliance:
       - cis: ["17.4.1"]
-      - cis_csc: ["8.5", "6.3"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Directory Service Access" -> r:Failure'
@@ -1904,7 +1904,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\DS Access\\Audit Directory Service Changes"
     compliance:
       - cis: ["17.4.2"]
-      - cis_csc: ["8.5", "6.3"]
+      - cis_csc: ["8.5"]
     condition: all
     rules:
       - 'c:auditpol.exe /get /subcategory:"Directory Service Changes" -> r:Success'
@@ -4926,9 +4926,10 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Temporary Folders\\Do not use temporary folders per session Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.65.3.11.2"]
-      - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir -> 0'
 
   - id: 27315
@@ -4973,8 +4974,10 @@ checks:
       - cis: ["18.9.67.3"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> 0'
 
   - id: 27318
@@ -4984,6 +4987,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Software Protection Platform\\Turn off KMS Client Online AVS Validation Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AVSValidationGP.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.72.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -5018,6 +5022,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow suggested apps in Windows Ink Workspace Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsInkWorkspace.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.89.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -5033,6 +5038,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: On, but disallow access above lock OR Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow Windows Ink Workspace Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsInkWorkspace.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.89.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["8.6"]
       - tsc: ["CC6.1"]
     condition: all
@@ -5073,7 +5079,6 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
-
   - id: 27324
     title: "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'"
     description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user. The recommended state for this setting is: Disabled."
@@ -5089,7 +5094,6 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
-
 
   - id: 27325
     title: "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'"
@@ -5216,6 +5220,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow remote server management through WinRM Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow automatic configuration of listeners, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.9.102.2.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
@@ -5225,7 +5230,6 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
-
 
   - id: 27333
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
@@ -5266,6 +5270,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Shell\\Allow Remote Shell Access Note: This Group Policy path is provided by the Group Policy template WindowsRemoteShell.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.103.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
@@ -5323,7 +5328,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate '
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   - id: 27339
@@ -5333,9 +5338,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates: Scheduled install day Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.9.108.2.2"]
-      - cis_csc: ["9.2"]
+      - cis_csc: ["7.3"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
   - id: 27340
