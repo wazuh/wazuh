@@ -101,7 +101,7 @@ base::Event ProtocolHandler::parse(const string& event)
 
     const auto secondColonIdx {event.find(":", 2)};
 
-    // Case: <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Route>:<Log>
+    // Case: <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Origin>:<Log>
     //                  \                                                  /
     //                   \------------------- LOCATION -------------------/
     if (isFullLocation)
@@ -131,8 +131,8 @@ base::Event ProtocolHandler::parse(const string& event)
             const auto registeredIP {event.substr(startIdx + 1, valueSize)};
             parseEvent->set(registeredIP, EVENT_REGISTERED_IP);
 
-            // Route is between "->" (an arrow) and ':'
-            startIdx = endIdx + 1; // As the format goes like: ...-><Route>...
+            // Origin is between "->" (an arrow) and ':'
+            startIdx = endIdx + 1; // As the format goes like: ...-><Origin>...
             if (registeredIP.find(':') != std::string::npos)
             {
                 // IPv6 case

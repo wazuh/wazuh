@@ -1,0 +1,70 @@
+name: decoder_ciscat_scan_info
+
+parents:
+  - decoder_ciscat
+
+check:
+  - event.original.cis: +exists
+  - type: +s_eq/scan_info
+
+normalize:
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.scan_id: +not_exists
+    map:
+      event.original.cis.scan_id: "NULL"
+
+
+  - check:
+    - event.original.cis.timestamp: +not_exists
+    map:
+      event.original.cis.timestamp: "NULL"
+
+  - check:
+    - event.original.cis.benchmark: +not_exists
+    map:
+      event.original.cis.benchmark: "NULL"
+
+  - check:
+    - event.original.cis.profile: +not_exists
+    map:
+      event.original.cis.profile: "NULL"
+
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.pass: +not_exists
+    map:
+      event.original.cis.pass: "NULL"
+
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.fail: +not_exists
+    map:
+      event.original.cis.fail: "NULL"
+
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.error: +not_exists
+    map:
+      event.original.cis.error: "NULL"
+
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.notchecked: +not_exists
+    map:
+      event.original.cis.notchecked: "NULL"
+
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.unknown: +not_exists
+    map:
+      event.original.cis.unknown: "NULL"
+
+  # TODO Tranform this value int to string
+  - check:
+    - event.original.cis.score: +not_exists
+    map:
+      event.original.cis.score: "NULL"
+
+  - query: +s_concat/agent /$event.original.agent.id /ciscat save /$event.original.cis.scan_id/|$event.original.cis.timestamp|/$event.original.cis.benchmark|/$event.original.cis.profile|/$event.original.cis.pass|/$event.original.cis.fail|/$event.original.cis.error|/$event.original.cis.notchecked|/$event.original.cis.unknown|/$event.original.cis.score|
+  - query_response: +wdb_update/$query
