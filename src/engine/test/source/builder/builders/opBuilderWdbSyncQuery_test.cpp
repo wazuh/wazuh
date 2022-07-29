@@ -129,7 +129,7 @@ TEST(opBuilderWdbSyncQuery, completeFunctioningWithtDBresponseNotOk)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
+        const int clientRemote {testAcceptConnection(serverSocketFD)};
         testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "NotOk");
         close(clientRemote);
@@ -166,7 +166,7 @@ TEST(opBuilderWdbSyncQuery, completeFunctioningWithtDBresponseWithPayload)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
+        const int clientRemote {testAcceptConnection(serverSocketFD)};
         testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok payload");
         close(clientRemote);
@@ -197,7 +197,7 @@ TEST(opBuilderWdbSyncQuery, QueryResultCodeOkPayloadEmpty)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
+        const int clientRemote {testAcceptConnection(serverSocketFD)};
         testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok ");
         close(clientRemote);
@@ -228,7 +228,7 @@ TEST(opBuilderWdbSyncQuery, QueryResultCodeOkNotPayload)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
+        const int clientRemote {testAcceptConnection(serverSocketFD)};
         testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
