@@ -103,7 +103,7 @@ void unixInterface::socketConnect()
     strncpy(sAddr.sun_path, m_path.data(), sizeof(sAddr.sun_path) - 1);
 
     /* Create the socket */
-    const auto socketType = (m_protocol == Protocol::STREAM) ? SOCK_STREAM : SOCK_DGRAM;
+    const auto socketType {(Protocol::STREAM == m_protocol) ? SOCK_STREAM : SOCK_DGRAM};
     m_sock = socket(PF_UNIX, socketType, 0);
     if (0 > m_sock)
     {

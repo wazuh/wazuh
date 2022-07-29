@@ -23,7 +23,7 @@ namespace builder::internals::builders
 {
 
 static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& definition,
-                                                        bool doReturnPayload)
+                                                            bool doReturnPayload)
 {
     // Extract parameters from any
     auto [targetField, name, raw_parameters] =
@@ -38,18 +38,18 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
     std::string rValue {};
-    const helper::base::Parameter rightParameter = parameters[0];
-    auto rValueType = rightParameter.m_type;
+    const helper::base::Parameter rightParameter {parameters[0]};
+    const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: [{}] is empty", name, targetField);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] is empty", name, targetField)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -57,7 +57,6 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-
             std::string completeQuery {};
 
             // Check if the value comes from a reference
@@ -96,10 +95,10 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
             // Store value on json
             if (doReturnPayload)
             {
-                if (resultCode == wazuhdb::QueryResultCodes::OK)
+                if (wazuhdb::QueryResultCodes::OK == resultCode)
                 {
                     const auto& queryResponse {std::get<1>(returnTuple)};
-                    if(queryResponse.has_value() && !queryResponse.value().empty())
+                    if (queryResponse.has_value() && !queryResponse.value().empty())
                     {
                         event->setString(queryResponse.value(), targetField);
                     }
@@ -116,12 +115,10 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
             }
             else
             {
-                event->setBool(resultCode == wazuhdb::QueryResultCodes::OK, targetField);
+                event->setBool(wazuhdb::QueryResultCodes::OK == resultCode, targetField);
                 return base::result::makeSuccess(event, successTrace);
             }
-
         });
-
 }
 
 // <wdb_result>: +wdb_update/<quey>|$<quey>
