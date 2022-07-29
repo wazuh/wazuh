@@ -1018,25 +1018,6 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash -> 1'
 
-  # 2.3.11.6 Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'
-  - id: 27065
-    title: "Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled' (Manual)"
-    description: "This policy setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Microsoft network server: Disconnect clients when logon hours expire (Rule 2.3.9.4). The recommended state for this setting is: Enabled."
-    rationale: "If this setting is disabled, a user could remain connected to the computer outside of their allotted logon hours."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Force logoff when logon hours expire"
-    compliance:
-      - cis: ["2.3.11.6"]
-      - cis_csc: ["5.6"]
-      - pci_dss: ["7.1"]
-      - tsc: ["CC6.4"]
-    references:
-      - "CCE-36270-7"
-    condition: any
-    rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
-      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
-
   # 2.3.11.7 Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'
   - id: 27066
     title: "Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'"
