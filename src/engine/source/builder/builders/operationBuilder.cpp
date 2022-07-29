@@ -2,9 +2,10 @@
 
 #include <any>
 
+#include <json/json.hpp>
+
 #include "baseTypes.hpp"
 #include "expression.hpp"
-#include <json/json.hpp>
 #include "registry.hpp"
 #include "result.hpp"
 #include "syntax.hpp"
@@ -19,9 +20,10 @@ using namespace base;
 
 Expression conditionValueBuilder(std::string&& field, Json&& value)
 {
-    const auto name = fmt::format("condition.value[{}=={}]", field, value.str());
-    const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace = fmt::format("{} -> Failure", name);
+    const auto name {fmt::format("condition.value[{}=={}]", field, value.str())};
+    const auto successTrace {fmt::format("{} -> Success", name)};
+
+    const auto failureTrace {fmt::format("{} -> Failure", name)};
     return Term<EngineOp>::create(
         name,
         [=](Event event)
@@ -39,9 +41,10 @@ Expression conditionValueBuilder(std::string&& field, Json&& value)
 
 Expression conditionReferenceBuilder(std::string&& field, std::string&& reference)
 {
-    const auto name = fmt::format("condition.reference[{}=={}]", field, reference);
-    const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace = fmt::format("{} -> Failure", name);
+    const auto name {fmt::format("condition.reference[{}=={}]", field, reference)};
+    const auto successTrace {fmt::format("{} -> Success", name)};
+
+    const auto failureTrace {fmt::format("{} -> Failure", name)};
     return Term<EngineOp>::create(
         name,
         [=](Event event)
@@ -61,8 +64,9 @@ Expression conditionReferenceBuilder(std::string&& field, std::string&& referenc
 
 Expression mapValueBuilder(std::string&& field, Json&& value)
 {
-    const auto name = fmt::format("map.value[{}={}]", field, value.prettyStr());
-    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto name {fmt::format("map.value[{}={}]", field, value.prettyStr())};
+
+    const auto successTrace {fmt::format("{} -> Success", name)};
     return Term<EngineOp>::create(name,
                                   [=](Event event)
                                   {
@@ -75,10 +79,11 @@ Expression mapValueBuilder(std::string&& field, Json&& value)
 
 Expression mapReferenceBuilder(std::string&& field, std::string&& reference)
 {
-    const auto name = fmt::format("map.reference[{}={}]", field, reference);
-    const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace =
-        fmt::format("{} -> Failure: [{}] not found", name, reference);
+    const auto name {fmt::format("map.reference[{}={}]", field, reference)};
+    const auto successTrace {fmt::format("{} -> Success", name)};
+
+    const auto failureTrace {
+        fmt::format("{} -> Failure: [{}] not found", name, reference)};
     return Term<EngineOp>::create(
         name,
         [=](Event event)

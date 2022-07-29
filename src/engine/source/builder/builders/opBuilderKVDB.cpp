@@ -3,11 +3,11 @@
 #include <string>
 
 #include <fmt/format.h>
+#include <json/json.hpp>
+#include <kvdb/kvdbManager.hpp>
 
 #include "baseTypes.hpp"
-#include <json/json.hpp>
 #include "syntax.hpp"
-#include <kvdb/kvdbManager.hpp>
 #include <utils/stringUtils.hpp>
 
 namespace builder::internals::builders
@@ -46,8 +46,8 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        const auto msg =
-            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        const auto msg {
+            fmt::format("[{}] DB isn't available for usage", parametersArr[1])};
         throw std::runtime_error(std::move(msg));
     }
 
@@ -141,13 +141,12 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        const auto msg =
-            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        const auto msg {
+            fmt::format("[{}] DB isn't available for usage", parametersArr[1])};
         throw std::runtime_error(std::move(msg));
     }
 
-    auto name = fmt::format(
-        "{}: kvdb", target);
+    auto name = fmt::format("{}: kvdb", target);
     std::string successTrace = fmt::format("[{}] -> Success", name);
     std::string failureTrace = fmt::format("[{}] -> Failure", name);
 

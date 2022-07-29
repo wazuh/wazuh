@@ -24,13 +24,13 @@ namespace builder::internals::builders
  */
 enum class Operator
 {
-    EQ,
-    NE,
-    GT,
-    GE,
-    LT,
-    LE,
-    ST
+    EQ, ///< equal
+    NE, ///< not equal
+    GT, ///< greater than
+    GE, ///< greater than equal
+    LT, ///< less than
+    LE, ///< less than equal
+    ST  ///< start with
 };
 
 /**
@@ -64,7 +64,7 @@ getIntCmpFunction(const std::string& targetField,
 {
     // Depending on rValue type we store the reference or the integer value
     std::variant<std::string, int> rValue {};
-    auto rValueType = rightParameter.m_type;
+    auto rValueType {rightParameter.m_type};
     switch (rightParameter.m_type)
     {
         case helper::base::Parameter::Type::VALUE:
@@ -135,13 +135,13 @@ getIntCmpFunction(const std::string& targetField,
     }
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Function that implements the helper
     return [=](base::Event event) -> base::result::Result<base::Event>
@@ -150,7 +150,7 @@ getIntCmpFunction(const std::string& targetField,
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getInt(targetField);
+        auto lValue {event->getInt(targetField)};
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
@@ -158,7 +158,7 @@ getIntCmpFunction(const std::string& targetField,
 
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
-            auto resolvedRValue = event->getInt(std::get<std::string>(rValue));
+            auto resolvedRValue {event->getInt(std::get<std::string>(rValue))};
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -207,7 +207,7 @@ getStringCmpFunction(const std::string& targetField,
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
     std::string rValue {};
-    auto rValueType = rightParameter.m_type;
+    const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
     // Depending on the operator we return the correct function
@@ -261,13 +261,13 @@ getStringCmpFunction(const std::string& targetField,
     }
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Function that implements the helper
     return [=](base::Event event) -> base::result::Result<base::Event>
@@ -276,7 +276,7 @@ getStringCmpFunction(const std::string& targetField,
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getString(targetField);
+        const auto lValue {event->getString(targetField)};
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
@@ -284,7 +284,7 @@ getStringCmpFunction(const std::string& targetField,
 
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
-            auto resolvedRValue = event->getString(rValue);
+            const auto resolvedRValue {event->getString(rValue)};
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -309,7 +309,6 @@ getStringCmpFunction(const std::string& targetField,
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
-
         }
     };
 }
@@ -328,7 +327,7 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
@@ -338,12 +337,12 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
     {
         case Type::INT:
         {
-            auto opFn = getIntCmpFunction(targetField, op, parameters[0], name);
+            auto opFn {getIntCmpFunction(targetField, op, parameters[0], name)};
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         case Type::STRING:
         {
-            auto opFn = getStringCmpFunction(targetField, op, parameters[0], name);
+            auto opFn {getStringCmpFunction(targetField, op, parameters[0], name)};
             return base::Term<base::EngineOp>::create(name, opFn);
         }
         default:
@@ -360,42 +359,42 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
 // field: +i_eq/int|$ref/
 base::Expression opBuilderHelperIntEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::EQ, Type::INT);
+    auto expression {opBuilderComparison(definition, Operator::EQ, Type::INT)};
     return expression;
 }
 
 // field: +i_ne/int|$ref/
 base::Expression opBuilderHelperIntNotEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::NE, Type::INT);
+    auto expression {opBuilderComparison(definition, Operator::NE, Type::INT)};
     return expression;
 }
 
 // field: +i_lt/int|$ref/
 base::Expression opBuilderHelperIntLessThan(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::LT, Type::INT);
+    auto expression {opBuilderComparison(definition, Operator::LT, Type::INT)};
     return expression;
 }
 
 // field: +i_le/int|$ref/
 base::Expression opBuilderHelperIntLessThanEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::LE, Type::INT);
+    auto expression {opBuilderComparison(definition, Operator::LE, Type::INT)};
     return expression;
 }
 
 // field: +i_gt/int|$ref/
 base::Expression opBuilderHelperIntGreaterThan(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::GT, Type::INT);
+    auto expression {opBuilderComparison(definition, Operator::GT, Type::INT)};
     return expression;
 }
 
 // field: +i_ge/int|$ref/
 base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::GE, Type::INT);
+    auto expression {opBuilderComparison(definition, Operator::GE, Type::INT)};
     return expression;
 }
 
@@ -406,49 +405,49 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
 // field: +s_eq/value|$ref
 base::Expression opBuilderHelperStringEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::EQ, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::EQ, Type::STRING)};
     return expression;
 }
 
 // field: +s_ne/value|$ref
 base::Expression opBuilderHelperStringNotEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::NE, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::NE, Type::STRING)};
     return expression;
 }
 
 // field: +s_gt/value|$ref
 base::Expression opBuilderHelperStringGreaterThan(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::GT, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::GT, Type::STRING)};
     return expression;
 }
 
 // field: +s_ge/value|$ref
 base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::GE, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::GE, Type::STRING)};
     return expression;
 }
 
 // field: +s_lt/value|$ref
 base::Expression opBuilderHelperStringLessThan(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::LT, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::LT, Type::STRING)};
     return expression;
 }
 
 // field: +s_le/value|$ref
 base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::LE, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::LE, Type::STRING)};
     return expression;
 }
 
 // field: +s_eq/value|$ref
 base::Expression opBuilderHelperStringStarts(const std::any& definition)
 {
-    auto expression = opBuilderComparison(definition, Operator::ST, Type::STRING);
+    auto expression {opBuilderComparison(definition, Operator::ST, Type::STRING)};
     return expression;
 }
 
@@ -463,7 +462,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Parameter type check
@@ -471,7 +470,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    auto regex_ptr = std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet);
+    auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
         throw std::runtime_error(fmt::format("[builders::opBuilderHelperRegexMatch] "
@@ -480,11 +479,11 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     }
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -492,7 +491,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getString(targetField);
+            const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -517,7 +516,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Parameter type check
@@ -525,7 +524,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    auto regex_ptr = std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet);
+    auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
     {
         throw std::runtime_error(fmt::format("[builders::opBuilderHelperRegexNotMatch] "
@@ -534,11 +533,11 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     }
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -546,7 +545,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getString(targetField);
+            const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -575,7 +574,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
@@ -610,11 +609,12 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     uint32_t net_upper {net_lower | (~mask)};
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure: invalid target ip", name);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure: invalid target ip", name)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -622,7 +622,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getString(targetField);
+            const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -656,13 +656,14 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 base::Expression opBuilderHelperExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    auto parameters {helper::base::processParameters(rawParameters)};
     helper::base::checkParametersSize(parameters, 0);
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace = fmt::format("[{}] -> Failure", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -685,13 +686,14 @@ base::Expression opBuilderHelperExists(const std::any& definition)
 base::Expression opBuilderHelperNotExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    auto parameters {helper::base::processParameters(rawParameters)};
     helper::base::checkParametersSize(parameters, 0);
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace = fmt::format("[{}] -> Failure", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -718,7 +720,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    auto parameters {helper::base::processParameters(rawParameters)};
     if (parameters.empty())
     {
         throw std::runtime_error(
@@ -727,12 +729,12 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure: invalid target array", name);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure: invalid target array", name)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -740,13 +742,13 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getString(targetField);
+            const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            auto resolvedArray = event->getArray(targetField);
+            const auto resolvedArray {event->getArray(targetField)};
             if (!resolvedArray.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -759,7 +761,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        auto resolvedParameter = event->getString(parameter.m_value);
+                        const auto resolvedParameter {event->getString(parameter.m_value)};
                         if (!resolvedParameter.has_value())
                         {
                             return base::result::makeFailure(event, failureTrace3);

@@ -28,8 +28,7 @@ using namespace engineserver::endpoints;
 namespace engineserver
 {
 
-EngineServer::EngineServer(const std::vector<std::string> &config,
-                           size_t bufferSize)
+EngineServer::EngineServer(const std::vector<std::string>& config, size_t bufferSize)
     : m_eventBuffer {bufferSize}
     , m_isConfigured {false}
 {
@@ -37,28 +36,25 @@ EngineServer::EngineServer(const std::vector<std::string> &config,
     {
         for (auto endpointConf : config)
         {
-            const auto pos = endpointConf.find(":");
+            const auto pos {endpointConf.find(":")};
 
-            m_endpoints[endpointConf] =
-                createEndpoint(endpointConf.substr(0, pos),
-                               endpointConf.substr(pos + 1),
-                               m_eventBuffer);
+            m_endpoints[endpointConf] = createEndpoint(
+                endpointConf.substr(0, pos), endpointConf.substr(pos + 1), m_eventBuffer);
         }
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while creating server configuration: [{}]",
-                        e.what());
+        WAZUH_LOG_ERROR("Exception while creating server configuration: [{}]", e.what());
         return;
     }
 
     m_isConfigured = true;
 }
 
-std::unique_ptr<BaseEndpoint> EngineServer::createEndpoint(
-    const std::string &type,
-    const std::string &path,
-    BlockingConcurrentQueue<std::string> &eventBuffer) const
+std::unique_ptr<BaseEndpoint>
+EngineServer::createEndpoint(const std::string& type,
+                             const std::string& path,
+                             BlockingConcurrentQueue<std::string>& eventBuffer) const
 {
     if (type == "tcp")
     {
@@ -74,8 +70,7 @@ std::unique_ptr<BaseEndpoint> EngineServer::createEndpoint(
     }
     else
     {
-        throw std::runtime_error("Error, endpoint type " + type +
-                                 " not implemented.");
+        throw std::runtime_error("Error, endpoint type " + type + " not implemented.");
     }
 
     return nullptr;
@@ -98,7 +93,7 @@ void EngineServer::close(void)
     }
 }
 
-BlockingConcurrentQueue<std::string> &EngineServer::output()
+BlockingConcurrentQueue<std::string>& EngineServer::output()
 {
     return m_eventBuffer;
 }

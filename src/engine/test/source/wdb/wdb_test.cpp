@@ -52,7 +52,7 @@ TEST(wdb_connector, connectManyTimes)
     ASSERT_GT(serverSocketFD, 0);
 
     // Disable warning logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
     auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
@@ -79,7 +79,7 @@ TEST(wdb_query, EmptyString)
     auto wdb = WazuhDB();
 
     // Disable warning logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
     ASSERT_STREQ(wdb.query("").c_str(), "");
@@ -98,7 +98,7 @@ TEST(wdb_query, TooLongString)
     msg.back() = '\0';
 
     // Disable warning logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
     ASSERT_STREQ(wdb.query(msg.data()).c_str(), "");
@@ -216,7 +216,7 @@ TEST(wdb_tryQuery, SendQueryOK_retry)
         });
 
     // Disable logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
     ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), TEST_RESPONSE);
@@ -245,7 +245,7 @@ TEST(wdb_tryQuery, SendQueryIrrecoverable)
         });
 
     // Disable logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
 
     // Empty string on error
@@ -355,7 +355,7 @@ TEST(wdb_parseResult, ParseResultUnknown)
     WazuhDB wdb {};
 
     // Disable logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
 
     auto retval = wdb.parseResult(message);
@@ -373,7 +373,7 @@ TEST(wdb_parseResult, ParseResultUnknownWithPayload)
     WazuhDB wdb {};
 
     // Disable logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
 
     auto retval = wdb.parseResult(message);
@@ -430,7 +430,7 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
         });
 
     // Disable logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
     auto retval = wdb.tryQueryAndParseResult(TEST_MESSAGE, 5);
@@ -462,7 +462,7 @@ TEST(wdb_tryQueryAndParseResult, SendQueryIrrecoverable)
         });
 
     // Disable logs for this test
-    const auto logLevel = fmtlog::getLogLevel();
+    const auto logLevel {fmtlog::getLogLevel()};
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
 
     // Empty string on error
