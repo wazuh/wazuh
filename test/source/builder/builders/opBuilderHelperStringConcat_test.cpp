@@ -1,675 +1,565 @@
-#include <vector>
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
+#include <any>
 #include <gtest/gtest.h>
+#include <vector>
 
 #include <baseTypes.hpp>
 
-#include "combinatorBuilderChain.hpp"
-#include "opBuilderCondition.hpp"
-#include "opBuilderHelperFilter.hpp"
 #include "opBuilderHelperMap.hpp"
-#include "stageBuilderCheck.hpp"
-#include "stageBuilderNormalize.hpp"
-#include "testUtils.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
-
-class opBuilderHelperStringConcat : public testing::Test
+TEST(opBuilderHelperStringConcat, Builds)
 {
-protected:
-    // Per-test-suite set-up.
-    // Called before the first test in this test suite.
-    static void SetUpTestSuite()
-    {
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"Concat", "test"});
 
-        Registry::registerBuilder("check", bld::stageBuilderCheck);
-        Registry::registerBuilder("condition", bld::opBuilderCondition);
-        Registry::registerBuilder("middle.condition", bld::middleBuilderCondition);
-        Registry::registerBuilder("middle.helper.exists", bld::opBuilderHelperExists);
-        Registry::registerBuilder("combinator.chain", bld::combinatorBuilderChain);
-        Registry::registerBuilder("helper.s_concat", bld::opBuilderHelperStringConcat);
-    }
-
-    // Per-test-suite tear-down.
-    // Called after the last test in this test suite.
-    static void TearDownTestSuite() { return; }
-};
-
-TEST_F(opBuilderHelperStringConcat, Builds)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/First/Second"
-                }
-            }
-        ]
-    })"};
-
-    ASSERT_NO_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringConcat(tuple));
 }
 
-TEST_F(opBuilderHelperStringConcat, WrongNumberOfArguments)
+TEST(opBuilderHelperStringConcat, Builds_bad_parameters)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/First"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"test"});
 
-    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr),
-                 std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringConcat(tuple), std::runtime_error);
 }
 
-TEST_F(opBuilderHelperStringConcat, EmptyArgument)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_field_not_exist)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/First/"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat", "test"});
 
-    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr),
-                 std::runtime_error);
+    auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
 }
 
-TEST_F(opBuilderHelperStringConcat, BasicUsage)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_success)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/First/Second"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat", "test"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(),
-                 "FirstSecond");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest", result.payload()->getString("/field2check").value());
 }
 
-TEST_F(opBuilderHelperStringConcat, SimpleWithOneReference)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_large_success)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldResult": "+s_concat/First/$fieldToTranf"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"This", "is", "a", "test"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "Something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldResult").GetString(),
-                 "FirstSomething");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("Thisisatest", result.payload()->getString("/field2check").value());
 }
 
-TEST_F(opBuilderHelperStringConcat, SimpleWithOneSelfReference)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_field_not_exist)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/First/$fieldToTranf"
-                }
-            }
-        ]
-    })"};
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"},
+                        std::string {"s_concat"},
+                        std::vector<std::string> {"$otherfield", "$otherfield2"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "Something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield3": "test",
+                                                   "otherfield4": "test"})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(),
-                 "FirstSomething");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST_F(opBuilderHelperStringConcat, DoubleWithReferences)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_not_string)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "Result": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"},
+                        std::string {"s_concat"},
+                        std::vector<std::string> {"$otherfield", "$otherfield2"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": "OneThing",
-                "fieldToTranf": "Something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 2,
+                                                   "otherfield2": 4})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/Result").GetString(),
-                 "SomethingOneThing");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST_F(opBuilderHelperStringConcat, DoubleWithOneSelfReferences)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_success)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "anotherField": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"},
+                        std::string {"s_concat"},
+                        std::vector<std::string> {"$otherfield", "$otherfield2"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": "OneThing",
-                "fieldToTranf": "Something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": "concat",
+                                                   "otherfield2": "test"})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/anotherField").GetString(),
-                 "SomethingOneThing");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest", result.payload()->getString("/field2check").value());
 }
 
-TEST_F(opBuilderHelperStringConcat, DoubleWithOneSelfReferencesSecondaryAssignment)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"},
+        std::string {"s_concat"},
+        std::vector<std::string> {
+            "$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": "OneThing",
-                "fieldToTranf": "Something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": "This",
+                                                   "otherfield2": "is",
+                                                   "otherfield3": "a",
+                                                   "otherfield4": "test"})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(),
-                 "SomethingOneThing");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("Thisisatest", result.payload()->getString("/field2check").value());
 }
 
-TEST_F(opBuilderHelperStringConcat, OneReferencesNotString)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_ref_field_not_exist)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "Field": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"$otherfield", "test"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": "OneThing",
-                "fieldToTranf": 1}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_THROW(expected[0]->getEvent()->get("/Field"), std::invalid_argument);
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST_F(opBuilderHelperStringConcat, OneEmptyReferenceWithPresentField)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_not_string)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "anotherField": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {10, "$otherfield"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": "OneThing",
-                "fieldToTranf": 1}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 2,
+                                                   "otherfield2": 4})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/anotherField").GetString(), "OneThing");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST_F(opBuilderHelperStringConcat, OneEmptyReference)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "Field": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat", "$otherfield2"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": "OneThing",
-                "fieldToTranf": 1}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 2,
+                                                   "otherfield2": "test"})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_THROW(expected[0]->getEvent()->get("/Field"), std::invalid_argument);
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest", result.payload()->getString("/field2check").value());
 }
 
-TEST_F(opBuilderHelperStringConcat, ReferenceDoesntExist)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"},
+        std::string {"s_concat"},
+        std::vector<std::string> {"This", "$otherfield2", "a", "$otherfield4"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "something"}
-            )"));
-        s.on_completed();
-    });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 10,
+                                                   "otherfield2": "is",
+                                                   "otherfield3": 20,
+                                                   "otherfield4": "test"})");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "something");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("Thisisatest", result.payload()->getString("/field2check").value());
 }
 
-TEST_F(opBuilderHelperStringConcat, BasicUsageThreeArguments)
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_not_exist)
 {
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "Field": "+s_concat/First/Second/Third"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat", "test"});
 
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "something"}
-            )"));
-        s.on_completed();
-    });
-
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/Field").GetString(), "FirstSecondThird");
-}
-
-TEST_F(opBuilderHelperStringConcat, BasicUsageThreeArgumentsMiddleEmpty)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "Field": "+s_concat/First//Third"
-                }
-            }
-        ]
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr),
-                 std::runtime_error);
-}
-
-TEST_F(opBuilderHelperStringConcat, BasicUsageLotOfArguments)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "Field": "+s_concat/A/B/C/D/E/F/G/H/I/J/K/L/M/N/O/P/Q/R/S/T/U/V/W/X/Y/Z"
-                }
-            }
-        ]
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"fieldToTranf": "something"}
-            )"));
-        s.on_completed();
-    });
-
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/Field").GetString(),
-                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-}
-
-TEST_F(opBuilderHelperStringConcat, EmptyReference)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieldToTranf": "+s_concat/something/$anotherField"
-                }
-            }
-        ]
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": ""}
-            )"));
-        s.on_completed();
-    });
-
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "something");
-}
-
-TEST_F(opBuilderHelperStringConcat, DoubleUsage)
-{
-
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "FieldA": "+s_concat/A/B/C",
-                    "FieldB": "+s_concat/$FieldA/D/E/F"
-                }
-            }
-        ]
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"FieldB": "something"}
-            )"));
-        s.on_completed();
-    });
-
-    Lifter lift = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/FieldB").GetString(), "ABCDEF");
-}
-
-TEST_F(opBuilderHelperStringConcat, ComplexUsage)
-{
-
-    Document doc {R"({
-        "normalize": [
-            {
-                "map":
-                {
-                    "FieldA": "+s_concat/A/B/C",
-                    "FieldB": "+s_concat/$FieldA/D/E/F"
-                }
-            },
-            {
-                "check":
-                [
-                    {"FieldX": "+exists"}
-                ],
-                "map":
-                {
-                    "FieldX": "+s_concat/1/2/$FieldA"
-                }
-            }
-        ]
-    })"};
-
-    auto normalize = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
-
-    rxcpp::subjects::subject<Event> inputSubject;
-    inputSubject.get_observable().subscribe([](Event e) {});
-    auto inputObservable = inputSubject.get_observable();
-    auto output = normalize(inputObservable);
-
-    std::vector<Event> expected;
-    output.subscribe([&expected](Event e) { expected.push_back(e); });
-
-    auto eventsCount = 2;
-    auto inputObjectOne = createSharedEvent(R"({"FieldB": "something"})");
-    auto inputObjectTwo = createSharedEvent(R"({"FieldX": "somethingElse"})");
-
-    inputSubject.get_subscriber().on_next(inputObjectOne);
-    inputSubject.get_subscriber().on_next(inputObjectTwo);
-
-    ASSERT_EQ(expected.size(), eventsCount);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/FieldB").GetString(), "ABCDEF");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/FieldX").GetString(), "12ABC");
-}
-
-TEST_F(opBuilderHelperStringConcat, ReferenceFieldWithForbiddenName)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "anotherField~": "+s_concat/$fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"anotherField": ""}
-            )"));
-        s.on_completed();
-    });
-
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_THROW(expected[0]->getEvent()->get("/anotherField~"), std::invalid_argument);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/anotherField").GetString(), "");
-}
-
-TEST_F(opBuilderHelperStringConcat, BothReferenceFieldsWithForbiddenName)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "anotherField": "+s_concat/$field~/ALGO"
-                }
-            }
-        ]
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"field": "OOO"}
-            )"));
-        s.on_completed();
-    });
-
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_THROW(expected[0]->getEvent()->get("/anotherField"), std::invalid_argument);
-}
-
-TEST_F(opBuilderHelperStringConcat, AssignmentOnNestedField)
-{
-    Document doc {R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "parent.fieldToTranf": "+s_concat/$parent.fieldToTranf/$anotherField"
-                }
-            }
-        ]
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {
-                    "anotherField": "OneThing",
-                    "parent" :
-                    {
-                        "fieldToTranf": "Something"
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": 10,
+                        "ref_key": 11
                     }
-                }
-            )"));
-        s.on_completed();
-    });
+                    })");
 
-    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/parent/fieldToTranf").GetString(),
-                 "SomethingOneThing");
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest",
+              result.payload()->getString("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat", "test"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "concat",
+                        "ref_key": 11
+                    },
+                    "parentObjt_4": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_3": {
+                        "field2check": "test",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest",
+              result.payload()->getString("/parentObjt/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_not_exist)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"$parentObjt_1/field2check",
+                                                           "$parentObjt_2/fieldcheck"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "field2check": 10,
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"$/parentObjt_1/field2check",
+                                                           "$/parentObjt_3/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "concat",
+                        "ref_key": 11
+                    },
+                    "parentObjt_4": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_3": {
+                        "field2check": "test",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest",
+              result.payload()->getString("/parentObjt/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"$/parentObjt_1/field2check",
+                                                           "$/parentObjt_2/field2check",
+                                                           "$/parentObjt_4/field2check",
+                                                           "$/parentObjt_3/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": "is",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "This",
+                        "ref_key": 11
+                    },
+                    "parentObjt_4": {
+                        "field2check": "a",
+                        "ref_key": 10
+                    },
+                    "parentObjt_3": {
+                        "field2check": "test",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("Thisisatest",
+              result.payload()->getString("/parentObjt/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_field_not_exist)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                        std::string {"s_concat"},
+                        std::vector<std::string> {"concat", "$parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": "test",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest",
+              result.payload()->getString("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"$parentObjt_1/field2check",
+                                                           "$parentObjt_3/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "concat",
+                        "ref_key": 11
+                    },
+                    "parentObjt_4": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_3": {
+                        "field2check": "test",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest",
+              result.payload()->getString("/parentObjt/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_field_not_exist)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat",
+                                                           "$parentObjt_2/fieldcheck"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "field2check": 10,
+                    "parentObjt_2": {
+                        "field2check": "test",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": "test",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+// TODO $/parentObjt_3/field2check a $/parentObjt_3/fieldcheck
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"concat",
+                                                           "$/parentObjt_3/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 12,
+                        "ref_key": 11
+                    },
+                    "parentObjt_4": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_3": {
+                        "field2check": "test",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("concattest",
+              result.payload()->getString("/parentObjt/field2check").value());
+}
+
+TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"s_concat"},
+                                 std::vector<std::string> {"This",
+                                                           "$/parentObjt_2/field2check",
+                                                           "a",
+                                                           "$/parentObjt_4/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": "is",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    },
+                    "parentObjt_4": {
+                        "field2check": "test",
+                        "ref_key": 10
+                    },
+                    "parentObjt_3": {
+                        "field2check": 15,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringConcat(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("Thisisatest",
+              result.payload()->getString("/parentObjt/field2check").value());
 }

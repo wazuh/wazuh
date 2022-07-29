@@ -149,6 +149,7 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 

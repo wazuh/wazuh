@@ -15,7 +15,7 @@ std::string WazuhDB::query(const std::string& query)
 {
     std::string result {};
 
-    if (query.length() == 0)
+    if (0 == query.length())
     {
         WAZUH_LOG_WARN("wdb: The query to send is empty.");
         return {};
@@ -27,7 +27,7 @@ std::string WazuhDB::query(const std::string& query)
     }
 
     // Send the query (connect if not connected) ), throw runtime_error if cannot send
-    const auto sendStatus = m_socket.sendMsg(query);
+    const auto sendStatus {m_socket.sendMsg(query)};
     if (SendRetval::SUCCESS == sendStatus)
     {
         // Receive the result, throw runtime_error if cannot receive
@@ -35,15 +35,15 @@ std::string WazuhDB::query(const std::string& query)
     }
     else if (SendRetval::SOCKET_ERROR == sendStatus)
     {
-        const auto msgError = fmt::format ("wdb: sendMsg failed: {} ({})",
-                                             strerror(errno), errno);
+        const auto msgError =
+            fmt::format("wdb: sendMsg failed: {} ({})", strerror(errno), errno);
         throw std::runtime_error(msgError);
     }
     else
     {
         // SIZE_ZERO, SIZE_TOO_LONG never reach here
-        const auto logicErrorStr =
-            "wdb: sendMsg reached a condition that should never happen: ";
+        const auto logicErrorStr {
+            "wdb: sendMsg reached a condition that should never happen: "};
         throw std::logic_error(logicErrorStr);
     }
 
@@ -129,7 +129,7 @@ std::string WazuhDB::tryQuery(const std::string& query,
         }
     }
 
-    if (result.length() == 0 && disconnectError.has_value())
+    if (0 == result.length() && disconnectError.has_value())
     {
         WAZUH_LOG_WARN("wdb: tryQuery failed: {}", disconnectError.value());
     }
