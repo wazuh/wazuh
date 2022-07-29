@@ -29,7 +29,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
@@ -49,17 +49,15 @@ base::Expression opBuilderARWrite(const std::any& definition)
 
     std::string rValue {};
     const helper::base::Parameter rightParameter = parameters[0];
-    auto rValueType = rightParameter.m_type;
+    const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not foundd", name, parameters[0].m_value);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: query is empty", name);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {fmt::format("[{}] -> Failure: [{}] not found", name, parameters[0].m_value)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure: query is empty", name)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // field_: name/parameter
 
@@ -75,7 +73,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
             // Check if the value comes from a reference
             if (helper::base::Parameter::Type::REFERENCE == rValueType)
             {
-                auto resolvedRValue = event->getString(rValue);
+                auto resolvedRValue {event->getString(rValue)};
 
                 if (!resolvedRValue.has_value())
                 {
@@ -99,7 +97,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
             {
                 try
                 {
-                    if (socketAR->sendMsg(query) == SendRetval::SUCCESS)
+                    if (SendRetval::SUCCESS == socketAR->sendMsg(query))
                     {
                         event->setBool(true, targetField);
                         return base::result::makeSuccess(event, successTrace);
@@ -111,8 +109,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
                 }
                 catch (const std::exception& e)
                 {
-                    const auto failureTraceEx =
-                        fmt::format("[{}] -> Failure: [{}]", name, e.what());
+                    const auto failureTraceEx {fmt::format("[{}] -> Failure: [{}]", name, e.what())};
                     return base::result::makeFailure(event, failureTraceEx);
                 }
             }
