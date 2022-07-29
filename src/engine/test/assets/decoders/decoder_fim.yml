@@ -8,7 +8,13 @@ check:
   - event.original.data.path: +exists
   - event.original.data.type: +exists
 
+parse:
+  logql:
+    - event.original: <labels>
+
 normalize:
+  - map:
+      event.original: $labels
 
   - check:
       event.original.data.type: +s_eq/added
@@ -51,7 +57,13 @@ check:
   - event.original.data.timestamp: +exists
   - event.original.data.timestamp: +is_number
 
+parse:
+  logql:
+    - event.original: <labels>
+
 normalize:
+  - map:
+      event.original: $labels
 
   - check:
       - event.original.type: +s_eq/scan_start

@@ -68,7 +68,23 @@ static void registerBuilders()
                               "helper.s_contains");
     Registry::registerBuilder(builders::opBuilderHelperDeleteField,
                               "helper.delete_field");
-    // Registry::registerBuilder(builders::opBuilderHelperNotNull, "helper.not_null");
+    Registry::registerBuilder(builders::opBuilderHelperIsNumber, "helper.is_number");
+    Registry::registerBuilder(builders::opBuilderHelperIsNotNumber,
+                              "helper.is_not_number");
+    Registry::registerBuilder(builders::opBuilderHelperIsString, "helper.is_string");
+    Registry::registerBuilder(builders::opBuilderHelperIsNotString,
+                              "helper.is_not_string");
+    Registry::registerBuilder(builders::opBuilderHelperIsBool, "helper.is_bool");
+    Registry::registerBuilder(builders::opBuilderHelperIsNotBool, "helper.is_not_bool");
+    Registry::registerBuilder(builders::opBuilderHelperIsArray, "helper.is_array");
+    Registry::registerBuilder(builders::opBuilderHelperIsNotArray, "helper.is_not_array");
+    Registry::registerBuilder(builders::opBuilderHelperIsObject, "helper.is_object");
+    Registry::registerBuilder(builders::opBuilderHelperIsNotObject,
+                              "helper.is_not_object");
+    Registry::registerBuilder(builders::opBuilderHelperIsNull, "helper.is_null");
+    Registry::registerBuilder(builders::opBuilderHelperIsNotNull, "helper.is_not_null");
+    Registry::registerBuilder(builders::opBuilderHelperIsTrue, "helper.is_true");
+    Registry::registerBuilder(builders::opBuilderHelperIsFalse, "helper.is_false");
 
     // Map Helpers
     Registry::registerBuilder(builders::opBuilderHelperIntCalc, "helper.i_calc");
@@ -83,7 +99,6 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderWdbSyncQuery, "helper.wdb_query");
     Registry::registerBuilder(builders::opBuilderWdbSyncUpdate, "helper.wdb_update");
     Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
-
 }
 } // namespace builder::internals
 
