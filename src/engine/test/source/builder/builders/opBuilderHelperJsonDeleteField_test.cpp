@@ -119,7 +119,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_success)
 }
 
 // TODO This test should not be valid since the key must be unique.
-TEST(opBuilderHelperJsonDeleteField, aux)
+TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"delete_field"},

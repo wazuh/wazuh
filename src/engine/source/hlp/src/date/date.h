@@ -1131,7 +1131,7 @@ trunc(T t) NOEXCEPT
     static_assert(digits < numeric_limits<I>::digits, "");
     CONSTDATA auto max = I{1} << (digits-1);
     CONSTDATA auto min = -max;
-    const auto negative = t < T{0};
+    const auto negative {t < T{0}};
     if (min <= t && t <= max && t != 0 && t == t)
     {
         t = static_cast<T>(static_cast<I>(t));

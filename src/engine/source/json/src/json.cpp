@@ -128,7 +128,7 @@ bool Json::equals(std::string_view pointerPath, const Json& value) const
     auto fieldPtr = rapidjson::Pointer(pointerPath.data());
     if (fieldPtr.IsValid())
     {
-        const auto got = fieldPtr.Get(m_document);
+        const auto got {fieldPtr.Get(m_document)};
         return (got && *got == value.m_document);
     }
     else
@@ -138,15 +138,16 @@ bool Json::equals(std::string_view pointerPath, const Json& value) const
     }
 }
 
-bool Json::equals(std::string_view basePointerPath, std::string_view referencePointerPath) const
+bool Json::equals(std::string_view basePointerPath,
+                  std::string_view referencePointerPath) const
 {
     auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
     auto referencePtr = rapidjson::Pointer(referencePointerPath.data());
 
     if (fieldPtr.IsValid() && referencePtr.IsValid())
     {
-        const auto got = fieldPtr.Get(m_document);
-        const auto reference = referencePtr.Get(m_document);
+        const auto got {fieldPtr.Get(m_document)};
+        const auto reference {referencePtr.Get(m_document)};
         return (got && reference && *got == *reference);
     }
     else
@@ -209,7 +210,7 @@ std::optional<std::string> Json::getString(std::string_view path) const
         const auto* value = pp.Get(m_document);
         if (value && value->IsString())
         {
-            return std::string{value->GetString()};
+            return std::string {value->GetString()};
         }
         else
         {

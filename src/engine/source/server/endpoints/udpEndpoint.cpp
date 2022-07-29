@@ -11,8 +11,8 @@
 
 #include <stdexcept>
 
-#include <logging/logging.hpp>
 #include "protocolHandler.hpp"
+#include <logging/logging.hpp>
 
 using uvw::ErrorEvent;
 using uvw::Loop;
@@ -22,7 +22,7 @@ using uvw::UDPHandle;
 namespace engineserver::endpoints
 {
 
-UDPEndpoint::UDPEndpoint(const std::string &config, ServerOutput &eventBuffer)
+UDPEndpoint::UDPEndpoint(const std::string& config, ServerOutput& eventBuffer)
     : BaseEndpoint {config, eventBuffer}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<UDPHandle>()}
@@ -34,7 +34,7 @@ UDPEndpoint::UDPEndpoint(const std::string &config, ServerOutput &eventBuffer)
     auto protocolHandler = std::make_shared<ProtocolHandler>();
 
     m_handle->on<ErrorEvent>(
-        [](const ErrorEvent &event, UDPHandle &handle)
+        [](const ErrorEvent& event, UDPHandle& handle)
         {
             WAZUH_LOG_ERROR("UDP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
                             "name=[{}]; message=[{}]",
@@ -46,29 +46,27 @@ UDPEndpoint::UDPEndpoint(const std::string &config, ServerOutput &eventBuffer)
         });
 
     m_handle->on<UDPDataEvent>(
-        [this, protocolHandler](const UDPDataEvent &event, UDPHandle &handle)
+        [this, protocolHandler](const UDPDataEvent& event, UDPHandle& handle)
         {
             auto client = handle.loop().resource<UDPHandle>();
 
             client->on<ErrorEvent>(
-                [](const ErrorEvent &event, UDPHandle &client)
+                [](const ErrorEvent& event, UDPHandle& client)
                 {
-                    WAZUH_LOG_ERROR(
-                        "UDP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
-                        "name=[{}]; message=[{}]",
-                        client.peer().ip,
-                        client.peer().port,
-                        event.code(),
-                        event.name(),
-                        event.what());
+                    WAZUH_LOG_ERROR("UDP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
+                                    "name=[{}]; message=[{}]",
+                                    client.peer().ip,
+                                    client.peer().port,
+                                    event.code(),
+                                    event.name(),
+                                    event.what());
                 });
 
-            const auto result =
-                protocolHandler->process(event.data.get(), event.length);
+            const auto result {protocolHandler->process(event.data.get(), event.length)};
 
             if (result)
             {
-                const auto events = result.value().data();
+                const auto events {result.value().data()};
 
                 while (!m_out.try_enqueue_bulk(events, result.value().size()))
                     ;
@@ -92,9 +90,8 @@ void UDPEndpoint::run(void)
 void UDPEndpoint::close(void)
 {
     m_loop->stop(); /// Stops the loop
-    m_loop->walk(
-        [](uvw::BaseHandle &handle)
-        { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->walk([](uvw::BaseHandle& handle)
+                 { handle.close(); }); /// Triggers every handle's close callback
     m_loop->run(); /// Runs the loop again, so every handle is able to receive
                    /// its close callback
     m_loop->clear();
