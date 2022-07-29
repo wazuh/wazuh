@@ -84,7 +84,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
@@ -94,7 +94,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     // cases
     std::string rValue {};
     const helper::base::Parameter rightParameter = parameters[0];
-    auto rValueType = rightParameter.m_type;
+    const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
     // Depending on the operator we return the correct function
@@ -123,11 +123,11 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     }
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
@@ -143,7 +143,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
 
             if (helper::base::Parameter::Type::REFERENCE == rValueType)
             {
-                auto resolvedRValue = event->getString(rValue);
+                const auto resolvedRValue {event->getString(rValue)};
                 if (!resolvedRValue.has_value())
                 {
                     return base::result::makeFailure(event, failureTrace1);
@@ -151,14 +151,14 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
 
                 else
                 {
-                    auto res = transformFunction(resolvedRValue.value());
+                    auto res {transformFunction(resolvedRValue.value())};
                     event->setString(res, targetField);
                     return base::result::makeSuccess(event, successTrace);
                 }
             }
             else
             {
-                auto res = transformFunction(rValue);
+                const auto res {transformFunction(rValue)};
                 event->setString(res, targetField);
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -185,7 +185,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
 {
     // Depending on rValue type we store the reference or the integer value
     std::variant<std::string, int> rValue {};
-    auto rValueType = rightParameter.m_type;
+    auto rValueType {rightParameter.m_type};
     switch (rightParameter.m_type)
     {
         case helper::base::Parameter::Type::VALUE:
@@ -200,7 +200,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
                                 "not convert {} to int",
                                 rightParameter.m_value)));
             }
-            if (IntOperator::DIV == op && std::get<int>(rValue) == 0)
+            if (IntOperator::DIV == op && 0 == std::get<int>(rValue))
             {
                 throw std::runtime_error(fmt::format(
                     "[builders::opBuilderHelperIntTransformation()] division by zero"));
@@ -258,14 +258,13 @@ opBuilderHelperIntTransformation(const std::string& targetField,
     }
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
-
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
     const auto failureTrace4 = fmt::format(
         "[{}] -> Failure: [{}] division by zero", name, rightParameter.m_value);
 
@@ -279,7 +278,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             // is empty ot not. Then if is a reference we get the value from the event,
             // otherwise we get the value from the parameter
 
-            auto lValue = event->getInt(targetField);
+            const auto lValue {event->getInt(targetField)};
             if (!lValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -287,25 +286,25 @@ opBuilderHelperIntTransformation(const std::string& targetField,
 
             if (helper::base::Parameter::Type::REFERENCE == rValueType)
             {
-                auto resolvedRValue = event->getInt(std::get<std::string>(rValue));
+                const auto resolvedRValue {event->getInt(std::get<std::string>(rValue))};
                 if (!resolvedRValue.has_value())
                 {
                     return base::result::makeFailure(event, failureTrace2);
                 }
                 else
                 {
-                    if (IntOperator::DIV == op && resolvedRValue == 0)
+                    if (IntOperator::DIV == op && 0 == resolvedRValue)
                     {
                         return base::result::makeFailure(event, failureTrace4);
                     }
-                    auto res = transformFunction(lValue.value(), resolvedRValue.value());
+                    auto res {transformFunction(lValue.value(), resolvedRValue.value())};
                     event->setInt(res, targetField);
                     return base::result::makeSuccess(event, successTrace);
                 }
             }
             else
             {
-                auto res = transformFunction(lValue.value(), std::get<int>(rValue));
+                const auto res {transformFunction(lValue.value(), std::get<int>(rValue))};
                 event->setInt(res, targetField);
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -325,14 +324,14 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 // field: +s_up/value|$ref
 base::Expression opBuilderHelperStringUP(const std::any& definition)
 {
-    auto expression = opBuilderHelperStringTransformation(definition, StringOperator::UP);
+    auto expression {opBuilderHelperStringTransformation(definition, StringOperator::UP)};
     return expression;
 }
 
 // field: +s_lo/value|$ref
 base::Expression opBuilderHelperStringLO(const std::any& definition)
 {
-    auto expression = opBuilderHelperStringTransformation(definition, StringOperator::LO);
+    auto expression {opBuilderHelperStringTransformation(definition, StringOperator::LO)};
     return expression;
 }
 
@@ -344,7 +343,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
@@ -371,13 +370,13 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     }
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -386,7 +385,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
             base::Event event) -> base::result::Result<base::Event>
         {
             // Get field value
-            auto resolvedField = event->getString(targetField);
+            auto resolvedField {event->getString(targetField)};
 
             // Check if field is a string
             if (!resolvedField.has_value())
@@ -433,10 +432,9 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
-    // helper::base::checkParametersSize(parameters, 3);
-    if (parameters.size() < 3)
+    if (parameters.size() < 2)
     {
         throw std::runtime_error("Invalid number of parameters for s_concat operator");
     }
@@ -444,11 +442,11 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -463,16 +461,16 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
                 if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
                 {
                     // Get field value
-                    auto resolvedField = event->getString(parameter.m_value);
+                    auto resolvedField {event->getString(parameter.m_value)};
 
                     // Check if field is a string
-                    if (!resolvedField.has_value())
+                    if (resolvedField.has_value())
                     {
-                        return base::result::makeFailure(event, failureTrace1);
+                        result.append(resolvedField.value());
                     }
                     else
                     {
-                        result.append(resolvedField.value());
+                        return base::result::makeFailure(event, failureTrace1);
                     }
                 }
                 else
@@ -498,15 +496,15 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
-    auto op = strToOp(parameters[0]);
+    const auto op {strToOp(parameters[0])};
 
-    auto expression =
-        opBuilderHelperIntTransformation(targetField, op, parameters[1], name);
+    auto expression {
+        opBuilderHelperIntTransformation(targetField, op, parameters[1], name)};
     return expression;
 }
 
@@ -521,7 +519,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
@@ -542,11 +540,11 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     }
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -555,7 +553,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
             base::Event event) -> base::result::Result<base::Event>
         {
             // TODO Remove try catch
-            auto resolvedField = event->getString(map_field);
+            auto resolvedField {event->getString(map_field)};
 
             if (!resolvedField.has_value())
             {
@@ -576,7 +574,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 base::Expression opBuilderHelperAppendString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    auto parameters {helper::base::processParameters(rawParameters)};
     if (parameters.empty())
     {
         throw std::runtime_error(
@@ -585,15 +583,15 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: parameter reference not found", name);
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: parameter reference not found", name)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
+        [=, targetField = std::move(targetField), name = std::move(name)](
             base::Event event) -> base::result::Result<base::Event>
         {
             for (const auto& parameter : parameters)
@@ -602,7 +600,7 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        auto value = event->getString(parameter.m_value);
+                        auto value {event->getString(parameter.m_value)};
                         if (!value)
                         {
                             return base::result::makeFailure(event, failureTrace1);
@@ -638,15 +636,16 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 0);
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing messages
-    const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace = fmt::format("[{}] -> Failure", name);
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -655,7 +654,7 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
             base::Event event) -> base::result::Result<base::Event>
         {
             // Get field value
-            auto resolvedField = event->getString(targetField);
+            auto resolvedField {event->getString(targetField)};
 
             if (event->erase(targetField))
             {

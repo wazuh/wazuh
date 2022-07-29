@@ -99,7 +99,7 @@ base::Event ProtocolHandler::parse(const string& event)
 
     const bool isFullLocation = (FIRST_FULL_LOCATION_CHAR == event[2]);
 
-    const auto secondColonIdx = event.find(":", 2);
+    const auto secondColonIdx {event.find(":", 2)};
 
     // Case: <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Route>:<Log>
     //                  \                                                  /
@@ -114,21 +114,21 @@ base::Event ProtocolHandler::parse(const string& event)
             // As the format goes like: ...:[<Agent_ID>....
             endIdx = event.find("]", startIdx);
             uint32_t valueSize = (endIdx - startIdx) - 1;
-            const auto agentId = event.substr(startIdx + 1, valueSize).c_str();
+            const auto agentId {event.substr(startIdx + 1, valueSize).c_str()};
             parseEvent->setString(agentId, EVENT_AGENT_ID);
 
             // Agent_Name is between '(' and ')'
             startIdx = endIdx + 2; // As the format goes like: ...] (<Agent_Name>...
             endIdx = event.find(")", startIdx);
             valueSize = (endIdx - startIdx) - 1;
-            const auto agentName = event.substr(startIdx + 1, valueSize).c_str();
+            const auto agentName {event.substr(startIdx + 1, valueSize).c_str()};
             parseEvent->setString(agentName, EVENT_AGENT_NAME);
 
             // Registered_IP is between ' ' (a space) and "->" (an arrow)
             startIdx = endIdx + 1; // As the format goes like: ...) <Registered_IP>...
             endIdx = event.find("->", startIdx);
             valueSize = (endIdx - startIdx) - 1;
-            const auto registeredIP = event.substr(startIdx + 1, valueSize);
+            const auto registeredIP {event.substr(startIdx + 1, valueSize)};
             parseEvent->set(registeredIP, EVENT_REGISTERED_IP);
 
             // Route is between "->" (an arrow) and ':'
@@ -143,7 +143,7 @@ base::Event ProtocolHandler::parse(const string& event)
                 endIdx = secondColonIdx;
             }
             valueSize = (endIdx - startIdx) - 1;
-            const auto route = event.substr(startIdx + 1, valueSize).c_str();
+            const auto route {event.substr(startIdx + 1, valueSize).c_str()};
             parseEvent->setString(route, EVENT_ORIGIN);
         }
         catch (std::runtime_error& e)
@@ -164,7 +164,7 @@ base::Event ProtocolHandler::parse(const string& event)
         // have the following format: "q:XXXX:YYYY:ZZZZ:...".
         //                               |   |
         //                            idx=2 idx=6
-        const auto ipVersion = (':' == event[6]) ? IPVersion::IPV6 : IPVersion::IPV4;
+        const auto ipVersion {(':' == event[6]) ? IPVersion::IPV6 : IPVersion::IPV4};
 
         if (IPVersion::IPV6 == ipVersion)
         {
@@ -184,7 +184,7 @@ base::Event ProtocolHandler::parse(const string& event)
 
             try
             {
-                const auto locationLength = LAST_COLON_INDEX - LOCATION_OFFSET;
+                const auto locationLength {LAST_COLON_INDEX - LOCATION_OFFSET};
                 const string ipv6 = event.substr(LOCATION_OFFSET, locationLength);
                 parseEvent->set(ipv6, EVENT_ORIGIN);
             }
@@ -203,7 +203,7 @@ base::Event ProtocolHandler::parse(const string& event)
         {
             try
             {
-                const auto locationLength = secondColonIdx - LOCATION_OFFSET;
+                const auto locationLength {secondColonIdx - LOCATION_OFFSET};
                 const string ipv4 = event.substr(LOCATION_OFFSET, locationLength);
                 parseEvent->setString(ipv4, EVENT_ORIGIN);
             }

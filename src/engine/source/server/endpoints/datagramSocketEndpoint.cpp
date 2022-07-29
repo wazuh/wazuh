@@ -77,7 +77,7 @@ static inline int bindUnixDatagramSocket(const char* path)
     socklen_t optlen = sizeof(len);
 
     /* Get current maximum size */
-    if (getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (void*)&len, &optlen) == -1)
+    if (-1 == getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (void*)&len, &optlen))
     {
         len = 0;
     }
@@ -94,7 +94,7 @@ static inline int bindUnixDatagramSocket(const char* path)
     }
 
     // Set close-on-exec
-    if (fcntl(socketFd, F_SETFD, FD_CLOEXEC) == -1)
+    if (-1 == fcntl(socketFd, F_SETFD, FD_CLOEXEC))
     {
         WAZUH_LOG_ERROR(
             "Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
@@ -140,11 +140,11 @@ DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string& path,
                                     event.what());
                 });
 
-            const auto result = protocolHandler->process(event.data.get(), event.length);
+            const auto result {protocolHandler->process(event.data.get(), event.length)};
 
             if (result)
             {
-                const auto events = result.value().data();
+                const auto events {result.value().data()};
 
                 while (!m_out.try_enqueue_bulk(events, result.value().size()))
                     ;
