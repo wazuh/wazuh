@@ -77,7 +77,7 @@ TEST(unixDatagramSocket, Connect)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -91,7 +91,7 @@ TEST(unixDatagramSocket, ConnectTwice)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -112,7 +112,7 @@ TEST(unixDatagramSocket, ConnectAndDisconnect)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -127,7 +127,7 @@ TEST(unixDatagramSocket, ConnectDisconnectConnect)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -146,7 +146,7 @@ TEST(unixDatagramSocket, isConnectedFalse)
 
     ASSERT_FALSE(uDgram.isConnected());
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -163,7 +163,7 @@ TEST(unixDatagramSocket, isConnectedTrue)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -192,7 +192,7 @@ TEST(unixDatagramSocket, ErrorSendEmptyMessage)
 
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(ASSERT_EQ(uDgram.sendMsg(msg), SendRetval::SIZE_ZERO));
@@ -204,14 +204,14 @@ TEST(unixDatagramSocket, ErrorSendEmptyMessage)
 
 TEST(unixDatagramSocket, ErrorSendLongMessage)
 {
-    std::vector<char> msg = {};
+    std::vector<char> msg {{}};
     msg.resize(DATAGRAM_MAX_MSG_SIZE + 2);
     std::fill(msg.begin(), msg.end() - 1, 'x');
     msg.back() = '\0';
 
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(ASSERT_EQ(uDgram.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG));
@@ -225,7 +225,7 @@ TEST(unixDatagramSocket, SendMessage)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.socketConnect());
@@ -243,7 +243,7 @@ TEST(unixDatagramSocket, SendMessageDisconnected)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
-    auto serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(uDgram.sendMsg(TEST_SEND_MESSAGE.data()));

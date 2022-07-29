@@ -35,8 +35,8 @@ std::string WazuhDB::query(const std::string& query)
     }
     else if (SendRetval::SOCKET_ERROR == sendStatus)
     {
-        const auto msgError =
-            fmt::format("wdb: sendMsg failed: {} ({})", strerror(errno), errno);
+        const auto msgError {
+            fmt::format("wdb: sendMsg failed: {} ({})", strerror(errno), errno)};
         throw std::runtime_error(msgError);
     }
     else
@@ -100,7 +100,7 @@ std::string WazuhDB::tryQuery(const std::string& query,
     std::string result {};
     std::optional<std::string> disconnectError {};
 
-    for (unsigned int i = 0; i < attempts; i++)
+    for (unsigned int i {0}; i < attempts; i++)
     {
         try
         {

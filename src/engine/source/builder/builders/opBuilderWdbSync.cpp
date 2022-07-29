@@ -29,7 +29,7 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
     auto [targetField, name, raw_parameters] =
         helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = helper::base::processParameters(raw_parameters);
+    auto parameters {helper::base::processParameters(raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
@@ -62,7 +62,7 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
             // Check if the value comes from a reference
             if (helper::base::Parameter::Type::REFERENCE == rValueType)
             {
-                auto resolvedRValue = event->getString(rValue);
+                auto resolvedRValue {event->getString(rValue)};
 
                 if (resolvedRValue.has_value())
                 {
@@ -84,13 +84,13 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
 
             // instantiate wDB
             // TODO: delete sock_path! is there a way or a cons of using sharedptr
-            auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
+            auto wdb {wazuhdb::WazuhDB(STREAM_SOCK_PATH)};
 
             // Execute complete query in DB
-            auto returnTuple = wdb.tryQueryAndParseResult(completeQuery);
+            auto returnTuple {wdb.tryQueryAndParseResult(completeQuery)};
 
             // Handle response
-            auto resultCode = std::get<0>(returnTuple);
+            auto resultCode {std::get<0>(returnTuple)};
 
             // Store value on json
             if (doReturnPayload)

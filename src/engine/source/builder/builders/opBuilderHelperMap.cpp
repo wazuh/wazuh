@@ -93,7 +93,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
     std::string rValue {};
-    const helper::base::Parameter rightParameter = parameters[0];
+    const helper::base::Parameter rightParameter {parameters[0]};
     const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
