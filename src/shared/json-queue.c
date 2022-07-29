@@ -71,8 +71,10 @@ cJSON * jqueue_next(file_queue * queue) {
     } else {
         queue->flags = 0;
 
-        if (stat(queue->file_name, &buf) < 0) {
-            merror(FSTAT_ERROR, queue->file_name, errno, strerror(errno));
+        // Check file stats, or sleep and retry if the file is missing.
+
+        if (stat(queue->file_name, &buf) < 0 && (errno != ENOENT || (sleep(1), stat(queue->file_name, &buf) < 0))) {
+            mwarn(FSTAT_ERROR, queue->file_name, errno, strerror(errno));
             fclose(queue->fp);
             queue->fp = NULL;
             return NULL;

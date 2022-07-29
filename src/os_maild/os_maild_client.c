@@ -370,6 +370,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     /* Get message if available */
     if (al_json = jqueue_next(fileq), !al_json) {
+        sleep(1);
         return NULL;
     }
 
