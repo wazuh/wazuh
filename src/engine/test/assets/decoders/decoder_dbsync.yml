@@ -3,7 +3,14 @@ name: decoder_dbsync
 check:
   - queue: +i_eq/35
 
+parse:
+  logql:
+    - event.original: <labels>
+
 normalize:
+  - map:
+      event.original: $labels
+
   - check:
       - type: +s_starts/integrity_check_
     map:

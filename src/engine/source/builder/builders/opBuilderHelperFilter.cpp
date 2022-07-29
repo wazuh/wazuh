@@ -96,38 +96,32 @@ getIntCmpFunction(const std::string& targetField,
     switch (op)
     {
         case Operator::EQ:
-            cmpFunction = [](int l, int r)
-            {
+            cmpFunction = [](int l, int r) {
                 return l == r;
             };
             break;
         case Operator::NE:
-            cmpFunction = [](int l, int r)
-            {
+            cmpFunction = [](int l, int r) {
                 return l != r;
             };
             break;
         case Operator::GT:
-            cmpFunction = [](int l, int r)
-            {
+            cmpFunction = [](int l, int r) {
                 return l > r;
             };
             break;
         case Operator::GE:
-            cmpFunction = [](int l, int r)
-            {
+            cmpFunction = [](int l, int r) {
                 return l >= r;
             };
             break;
         case Operator::LT:
-            cmpFunction = [](int l, int r)
-            {
+            cmpFunction = [](int l, int r) {
                 return l < r;
             };
             break;
         case Operator::LE:
-            cmpFunction = [](int l, int r)
-            {
+            cmpFunction = [](int l, int r) {
                 return l <= r;
             };
             break;
@@ -144,8 +138,7 @@ getIntCmpFunction(const std::string& targetField,
     const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Function that implements the helper
-    return [=](base::Event event) -> base::result::Result<base::Event>
-    {
+    return [=](base::Event event) -> base::result::Result<base::Event> {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
@@ -215,44 +208,37 @@ getStringCmpFunction(const std::string& targetField,
     switch (op)
     {
         case Operator::EQ:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l == r;
             };
             break;
         case Operator::NE:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l != r;
             };
             break;
         case Operator::GT:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l > r;
             };
             break;
         case Operator::GE:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l >= r;
             };
             break;
         case Operator::LT:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l < r;
             };
             break;
         case Operator::LE:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l <= r;
             };
             break;
         case Operator::ST:
-            cmpFunction = [](const std::string& l, const std::string& r)
-            {
+            cmpFunction = [](const std::string& l, const std::string& r) {
                 return l.substr(0, r.length()) == r;
             };
             break;
@@ -270,8 +256,7 @@ getStringCmpFunction(const std::string& targetField,
     const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
     // Function that implements the helper
-    return [=](base::Event event) -> base::result::Result<base::Event>
-    {
+    return [=](base::Event event) -> base::result::Result<base::Event> {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
@@ -489,8 +474,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
@@ -543,8 +527,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
@@ -566,8 +549,8 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 // //*               IP filters                     *
 // //*************************************************
 
-// path_to_ip: +ip_cidr/192.168.0.0/16
-// path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
+// field: +ip_cidr/192.168.0.0/16
+// field: +ip_cidr/192.168.0.0/255.255.0.0
 base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 {
     // Extract parameters from any
@@ -620,8 +603,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
@@ -669,8 +651,7 @@ base::Expression opBuilderHelperExists(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             if (event->exists(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
@@ -699,8 +680,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             if (!event->exists(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
@@ -716,7 +696,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*               Array filters                   *
 //*************************************************
 
-// field: s_contains/value1/value2/...valueN
+// field: +s_contains/value1/value2/...valueN
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -740,8 +720,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
@@ -761,7 +740,8 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        const auto resolvedParameter {event->getString(parameter.m_value)};
+                        const auto resolvedParameter {
+                            event->getString(parameter.m_value)};
                         if (!resolvedParameter.has_value())
                         {
                             return base::result::makeFailure(event, failureTrace3);
@@ -788,6 +768,418 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
             }
 
             return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+//*************************************************
+//*                Type filters                   *
+//*************************************************
+
+// field: +is_number
+base::Expression opBuilderHelperIsNumber(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->isNumber(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_not_number
+base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (!event->isNumber(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_string
+base::Expression opBuilderHelperIsString(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->isString(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_not_string
+base::Expression opBuilderHelperIsNotString(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (!event->isString(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_bool
+base::Expression opBuilderHelperIsBool(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->isBool(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_not_bool
+base::Expression opBuilderHelperIsNotBool(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (!event->isBool(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_array
+base::Expression opBuilderHelperIsArray(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->isArray(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_not_array
+base::Expression opBuilderHelperIsNotArray(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (!event->isArray(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_object
+base::Expression opBuilderHelperIsObject(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->isObject(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_not_object
+base::Expression opBuilderHelperIsNotObject(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (!event->isObject(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_null
+base::Expression opBuilderHelperIsNull(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->isNull(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_not_null
+base::Expression opBuilderHelperIsNotNull(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (!event->isNull(targetField))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_true
+base::Expression opBuilderHelperIsTrue(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->getBool(targetField).has_value()
+                && event->getBool(targetField).value())
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
+}
+
+// field: +is_false
+base::Expression opBuilderHelperIsFalse(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace {fmt::format("[{}] -> Failure", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event> {
+            if (event->getBool(targetField).has_value()
+                && !event->getBool(targetField).value())
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
         });
 }
 
