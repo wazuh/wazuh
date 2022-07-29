@@ -808,7 +808,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                 strncat(tab_child, "\t", 2);
                 PrintTable(item->child, printed, body_size, tab_child, (counter + 2));
             }
-            else {
+            else if (item->next) {
                 PrintTable(item->next, printed, body_size, tab, counter);
             }
         }
