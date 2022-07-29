@@ -22,7 +22,7 @@ constexpr char EVENT_AGENT_NAME[] {"/agent/name"};
 constexpr char EVENT_LOG[] {"/event/original"};
 constexpr char EVENT_QUEUE_ID[] {"/wazuh/queue"};
 constexpr char EVENT_REGISTERED_IP[] {"/agent/registeredIP"};
-constexpr char EVENT_ORIGIN[] {"/wazuh/origen"};
+constexpr char EVENT_ORIGIN[] {"/wazuh/origin"};
 
 /**
  * @brief A handler which knows how to parse messages from the network
