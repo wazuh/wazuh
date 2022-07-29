@@ -427,6 +427,7 @@
 #define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
 #define VU_PKG_INVALID_VER          "(5591): Invalid version for package '%s' of the inventory: '%s'"
 #define VU_SUSE_VERSION_ERROR       "(5592): Invalid SUSE OS version."
+#define VU_INVALID_CPE_VERSION      "(5593): Couldn't get the version of the CPE for the %s package."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
