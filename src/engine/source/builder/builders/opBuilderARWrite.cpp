@@ -35,7 +35,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    std::shared_ptr<unixDatagram> socketAR = nullptr;
+    std::shared_ptr<unixDatagram> socketAR {nullptr};
 
     try
     {
@@ -48,7 +48,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
     }
 
     std::string rValue {};
-    const helper::base::Parameter rightParameter = parameters[0];
+    const helper::base::Parameter rightParameter {parameters[0]};
     const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
