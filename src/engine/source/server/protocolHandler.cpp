@@ -64,7 +64,7 @@ base::Event ProtocolHandler::parse(const string& event)
      * There are two possible formats of events:
      *
      * 1st:
-     *  <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Route>:<Log>
+     *  <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Origin>:<Log>
      *
      * 2nd:
      *  <Queue_ID>:<Syslog_Client_IP>:<Log>
@@ -143,8 +143,8 @@ base::Event ProtocolHandler::parse(const string& event)
                 endIdx = secondColonIdx;
             }
             valueSize = (endIdx - startIdx) - 1;
-            const auto route {event.substr(startIdx + 1, valueSize).c_str()};
-            parseEvent->setString(route, EVENT_ORIGIN);
+            const auto origin {event.substr(startIdx + 1, valueSize).c_str()};
+            parseEvent->setString(origin, EVENT_ORIGIN);
         }
         catch (std::runtime_error& e)
         {
