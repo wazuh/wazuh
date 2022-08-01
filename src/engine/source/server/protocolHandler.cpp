@@ -129,7 +129,7 @@ base::Event ProtocolHandler::parse(const string& event)
             endIdx = event.find("->", startIdx);
             valueSize = (endIdx - startIdx) - 1;
             const auto registeredIP {event.substr(startIdx + 1, valueSize)};
-            parseEvent->set(registeredIP, EVENT_REGISTERED_IP);
+            parseEvent->setString(registeredIP, EVENT_REGISTERED_IP);
 
             // Origin is between "->" (an arrow) and ':'
             startIdx = endIdx + 1; // As the format goes like: ...-><Origin>...
@@ -186,7 +186,7 @@ base::Event ProtocolHandler::parse(const string& event)
             {
                 const auto locationLength {LAST_COLON_INDEX - LOCATION_OFFSET};
                 const string ipv6 = event.substr(LOCATION_OFFSET, locationLength);
-                parseEvent->set(ipv6, EVENT_ORIGIN);
+                parseEvent->setString(ipv6, EVENT_ORIGIN);
             }
             catch (std::runtime_error& e)
             {

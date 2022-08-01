@@ -37,15 +37,7 @@ base::Expression opBuilderARWrite(const std::any& definition)
 
     std::shared_ptr<unixDatagram> socketAR {nullptr};
 
-    try
-    {
-        socketAR = std::make_shared<unixDatagram>(AR_QUEUE_PATH);
-    }
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error(
-            "Write AR operator: Error when creating the unixDatagram object.");
-    }
+    socketAR = std::make_shared<unixDatagram>(AR_QUEUE_PATH);
 
     std::string rValue {};
     const helper::base::Parameter rightParameter {parameters[0]};
