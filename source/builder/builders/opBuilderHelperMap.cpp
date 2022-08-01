@@ -497,6 +497,109 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         });
 }
 
+//field: +s_fromArray/<separator>|<separatorRef>/<array_reference1>
+base::Expression opBuilderHelperStringFromArray(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(rawParameters);
+    if (parameters.empty())
+    {
+        throw std::runtime_error(
+            fmt::format("[s_fromArray] parameter can not be empty"));
+    }
+
+    if (parameters.size() != 2 && parameters.at(1).m_type != helper::base::Parameter::Type::REFERENCE)
+    {
+        throw std::runtime_error(
+            fmt::format("[s_fromArray] should have 2 parameter and the seccond should be a reference"));
+    }
+    auto arrayName = parameters.at(1);
+    auto separator = parameters.at(0);
+
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: [{}] param should be a string", name, targetField);
+    const auto failureTrace2 = fmt::format("[{}] -> Failure: parameter should be a non empty array", name);
+    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Getting separator field name
+            std::optional<std::string> resolvedSeparator;
+            switch (separator.m_type)
+            {
+                case helper::base::Parameter::Type::REFERENCE:
+                {
+                    resolvedSeparator = event->getString(separator.m_value);
+                    if (!resolvedSeparator.has_value())
+                    {
+                        return base::result::makeFailure(event, failureTrace2);
+                    }
+                    break;
+                }
+                case helper::base::Parameter::Type::VALUE:
+                {
+                    resolvedSeparator = separator.m_value;
+                    break;
+                }
+                default:
+                    throw std::runtime_error(fmt::format(
+                        "[s_fromArray] invalid separator type"));
+            }
+
+            // Getting array field, must be a reference
+            std::optional<std::vector<json::Json>> resolvedParameter;
+            switch (arrayName.m_type)
+            {
+                case helper::base::Parameter::Type::REFERENCE:
+                {
+                    resolvedParameter = event->getArray(arrayName.m_value);
+                    if (!resolvedParameter.has_value())
+                    {
+                        return base::result::makeFailure(event, failureTrace2);
+                    }
+                    break;
+                }
+                default:
+                    throw std::runtime_error(fmt::format(
+                        "[s_fromArray] invalid parameter type"));
+            }
+
+            std::string composedValue {};
+            if(resolvedParameter.value().size() > 0 )
+            {
+                // getting first element in order to avoid starting with separator
+                composedValue = resolvedParameter.value().at(0).getString().value();
+                resolvedParameter.value().erase(resolvedParameter.value().begin());
+                for (const auto& s_param : resolvedParameter.value())
+                {
+                    if(s_param.isString())
+                    {
+                        composedValue = composedValue + resolvedSeparator.value() + s_param.getString().value();
+                    }
+                    else
+                    {
+                        return base::result::makeFailure(event, failureTrace1);
+                    }
+                }
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            event->setString(composedValue, targetField);
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
