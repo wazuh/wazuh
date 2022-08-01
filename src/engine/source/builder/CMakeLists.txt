@@ -15,6 +15,9 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
+#TODO: as in curl library this should be added statically inside the project
+find_package(OpenSSL REQUIRED)
+
 # ###################################################################################################
 # Sources - Includes
 # ###################################################################################################
@@ -29,7 +32,9 @@ add_library(builders OBJECT
   builders/opBuilderLogqlParser.cpp
   builders/opBuilderKVDB.cpp
   builders/opBuilderHelperFilter.cpp
+  builders/opBuilderHelperNetInfoAddress.cpp
   builders/opBuilderHelperMap.cpp
+  builders/opBuilderSHAfrom.cpp
   builders/baseHelper.cpp
   builders/opBuilderWdb.cpp
   builders/opBuilderARWrite.cpp
@@ -53,4 +58,4 @@ target_include_directories(builders
 )
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders base hlp kvdb re2 logicExpression server wdb)
+target_link_libraries(builders base hlp kvdb re2 logicExpression server wdb OpenSSL::Crypto)

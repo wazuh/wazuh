@@ -151,6 +151,9 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringFromArray_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperSHAfrom_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 
