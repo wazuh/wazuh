@@ -74,12 +74,3 @@ TEST(opBuilderSHAfrom, CorrectExecutionWithReference)
     ASSERT_TRUE(result);
     ASSERT_EQ("6184625af204bbfc7e751d49cdc1d7c7ee15091a", result.payload()->getString("/field").value());
 }
-
-// TEST(opBuilderSHAfrom,noParamsError)
-// {
-// }
-
-// TEST(opBuilderSHAfrom,EmptyParameterError)
-// {
-// }
-

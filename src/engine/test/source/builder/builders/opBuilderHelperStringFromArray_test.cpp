@@ -68,24 +68,3 @@ TEST(opBuilderHelperStringFromArray, Exec_string_from_Array_with_ref_Success)
 
     ASSERT_EQ("A,B", result.payload()->getString("/field2check").value());
 }
-
-// TEST(opBuilderHelperStringFromArray, failed not array)
-// {
-// }
-
-// TEST(opBuilderHelperStringFromArray, failed array not string)
-// {
-// }
-
-// TEST(opBuilderHelperStringFromArray, failed array empty)
-// {
-// }
-
-// TEST(opBuilderHelperStringFromArray, success asign multilevel)
-// {
-// }
-
-// TEST(opBuilderHelperStringFromArray, seccond param not reference)
-// {
-// }
-

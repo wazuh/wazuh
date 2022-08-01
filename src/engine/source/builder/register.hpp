@@ -5,8 +5,10 @@
 #include "builders/opBuilderFileOutput.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
 #include "builders/opBuilderHelperMap.hpp"
+#include "builders/opBuilderHelperNetInfoAddress.hpp"
 #include "builders/opBuilderKVDB.hpp"
 #include "builders/opBuilderLogqlParser.hpp"
+#include "builders/opBuilderSHAfrom.hpp"
 #include "builders/opBuilderWdb.hpp"
 #include "builders/operationBuilder.hpp"
 #include "builders/stageBuilderCheck.hpp"
@@ -94,6 +96,7 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
     Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
     Registry::registerBuilder(builders::opBuilderHelperStringConcat, "helper.s_concat");
+    Registry::registerBuilder(builders::opBuilderHelperStringFromArray, "helper.s_from_array");
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
@@ -101,6 +104,13 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
     Registry::registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
     Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
+
+    //SysCollector - netInfo
+    Registry::registerBuilder(builders::opBuilderHelperNetInfoAddres, "helper.netInfoAddress");
+
+    // SHA1
+    Registry::registerBuilder(builders::opBuilderSHAfrom, "helper.sha1_from");
+
 }
 } // namespace builder::internals
 
