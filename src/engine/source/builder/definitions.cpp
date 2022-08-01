@@ -50,8 +50,8 @@ void substituteDefinitions(Json& asset)
             auto formatKey = syntax::REFERENCE_ANCHOR + key;
             auto formatValue = value.getString().value();
 
-            size_t pos = assetStr.find(formatKey, pos);
-            while (std::string::npos != pos)
+            size_t pos = 0;
+            while ((pos = assetStr.find(formatKey, pos)) != std::string::npos)
             {
                 assetStr.replace(pos, formatKey.length(), formatValue);
                 pos += formatValue.length();

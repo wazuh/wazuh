@@ -502,6 +502,32 @@ bool Json::isNumber(std::string_view path) const
     }
 }
 
+bool Json::isInt(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value)
+        {
+            return value->IsInt();
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
+                                                 "Cannot find path: [{}]",
+                                                 path));
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+}
+
 bool Json::isString(std::string_view path) const
 {
     auto pp = rapidjson::Pointer(path.data());
