@@ -330,6 +330,20 @@ public:
     bool isNumber(std::string_view path = "") const;
 
     /**
+     * @brief Check if the Json described by the path is integer.
+     *
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Int.
+     * @return false if Json is not Int.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
+     */
+    bool isInt(std::string_view path = "") const;
+
+    /**
      * @brief Check if the Json described by the path is String.
      *
      * Ensure that the path exists before calling this function.
