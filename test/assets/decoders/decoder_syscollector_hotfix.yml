@@ -1,0 +1,85 @@
+name: decoder_syscollector_hotfix
+
+check:
+  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - location: +exists
+
+normalize:
+  - check:
+    - location: +s_starts/(
+    - location: +s_not_contains/>
+    map:
+      _check_1: true
+
+  - check:
+    - location: +s_starts/(
+    - location: +s_not_contains/>syscollector
+    map:
+      _check_2: true
+
+  - check:
+    - location: +s_ne/syscollector
+    map:
+      _check_3: true
+
+  - check:
+    - _can_continue: NOT ($check_1 OR $check_2 OR $check_3)
+    - event.original.type: +exists
+    map:
+      _pre_conditions: 1
+
+  # decode_hotfix
+  #ID (scan_id)
+  # type == hotfix || type == hotfix_end
+  - check:
+    - _pre_conditions: +i_eq/1
+    - event.original.type: +s_eq/hotfix_end
+    - event.original.ID: +exists
+    - event.original.hotfix: +exist
+    map:
+      _decode_hotfix_section: 1
+
+  - check:
+    - _pre_conditions: +i_eq/1
+    - event.original.type: +s_eq/hotfix
+    - event.original.ID: +exists
+    - event.original.hotfix: +exists
+    map:
+      _decode_hotfix_section: 1
+
+  - check:
+    - _decode_hotfix_section: +i_eq/1
+    - event.original.hotfix: +exists
+    map:
+      _query_save: +s_concat/agent /$event.original.agent.id /hotfix save /$event.original.ID|/$event.original.timestamp|/$event.original.hotfix
+      _hotfix_save_response: +wdb_update/$_query_save
+
+  - check:
+    - _hotfix_save_response: +i_eq/0 #returns true for ok send, so if there's an error
+    map:
+      #TODO: what to do in this case?
+
+  - check:
+    - _decode_hotfix_section: +i_eq/1
+    - event.original.hotfix: +not_exists
+    - event.original.type: +s_eq/hotfix_end
+    map:
+      _query_del: +s_concat/agent /$event.original.agent.id /hotfix del /$event.original.ID
+      _hotfix_del_response: +wdb_update/$_query_del
+
+  - check:
+    - _decode_hotfix_section: +i_eq/1
+    - event.original.port: +not_exists
+    - event.original.type: +s_eq/port_end
+    - _error_port: +i_ne/1
+    - _prev_port_id: +s_neq/$event.original.ID
+    map:
+      _error_port: 0
+      _query_del: +s_concat/agent /$event.original.agent.id /port del /$event.original.ID
+      _port_del_response: +wdb_update/$_query_del
+
+  - check:
+    - _port_del_response: +i_eq/0
+    map:
+      #TODO: what to do in this case?
+
