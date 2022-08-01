@@ -2598,7 +2598,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required"
     compliance:
       - cis: ["18.4.10"]
-      - cis_csc: ["9"]
+      - cis_csc: ["9.2"]
       - nist_800_53: ["SC.5"]
       - pci_dss: ["1.3.3"]
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
@@ -2615,7 +2615,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required"
     compliance:
       - cis: ["18.4.11"]
-      - cis_csc: ["4.8"]
+      - cis_csc: ["9.2"]
       - nist_800_53: ["SC.5"]
       - pci_dss: ["1.3.3"]
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
@@ -2632,7 +2632,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 90% or less: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required"
     compliance:
       - cis: ["18.4.12"]
-      - cis_csc: ["6.3", "6.4"]
+      - cis_csc: ["8.3"]
       - pci_dss: ["10.7"]
     condition: any
     rules:
@@ -2759,7 +2759,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Prohibit installation and configuration of Network Bridge on your DNS domain network Note: This Group Policy path is provided by the Group Policy template NetworkConnections.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.5.11.2"]
-      - cis_csc: ["12.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["1.3.5"]
     condition: all
     rules:
@@ -2774,6 +2774,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Prohibit use of Internet Connection Sharing on your DNS domain network Note: This Group Policy path is provided by the Group Policy template NetworkConnections.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.5.11.3"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["1.3.5"]
       - tsc: ["CC6.6"]
     condition: all
@@ -2789,7 +2790,6 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Require domain users to elevate when setting a network's location Note: This Group Policy path may not exist by default. It is provided by the Group Policy template NetworkConnections.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.5.11.4"]
-      - cis_csc: ["5.4"]
       - pci_dss: ["1.3.5"]
       - tsc: ["CC6.6"]
     condition: all
@@ -2839,6 +2839,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connect Now\\Configuration of wireless settings using Windows Connect Now Note: This Group Policy path is provided by the Group Policy template WindowsConnectNow.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.5.20.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -2862,7 +2863,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connect Now\\Prohibit access of the Windows Connect Now wizards Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsConnectNow.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.5.20.2"]
-      - cis_csc: ["15.4", "15.5"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -2967,6 +2968,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Start Menu and Taskbar\\Turn off notifications network usage Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WPN.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.7.1.1"]
+      - cis_csc: ["4.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications'
@@ -3057,7 +3059,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.5.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["10.5"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
@@ -3100,9 +3102,11 @@ checks:
     compliance:
       - cis: ["18.8.5.6"]
       - cis_csc: ["10.5"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard: -> LsaCfgFlags -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags -> 0'
 
   - id: 27200
     title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'."
@@ -3111,7 +3115,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Secure Launch Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.5.7"]
-      - cis_csc: ["16.14"]
+      - cis_csc: ["10.5"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
@@ -3190,6 +3194,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Continue experiences on this device Note: This Group Policy path may not exist by default. It is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.21.4"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: all
@@ -3209,7 +3214,6 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableBkGndGroupPolicy'
-
 
   - id: 27207
     title: "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'."
@@ -3235,7 +3239,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting personalization data sharing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template ShapeCollector.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.22.1.2"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3251,7 +3255,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting recognition error reporting Note: This Group Policy path is provided by the Group Policy template InkWatson.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.3"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3267,7 +3271,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.4"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3283,7 +3287,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet download for Web publishing and online ordering wizards Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.5"]
-      - cis_csc: ["7.4"]
+      - cis_csc: ["4.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
@@ -3297,7 +3301,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off printing over HTTP Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.6"]
-      - cis_csc: ["13.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3313,6 +3317,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Registration if URL connection is referring to Microsoft.com Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.7"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3328,7 +3333,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Search Companion content file updates Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.8"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3344,7 +3349,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the \"Order Prints\" picture task Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.9"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3360,7 +3365,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the \"Publish to Web\" task for files and folders Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.10"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3376,7 +3381,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the Windows Messenger Customer Experience Improvement Program Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.11"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3392,7 +3397,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Windows Customer Experience Improvement Program Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.12"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3408,7 +3413,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Windows Error Reporting Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.22.1.13"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3590,6 +3595,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow upload of User Activities Note: This Group Policy path may not exist by default. It is provided by the Group Policy template OSPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1803 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.31.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3599,7 +3605,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities -> 0'
 
   - id: 27232
-    title: "Ensure 'Allow network connectivity during connected- standby (on battery)' is set to 'Disabled'."
+    title: "Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'."
     description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems. The recommended state for this setting is: Disabled."
     rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, on battery and in a sleep state."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (on battery) Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
@@ -3614,7 +3620,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> DCSettingIndex -> 0'
 
   - id: 27233
-    title: "Ensure 'Allow network connectivity during connected- standby (plugged in)' is set to 'Disabled'."
+    title: "Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'."
     description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems. The recommended state for this setting is: Disabled."
     rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, plugged in and in a sleep state."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (plugged in) Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
@@ -3667,6 +3673,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Offer Remote Assistance Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RemoteAssistance.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.36.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: any
@@ -3682,6 +3689,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Solicited Remote Assistance Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RemoteAssistance.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.36.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3697,6 +3705,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Enable RPC Endpoint Mapper Client Authentication Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RPC.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.37.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -3716,6 +3725,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Authenticated: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Restrict Unauthenticated RPC clients Note: This Group Policy path may not exist by default. It is provided by the Group Policy template RPC.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.37.2"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -3739,8 +3749,10 @@ checks:
     references:
       - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-15361
       - https://nvd.nist.gov/vuln/detail/CVE-2017-15361
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\SAM'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\SAM -> SamNGCKeyROCAValidation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\SAM -> SamNGCKeyROCAValidation -> n:(\d+) compare >= 1'
 
   - id: 27241
@@ -3750,6 +3762,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Troubleshooting and Diagnostics\\Microsoft Support Diagnostic Tool\\Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider Note: This Group Policy path may not exist by default. It is provided by the Group Policy template MSDT.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.48.5.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3765,6 +3778,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Troubleshooting and Diagnostics\\Windows Performance PerfTrack\\Enable/Disable PerfTrack Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PerformancePerftrack.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.8.48.11.1"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -3834,8 +3848,10 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData -> 0'
 
   - id: 27247
@@ -3956,7 +3972,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off Microsoft consumer experiences Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.14.2"]
-      - cis_csc: ["13"]
+      - cis_csc: ["4.8"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
@@ -4008,8 +4024,10 @@ checks:
       - cis: ["18.9.16.2"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators -> 0'
 
   - id: 27258
