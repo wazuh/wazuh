@@ -88,7 +88,8 @@ namespace RSync
 
             void releaseContext(const RSYNC_HANDLE handle);
 
-            RSYNC_HANDLE create(const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
+            RSYNC_HANDLE create(const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
+                                const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
 
             void startRSync(const RSYNC_HANDLE handle,
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
@@ -112,8 +113,8 @@ namespace RSync
             class RSyncContext final
             {
                 public:
-                    RSyncContext(const size_t maxQueueSize)
-                        : m_msgDispatcher { std::make_shared<MsgDispatcher>(maxQueueSize) }
+                    RSyncContext(const unsigned int threadPoolSize, const size_t maxQueueSize)
+                        : m_msgDispatcher { std::make_shared<MsgDispatcher>(threadPoolSize, maxQueueSize) }
                     { }
                     std::shared_ptr<MsgDispatcher> m_msgDispatcher;
             };

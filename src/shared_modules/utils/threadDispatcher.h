@@ -71,7 +71,7 @@ namespace Utils
             AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
                 : m_functor{ functor }
                 , m_running{ true }
-                , m_numberOfThreads{ numberOfThreads }
+                , m_numberOfThreads{ numberOfThreads ? numberOfThreads : 1 }
                 , m_maxQueueSize { maxQueueSize }
             {
                 m_threads.reserve(m_numberOfThreads);
@@ -184,7 +184,9 @@ namespace Utils
     class SyncDispatcher
     {
         public:
-            SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/, const size_t /*maxQueueSize = UNLIMITED_QUEUE_SIZE*/)
+            SyncDispatcher(Functor functor,
+                           const unsigned int /*numberOfThreads = std::thread::hardware_concurrency()*/,
+                           const size_t /*maxQueueSize = UNLIMITED_QUEUE_SIZE*/)
                 : m_functor{functor}
                 , m_running{true}
             {
