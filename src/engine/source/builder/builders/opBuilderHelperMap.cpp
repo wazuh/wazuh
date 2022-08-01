@@ -445,8 +445,9 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] must be string or int", name, parameters[1].m_value)};
+    const auto failureTrace2 {
         fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value)};
-    const auto failureTrace2 {fmt::format("[{}] -> Failure", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -460,18 +461,29 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
             {
                 if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
                 {
-                    // Get field value
-                    auto resolvedField {event->getString(parameter.m_value)};
-
-                    // Check if field is a string
-                    if (resolvedField.has_value())
+                    //Check path exists
+                    if(!event->exists(parameter.m_value))
                     {
-                        result.append(resolvedField.value());
+                        return base::result::makeFailure(event, failureTrace2);
+                    }
+
+                    // Get field value
+                    std::string resolvedField;
+                    if(event->isInt(parameter.m_value))
+                    {
+                        resolvedField = std::to_string(event->getInt(parameter.m_value).value());
+                    }
+                    else if(event->isString(parameter.m_value))
+                    {
+                        resolvedField = event->getString(parameter.m_value).value();
                     }
                     else
                     {
                         return base::result::makeFailure(event, failureTrace1);
                     }
+
+                    result.append(resolvedField);
+
                 }
                 else
                 {
@@ -653,9 +665,6 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            // Get field value
-            auto resolvedField {event->getString(targetField)};
-
             if (event->erase(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
