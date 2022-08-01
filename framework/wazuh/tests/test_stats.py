@@ -87,8 +87,7 @@ def side_effect_get_test_daemons_stats(daemon_path, agents_list):
 @patch('wazuh.stats.get_agents_info', return_value={'000', '001', '002', '003', '004', '005'})
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
 @patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
-@patch('wazuh.core.common.WDB_SOCKET', '/var/ossec/queue/db/wdb')
-@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_get_test_daemons_stats)
+@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats)
 def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info, mock_socket_connect,
                                   mock_send_wdb, daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
@@ -111,6 +110,48 @@ def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents
     for i, error in enumerate(error_codes_in_failed_items):
         errors_and_items[str(error)] = failed_items[i]
     assert expected_errors_and_items == errors_and_items
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
+
+
+def side_effect_test_get_daemons_stats_all(daemon_path, agents_list, last_id):
+    # side_effect used to return a response with 10 items and 'due' the first time that get_daemons_stats_socket is
+    # called, and a response with 10 items and 'ok' the second time
+    if last_id:
+        last_id += 1
+    return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path],
+                     'agents': [{'id': i} for i in range(last_id, last_id + 10)]},
+            'message': 'due' if last_id == 0 else 'ok',
+            'error': 1 if last_id == 0 else 0}
+
+
+@pytest.mark.parametrize('daemons_list, expected_daemons_list', [
+    ([], ['wazuh-remoted', 'wazuh-analysisd']),
+    (['wazuh-remoted'], ['wazuh-remoted']),
+    (['wazuh-remoted', 'wazuh-analysisd'], ['wazuh-remoted', 'wazuh-analysisd'])
+])
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
+@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
+@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats_all)
+def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_list, expected_daemons_list):
+    """Makes sure get_daemons_stats_agents() fit with the expected."""
+    result = stats.get_daemons_stats_agents(daemons_list, ['all'])
+
+    # get_daemons_stats_socket called with the expected parameters
+    calls = []
+    for daemon in expected_daemons_list:
+        calls.append(call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list='all', last_id=0))
+        calls.append(call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list='all', last_id=9))
+    mock_get_daemons_stats_socket.assert_has_calls(calls)
+
+    # Check affected_items
+    expected_affected_items = [{'name': daemon, 'agents': [{'id': i} for i in range(0 + j, 10 + j)]}
+                               for daemon in expected_daemons_list for j in {0, 10}]
+    assert result.affected_items == expected_affected_items
+    assert result.total_affected_items == len(expected_daemons_list) * 2
+
+    # Check failed items
+    assert not result.failed_items
 
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
 
