@@ -65,6 +65,14 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition);
  */
 base::Expression opBuilderHelperStringConcat(const std::any& definition);
 
+/**
+ * @brief Transforms an array of strings into a single string field
+ * @param definition The transformation definition.
+ * i.e: //field: +s_fromArray/<separator>|<separatorRef>/<array_reference1>
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperStringFromArray(const std::any& definition);
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
