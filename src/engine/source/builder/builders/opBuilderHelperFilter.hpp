@@ -243,6 +243,10 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition);
  */
 base::Expression opBuilderHelperContainsString(const std::any& definition);
 
+//*************************************************
+//*                Type filters                   *
+//*************************************************
+
 /**
  * @brief Create `is_number` helper function that filters events which field is not of the
  * expected type.
