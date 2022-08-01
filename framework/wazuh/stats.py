@@ -107,44 +107,67 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
                                       none_msg='Could not read statistical information for any daemon')
 
     if agent_list:
-        system_agents = get_agents_info()
-        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+        if 'all' not in agent_list:
+            system_agents = get_agents_info()
+            rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
 
-        with WazuhDBQueryAgents(limit=None, select=["id", "status"], **rbac_filters) as db_query:
-            data = db_query.run()
+            with WazuhDBQueryAgents(limit=None, select=["id", "status"], **rbac_filters) as db_query:
+                data = db_query.run()
 
-        agent_list = set(agent_list)
+            agent_list = set(agent_list)
 
-        try:
-            agent_list.remove('000')
-            result.add_failed_item('000', exception.WazuhError(1703))
-        except KeyError:
-            pass
+            try:
+                agent_list.remove('000')
+                result.add_failed_item('000', exception.WazuhError(1703))
+            except KeyError:
+                pass
 
-        # Add non existent agents to failed_items
-        not_found_agents = agent_list - system_agents
-        [result.add_failed_item(id_=agent, error=exception.WazuhResourceNotFound(1701)) for agent in not_found_agents]
+            # Add non-existent agents to failed_items
+            not_found_agents = agent_list - system_agents
+            [result.add_failed_item(id_=agent, error=exception.WazuhResourceNotFound(1701)) for agent in
+             not_found_agents]
 
-        # Add non active agents to failed_items
-        non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent, error=exception.WazuhError(1707)) for agent in non_active_agents]
-        non_active_agents = set(non_active_agents)
+            # Add non-active agents to failed_items
+            non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
+            [result.add_failed_item(id_=agent, error=exception.WazuhError(1707)) for agent in non_active_agents]
+            non_active_agents = set(non_active_agents)
 
-        eligible_agents = agent_list - not_found_agents - non_active_agents
+            eligible_agents = agent_list - not_found_agents - non_active_agents
 
-        # Transform the format of the agent ids to the general format
-        eligible_agents = [int(agent) for agent in eligible_agents]
+            # Transform the format of the agent ids to the general format
+            eligible_agents = [int(agent) for agent in eligible_agents]
 
-        # To avoid the socket error 'Error 11 - Too many agents', we must use chunks of less than 75 agents
-        agents_chunks = [eligible_agents[x:x + 74] for x in range(0, len(eligible_agents), 74)]
+            # To avoid the socket error 'Error 11 - Too many agents', we must use chunks of less than 75 agents
+            agents_chunks = [eligible_agents[x:x + 74] for x in range(0, len(eligible_agents), 74)]
 
-        for agents_chunk in agents_chunks:
+            for agents_chunk in agents_chunks:
+                for daemon in daemons_list or daemon_socket_mapping.keys():
+                    try:
+                        result.affected_items.append(
+                            get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list=agents_chunk))
+                    except exception.WazuhException as e:
+                        result.add_failed_item(id_=daemon, error=e)
+
+            # Sort list of affected agents
+            for affected_item in result.affected_items:
+                affected_item['agents'].sort(key=lambda d: d['id'])
+
+        else:  # 'all' in agent_list
             for daemon in daemons_list or daemon_socket_mapping.keys():
                 try:
-                    result.affected_items.append(
-                        get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list=agents_chunk))
+                    last_id = 0
+                    while True:
+                        stats = get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list='all',
+                                                         last_id=last_id)
+                        result.affected_items.append(stats['data'])
+                        if len(stats['data']['agents']) > 0:
+                            last_id = stats['data']['agents'][-1]['id']
+                        if stats['message'] != 'due':
+                            break
+
                 except exception.WazuhException as e:
                     result.add_failed_item(id_=daemon, error=e)
+            # The affected agents are sorted
 
     result.total_affected_items = len(result.affected_items)
     return result

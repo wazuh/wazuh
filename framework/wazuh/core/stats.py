@@ -5,6 +5,7 @@ import json
 import os
 import re
 
+from typing import Union
 from wazuh.core import common, utils
 from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -117,7 +118,7 @@ def totals_(date=utils.get_utc_now()):
     return affected
 
 
-def get_daemons_stats_socket(socket: str, agents_list: list[int] = None) -> dict:
+def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = None, last_id: int = None) -> dict:
     """Send message to Wazuh socket to get statistical information.
 
     Parameters
@@ -127,6 +128,9 @@ def get_daemons_stats_socket(socket: str, agents_list: list[int] = None) -> dict
     agents_list : list[int], optional
         List of IDs of the agents to get the statistics from.
         If agents_list is None or empty, the global statistics are requested.
+    last_id : int, optional
+        Integer used to indicate the agent ID from which the daemon statistics must be returned.
+        It must be used when agents_list includes the `all` keyword.
 
     Raises
     ------
@@ -142,7 +146,11 @@ def get_daemons_stats_socket(socket: str, agents_list: list[int] = None) -> dict
     full_message = wazuh_socket.create_wazuh_socket_message(
         origin={'module': common.origin_module.get()},
         command='getstats' if not agents_list else 'getagentsstats',
-        parameters={} if not agents_list else {'agents': agents_list})
+        parameters=
+        {} if not agents_list else
+        {'agents': agents_list} if last_id is None else
+        {'agents': agents_list, 'last_id': last_id}
+    )
 
     # Connect to socket
     try:
@@ -151,14 +159,14 @@ def get_daemons_stats_socket(socket: str, agents_list: list[int] = None) -> dict
         raise WazuhInternalError(1121, extra_message=socket)
 
     # Send message and receive socket response
+    s.send(full_message)
+    response = s.receive(raw=last_id is not None)
+    s.close()
     try:
-        s.send(full_message)
-        response = s.receive()
-    finally:
-        s.close()
-
-    try:
-        response['timestamp'] = utils.get_date_from_timestamp(response['timestamp'])
+        if last_id is None:
+            response['timestamp'] = utils.get_date_from_timestamp(response['timestamp'])
+        else:
+            response['data']['timestamp'] = utils.get_date_from_timestamp(response['data']['timestamp'])
     except KeyError:
         pass
 
