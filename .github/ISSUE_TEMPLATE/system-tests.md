@@ -1,5 +1,5 @@
 ---
-name: [Release Candidate] System tests 
+name: Release Candidate - System tests 
 about: Report the results after running system tests.
 title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - System tests'
 labels: 'module/cluster, module/rbac'
