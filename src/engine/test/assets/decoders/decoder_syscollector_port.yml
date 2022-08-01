@@ -1,0 +1,151 @@
+name: decoder_syscollector_port
+
+check:
+  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - location: +exists
+
+normalize:
+  - check:
+    - location: +s_starts/(
+    - location: +s_not_contains/>
+    map:
+      _check_1: true
+
+  - check:
+    - location: +s_starts/(
+    - location: +s_not_contains/>syscollector
+    map:
+      _check_2: true
+
+  - check:
+    - location: +s_ne/syscollector
+    map:
+      _check_3: true
+
+  - check:
+    - _can_continue: NOT ($check_1 OR $check_2 OR $check_3)
+    - event.original.type: +exists
+    map:
+      _pre_conditions: 1
+
+  # decode_port
+  #ID (scan_id)
+  # type == port || type == port_end
+  - check:
+    - _pre_conditions: +i_eq/1
+    - event.original.type: +s_eq/port_end
+    - event.original.ID: +exists
+    map:
+      _decode_port_section: 1
+
+  - check:
+    - _pre_conditions: +i_eq/1
+    - event.original.type: +s_eq/port
+    - event.original.ID: +exists
+    map:
+      _decode_port_section: 1
+
+    #timestamp
+    # -> TODO: how to hanlde error_port? sets to 1 and updates prev_port_id with last ID with error
+    # this should be also done at start (after checking port existence)
+  - check:
+    - event.original.port: +exist
+    - event.original.timestamp: +not_exists
+    map:
+      event.original.timestamp: "NULL"
+    #port.protocol
+  - check:
+    - event.original.port: +exist
+    - event.original.port.protocol: +not_exists
+    map:
+      event.original.port.protocol: "NULL"
+    #port.local_ip
+  - check:
+    - event.original.port: +exist
+    - event.original.port.local_ip: +not_exists
+    map:
+      event.original.port.local_ip: "NULL"
+    #port.local_port -> int
+  - check:
+    - event.original.port: +exist
+    - event.original.port.local_port: +not_exists
+    map:
+      event.original.port.local_port: "NULL"
+    #port.remote_ip
+  - check:
+    - event.original.port: +exist
+    - event.original.port.remote_ip: +not_exists
+    map:
+      event.original.port.remote_ip: "NULL"
+    #port.remote_port -> int
+  - check:
+    - event.original.port: +exist
+    - event.original.port.remote_port: +not_exists
+    map:
+      event.original.port.remote_port: "NULL"
+    #port.tx_queue -> int
+  - check:
+    - event.original.port: +exist
+    - event.original.port.tx_queue: +not_exists
+    map:
+      event.original.port.tx_queue: "NULL"
+    #port.rx_queue -> int
+  - check:
+    - event.original.port: +exist
+    - event.original.port.rx_queue: +not_exists
+    map:
+      event.original.port.rx_queue: "NULL"
+    #port.inode -> int
+  - check:
+    - event.original.port: +exist
+    - event.original.port.inode: +not_exists
+    map:
+      event.original.port.inode: "NULL"
+    #port.state
+  - check:
+    - event.original.port: +exist
+    - event.original.port.state: +not_exists
+    map:
+      event.original.port.state: "NULL"
+    #port.PID -> int
+  - check:
+    - event.original.port: +exist
+    - event.original.port.PID: +not_exists
+    map:
+      event.original.port.PID: "NULL"
+    #port.process
+  - check:
+    - event.original.port: +exist
+    - event.original.port.process: +not_exists
+    map:
+      event.original.port.process: "NULL"
+
+  - check:
+    - _decode_port_section: +i_eq/1
+    map:
+      _query_save: +s_concat/agent /$event.original.agent.id /port save /|$event.original.ID/|$event.original.timestamp/|$event.original.port.protocol/|$event.original.port.local_ip/|$event.original.port.local_port/|$event.original.port.remote_ip/|$event.original.port.remote_port/|$event.original.port.tx_queue/|$event.original.port.rx_queue/|$event.original.port.inode/|$event.original.port.state/|$event.original.port.PID/|$event.original.port.process
+      _port_save_response: +wdb_update/$_query_save
+
+  - check:
+    - _port_save_response: +i_eq/0 #returns true for ok send, so if there's an error
+    map:
+      _error_port: 1
+      _prev_port_id: $event.original.ID
+
+  - check:
+    - _decode_port_section: +i_eq/1
+    - event.original.port: +not_exists
+    - event.original.type: +s_eq/port_end
+    - _error_port: +i_ne/1
+    - _prev_port_id: +s_neq/$event.original.ID
+    map:
+      _error_port: 0
+      _query_del: +s_concat/agent /$event.original.agent.id /port del /$event.original.ID
+      _port_del_response: +wdb_update/$_query_del
+
+  - check:
+    - _port_del_response: +i_eq/0
+    map:
+      _error_port: 1
+      _prev_port_id: $event.original.ID
+

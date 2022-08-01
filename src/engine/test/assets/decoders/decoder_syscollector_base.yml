@@ -1,0 +1,15 @@
+name: decoder_syscollector_base
+
+check:
+  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - route: +s_eq/syscollector #TODO: check!
+  - location: +exists
+  - type: +exists
+
+parse:
+  logql:
+    -event.original: <labels>
+
+normalize:
+    map:
+      event.original: $labels

@@ -1,0 +1,170 @@
+name: decoder_syscollector_program #decode_package
+
+check:
+  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - location: +exists
+
+normalize:
+  - check:
+    - location: +s_starts/(
+    - location: +s_not_contains/>
+    map:
+      _check_1: true
+
+  - check:
+    - location: +s_starts/(
+    - location: +s_not_contains/>syscollector
+    map:
+      _check_2: true
+
+  - check:
+    - location: +s_ne/syscollector
+    map:
+      _check_3: true
+
+  - check:
+    - _can_continue: NOT ($check_1 OR $check_2 OR $check_3)
+    - event.original.type: +exists
+    map:
+      _pre_conditions: 1
+
+  # decode_package
+  #ID (scan_id)
+  # type == program || type == program_end
+  - check:
+    - _pre_conditions: +i_eq/1
+    - event.original.type: +s_eq/program_end
+    - event.original.ID: +exists
+    map:
+      _decode_program_section: 1
+
+  - check:
+    - _pre_conditions: +i_eq/1
+    - event.original.type: +s_eq/program
+    - event.original.ID: +exists
+    map:
+      _decode_program_section: 1
+
+    #timestamp
+    # -> TODO: how to hanlde error_package? sets to 1 and updates prev_package_id with last ID with error
+    # this should be also done at start (after checking program existence)
+  - check:
+    - event.original.program: +exists
+    - event.original.timestamp: +not_exists
+    map:
+      event.original.timestamp: "NULL"
+    #program.format
+  - check:
+    - event.original.program: +exists
+    - event.original.program.format: +not_exists
+    map:
+      event.original.program.format: "NULL"
+    #program.name
+  - check:
+    - event.original.program: +exists
+    - event.original.program.name: +not_exists
+    map:
+      event.original.program.name: "NULL"
+    #program.priority
+  - check:
+    - event.original.program: +exists
+    - event.original.program.priority: +not_exists
+    map:
+      event.original.program.priority: "NULL"
+    #program.group
+  - check:
+    - event.original.program: +exists
+    - event.original.program.group: +not_exists
+    map:
+      event.original.program.group: "NULL"
+    #program.size -> int
+  - check:
+    - event.original.program: +exists
+    - event.original.program.size: +not_exists
+    map:
+      event.original.program.size: "NULL"
+    #program.vendor
+  - check:
+    - event.original.program: +exists
+    - event.original.program.vendor: +not_exists
+    map:
+      event.original.program.vendor: "NULL"
+    # program.install_time
+  - check:
+    - event.original.program: +exists
+    - event.original.program.install_time: +not_exists
+    map:
+      event.original.program.install_time: "NULL"
+    #program.version
+  - check:
+    - event.original.program: +exists
+    - event.original.program.version: +not_exists
+    map:
+      event.original.program.version: "NULL"
+    #program.architecture
+  - check:
+    - event.original.program: +exists
+    - event.original.program.architecture: +not_exists
+    map:
+      event.original.program.architecture: "NULL"
+    #program.multi-arch
+  - check:
+    - event.original.program: +exists
+    - event.original.program.multi-arch: +not_exists
+    map:
+      event.original.program.multi-arch: "NULL"
+    #program.source
+  - check:
+    - event.original.program: +exists
+    - event.original.program.source: +not_exists
+    map:
+      event.original.program.source: "NULL"
+    #program.description
+  - check:
+    - event.original.program: +exists
+    - event.original.program.description: +not_exists
+    map:
+      event.original.program.description: "NULL"
+    # program.location
+  - check:
+    - event.original.program: +exists
+    - event.original.program.location: +not_exists
+    map:
+      event.original.program.location: "NULL"
+
+    #OBtain hexDigest with name version and arch
+  - check:
+    - event.original.program.name: +exists
+    - event.original.program.version: +exists
+    - event.original.program.architecture: +exists
+    map: #TODO: make this helper
+      _hexDigest: +s_calc_hash/$event.original.program.name/$event.original.program.version/$event.original.program.architecture
+
+  - check:
+    - _decode_program_section: +i_eq/1
+    map:
+      _query_save: +s_concat/agent /$event.original.agent.id /package save /$event.original.ID/|$event.original.timestamp/|$event.original.format/|$event.original.name/|$event.original.priority/|$event.original.group/|$event.original.size/|$event.original.vendor/|$event.original.install_time/|$event.original.version/|$event.original.architecture/|$event.original.multi-arch/|$event.original.source/|$event.original.description/|$event.original.location/|_hexDigest
+      _port_save_response: +wdb_update/$_query_save
+
+  - check:
+    - _port_save_response: +i_eq/0 #returns true for ok send, so if there's an error
+    map:
+      _error_package: 1
+      _prev_package_id: $event.original.ID
+
+  - check:
+    - _decode_program_section: +i_eq/1
+    - event.original.program: +not_exists
+    - event.original.type: +s_eq/program_end
+    - _error_package: +i_ne/1
+    - _prev_package_id: +s_neq/$event.original.ID
+    map:
+      _error_package: 0
+      _query_del: +s_concat/agent /$event.original.agent.id /package del /$event.original.ID
+      _port_del_response: +wdb_update/$_query_del
+
+  - check:
+    - _port_del_response: +i_eq/0
+    map:
+      _error_package: 1
+      _prev_package_id: $event.original.ID
