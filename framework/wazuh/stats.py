@@ -140,13 +140,22 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
             # To avoid the socket error 'Error 11 - Too many agents', we must use chunks of less than 75 agents
             agents_chunks = [eligible_agents[x:x + 74] for x in range(0, len(eligible_agents), 74)]
 
-            for agents_chunk in agents_chunks:
-                for daemon in daemons_list or daemon_socket_mapping.keys():
+            for daemon in daemons_list or daemon_socket_mapping.keys():
+                daemon_results = []
+                for chunk in agents_chunks:
                     try:
-                        result.affected_items.append(
-                            get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list=agents_chunk))
+                        for partial_daemon_result in daemon_results:
+                            if partial_daemon_result['name'] == daemon:
+                                partial_daemon_result['agents'].extend(
+                                    get_daemons_stats_socket(daemon_socket_mapping[daemon],
+                                                             agents_list=chunk)['agents'])
+                                break
+                        else:
+                            daemon_results.append(
+                                get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list=chunk))
                     except exception.WazuhException as e:
                         result.add_failed_item(id_=daemon, error=e)
+                result.affected_items.extend(daemon_results)
 
             # Sort list of affected agents
             for affected_item in result.affected_items:
@@ -154,12 +163,19 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
         else:  # 'all' in agent_list
             for daemon in daemons_list or daemon_socket_mapping.keys():
+                daemon_results = []
                 try:
                     last_id = 0
                     while True:
                         stats = get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list='all',
                                                          last_id=last_id)
-                        result.affected_items.append(stats['data'])
+                        for partial_daemon_result in daemon_results:
+                            if partial_daemon_result['name'] == daemon:
+                                partial_daemon_result['agents'].extend(stats['data']['agents'])
+                                break
+                        else:
+                            daemon_results.append(stats['data'])
+
                         if len(stats['data']['agents']) > 0:
                             last_id = stats['data']['agents'][-1]['id']
                         if stats['message'] != 'due':
@@ -167,7 +183,8 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
                 except exception.WazuhException as e:
                     result.add_failed_item(id_=daemon, error=e)
-            # The affected agents are sorted
+                result.affected_items.extend(daemon_results)
+            # The affected agents are sorted, no need to sort here
 
     result.total_affected_items = len(result.affected_items)
     return result

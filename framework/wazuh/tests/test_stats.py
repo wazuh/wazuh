@@ -145,10 +145,10 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     mock_get_daemons_stats_socket.assert_has_calls(calls)
 
     # Check affected_items
-    expected_affected_items = [{'name': daemon, 'agents': [{'id': i} for i in range(0 + j, 10 + j)]}
-                               for daemon in expected_daemons_list for j in {0, 10}]
+    expected_affected_items = [{'name': daemon, 'agents': [{'id': i} for i in range(0, 20)]} for daemon in
+                               expected_daemons_list]
     assert result.affected_items == expected_affected_items
-    assert result.total_affected_items == len(expected_daemons_list) * 2
+    assert result.total_affected_items == len(expected_daemons_list)
 
     # Check failed items
     assert not result.failed_items

@@ -159,9 +159,12 @@ def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = N
         raise WazuhInternalError(1121, extra_message=socket)
 
     # Send message and receive socket response
-    s.send(full_message)
-    response = s.receive(raw=last_id is not None)
-    s.close()
+    try:
+        s.send(full_message)
+        response = s.receive(raw=last_id is not None)
+    finally:
+        s.close()
+
     try:
         if last_id is None:
             response['timestamp'] = utils.get_date_from_timestamp(response['timestamp'])
