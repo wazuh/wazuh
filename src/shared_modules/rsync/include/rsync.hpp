@@ -38,19 +38,21 @@ public:
     /**
     * @brief Initializes the shared library.
     *
-    * @param logFunction pointer to log function to be used by the rsync.
+    * @param logFunction Pointer to log function to be used by the rsync.
     */
     static void initialize(std::function<void(const std::string&)> logFunction);
 
     /**
      * @brief Remote sync initializes the instance.
+     *
+     * @param maxQueueSize Maximum size of the queue.
      */
-    RemoteSync();
+    RemoteSync(const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
 
     /**
      * @brief RSync Constructor.
      *
-     * @param handle     handle to point another rsync instance.
+     * @param handle Handle to point another rsync instance.
      *
      */
     RemoteSync(RSYNC_HANDLE handle);

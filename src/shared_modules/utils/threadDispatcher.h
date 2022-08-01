@@ -19,6 +19,8 @@
 #include <iostream>
 #include "threadSafeQueue.h"
 #include "promiseFactory.h"
+#include "commonDefs.h"
+
 namespace Utils
 {
     // *
@@ -66,10 +68,11 @@ namespace Utils
     class AsyncDispatcher
     {
         public:
-            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency() ? : 1)
-            : m_functor{ functor }
-            , m_running{ true }
-            , m_numberOfThreads{ numberOfThreads }
+            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                : m_functor{ functor }
+                , m_running{ true }
+                , m_numberOfThreads{ numberOfThreads }
+                , m_maxQueueSize { maxQueueSize }
             {
                 m_threads.reserve(m_numberOfThreads);
 
@@ -89,13 +92,16 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    m_queue.push
-                    (
-                        [value, this]()
+                    if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue.size() < m_maxQueueSize)
                     {
-                        this->m_functor(value);
+                        m_queue.push
+                        (
+                            [value, this]()
+                        {
+                            this->m_functor(value);
+                        }
+                        );
                     }
-                    );
                 }
             }
 
@@ -171,13 +177,14 @@ namespace Utils
             std::vector<std::thread> m_threads;
             std::atomic_bool m_running;
             const unsigned int m_numberOfThreads;
+            const size_t m_maxQueueSize;
     };
 
     template <typename Input, typename Functor>
     class SyncDispatcher
     {
         public:
-            SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/)
+            SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/, const size_t /*maxQueueSize = UNLIMITED_QUEUE_SIZE*/)
                 : m_functor{functor}
                 , m_running{true}
             {
