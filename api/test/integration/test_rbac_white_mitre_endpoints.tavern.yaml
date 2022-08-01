@@ -71,8 +71,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/techniques"
       method: GET
-      params:
-        wait_for_complete: true
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -124,8 +122,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/software"
       method: GET
-      params:
-        wait_for_complete: true
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

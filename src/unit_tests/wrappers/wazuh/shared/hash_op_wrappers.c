@@ -192,3 +192,10 @@ int __wrap_OSHash_Get_Elem_ex(OSHash *self) {
     check_expected_ptr(self);
     return mock();
 }
+
+int __wrap_OSHash_Set(OSHash *self, const char *key, void *data) {
+    check_expected_ptr(self);
+    check_expected_ptr(key);
+    check_expected_ptr(data);
+    return mock();
+}
