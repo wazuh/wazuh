@@ -146,9 +146,12 @@ def get_daemons_stats_socket(socket: str) -> dict:
         raise WazuhInternalError(1121, extra_message=socket)
 
     # Send message and receive socket response
-    s.send(full_message)
-    response = s.receive()
-    s.close()
+    try:
+        s.send(full_message)
+        response = s.receive()
+    finally:
+        s.close()
+
     try:
         response['timestamp'] = utils.get_date_from_timestamp(response['timestamp'])
     except KeyError:
