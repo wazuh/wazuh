@@ -25,13 +25,20 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief 
- * 
- * @param definition 
- * @return base::Expression 
+ * @brief Get address, netmask and gateway fields from iface IPv4
+ * and executes netaddr save query.
+ * e.g: field: +saveNetInfoIPv5
+ * @return base::Expression
  */
-// field: +netInfoAddress/<1_if_IPv6>|<ref_if_IPv6>
-base::Expression opBuilderHelperNetInfoAddres(const std::any& definition);
+base::Expression opBuilderHelperSaveNetInfoIPv4(const std::any& definition);
+
+/**
+ * @brief Get address, netmask and gateway fields from iface IPv4
+ * and executes netaddr save query.
+ * e.g: field: +saveNetInfoIPv6
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperSaveNetInfoIPv6(const std::any& definition);
 
 } // namespace builder::internals::builders
 
