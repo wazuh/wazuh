@@ -15,12 +15,10 @@
 #include <baseHelper.hpp>
 #include <utils/stringUtils.hpp>
 
-namespace builder::internals::builders
+namespace
 {
 
-using builder::internals::syntax::REFERENCE_ANCHOR;
-
-static std::string wdbi_strings_hash(const std::vector<std::string>& input)
+std::string wdbi_strings_hash(const std::vector<std::string>& input)
 {
     char* parameter = NULL;
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -65,6 +63,13 @@ static std::string wdbi_strings_hash(const std::vector<std::string>& input)
     return finalResult;
 }
 
+} // namespace
+
+namespace builder::internals::builders
+{
+
+using builder::internals::syntax::REFERENCE_ANCHOR;
+
 // field: +sha1_from/<string1>|<string_reference1>/<string2>|<string_reference2>
 base::Expression opBuilderSHAfrom(const std::any& definition)
 {
@@ -90,8 +95,8 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
         fmt::format("[{}] -> Failure: parameter list shouldn't be empty", name);
     const auto failureTrace2 =
         fmt::format("[{}] -> Failure: Invalid Parameter Type", name);
-    const auto failureTrace3 =
-        fmt::format("[{}] -> Failure: Couldn't create HASH and write it in the JSON", name);
+    const auto failureTrace3 = fmt::format(
+        "[{}] -> Failure: Couldn't create HASH and write it in the JSON", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -108,21 +113,31 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
+                        if (!event->isString(param.m_value))
+                        {
+                            return base::result::makeFailure(event, failureTrace1);
+                        }
+
                         auto s_paramValue = event->getString(param.m_value);
                         if (s_paramValue.has_value() && s_paramValue.value().empty())
                         {
                             return base::result::makeFailure(event, failureTrace1);
                         }
+
                         resolvedParameter.emplace_back(s_paramValue.value());
                         break;
+
                     }
                     case helper::base::Parameter::Type::VALUE:
                     {
+                        if (param.m_value.empty())
+                        {
+                            return base::result::makeFailure(event, failureTrace1);
+                        }
                         resolvedParameter.emplace_back(param.m_value);
                         break;
                     }
-                    default:
-                        return base::result::makeFailure(event, failureTrace2);
+                    default: return base::result::makeFailure(event, failureTrace2);
                 }
             }
 
