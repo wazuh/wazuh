@@ -429,7 +429,7 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
     return expression;
 }
 
-// field: +s_eq/value|$ref
+// field: +s_starts/value|$ref
 base::Expression opBuilderHelperStringStarts(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::ST, Type::STRING)};
@@ -793,7 +793,7 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (event->isNumber(targetField))
+            if (event->exists(targetField) && event->isNumber(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -822,7 +822,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (!event->isNumber(targetField))
+            if (event->exists(targetField) && !event->isNumber(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -851,7 +851,7 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (event->isString(targetField))
+            if (event->exists(targetField) && event->isString(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -880,7 +880,7 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (!event->isString(targetField))
+            if (event->exists(targetField) && !event->isString(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -909,7 +909,7 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (event->isBool(targetField))
+            if (event->exists(targetField) && event->isBool(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -938,7 +938,7 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (!event->isBool(targetField))
+            if (event->exists(targetField) && !event->isBool(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -967,7 +967,7 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (event->isArray(targetField))
+            if (event->exists(targetField) && event->isArray(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -996,7 +996,7 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (!event->isArray(targetField))
+            if (event->exists(targetField) && !event->isArray(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -1025,7 +1025,7 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (event->isObject(targetField))
+            if (event->exists(targetField) && event->isObject(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -1054,7 +1054,7 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (!event->isObject(targetField))
+            if (event->exists(targetField) && !event->isObject(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -1083,7 +1083,7 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (event->isNull(targetField))
+            if (event->exists(targetField) && event->isNull(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -1112,7 +1112,7 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            if (!event->isNull(targetField))
+            if (event->exists(targetField) && !event->isNull(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
