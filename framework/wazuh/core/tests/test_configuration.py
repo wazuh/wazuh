@@ -341,7 +341,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('000', 'auth', 'auth', 'ok {"auth": {}}'),
     ('000', 'agent', 'agent', 'ok {"agent": {"enabled": "yes"}}'),
     ('000', 'agentless', 'agentless', 'ok {"agentless": {"enabled": "yes"}}'),
-    ('000', 'analysis', 'analysis', 'ok {"analysis": {"enabled": "yes"}}'),
+    ('000', 'analysis', 'analysis', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'com', 'com', 'ok {"com": {"enabled": "yes"}}'),
     ('000', 'csyslog', 'csyslog', 'ok {"csyslog": {"enabled": "yes"}}'),
     ('000', 'integrator', 'integrator', 'ok {"integrator": {"enabled": "yes"}}'),
@@ -374,7 +374,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
                                   rec_msg):
     """This test checks the proper working of get_active_configuration function."""
-    sockets_json_protocol = {'remote'}
+    sockets_json_protocol = {'remote', 'analysis'}
     config = MagicMock()
 
     socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id != '000' else "WazuhSocketJSON"
