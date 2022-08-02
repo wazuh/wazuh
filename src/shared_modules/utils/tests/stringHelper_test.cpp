@@ -57,6 +57,10 @@ TEST_F(StringUtilsTest, SplitIndex)
     const auto splitTextVector { Utils::splitIndex("hello.world", '.', 0) };
     EXPECT_EQ(5ull, splitTextVector.size());
     EXPECT_EQ(splitTextVector, "hello");
+}
+
+TEST_F(StringUtilsTest, SplitIndexRuntimeError)
+{
     EXPECT_THROW(Utils::splitIndex("hello.world", '.', 2), std::runtime_error);
 }
 
