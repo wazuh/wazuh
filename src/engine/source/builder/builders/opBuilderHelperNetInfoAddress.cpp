@@ -111,15 +111,9 @@ bool sysNetAddresTableFill(base::Event event, bool isIPv6)
     }
     return true;
 }
-} // namespace
 
-namespace builder::internals::builders
-{
 
-using builder::internals::syntax::REFERENCE_ANCHOR;
-
-// field: +netInfoAddress/<1_if_IPv6>|<ref_if_IPv6>
-base::Expression opBuilderHelperNetInfoAddres(const std::any& definition)
+base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool isIPv6)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
@@ -156,36 +150,12 @@ base::Expression opBuilderHelperNetInfoAddres(const std::any& definition)
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event> {
-            // Getting separator field name
-            std::optional<std::string> resolvedIPversion;
-            switch (IPversion.m_type)
-            {
-                case helper::base::Parameter::Type::REFERENCE:
-                {
-                    resolvedIPversion = event->getString(IPversion.m_value);
-                    if (!resolvedIPversion.has_value())
-                    {
-                        return base::result::makeFailure(event, failureTrace);
-                    }
-                    break;
-                }
-                case helper::base::Parameter::Type::VALUE:
-                {
-                    resolvedIPversion = IPversion.m_value;
-                    break;
-                }
-                default:
-                    throw std::runtime_error(
-                        fmt::format("[netInfoAddress] invalid separator type"));
-            }
 
             bool resultCode = false;
             try
             {
-                // IPv6 if resolvedIPversion equeal 1 , IPv4 otherwise
-                // TODO: just limit to those 2 values
                 resultCode = sysNetAddresTableFill(
-                    event, (std::stoi(resolvedIPversion.value()) == 1));
+                    event, isIPv6);
             }
             catch (const std::exception& e)
             {
@@ -199,6 +169,21 @@ base::Expression opBuilderHelperNetInfoAddres(const std::any& definition)
             }
             return base::result::makeSuccess(event, successTrace);
         });
+}
+
+} // namespace
+
+namespace builder::internals::builders
+{
+
+base::Expression opBuilderHelperSaveNetInfoIPv4(const std::any& definition)
+{
+    return opBuilderHelperNetInfoAddress(definition, false);
+}
+
+base::Expression opBuilderHelperSaveNetInfoIPv6(const std::any& definition)
+{
+    return opBuilderHelperNetInfoAddress(definition, true);
 }
 
 } // namespace builder::internals::builders
