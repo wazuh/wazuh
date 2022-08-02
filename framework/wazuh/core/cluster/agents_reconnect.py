@@ -373,7 +373,8 @@ class AgentsReconnect:
         """
         total_agents = sum([len(info['agents']) for info in nodes_info.values()])
         nodes_info_cpy = copy.deepcopy(nodes_info)
-        enough_agents = True
+        moved_agents = {node_name: 0 for node_name in nodes_info}
+        partial_balance = False
         agents_id = []
         rounds = 1
 
@@ -381,26 +382,30 @@ class AgentsReconnect:
             biggest_node = max(nodes_info_cpy.keys(), key=lambda x: nodes_info_cpy[x]['total'])
             smallest_node = min(nodes_info_cpy.keys(), key=lambda x: nodes_info_cpy[x]['total'])
 
+            # Stop if the difference between biggest and smallest node is 1 or fewer agents.
             if nodes_info_cpy[biggest_node]['total'] - nodes_info_cpy[smallest_node]['total'] <= 1:
                 break
-            elif nodes_info_cpy[smallest_node]['total'] >= \
-                    nodes_info[smallest_node]['total'] + max_assignments_per_node * rounds:
+            elif moved_agents[smallest_node] >= max_assignments_per_node * rounds:
                 if not calculate_rounds:
                     break
                 rounds += 1
 
-            if not calculate_rounds:
-                try:
-                    agents_id.append(nodes_info_cpy[biggest_node]['agents'].pop())
-                except IndexError:
-                    enough_agents = False
-                    if len(agents_id) >= total_agents:
-                        # Break only if there aren't agents in other nodes that could be reconnected.
-                        break
+            # Update how distribution would look like (assuming the agent can be moved).
             nodes_info_cpy[biggest_node]['total'] -= 1
             nodes_info_cpy[smallest_node]['total'] += 1
 
-        return {'agents': agents_id, 'rounds': rounds, 'enough_agents': enough_agents}
+            # Check if there are not as many IDs in the list as the number of agents that should be moved.
+            if ((nodes_info[biggest_node]['total'] - nodes_info_cpy[biggest_node]['total']) >
+                    len(nodes_info[biggest_node]['agents'])):
+                partial_balance = True
+                # Break the loop only if there are no agents left in the whole cluster that can be redistributed.
+                if sum([total for total in moved_agents.values()]) >= total_agents:
+                    break
+            else:
+                moved_agents[smallest_node] += 1
+                not calculate_rounds and agents_id.append(nodes_info_cpy[biggest_node]['agents'].pop())
+
+        return {'agents': agents_id, 'rounds': rounds, 'partial_balance': partial_balance}
 
     async def reconnect_agents(self, agents_to_reconnect) -> list:
         """Redistribute agents in cluster.
@@ -440,11 +445,15 @@ class AgentsReconnect:
         self.current_phase = AgentsReconnectionPhases.RECONNECT_AGENTS
         if (total_agents_to_reconnect := sum([len(info['agents']) for info in self.env_status.values()])) == 0:
             self.logger.warning('The cluster is unbalanced but none of the agents that should be redistributed support '
-                                'the reconnection feature (introduced in 4.3.0).')
+                                'the reconnection feature (introduced in v4.3.0).')
             return
 
         if self.expected_rounds == 0:
-            self.expected_rounds = self.predict_distribution(self.env_status, max_assignments_per_node, True)['rounds']
+            predict_info = self.predict_distribution(self.env_status, max_assignments_per_node, True)
+            self.expected_rounds = predict_info['rounds']
+            if predict_info['partial_balance']:
+                self.logger.warning('Not all agents that should reconnect support that feature (introduced in v4.3.0). '
+                                    'The cluster could remain unbalanced.')
             total_active_agents = sum([info['total'] for info in self.env_status.values()])
             max_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
             predict_info = self.predict_distribution(self.env_status, max_assigns)
@@ -463,14 +472,11 @@ class AgentsReconnect:
             self.reconnected_agents = []
             return
 
-        if not predict_info['enough_agents']:
-            self.logger.warning('Not all agents that should reconnect support that feature (introduced in v4.3.0). '
-                                'The cluster could remain unbalanced.')
-            self.reset_counters(hard_reset=False)
-
         try:
             self.reconnected_agents = await self.reconnect_agents(predict_info['agents'])
             self.reconnection_timestamp = utils.get_utc_now()
+            if predict_info['partial_balance'] and self.round_counter == self.expected_rounds:
+                self.reset_counters(hard_reset=False)
         except Exception:
             self.logger.error('Error while sending reconnection request to agents. Restarting task.')
             self.reconnected_agents = []

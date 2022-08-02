@@ -1216,11 +1216,14 @@ class Master(server.AbstractServer):
                 logger.info("Skipping current iteration.")
                 continue
 
+            # Check if the current phase is Halt
+            if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
+                break
+
             # Balance agents
             await self.agents_reconnect.balance_agents(
                 self.cluster_items["intervals"]["master"]["agent_reconnection"]["max_assignments_per_node"])
 
-            # Check if the current phase is Halt
             if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
                 break
 
@@ -1231,7 +1234,7 @@ class Master(server.AbstractServer):
                         f'seconds.')
             await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"])
 
-        logger.info("Cluster agents reconnection stopped.")
+        logger.info("Halted.")
 
     def get_agent_groups_info(self, client):
         """Check whether the updated group information is sent only once per worker.
