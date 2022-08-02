@@ -281,6 +281,9 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
     wm_office365_subscription* next_subscription = NULL;
     wm_office365_subscription* current_subscription = NULL;
     wm_office365_fail *tenant_fail = NULL;
+    char start_time_str[80];
+    char end_time_str[80];
+    struct tm tm_aux = { .tm_sec = 0 };
 
     while (current_auth != NULL)
     {
@@ -330,6 +333,13 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                 if (wm_state_io(tenant_state_name, WM_IO_WRITE, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
                     mterror(WM_OFFICE365_LOGTAG, "Couldn't save running state.");
                 }
+                else if (isDebug()) {
+                    memset(start_time_str, '\0', 80);
+                    gmtime_r(&now, &tm_aux);
+                    strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                    mtdebug1(WM_OFFICE365_LOGTAG, "Bookmark updated to '%s' for tenant '%s' and subscription '%s', waiting '%ld' seconds to run first scan.",
+                        start_time_str, current_auth->tenant_id, current_subscription->subscription_name, office365_config->interval);
+                }
                 current_subscription = next_subscription;
                 continue;
             }
@@ -358,21 +368,17 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             end_time = now;
 
             while ((end_time - start_time) > 0) {
-                char start_time_str[80];
                 memset(start_time_str, '\0', 80);
-                struct tm tm_start = { .tm_sec = 0 };
-                gmtime_r(&start_time, &tm_start);
-                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_start);
+                gmtime_r(&start_time, &tm_aux);
+                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
                 if ((end_time - start_time) > DAY_SEC) {
                     end_time = start_time + DAY_SEC;
                 }
 
-                char end_time_str[80];
                 memset(end_time_str, '\0', 80);
-                struct tm tm_end = { .tm_sec = 0 };
-                gmtime_r(&end_time, &tm_end);
-                strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_end);
+                gmtime_r(&end_time, &tm_aux);
+                strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
                 memset(url, '\0', OS_SIZE_8192);
                 snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->client_id, current_subscription->subscription_name,
@@ -461,6 +467,10 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                     tenant_state_struc.last_log_time = end_time;
                     if (wm_state_io(tenant_state_name, WM_IO_WRITE, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
                         mterror(WM_OFFICE365_LOGTAG, "Couldn't save running state.");
+                    }
+                    else {
+                        mtdebug1(WM_OFFICE365_LOGTAG, "Bookmark updated to '%s' for tenant '%s' and subscription '%s', waiting '%ld' seconds to run next scan.",
+                            end_time_str, current_auth->tenant_id, current_subscription->subscription_name, office365_config->interval);
                     }
 
                     if (tenant_fail = wm_office365_get_fail_by_tenant_and_subscription(office365_config->fails,
