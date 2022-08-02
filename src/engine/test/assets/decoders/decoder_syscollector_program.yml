@@ -109,13 +109,13 @@ normalize:
     map:
       event.original.program.location: "NULL"
 
-    #OBtain hexDigest with name version and arch
+    #Obtain hexDigest with name version and arch
   - check:
     - event.original.program.name: +exists
     - event.original.program.version: +exists
     - event.original.program.architecture: +exists
-    map: #TODO: make this helper
-      _hexDigest: +s_calc_hash/$event.original.program.name/$event.original.program.version/$event.original.program.architecture
+    map:
+      _hexDigest: +sha1_from/$event.original.program.name/$event.original.program.version/$event.original.program.architecture
 
   - check:
     - _decode_program_section: +i_eq/1
@@ -124,24 +124,10 @@ normalize:
       _port_save_response: +wdb_update/$_query_save
 
   - check:
-    - _port_save_response: +i_eq/0 #returns true for ok send, so if there's an error
-    map:
-      _error_package: 1
-      _prev_package_id: $event.original.ID
-
-  - check:
     - _decode_program_section: +i_eq/1
     - event.original.program: +not_exists
     - event.original.type: +s_eq/program_end
-    - _error_package: +i_ne/1
     - _prev_package_id: +s_neq/$event.original.ID
     map:
-      _error_package: 0
       _query_del: +s_concat/agent /$event.original.agent.id /package del /$event.original.ID
       _port_del_response: +wdb_update/$_query_del
-
-  - check:
-    - _port_del_response: +i_eq/0
-    map:
-      _error_package: 1
-      _prev_package_id: $event.original.ID
