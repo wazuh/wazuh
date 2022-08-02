@@ -1622,3 +1622,215 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNull)
 
     ASSERT_FALSE(result.success());
 }
+
+// Check a nonexistent field
+
+TEST(opBuilderHelperTypeCheck, IsNumberCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_number"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_not_number"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsStringCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_string"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNotStringCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_not_string"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsBoolCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_bool"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_not_bool"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsArrayCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_array"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_not_array"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsObjectCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_object"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_not_object"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNullCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_null"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsNotNullCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_not_null"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsTrueCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_true"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperTypeCheck, IsFalseCheckNonexistentField)
+{
+    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
+                                 std::string {"is_false"},
+                                 std::vector<std::string> {});
+
+    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+
+    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result.success());
+}
