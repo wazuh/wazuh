@@ -135,7 +135,7 @@ normalize:
       _iface_save_response: +wdb_update/$_query_save
 
   - check:
-    - _iface_save_response: +i_eq/0 #returns true for ok send, so if there's an error
+    - _iface_save_response: +is_false
     map:
       _error_iface: 1
 
@@ -172,7 +172,7 @@ normalize:
       _iface4_proto_save_response: +wdb_update/$_query_proto_save
 
   - check:
-    - _iface4_proto_save_response: +i_eq/0 #TODO: check equal with boolean
+    - _iface4_proto_save_response: +is_false
     map:
       _decode_fail: true #TODO: exit decoder
 
@@ -217,7 +217,7 @@ normalize:
       _iface6_proto_save_response: +wdb_update/$_query_proto_save
 
   - check:
-    - _iface6_proto_save_response: +i_eq/1 #TODO: check equal with boolean
+    - _iface6_proto_save_response: +is_false
     map:
       _decode_fail: true #TODO: exit decoder
 

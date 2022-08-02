@@ -33,7 +33,6 @@ TEST(opBuilderHelperNetInfoTest, Builds)
 
 TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithEvent)
 {
-    GTEST_SKIP();
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"netInfoAddress"},
                                  std::vector<std::string> {"0"});
@@ -45,14 +44,14 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithEvent)
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb {wazuhdb::WazuhDB(TEST_STREAM_SOCK_PATH)};
-
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
+        testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
         const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
+        testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(SecondclientRemote, "ok");
         close(SecondclientRemote);
     });
@@ -75,14 +74,13 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEvent)
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15"],"netmask":["255.255.255.0"],"broadcast":["192.168.10.255"]}}}}})");
 
-    // Create server
+    // Create the endpoint for test
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb {wazuhdb::WazuhDB(TEST_STREAM_SOCK_PATH)};
-
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
+        testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
     });
@@ -105,14 +103,13 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSeccondFailedEvent)
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15","192.168.11.16"],"netmask":["255.255.255.0","255.255.255.0"],"broadcast":["192.168.10.255","192.168.11.255"]}}}}})");
 
-    // Create server
+    // Create the endpoint for test
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb {wazuhdb::WazuhDB(TEST_STREAM_SOCK_PATH)};
-
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
+        testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
@@ -138,14 +135,13 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEventIPv6)
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv6":{"address":["192.168.10.15"],"netmask":["255.255.255.0"],"broadcast":["192.168.10.255"]}}}}})");
 
-    // Create server
+    // Create the endpoint for test
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb {wazuhdb::WazuhDB(TEST_STREAM_SOCK_PATH)};
-
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
+        testRecvString(clientRemote, SOCK_STREAM);
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
     });
