@@ -4,27 +4,37 @@
 
 import sys
 from datetime import date
+from json import dumps
 from unittest.mock import call, MagicMock, patch
 
 import pytest
-
-from test_agent import send_msg_to_wdb
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        import wazuh.stats as stats
-        from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
+        import wazuh.stats as stats
+        from wazuh.core.results import AffectedItemsWazuhResult
+        from api.util import remove_nones_to_dict
+        from wazuh.core.tests.test_agent import InitAgent
+
 SOCKET_PATH_DAEMONS_MAPPING = {'/var/ossec/queue/sockets/remote': 'wazuh-remoted',
                                '/var/ossec/queue/sockets/analysis': 'wazuh-analysisd'}
 DAEMON_SOCKET_PATHS_MAPPING = {'wazuh-remoted': '/var/ossec/queue/sockets/remote',
                                'wazuh-analysisd': '/var/ossec/queue/sockets/analysis'}
+
+test_data = InitAgent()
+
+
+def send_msg_to_wdb(msg, raw=False):
+    query = ' '.join(msg.split(' ')[2:])
+    result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
+    return ['ok', dumps(result)] if raw else result
 
 
 def test_totals():
