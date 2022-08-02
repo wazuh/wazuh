@@ -14,15 +14,15 @@
 
 #include "syntax.hpp"
 
-#include <baseHelper.hpp>
 #include "protocolHandler.hpp"
-#include <wdb/wdb.hpp>
+#include <baseHelper.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <wdb/wdb.hpp>
 
 namespace
 {
 
-// TODO: remove when undoing set for testing
+// TODO: remove pre release or leave it just for testing
 constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
 
 // when isIPv6 == true the third field will be set to 0
@@ -41,6 +41,7 @@ bool sysNetAddresTableFill(base::Event event, bool isIPv6)
     std::string middleFieldName = isIPv6 ? "IPv6" : "IPv4";
     std::string msg {"agent " + agent_id.value() + " netaddr save"};
 
+    // Iterating trough address, netmask and broadcast arraus
     const auto& address_ar = event->getArray(std::string(engineserver::EVENT_LOG)
                                              + "/iface/" + middleFieldName + "/address");
     for (auto const& address : address_ar.value())
@@ -92,9 +93,10 @@ bool sysNetAddresTableFill(base::Event event, bool isIPv6)
     }
     msg += " " + name.value();
 
-    // Information about an IPv4 address
+    // Information about an IPv4 or IPv6 address
     msg += "|" + std::string(isIPv6 ? "1" : "0");
 
+    // Querying for each different address item
     for (size_t i = 0; i < addresValues.size(); i++)
     {
         msg += "|" + addresValues.at(i);
@@ -109,13 +111,12 @@ bool sysNetAddresTableFill(base::Event event, bool isIPv6)
     }
     return true;
 }
-}
+} // namespace
 
 namespace builder::internals::builders
 {
 
 using builder::internals::syntax::REFERENCE_ANCHOR;
-
 
 // field: +netInfoAddress/<1_if_IPv6>|<ref_if_IPv6>
 base::Expression opBuilderHelperNetInfoAddres(const std::any& definition)
@@ -182,9 +183,9 @@ base::Expression opBuilderHelperNetInfoAddres(const std::any& definition)
             try
             {
                 // IPv6 if resolvedIPversion equeal 1 , IPv4 otherwise
-                //TODO: just limit to those 2 values
-                resultCode =
-                    sysNetAddresTableFill(event, (std::stoi(resolvedIPversion.value()) == 1));
+                // TODO: just limit to those 2 values
+                resultCode = sysNetAddresTableFill(
+                    event, (std::stoi(resolvedIPversion.value()) == 1));
             }
             catch (const std::exception& e)
             {

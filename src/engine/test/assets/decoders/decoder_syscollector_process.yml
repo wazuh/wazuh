@@ -1,15 +1,16 @@
 name: decoder_syscollector_process
 
+parents:
+  - decoder_syscollector_base
+
 check:
-  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
-  - location: +exists
+  - type: +exists
 
 normalize:
   # decode_process
   #ID (scan_id)
   # type == process || type == process_end
   - check:
-    - _pre_conditions: +i_eq/1
     - event.original.type: +s_eq/process_end
     - event.original.ID: +exists
     - event.original.process: +exist
@@ -17,7 +18,6 @@ normalize:
       _decode_process_section: 1
 
   - check:
-    - _pre_conditions: +i_eq/1
     - event.original.type: +s_eq/process
     - event.original.ID: +exists
     - event.original.process: +exists
@@ -242,7 +242,7 @@ normalize:
       _process_save_response: +wdb_update/$_query_save
 
   - check:
-    - _process_save_response: +i_eq/0 #returns true for ok send, so if there's an error
+    - _process_save_response: +is_false
     map:
       #TODO: what to do in this case?
 
@@ -255,7 +255,7 @@ normalize:
       _process_del_response: +wdb_update/$_query_del
 
   - check:
-    - _port_del_response: +i_eq/0
+    - _port_del_response: +is_false
     map:
       #TODO: what to do in this case?
 
