@@ -74,3 +74,49 @@ TEST(opBuilderSHAfrom, CorrectExecutionWithReference)
     ASSERT_TRUE(result);
     ASSERT_EQ("6184625af204bbfc7e751d49cdc1d7c7ee15091a", result.payload()->getString("/field").value());
 }
+
+TEST(opBuilderSHAfrom,noParamsError)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"sha1_from"},
+                                 std::vector<std::string> {""});
+
+    auto event1 =
+        std::make_shared<json::Json>(R"({"arrayField": "A"})");
+
+    auto op =
+        bld::opBuilderSHAfrom(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result = op(event1);
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderSHAfrom,EmptyParameterError)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"sha1_from"},
+                                 std::vector<std::string> {"$fieldReference",""});
+
+    auto event1 =
+        std::make_shared<json::Json>(R"({"fieldReference": "word"})");
+
+    auto op =
+        bld::opBuilderSHAfrom(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result = op(event1);
+    ASSERT_FALSE(result);
+}
+
+
+TEST(opBuilderSHAfrom,EmptyReferenceParameterError)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"sha1_from"},
+                                 std::vector<std::string> {"$fieldReference"});
+
+    auto event1 =
+        std::make_shared<json::Json>(R"({"fieldReference": ""})");
+
+    auto op =
+        bld::opBuilderSHAfrom(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result = op(event1);
+    ASSERT_FALSE(result);
+}
