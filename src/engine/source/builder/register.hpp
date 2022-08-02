@@ -106,7 +106,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
 
     //SysCollector - netInfo
-    Registry::registerBuilder(builders::opBuilderHelperNetInfoAddres, "helper.netInfoAddress");
+    Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4, "helper.saveNetInfoIPv4");
+    Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6, "helper.saveNetInfoIPv6");
 
     // SHA1
     Registry::registerBuilder(builders::opBuilderSHAfrom, "helper.sha1_from");

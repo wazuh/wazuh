@@ -25,16 +25,16 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperNetInfoTest, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"netInfoAddress"},
+                                 std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"0"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperNetInfoAddres(tuple));
+    ASSERT_NO_THROW(bld::opBuilderHelperSaveNetInfoIPv4(tuple));
 }
 
 TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithEvent)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"netInfoAddress"},
+                                 std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"0"});
 
     auto event1 = std::make_shared<json::Json>(
@@ -56,7 +56,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithEvent)
         close(SecondclientRemote);
     });
 
-    auto op = bld::opBuilderHelperNetInfoAddres(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result {op(event1)};
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());
@@ -68,7 +68,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithEvent)
 TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEvent)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"netInfoAddress"},
+                                 std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"0"});
 
     auto event1 = std::make_shared<json::Json>(
@@ -85,7 +85,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEvent)
         close(clientRemote);
     });
 
-    auto op = bld::opBuilderHelperNetInfoAddres(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());
@@ -97,7 +97,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEvent)
 TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSeccondFailedEvent)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"netInfoAddress"},
+                                 std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"0"});
 
     auto event1 = std::make_shared<json::Json>(
@@ -118,7 +118,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSeccondFailedEvent)
         close(SecondclientRemote);
     });
 
-    auto op = bld::opBuilderHelperNetInfoAddres(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_FALSE(result);
 
@@ -129,7 +129,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSeccondFailedEvent)
 TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEventIPv6)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"netInfoAddress"},
+                                 std::string {"saveNetInfoIPv6"},
                                  std::vector<std::string> {"1"});
 
     auto event1 = std::make_shared<json::Json>(
@@ -146,7 +146,7 @@ TEST(opBuilderHelperNetInfoTest, CorrectExecutionWithSingleAddresEventIPv6)
         close(clientRemote);
     });
 
-    auto op = bld::opBuilderHelperNetInfoAddres(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = bld::opBuilderHelperSaveNetInfoIPv6(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());

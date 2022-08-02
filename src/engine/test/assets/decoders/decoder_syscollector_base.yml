@@ -1,15 +1,24 @@
-name: decoder_syscollector_base
+name: decoder_syscollector
 
 check:
-  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
-  - route: +s_eq/syscollector #TODO: check!
-  - location: +exists
-  - type: +exists
+  - wazuh.queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - wazuh.origin: +s_eq/syscollector
 
 parse:
   logql:
-    -event.original: <labels>
+    - event.original: <labels>
 
 normalize:
-    map:
-      event.original: $labels
+  map:
+    event.original: $labels
+
+---
+
+name: decoder_syscollector_base
+
+parents:
+  - decoder_syscollector
+
+check:
+  - event.original.type: +exists
+  - event.original.type: +is_string

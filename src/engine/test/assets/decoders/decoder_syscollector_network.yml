@@ -4,237 +4,195 @@ parents:
   - decoder_syscollector_base
 
 check:
-  - type: +exists
+  - event.original.type: +s_starts/network
+
+---
+
+name: decoder_syscollector_network
+
+parents:
+  - decoder_syscollector_netinfo
+
+check:
+  - event.original.iface: +exists
 
 normalize:
-  # decode_netinfo
-  #ID (scan_id)
   # type == network || type == network_end
   - check:
-    - event.original.type: +s_eq/network_end
-    - event.original.ID: +exists
+      - event.original.ID: +not_exists
     map:
-      _decode_network_section: 1
+      event.original.ID: "NULL"
 
   - check:
-    - event.original.type: +s_eq/network
-    - event.original.ID: +exists
-    map:
-      _decode_network_section: 1
-
-    #timestamp
-  - check:
-    - event.original.iface: +exists
-    - event.original.timestamp: +not_exists
+      - event.original.timestamp: +not_exists
     map:
       event.original.timestamp: "NULL"
 
-    #iface.name
   - check:
-    - event.original.iface: +exists
     - event.original.iface.name: +not_exists
     map:
       event.original.iface.name: "NULL"
 
-    #iface.adapter
   - check:
-    - event.original.iface: +exist
     - event.original.iface.adapter: +not_exists
     map:
       event.original.iface.adapter: "NULL"
 
-    #iface.type
   - check:
-    - event.original.iface: +exists
     - event.original.iface.type: +not_exists
     map:
       event.original.iface.type: "NULL"
 
-    #iface.state
   - check:
-    - event.original.iface: +exists
     - event.original.iface.state: +not_exists
     map:
       event.original.iface.state: "NULL"
 
-    #iface.mtu
   - check:
-    - event.original.iface: +exists
     - event.original.iface.MTU: +not_exists
     map:
       event.original.iface.MTU: "NULL"
 
-    #iface.mac
   - check:
-    - event.original.iface: +exists
     - event.original.iface.MAC: +not_exists
     map:
       event.original.iface.MAC: "NULL"
 
-    #iface.tx_packets
   - check:
-    - event.original.iface: +exists
     - event.original.iface.tx_packets: +not_exists
     map:
       event.original.iface.tx_packets: "NULL"
 
-    #iface.rx_packets
   - check:
-    - event.original.iface: +exists
     - event.original.iface.rx_packets: +not_exists
     map:
       event.original.iface.rx_packets: "NULL"
 
-    #iface.tx_bytes
   - check:
-    - event.original.iface: +exists
     - event.original.iface.tx_bytes: +not_exists
     map:
       event.original.iface.tx_bytes: "NULL"
 
-    #iface.rx_bytes
   - check:
-    - event.original.iface: +exists
     - event.original.iface.rx_bytes: +not_exists
     map:
       event.original.iface.rx_bytes: "NULL"
 
-    #iface.tx_errors
   - check:
-    - event.original.iface: +exists
     - event.original.iface.tx_errors: +not_exists
     map:
       event.original.iface.tx_errors: "NULL"
 
-    #iface.rx_errors
   - check:
-    - event.original.iface: +exists
     - event.original.iface.rx_errors: +not_exists
     map:
       event.original.iface.rx_errors: "NULL"
 
-    #iface.tx_dropped
   - check:
-    - event.original.iface: +exists
     - event.original.iface.tx_dropped: +not_exists
     map:
       event.original.iface.tx_dropped: "NULL"
 
-    #iface.rx_dropped
   - check:
-    - event.original.iface: +exists
     - event.original.iface.rx_dropped: +not_exists
     map:
       event.original.iface.rx_dropped: "NULL"
 
-  - check:
-    - _decode_network_section: +i_eq/1
-    - event.original.iface: +exists
-    map:
-      _query_save: +s_concat/agent /$event.original.agent.id /netinfo save /$event.original.ID/$event.original.timestamp/|$event.original.iface.name/|$event.original.iface.adapter/|$event.original.iface.type/|$event.original.iface.state/|$event.original.iface.MTU/|$event.original.iface.MAC/|$event.original.iface.tx_packets/|$event.original.iface.rx_packets/|$event.original.iface.tx_bytes/|$event.original.iface.rx_bytes/|$event.original.iface.tx_errors/|$event.original.iface.rx_errors/|$event.original.iface.tx_dropped/|$event.original.iface.rx_dropped
-      _iface_save_response: +wdb_update/$_query_save
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /netinfo save /$event.original.ID/|/$event.original.timestamp/|/$event.original.iface.name/|/$event.original.iface.adapter/|/$event.original.iface.type/|/$event.original.iface.state/|/$event.original.iface.MTU/|/$event.original.iface.MAC/|/$event.original.iface.tx_packets/|/$event.original.iface.rx_packets/|/$event.original.iface.tx_bytes/|/$event.original.iface.rx_bytes/|/$event.original.iface.tx_errors/|/$event.original.iface.rx_errors/|/$event.original.iface.tx_dropped/|/$event.original.iface.rx_dropped
+      _iface_save_response: +wdb_update/$_query
 
-  - check:
-    - _iface_save_response: +is_false
-    map:
-      _error_iface: 1
+---
 
-    #IPv4
-    #iface.IPv4.gateway
+#IPv4
+name: decoder_syscollector_network_ipv4
+
+parents:
+  - decoder_syscollector_network
+
+check:
+  - _iface_save_response: +is_true
+  - event.original.iface.IPv4: +exists
+
+normalize:
   - check:
-  	- _error_iface: +i_ne/1
-    - event.original.iface.IPv4: +exists
-    - event.original.iface.IPv4.gateway: +not_exists
+      - event.original.iface.IPv4.gateway: +not_exists
     map:
       event.original.iface.IPv4.gateway: "NULL"
 
-    #iface.IPv4.dhcp
   - check:
-  	- _error_iface: +i_ne/1
-    - event.original.iface.IPv4: +exists
-    - event.original.iface.IPv4.dhcp: +not_exists
+      - event.original.iface.IPv4.dhcp: +not_exists
     map:
       event.original.iface.IPv4.dhcp: "NULL"
 
-    #iface.IPv4.metric
   - check:
-  	- _error_iface: +i_ne/1
-    - event.original.iface.IPv4: +exists
-    - event.original.iface.IPv4.metric: +not_exists
+      - event.original.iface.IPv4.metric: +not_exists
     map:
       event.original.iface.IPv4.metric: "NULL"
 
-  - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv4: +exists
-    map:
-      _query_proto_save: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|$event.original.iface.name/|0/|$event.original.iface.IPv4.gateway/|$event.original.iface.IPv4.dhcp/|$event.original.iface.IPv4.metric
-      _iface4_proto_save_response: +wdb_update/$_query_proto_save
-
-  - check:
-    - _iface4_proto_save_response: +is_false
-    map:
-      _decode_fail: true #TODO: exit decoder
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|/$event.original.iface.name/|0/|/$event.original.iface.IPv4.gateway/|/$event.original.iface.IPv4.dhcp/|/$event.original.iface.IPv4.metric
+      _iface4_proto_save_response: +wdb_update/$_query
 
   #sys_netaddr - address
-  #netinfo.iface.ipv4.address
   - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv4.address: +exists
+      - event.original.iface.IPv4.address: +exists
     map:
-      _result_netInfoAddreses4: +netInfoAddress/0
+      _result_netInfoAddreses4: +saveNetAddressIPv6
 
-    #IPv6
-    #iface.IPv6.gateway
+---
+
+#IPv6
+name: decoder_syscollector_network_ipv6
+
+parents:
+  - decoder_syscollector_network
+
+check:
+  - _iface_save_response: +is_true
+  - event.original.iface.IPv6: +exists
+
+normalize:
   - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv6: +exists
-    - event.original.iface.IPv6.gateway: +not_exists
+      - event.original.iface.IPv6.gateway: +not_exists
     map:
       event.original.iface.IPv6.gateway: "NULL"
 
-    #iface.IPv6.dhcp
   - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv6: +exists
-    - event.original.iface.IPv6.dhcp: +not_exists
+      - event.original.iface.IPv6.dhcp: +not_exists
     map:
       event.original.iface.IPv6.dhcp: "NULL"
 
-    #iface.IPv6.metric
   - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv6: +exists
-    - event.original.iface.IPv6.metric: +not_exists
+      - event.original.iface.IPv6.metric: +not_exists
     map:
       event.original.iface.IPv6.metric: "NULL"
 
-  - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv6: +exists
-    map:
-      _query_proto_save: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|$event.original.iface.name/|0/|$event.original.iface.IPv6.gateway/|$event.original.iface.IPv6.dhcp/|$event.original.iface.IPv6.metric
-      _iface6_proto_save_response: +wdb_update/$_query_proto_save
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|/$event.original.iface.name/|0/|/$event.original.iface.IPv6.gateway/|/$event.original.iface.IPv6.dhcp/|/$event.original.iface.IPv6.metric
+      _iface4_proto_save_response: +wdb_update/$_query
 
+  #sys_netaddr - address
   - check:
-    - _iface6_proto_save_response: +is_false
+      - event.original.iface.IPv6.address: +exists
     map:
-      _decode_fail: true #TODO: exit decoder
+      _result_netInfoAddreses4: +saveNetAddressIPv6
 
+---
+
+name: decoder_syscollector_network_end
+
+parents:
+  - decoder_syscollector_netinfo
+
+check:
+  - event.original.iface: +not_exists
+
+normalize:
   #not iface type == network_end
   - check:
-    - _error_iface: +i_ne/1
-    - event.original.iface.IPv6.address: +exists
-    map:
-      _result_netInfoAddreses6: +netInfoAddress/1
-
-  - check:
-    - _decode_network_section: +i_ne/1
     - event.original.type: +s_eq/network_end
     - event.original.iface: +not_exists
     map:
       _query_save: +s_concat/agent /$event.original.agent.id /netinfo del /$event.original.ID
       _iface_save_response: +wdb_update/$_query_save
-
-
-
