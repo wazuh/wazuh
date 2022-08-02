@@ -152,7 +152,6 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringFromArray_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperSHAfrom_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
@@ -189,3 +188,9 @@ add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
 )
 gtest_discover_tests(register_test)
+
+add_executable(opBuilderHelperNetInfo_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
+  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+)
+gtest_discover_tests(opBuilderHelperNetInfo_test)
