@@ -1535,11 +1535,6 @@ components:
       description: "Agent ID|all"
       format: numbers_or_all
 
-    DaemonName:
-      type: string
-      description: "Daemon name"
-      format: daemon_names
-
     NodeID:
       type: string
       description: "Node ID"
@@ -2023,7 +2018,14 @@ components:
           type: string
           format: date-time
         name:
-          $ref: '#/components/schemas/DaemonName'
+          type: array
+          description: "Demon name"
+          items:
+            type: string
+            enum:
+              - wazuh-analysisd
+              - wazuh-remoted
+              - wazuh-db
         statistics:
           type: object
 
@@ -3832,7 +3834,11 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/DaemonName'
+          type: string
+          enum:
+            - wazuh-analysisd
+            - wazuh-remoted
+            - wazuh-db
     decoder_name:
       in: query
       name: decoder_names

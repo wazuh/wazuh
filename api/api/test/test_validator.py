@@ -8,11 +8,10 @@ import os
 import jsonschema as js
 import pytest
 
-from api.validator import (check_exp, check_xml, _alphanumeric_param,
-                           _array_numbers, _array_names, _boolean, _dates, _daemon_names, _empty_boolean, _hashes,
-                           _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,
-                           _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
-                           allowed_fields, is_safe_path, _wazuh_version,
+from api.validator import (check_exp, check_xml, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
+                           _empty_boolean, _hashes, _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges,
+                           _search_param, _sort_param, _timeframe_type, _type_format, _yes_no_boolean,
+                           _get_dirnames_path, allowed_fields, is_safe_path, _wazuh_version,
                            _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
                            _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename)
 
@@ -30,9 +29,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     # names
     ('alphanumeric1_param2', _alphanumeric_param),
     ('file_%1,file_2,file-3', _array_names),
-    ('wazuh-remoted', _daemon_names),
-    ('wazuh-analysisd', _daemon_names),
-    ('wazuh-db', _daemon_names),
     ('file%1-test_name1', _names),
     ('[(Random_symbols-string123)],<>!.+:"\'|=~#', _symbols_alphanumeric_param),
     ('Group_name-2', _group_names),
@@ -105,7 +101,6 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('alphanumeric1_$param2', _alphanumeric_param),
     ('file-$', _array_names),
     ('file_1$,file_2#,file-3', _array_names),
-    ('wrong-daemon', _daemon_names),
     ('all', _group_names),
     ('.', _group_names),
     ('..', _group_names),
