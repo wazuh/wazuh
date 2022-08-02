@@ -68,6 +68,8 @@ static void registerBuilders()
                               "helper.s_contains");
     Registry::registerBuilder(builders::opBuilderHelperDeleteField,
                               "helper.delete_field");
+    Registry::registerBuilder(builders::opBuilderHelperContainsString,
+                              "helper.s_starts");
     Registry::registerBuilder(builders::opBuilderHelperIsNumber, "helper.is_number");
     Registry::registerBuilder(builders::opBuilderHelperIsNotNumber,
                               "helper.is_not_number");
