@@ -1,37 +1,16 @@
 name: decoder_syscollector_hardware
+
+parents:
+  - decoder_syscollector_base
+
 check:
-  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
-  - location: +exists
+  - type: +exists
 
 normalize:
-  - check:
-    - location: +s_starts/(
-    - location: +s_not_contains/>
-    map:
-      _check_1: true
-
-  - check:
-    - location: +s_starts/(
-    - location: +s_not_contains/>syscollector
-    map:
-      _check_2: true
-
-  - check:
-    - location: +s_ne/syscollector
-    map:
-      _check_3: true
-
-  - check:
-    - _can_continue: NOT ($check_1 OR $check_2 OR $check_3)
-    - event.original.type: +exists
-    map:
-      _pre_conditions: 1
-
   # decode_hardware
   #ID (scan_id)
   # type == hardware
   - check:
-    - _pre_conditions: +i_eq/1
     - event.original.type: +s_eq/hardware
     - event.original.inventory: +exists
     map:
@@ -50,12 +29,6 @@ normalize:
     - event.original.inventory.board_serial: +not_exists
     map:
       event.original.inventory.board_serial: "NULL"
-    #fill hardware.serial
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.board_serial: +exists
-    map:
-      event.original.hardware.board_serial: $event.original.inventory.board_serial
 
     #inventory.cpu_name
   - check:
@@ -63,12 +36,6 @@ normalize:
     - event.original.inventory.cpu_name: +not_exists
     map:
       event.original.inventory.cpu_name: "NULL"
-    #fill hardware.cpu_name
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.cpu_name: +exists
-    map:
-      event.original.hardware.cpu_name: event.original.inventory.cpu_name
 
     #inventory.cpu_cores
   - check:
@@ -76,12 +43,6 @@ normalize:
     - event.original.inventory.cpu_cores: +not_exists
     map:
       event.original.inventory.cpu_cores: "NULL"
-    #fill hardware.cpu_cores
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.cpu_cores: +exists
-    map:
-      event.original.hardware.cpu_cores: event.original.inventory.cpu_cores
 
     #inventory.cpu_mhz
   - check:
@@ -89,12 +50,6 @@ normalize:
     - event.original.inventory.cpu_mhz: +not_exists
     map:
       event.original.inventory.cpu_mhz: "NULL"
-    #fill hardware.cpu_mhz
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.cpu_mhz: +exists
-    map:
-      event.original.hardware.cpu_mhz: event.original.inventory.cpu_mhz
 
     #inventory.ram_total
   - check:
@@ -102,12 +57,6 @@ normalize:
     - event.original.inventory.ram_total: +not_exists
     map:
       event.original.inventory.ram_total: "NULL"
-    #fill hardware.ram_total
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.ram_total: +exists
-    map:
-      event.original.hardware.ram_total: event.original.inventory.ram_total
 
     #inventory.ram_free
   - check:
@@ -115,12 +64,6 @@ normalize:
     - event.original.inventory.ram_free: +not_exists
     map:
       event.original.inventory.ram_free: "NULL"
-    #fill hardware.ram_free
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.ram_free: +not_exists
-    map:
-      event.original.hardware.ram_free: event.original.inventory.ram_free
 
     #inventory.ram_usage
   - check:
@@ -128,12 +71,6 @@ normalize:
     - event.original.inventory.ram_usage: +exists
     map:
       event.original.inventory.ram_usage: "NULL"
-    #fill hardware.ram_usage
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.ram_usage: +exists
-    map:
-      event.original.hardware.ram_usage: event.original.inventory.ram_usage
 
   - check:
     - _decode_hardware_section: +i_eq/1

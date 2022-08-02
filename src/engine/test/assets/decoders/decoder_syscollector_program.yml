@@ -1,33 +1,12 @@
-name: decoder_syscollector_program #decode_package
+name: decoder_syscollector_program
+
+parents:
+  - decoder_syscollector_base
 
 check:
-  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
-  - location: +exists
+  - type: +exists
 
 normalize:
-  - check:
-    - location: +s_starts/(
-    - location: +s_not_contains/>
-    map:
-      _check_1: true
-
-  - check:
-    - location: +s_starts/(
-    - location: +s_not_contains/>syscollector
-    map:
-      _check_2: true
-
-  - check:
-    - location: +s_ne/syscollector
-    map:
-      _check_3: true
-
-  - check:
-    - _can_continue: NOT ($check_1 OR $check_2 OR $check_3)
-    - event.original.type: +exists
-    map:
-      _pre_conditions: 1
-
   # decode_package
   #ID (scan_id)
   # type == program || type == program_end
@@ -46,8 +25,6 @@ normalize:
       _decode_program_section: 1
 
     #timestamp
-    # -> TODO: how to hanlde error_package? sets to 1 and updates prev_package_id with last ID with error
-    # this should be also done at start (after checking program existence)
   - check:
     - event.original.program: +exists
     - event.original.timestamp: +not_exists

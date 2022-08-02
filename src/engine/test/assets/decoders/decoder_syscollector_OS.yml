@@ -1,6 +1,10 @@
 name: decoder_syscollector_osinfo
+
+parents:
+  - decoder_syscollector_base
+
 check:
-  - wazuh.queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - type: +exists
   - event.original.route: +s_eq/syscollector
   - location: +exists
 
@@ -29,12 +33,6 @@ normalize:
     map:
       event.original.timestamp: "NULL"
 
-    #fill os.hostname
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.hostname: +exists
-    map:
-      event.original.hardware.hostname: $event.original.inventory.hostname
     #inventory.hostname
   - check:
     - event.original.inventory: +exist
@@ -42,12 +40,6 @@ normalize:
     map:
       event.original.inventory.hostname: "NULL"
 
-    #fill inventory.architecture
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.architecture: +exists
-    map:
-      event.original.hadrware.architecture: event.original.inventory.architecture
     #inventory.architecture
   - check:
     - event.original.inventory: +exist
@@ -55,12 +47,6 @@ normalize:
     map:
       event.original.inventory.architecture: "NULL"
 
-    #fill hardware.cpu_cores
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.cpu_cores: +exists
-    map:
-      event.original.hardware.cpu_cores: event.original.inventory.cpu_cores
     #inventory.cpu_cores
   - check:
     - event.original.inventory: +exist
@@ -68,12 +54,6 @@ normalize:
     map:
       event.original.inventory.cpu_cores: "NULL"
 
-    #fill os.name
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_name: +exists
-    map:
-      event.original.os.name: event.original.inventory.os_name
     #inventory.os_name
   - check:
     - event.original.inventory: +exist
@@ -81,12 +61,6 @@ normalize:
     map:
       event.original.inventory.os_name: "NULL"
 
-    #fill os.version
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_version: +exists
-    map:
-      event.original.os.version: event.original.inventory.os_version
     #inventory.os_version
   - check:
     - event.original.inventory: +exist
@@ -94,12 +68,6 @@ normalize:
     map:
       event.original.inventory.os_version: "NULL"
 
-    #fill os.codename
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_codename: +exists
-    map:
-      event.original.os.codename: event.original.inventory.os_codename
     #inventory.os_codename
   - check:
     - event.original.inventory: +exist
@@ -107,12 +75,6 @@ normalize:
     map:
       event.original.inventory.os_codename: "NULL"
 
-    #fill os.major
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_major: +exists
-    map:
-      event.original.os.major: event.original.inventory.os_major
     #inventory.os_major
   - check:
     - event.original.inventory: +exist
@@ -120,12 +82,6 @@ normalize:
     map:
       event.original.inventory.os_major: "NULL"
 
-    #fill os.minor
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_minor: +exists
-    map:
-      event.original.os.minor: event.original.inventory.os_minor
     #inventory.os_minor
   - check:
     - event.original.inventory: +exist
@@ -133,12 +89,6 @@ normalize:
     map:
       event.original.inventory.os_minor: "NULL"
 
-    #fill os.build
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_build: +exists
-    map:
-      event.original.os.build: event.original.inventory.os_build
     #inventory.os_build
   - check:
     - event.original.inventory: +exist
@@ -146,12 +96,6 @@ normalize:
     map:
       event.original.inventory.os_build: "NULL"
 
-    #fill os.platform
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_platform: +exists
-    map:
-      event.original.os.platform: event.original.inventory.os_platform
     #inventory.os_platform
   - check:
     - event.original.inventory: +exist
@@ -159,12 +103,6 @@ normalize:
     map:
       event.original.inventory.os_platform: "NULL"
 
-    #fill os.sysname
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.sysname: +exists
-    map:
-      event.original.os.sysname: event.original.inventory.sysname
     #inventory.sysname
   - check:
     - event.original.inventory: +exist
@@ -172,12 +110,6 @@ normalize:
     map:
       event.original.inventory.sysname: "NULL"
 
-    #fill os.release
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.release: +exists
-    map:
-      event.original.os.release: event.original.inventory.release
     #inventory.release
   - check:
     - event.original.inventory: +exist
@@ -185,12 +117,6 @@ normalize:
     map:
       event.original.inventory.release: "NULL"
 
-    #fill os.release_version
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.version: +exists
-    map:
-      event.original.os.release_version: event.original.inventory.version
     #inventory.version
   - check:
     - event.original.inventory: +exist
@@ -198,12 +124,6 @@ normalize:
     map:
       event.original.inventory.version: "NULL"
 
-    #fill os.os_release
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_release: +exists
-    map:
-      event.original.os.os_release: event.original.inventory.os_release
     #inventory.os_release
   - check:
     - event.original.inventory: +exist
@@ -211,12 +131,6 @@ normalize:
     map:
       event.original.inventory.os_release: "NULL"
 
-    #fill os.patch
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_patch: +exists
-    map:
-      event.original.os.patch: event.original.inventory.os_patch
     #inventory.os_patch
   - check:
     - event.original.inventory: +exist
@@ -224,12 +138,6 @@ normalize:
     map:
       event.original.inventory.os_patch: "NULL"
 
-    #fill os.display_version
-  - check:
-    - event.original.inventory: +exist
-    - event.original.inventory.os_display_version: +exists
-    map:
-      event.original.os.display_version: event.original.inventory.os_display_version
     #inventory.os_display_version
   - check:
     - event.original.inventory: +exist

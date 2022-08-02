@@ -19,18 +19,16 @@
 #include <wdb/wdb.hpp>
 #include <kvdb/kvdbManager.hpp>
 
-namespace builder::internals::builders
+namespace
 {
 
 // TODO: remove when undoing set for testing
 constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
 
-using builder::internals::syntax::REFERENCE_ANCHOR;
-
 // when isIPv6 == true the third field will be set to 0
 // agent <ID> netaddr save <ID>|<name>|isIPv6=false|add[i]|netm[i]|broad[i]
 // agent 0001 netaddr save ID|name|0|add0|netm0|broad0
-static bool sysNetAddresTableFill(base::Event event, bool isIPv6)
+bool sysNetAddresTableFill(base::Event event, bool isIPv6)
 {
     auto agent_id {event->getString(engineserver::EVENT_AGENT_ID)};
     auto scan_id {event->getString(std::string(engineserver::EVENT_LOG) + "/ID")};
@@ -111,6 +109,13 @@ static bool sysNetAddresTableFill(base::Event event, bool isIPv6)
     }
     return true;
 }
+}
+
+namespace builder::internals::builders
+{
+
+using builder::internals::syntax::REFERENCE_ANCHOR;
+
 
 // field: +netInfoAddress/<1_if_IPv6>|<ref_if_IPv6>
 base::Expression opBuilderHelperNetInfoAddres(const std::any& definition)
