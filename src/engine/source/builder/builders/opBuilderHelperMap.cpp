@@ -102,8 +102,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     switch (op)
     {
         case StringOperator::UP:
-            transformFunction = [](const std::string& value)
-            {
+            transformFunction = [](const std::string& value) {
                 std::string result;
                 std::transform(
                     value.begin(), value.end(), std::back_inserter(result), ::toupper);
@@ -111,8 +110,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
             };
             break;
         case StringOperator::LO:
-            transformFunction = [](const std::string& value)
-            {
+            transformFunction = [](const std::string& value) {
                 std::string result;
                 std::transform(
                     value.begin(), value.end(), std::back_inserter(result), ::tolower);
@@ -133,8 +131,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             // We assert that references exists, checking if the optional from Json getter
             // is empty ot not. Then if is a reference we get the value from the event,
             // otherwise we get the value from the parameter
@@ -224,26 +221,22 @@ opBuilderHelperIntTransformation(const std::string& targetField,
     switch (op)
     {
         case IntOperator::SUM:
-            transformFunction = [](int l, int r)
-            {
+            transformFunction = [](int l, int r) {
                 return l + r;
             };
             break;
         case IntOperator::SUB:
-            transformFunction = [](int l, int r)
-            {
+            transformFunction = [](int l, int r) {
                 return l - r;
             };
             break;
         case IntOperator::MUL:
-            transformFunction = [](int l, int r)
-            {
+            transformFunction = [](int l, int r) {
                 return l * r;
             };
             break;
         case IntOperator::DIV:
-            transformFunction = [](int l, int r)
-            {
+            transformFunction = [](int l, int r) {
                 if (0 == r)
                 {
                     throw std::runtime_error(
@@ -272,8 +265,7 @@ opBuilderHelperIntTransformation(const std::string& targetField,
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             // We assert that references exists, checking if the optional from Json getter
             // is empty ot not. Then if is a reference we get the value from the event,
             // otherwise we get the value from the parameter
@@ -353,10 +345,11 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Get trim type
-    char trimType = parameters[0].m_value == "begin"  ? 's'
-                    : parameters[0].m_value == "end"  ? 'e'
-                    : parameters[0].m_value == "both" ? 'b'
-                                                      : '\0';
+    char trimType = parameters[0].m_value == "begin"
+                        ? 's'
+                        : parameters[0].m_value == "end"
+                              ? 'e'
+                              : parameters[0].m_value == "both" ? 'b' : '\0';
     if ('\0' == trimType)
     {
         throw std::runtime_error("Invalid trim type for s_trim operator");
@@ -382,8 +375,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             // Get field value
             auto resolvedField {event->getString(targetField)};
 
@@ -453,8 +445,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             std::string result {};
 
             for (auto parameter : parameters)
@@ -497,21 +488,21 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         });
 }
 
-//field: +s_fromArray/<separator>|<separatorRef>/<array_reference1>
+// field: +s_fromArray/<separator>|<separatorRef>/<array_reference1>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
     if (parameters.empty())
     {
-        throw std::runtime_error(
-            fmt::format("[s_fromArray] parameter can not be empty"));
+        throw std::runtime_error(fmt::format("[s_fromArray] parameter can not be empty"));
     }
 
-    if (parameters.size() != 2 && parameters.at(1).m_type != helper::base::Parameter::Type::REFERENCE)
+    if (parameters.size() != 2
+        && parameters.at(1).m_type != helper::base::Parameter::Type::REFERENCE)
     {
-        throw std::runtime_error(
-            fmt::format("[s_fromArray] should have 2 parameter and the seccond should be a reference"));
+        throw std::runtime_error(fmt::format("[s_fromArray] should have 2 parameter and "
+                                             "the seccond should be a reference"));
     }
     auto arrayName = parameters.at(1);
     auto separator = parameters.at(0);
@@ -522,21 +513,26 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
     const auto successTrace = fmt::format("[{}] -> Success", name);
     const auto failureTrace1 =
         fmt::format("[{}] -> Failure: [{}] param should be a string", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure: parameter should be a non empty array", name);
+    const auto failureTrace2 = fmt::format(
+        "[{}] -> Failure: parameter should be a non empty string array", name);
     const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             // Getting separator field name
             std::optional<std::string> resolvedSeparator;
             switch (separator.m_type)
             {
                 case helper::base::Parameter::Type::REFERENCE:
                 {
+                    if (!event->isString(separator.m_value))
+                    {
+                        return base::result::makeFailure(event, failureTrace2);
+                    }
+
                     resolvedSeparator = event->getString(separator.m_value);
                     if (!resolvedSeparator.has_value())
                     {
@@ -550,8 +546,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
                     break;
                 }
                 default:
-                    throw std::runtime_error(fmt::format(
-                        "[s_fromArray] invalid separator type"));
+                    return base::result::makeFailure(event, failureTrace3);
             }
 
             // Getting array field, must be a reference
@@ -560,6 +555,11 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             {
                 case helper::base::Parameter::Type::REFERENCE:
                 {
+                    if (!event->isArray(arrayName.m_value))
+                    {
+                        return base::result::makeFailure(event, failureTrace2);
+                    }
+
                     resolvedParameter = event->getArray(arrayName.m_value);
                     if (!resolvedParameter.has_value())
                     {
@@ -568,21 +568,26 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
                     break;
                 }
                 default:
-                    throw std::runtime_error(fmt::format(
-                        "[s_fromArray] invalid parameter type"));
+                    return base::result::makeFailure(event, failureTrace3);
             }
 
             std::string composedValue {};
-            if(resolvedParameter.value().size() > 0 )
+            if (resolvedParameter.has_value() && resolvedParameter.value().size() > 0)
             {
-                // getting first element in order to avoid starting with separator
+                // Getting first element in order to avoid starting with separator
+                if (!resolvedParameter.value().at(0).isString())
+                {
+                    return base::result::makeFailure(event, failureTrace1);
+                }
                 composedValue = resolvedParameter.value().at(0).getString().value();
                 resolvedParameter.value().erase(resolvedParameter.value().begin());
+
                 for (const auto& s_param : resolvedParameter.value())
                 {
-                    if(s_param.isString())
+                    if (s_param.isString())
                     {
-                        composedValue = composedValue + resolvedSeparator.value() + s_param.getString().value();
+                        composedValue = composedValue + resolvedSeparator.value()
+                                        + s_param.getString().value();
                     }
                     else
                     {
@@ -665,8 +670,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             // TODO Remove try catch
             auto resolvedField {event->getString(map_field)};
 
@@ -707,8 +711,7 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField), name = std::move(name)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             for (const auto& parameter : parameters)
             {
                 switch (parameter.m_type)
@@ -768,6 +771,9 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
+            // Get field value
+            auto resolvedField {event->getString(targetField)};
+
             if (event->erase(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
