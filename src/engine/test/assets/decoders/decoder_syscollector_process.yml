@@ -31,12 +31,6 @@ normalize:
     map:
       event.original.timestamp: "NULL"
 
-    #fill process.pid
-  - check:
-    - event.original.process: +exist
-    - event.original.process.pid: +exists
-    map:
-      event.original.process.pid: event.original.process.pid
     #process.pid
   - check:
     - event.original.process: +exist
@@ -44,12 +38,6 @@ normalize:
     map:
       event.original.process.pid: "NULL"
 
-    #fill process.name
-  - check:
-    - event.original.process: +exist
-    - event.original.process.name: +exists
-    map:
-      event.original.process.name: event.original.process.name
     #process.name
   - check:
     - event.original.process: +exist
@@ -57,12 +45,6 @@ normalize:
     map:
       event.original.process.name: "NULL"
 
-    #fill process.state
-  - check:
-    - event.original.process: +exist
-    - event.original.process.state: +exists
-    map:
-      event.original.process.state: event.original.process.state
     #process.state
   - check:
     - event.original.process: +exist
@@ -70,12 +52,6 @@ normalize:
     map:
       event.original.process.state: "NULL"
 
-    #fill process.ppid
-  - check:
-    - event.original.process: +exist
-    - event.original.process.ppid: +exists
-    map:
-      event.original.process.ppid: event.original.process.ppid
     #process.ppid
   - check:
     - event.original.process: +exist
@@ -83,12 +59,6 @@ normalize:
     map:
       event.original.process.ppid: "NULL"
 
-    #fill process.utime
-  - check:
-    - event.original.process: +exist
-    - event.original.process.utime: +exists
-    map:
-      event.original.process.utime: event.original.process.utime
     #process.utime
   - check:
     - event.original.process: +exist
@@ -96,12 +66,6 @@ normalize:
     map:
       event.original.process.utime: "NULL"
 
-    #fill process.stime
-  - check:
-    - event.original.process: +exist
-    - event.original.process.stime: +exists
-    map:
-      event.original.process.stime: event.original.process.stime
     #process.stime
   - check:
     - event.original.process: +exist
@@ -109,12 +73,6 @@ normalize:
     map:
       event.original.process.stime: "NULL"
 
-    #fill process.cmd
-  - check:
-    - event.original.process: +exist
-    - event.original.process.cmd: +exists
-    map:
-      event.original.process.cmd: event.original.process.cmd
     #process.cmd
   - check:
     - event.original.process: +exist
@@ -136,12 +94,6 @@ normalize:
     map:
       event.original.process.argvs: "NULL"
 
-    #fill process.euser
-  - check:
-    - event.original.process: +exist
-    - event.original.process.euser: +exists
-    map:
-      event.original.process.euser: event.original.process.euser
     #process.euser
   - check:
     - event.original.process: +exist
@@ -149,12 +101,6 @@ normalize:
     map:
       event.original.process.euser: "NULL"
 
-    #fill process.ruser
-  - check:
-    - event.original.process: +exist
-    - event.original.process.ruser: +exists
-    map:
-      event.original.process.ruser: event.original.process.ruser
     #process.ruser
   - check:
     - event.original.process: +exist
@@ -162,12 +108,6 @@ normalize:
     map:
       event.original.process.ruser: "NULL"
 
-    #fill process.suser
-  - check:
-    - event.original.process: +exist
-    - event.original.process.suser: +exists
-    map:
-      event.original.process.suser: event.original.process.suser
     #process.suser
   - check:
     - event.original.process: +exist
@@ -175,12 +115,6 @@ normalize:
     map:
       event.original.process.suser: "NULL"
 
-    #fill process.egroup
-  - check:
-    - event.original.process: +exist
-    - event.original.process.egroup: +exists
-    map:
-      event.original.process.egroup: event.original.process.egroup
     #process.egroup
   - check:
     - event.original.process: +exist
@@ -188,12 +122,6 @@ normalize:
     map:
       event.original.process.egroup: "NULL"
 
-    #fill process.rgroup
-  - check:
-    - event.original.process: +exist
-    - event.original.process.rgroup: +exists
-    map:
-      event.original.process.rgroup: event.original.process.rgroup
     #process.rgroup
   - check:
     - event.original.process: +exist
@@ -201,12 +129,6 @@ normalize:
     map:
       event.original.process.rgroup: "NULL"
 
-    #fill process.sgroup
-  - check:
-    - event.original.process: +exist
-    - event.original.process.sgroup: +exists
-    map:
-      event.original.process.sgroup: event.original.process.sgroup
     #process.sgroup
   - check:
     - event.original.process: +exist
@@ -214,12 +136,6 @@ normalize:
     map:
       event.original.process.sgroup: "NULL"
 
-    #fill process.fgroup
-  - check:
-    - event.original.process: +exist
-    - event.original.process.fgroup: +exists
-    map:
-      event.original.process.fgroup: event.original.process.fgroup
     #process.fgroup
   - check:
     - event.original.process: +exist
@@ -227,12 +143,6 @@ normalize:
     map:
       event.original.process.fgroup: "NULL"
 
-    #fill process.priority
-  - check:
-    - event.original.process: +exist
-    - event.original.process.priority: +exists
-    map:
-      event.original.process.priority: event.original.process.priority
     #process.priority
   - check:
     - event.original.process: +exist
@@ -240,12 +150,6 @@ normalize:
     map:
       event.original.process.priority: "NULL"
 
-    #fill process.nice
-  - check:
-    - event.original.process: +exist
-    - event.original.process.nice: +exists
-    map:
-      event.original.process.nice: event.original.process.nice
     #process.nice
   - check:
     - event.original.process: +exist
@@ -253,12 +157,6 @@ normalize:
     map:
       event.original.process.nice: "NULL"
 
-    #fill process.size
-  - check:
-    - event.original.process: +exist
-    - event.original.process.size: +exists
-    map:
-      event.original.process.size: event.original.process.size
     #process.size
   - check:
     - event.original.process: +exist
@@ -266,12 +164,6 @@ normalize:
     map:
       event.original.process.size: "NULL"
 
-    #fill process.vm_size
-  - check:
-    - event.original.process: +exist
-    - event.original.process.vm_size: +exists
-    map:
-      event.original.process.vm_size: event.original.process.vm_size
     #process.vm_size
   - check:
     - event.original.process: +exist
@@ -279,12 +171,6 @@ normalize:
     map:
       event.original.process.vm_size: "NULL"
 
-    #fill process.resident
-  - check:
-    - event.original.process: +exist
-    - event.original.process.resident: +exists
-    map:
-      event.original.process.resident: event.original.process.resident
     #process.resident
   - check:
     - event.original.process: +exist
@@ -292,12 +178,6 @@ normalize:
     map:
       event.original.process.resident: "NULL"
 
-    #fill process.share
-  - check:
-    - event.original.process: +exist
-    - event.original.process.share: +exists
-    map:
-      event.original.process.share: event.original.process.share
     #process.share
   - check:
     - event.original.process: +exist
@@ -305,12 +185,6 @@ normalize:
     map:
       event.original.process.share: "NULL"
 
-    #fill process.start_time
-  - check:
-    - event.original.process: +exist
-    - event.original.process.start_time: +exists
-    map:
-      event.original.process.start_time: event.original.process.start_time
     #process.start_time
   - check:
     - event.original.process: +exist
@@ -318,12 +192,6 @@ normalize:
     map:
       event.original.process.start_time: "NULL"
 
-    #fill process.pgrp
-  - check:
-    - event.original.process: +exist
-    - event.original.process.pgrp: +exists
-    map:
-      event.original.process.pgrp: event.original.process.pgrp
     #process.pgrp
   - check:
     - event.original.process: +exist
@@ -331,12 +199,6 @@ normalize:
     map:
       event.original.process.pgrp: "NULL"
 
-    #fill process.session
-  - check:
-    - event.original.process: +exist
-    - event.original.process.session: +exists
-    map:
-      event.original.process.session: event.original.process.session
     #process.session
   - check:
     - event.original.process: +exist
@@ -344,12 +206,6 @@ normalize:
     map:
       event.original.process.session: "NULL"
 
-    #fill process.nlwp
-  - check:
-    - event.original.process: +exist
-    - event.original.process.nlwp: +exists
-    map:
-      event.original.process.nlwp: event.original.process.nlwp
     #process.nlwp
   - check:
     - event.original.process: +exist
@@ -357,12 +213,6 @@ normalize:
     map:
       event.original.process.nlwp: "NULL"
 
-    #fill process.tgid
-  - check:
-    - event.original.process: +exist
-    - event.original.process.tgid: +exists
-    map:
-      event.original.process.tgid: event.original.process.tgid
     #process.tgid
   - check:
     - event.original.process: +exist
@@ -370,12 +220,6 @@ normalize:
     map:
       event.original.process.tgid: "NULL"
 
-    #fill process.tty
-  - check:
-    - event.original.process: +exist
-    - event.original.process.tty: +exists
-    map:
-      event.original.process.tty: event.original.process.tty
     #process.tty
   - check:
     - event.original.process: +exist
@@ -383,20 +227,12 @@ normalize:
     map:
       event.original.process.tty: "NULL"
 
-    #fill process.processor
-  - check:
-    - event.original.process: +exist
-    - event.original.process.processor: +exists
-    map:
-      event.original.process.processor: event.original.process.processor
     #process.processor
   - check:
     - event.original.process: +exist
     - event.original.process.processor: +not_exists
     map:
       event.original.process.processor: "NULL"
-
-
 
   - check:
     - _decode_process_section: +i_eq/1

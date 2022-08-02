@@ -1,33 +1,12 @@
 name: decoder_syscollector_port
 
+parents:
+  - decoder_syscollector_base
+
 check:
-  - queue: +i_eq/64 #SYSCOLLECTOR_MQ
-  - location: +exists
+  - type: +exists
 
 normalize:
-  - check:
-    - location: +s_starts/(
-    - location: +s_not_contains/>
-    map:
-      _check_1: true
-
-  - check:
-    - location: +s_starts/(
-    - location: +s_not_contains/>syscollector
-    map:
-      _check_2: true
-
-  - check:
-    - location: +s_ne/syscollector
-    map:
-      _check_3: true
-
-  - check:
-    - _can_continue: NOT ($check_1 OR $check_2 OR $check_3)
-    - event.original.type: +exists
-    map:
-      _pre_conditions: 1
-
   # decode_port
   #ID (scan_id)
   # type == port || type == port_end
@@ -46,8 +25,6 @@ normalize:
       _decode_port_section: 1
 
     #timestamp
-    # -> TODO: how to hanlde error_port? sets to 1 and updates prev_port_id with last ID with error
-    # this should be also done at start (after checking port existence)
   - check:
     - event.original.port: +exist
     - event.original.timestamp: +not_exists
@@ -65,7 +42,7 @@ normalize:
     - event.original.port.local_ip: +not_exists
     map:
       event.original.port.local_ip: "NULL"
-    #port.local_port -> int
+    #port.local_port
   - check:
     - event.original.port: +exist
     - event.original.port.local_port: +not_exists
@@ -77,25 +54,25 @@ normalize:
     - event.original.port.remote_ip: +not_exists
     map:
       event.original.port.remote_ip: "NULL"
-    #port.remote_port -> int
+    #port.remote_port
   - check:
     - event.original.port: +exist
     - event.original.port.remote_port: +not_exists
     map:
       event.original.port.remote_port: "NULL"
-    #port.tx_queue -> int
+    #port.tx_queue
   - check:
     - event.original.port: +exist
     - event.original.port.tx_queue: +not_exists
     map:
       event.original.port.tx_queue: "NULL"
-    #port.rx_queue -> int
+    #port.rx_queue
   - check:
     - event.original.port: +exist
     - event.original.port.rx_queue: +not_exists
     map:
       event.original.port.rx_queue: "NULL"
-    #port.inode -> int
+    #port.inode
   - check:
     - event.original.port: +exist
     - event.original.port.inode: +not_exists
@@ -107,7 +84,7 @@ normalize:
     - event.original.port.state: +not_exists
     map:
       event.original.port.state: "NULL"
-    #port.PID -> int
+    #port.PID
   - check:
     - event.original.port: +exist
     - event.original.port.PID: +not_exists
@@ -123,7 +100,7 @@ normalize:
   - check:
     - _decode_port_section: +i_eq/1
     map:
-      _query_save: +s_concat/agent /$event.original.agent.id /port save /|$event.original.ID/|$event.original.timestamp/|$event.original.port.protocol/|$event.original.port.local_ip/|$event.original.port.local_port/|$event.original.port.remote_ip/|$event.original.port.remote_port/|$event.original.port.tx_queue/|$event.original.port.rx_queue/|$event.original.port.inode/|$event.original.port.state/|$event.original.port.PID/|$event.original.port.process
+      _query_save: +s_concat/agent /$event.original.agent.id /port save /$event.original.ID/|$event.original.timestamp/|$event.original.port.protocol/|$event.original.port.local_ip/|$event.original.port.local_port/|$event.original.port.remote_ip/|$event.original.port.remote_port/|$event.original.port.tx_queue/|$event.original.port.rx_queue/|$event.original.port.inode/|$event.original.port.state/|$event.original.port.PID/|$event.original.port.process
       _port_save_response: +wdb_update/$_query_save
 
   - check:
