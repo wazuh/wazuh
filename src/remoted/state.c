@@ -21,7 +21,7 @@
 #define STATIC static
 #endif
 
-remoted_state_t remoted_state;
+remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int rem_write_state();
@@ -114,6 +114,8 @@ static void rem_inc_agents_send_request(const char *agent_id);
 static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
+    remoted_state.uptime = time(NULL);
+
     int interval = getDefine_Int("remoted", "state_interval", 0, 86400);
 
     if (!interval) {
@@ -221,6 +223,7 @@ STATIC remoted_agent_state_t * get_node(const char *agent_id) {
         return agent_state;
     } else {
         os_calloc(1, sizeof(remoted_agent_state_t), agent_state);
+        agent_state->uptime = time(NULL);
         OSHash_Add_ex(remoted_agents_state, agent_id, agent_state);
         return agent_state;
     }
@@ -535,6 +538,7 @@ cJSON* rem_create_state_json() {
 
     cJSON *rem_state_json = cJSON_CreateObject();
 
+    cJSON_AddNumberToObject(rem_state_json, "uptime", state_cpy.uptime);
     cJSON_AddNumberToObject(rem_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(rem_state_json, "name", ARGV0);
 
@@ -615,6 +619,7 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
             if (agent_state = (remoted_agent_state_t *) OSHash_Get_ex(remoted_agents_state, agent_id), agent_state != NULL) {
                 cJSON *_item = cJSON_CreateObject();
 
+                cJSON_AddNumberToObject(_item, "uptime", agent_state->uptime);
                 cJSON_AddNumberToObject(_item, "id", agents_ids[i]);
 
                 cJSON *_metrics = cJSON_CreateObject();

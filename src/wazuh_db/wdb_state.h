@@ -238,6 +238,7 @@ typedef struct _queries_breakdown_t {
 } queries_breakdown_t;
 
 typedef struct _db_stats_t {
+    uint64_t uptime;
     uint64_t queries_total;
     queries_breakdown_t queries_breakdown;
 } wdb_state_t;

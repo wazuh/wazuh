@@ -907,6 +907,7 @@ cJSON* wdb_create_state_json() {
 
     cJSON *wdb_state_json = cJSON_CreateObject();
 
+    cJSON_AddNumberToObject(wdb_state_json, "uptime", wdb_state_cpy.uptime);
     cJSON_AddNumberToObject(wdb_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(wdb_state_json, "name", ARGV0);
 

@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wdb_state.h"
 #include <os_net/os_net.h>
 
 static void wdb_help() __attribute__ ((noreturn));
@@ -21,6 +22,7 @@ static void * run_gc(void * args);
 static void * run_up(void * args);
 static void * run_backup(void * args);
 
+extern wdb_state_t wdb_state;
 
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
@@ -191,6 +193,10 @@ int main(int argc, char ** argv)
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
                 strerror(errno), errno);
     }
+
+    // Stats uptime
+
+    wdb_state.uptime = time(NULL);
 
     // Start threads
 

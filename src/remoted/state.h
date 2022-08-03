@@ -45,6 +45,7 @@ typedef struct _sent_msgs_t {
 } sent_msgs_t;
 
 typedef struct _remoted_state_t {
+    uint64_t uptime;
     uint64_t recv_bytes;
     uint64_t sent_bytes;
     uint32_t tcp_sessions;
@@ -54,6 +55,7 @@ typedef struct _remoted_state_t {
 } remoted_state_t;
 
 typedef struct _remoted_agent_state_t {
+    uint64_t uptime;
     uint64_t recv_evt_count;
     uint64_t recv_ctrl_count;
     ctrl_msgs_t ctrl_breakdown;

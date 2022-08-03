@@ -19,6 +19,7 @@ extern wdb_state_t wdb_state;
 /* setup/teardown */
 
 static int test_setup(void ** state) {
+    wdb_state.uptime = 123456789;
     wdb_state.queries_total = 856;
     wdb_state.queries_breakdown.wazuhdb_queries = 212;
     wdb_state.queries_breakdown.wazuhdb_breakdown.remove_queries = 212;
@@ -254,6 +255,8 @@ void test_wazuhdb_create_state_json(void ** state) {
     *state = (void *)state_json;
 
     assert_non_null(state_json);
+
+    assert_int_equal(cJSON_GetObjectItem(state_json, "uptime")->valueint, 123456789);
 
     assert_non_null(cJSON_GetObjectItem(state_json, "metrics"));
     cJSON* metrics = cJSON_GetObjectItem(state_json, "metrics");
