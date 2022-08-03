@@ -27,7 +27,7 @@ namespace builder::internals::builders
  * @param definition The filter definition.
  * @return base::Expression true when executes without any problem, false otherwise.
  */
-base::Expression opBuilderWdbSyncUpdate(const std::any& definition);
+base::Expression opBuilderWdbUpdate(const std::any& definition);
 
 /**
  * @brief Executes query on WDB returning status and payload.
@@ -35,7 +35,7 @@ base::Expression opBuilderWdbSyncUpdate(const std::any& definition);
  * @param tr Tracer
  * @return base::Expression when true returns string of payload, false none.
  */
-base::Expression opBuilderWdbSyncQuery(const std::any& definition);
+base::Expression opBuilderWdbQuery(const std::any& definition);
 
 } // namespace builder::internals::builders
 
