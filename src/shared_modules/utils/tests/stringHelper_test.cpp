@@ -59,6 +59,11 @@ TEST_F(StringUtilsTest, SplitIndex)
     EXPECT_EQ(splitTextVector, "hello");
 }
 
+TEST_F(StringUtilsTest, SplitIndexRuntimeError)
+{
+    EXPECT_THROW(Utils::splitIndex("hello.world", '.', 2), std::runtime_error);
+}
+
 TEST_F(StringUtilsTest, AsciiToHexString)
 {
     const std::vector<unsigned char> data{0x2d, 0x53, 0x3b, 0x9d, 0x9f, 0x0f, 0x06, 0xef, 0x4e, 0x3c, 0x23, 0xfd, 0x49, 0x6c, 0xfe, 0xb2, 0x78, 0x0e, 0xda, 0x7f};
