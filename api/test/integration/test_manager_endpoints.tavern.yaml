@@ -943,7 +943,7 @@ test_name: GET /manager/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Sow the config of analysis/global in the manager
+  - name: Show the config of analysis/global in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
