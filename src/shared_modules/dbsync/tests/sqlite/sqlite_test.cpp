@@ -237,3 +237,16 @@ TEST_F(SQLiteTest, ColumnValue)
     EXPECT_DOUBLE_EQ(4.0, spColumn5->value(double_t{}));
     EXPECT_EQ(SQLITE_FLOAT, spColumn5->type());
 }
+
+TEST_F(SQLiteTest, StatementExpand)
+{
+    std::shared_ptr<IConnection> spConnection{ new Connection };
+    Statement stmt
+    {
+        spConnection,
+        R"(CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);)"
+    };
+    std::string stmt_exp = stmt.expand();
+    std::string query("CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);");
+    EXPECT_EQ(true,query.compare(stmt_exp)==0);
+}
