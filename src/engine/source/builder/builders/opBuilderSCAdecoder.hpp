@@ -10,13 +10,15 @@
 #ifndef _OP_BUILDER_SCA_DECODER_H
 #define _OP_BUILDER_SCA_DECODER_H
 
-#include "builderTypes.hpp"
+#include <any>
+
+#include "expression.hpp"
 
 namespace builder::internals::builders
 {
 
-/* Security configuration assessment remoted queue */
-constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
+// /* Security configuration assessment remoted queue */
+// constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 
 /**
  * @brief Executes query on WDB returning status ok or not ok.
@@ -24,8 +26,7 @@ constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
  * @param tr Tracer
  * @return base::Lifter true when executes without any problem, false otherwise.
  */
-base::Lifter opBuilderSCAdecoder(const base::DocumentValue& def,
-                                types::TracerFn tr);
+base::Expression opBuilderSCAdecoder(const std::any& definition);
 
 } // namespace builder::internals::builders
 

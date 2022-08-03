@@ -3,26 +3,12 @@ name: decoder_sca
 check:
   - queue: +i_eq/7
 
+parse:
+  logql:
+    event.original: <_event_json/Json>
+
 normalize:
   - check:
-      - event.original.type: +exists
+      - _event_json.type: +exists
     map:
-      decode_result: +sca_decoder
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      decode_result: +sca_decoder/$_event_json/$agent.id
