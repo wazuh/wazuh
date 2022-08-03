@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "opBuilderWdbSync.hpp"
+#include "opBuilderWdb.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -22,8 +22,8 @@
 namespace builder::internals::builders
 {
 
-static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& definition,
-                                                            bool doReturnPayload)
+static inline base::Expression opBuilderWdbGenericQuery(const std::any& definition,
+                                                        bool doReturnPayload)
 {
     // Extract parameters from any
     auto [targetField, name, raw_parameters] =
@@ -55,8 +55,7 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
+            base::Event event) -> base::result::Result<base::Event> {
             std::string completeQuery {};
 
             // Check if the value comes from a reference
@@ -122,15 +121,15 @@ static inline base::Expression opBuilderWdbSyncGenericQuery(const std::any& defi
 }
 
 // <wdb_result>: +wdb_update/<quey>|$<quey>
-base::Expression opBuilderWdbSyncUpdate(const std::any& definition)
+base::Expression opBuilderWdbUpdate(const std::any& definition)
 {
-    return opBuilderWdbSyncGenericQuery(definition, false);
+    return opBuilderWdbGenericQuery(definition, false);
 }
 
 // <wdb_result>: +wdb_query/<quey>|$<quey>
-base::Expression opBuilderWdbSyncQuery(const std::any& definition)
+base::Expression opBuilderWdbQuery(const std::any& definition)
 {
-    return opBuilderWdbSyncGenericQuery(definition, true);
+    return opBuilderWdbGenericQuery(definition, true);
 }
 
 } // namespace builder::internals::builders
