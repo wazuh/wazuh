@@ -1221,8 +1221,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start -> 4'
 
   - id: 15078
@@ -1235,8 +1233,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc -> Start -> 4'
 
   - id: 15079
@@ -1250,6 +1246,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN -> Start -> 4'
 
   - id: 15080
@@ -1263,6 +1260,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start -> 4'
 
   - id: 15081
@@ -1275,8 +1273,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start -> 4'
 
   - id: 15082
@@ -1289,8 +1285,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start -> 4'
 
   - id: 15083
@@ -1304,6 +1298,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start -> 4'
 
   - id: 15084
@@ -1317,6 +1312,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
 
   - id: 15085
@@ -1329,8 +1325,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> 4'
 
   - id: 15086
@@ -1344,6 +1338,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start -> 4'
 
   - id: 15087
@@ -1356,8 +1351,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> 4'
 
   - id: 15088
@@ -1370,8 +1363,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
   - id: 15089
@@ -1384,8 +1375,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
   - id: 15090
@@ -1398,8 +1387,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start -> 4'
 
   - id: 15091
@@ -1412,8 +1399,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   - id: 15092
@@ -1426,8 +1411,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start -> 4'
 
   - id: 15093
@@ -1440,8 +1423,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start -> 4'
 
   - id: 15094
@@ -1454,8 +1435,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start -> 4'
 
   - id: 15095
@@ -1468,8 +1447,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start -> 4'
 
   - id: 15096
@@ -1482,8 +1459,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start -> 4'
 
   - id: 15097
@@ -1496,8 +1471,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator -> Start -> 4'
 
   - id: 15098
@@ -1510,8 +1483,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> Start -> 4'
 
   - id: 15099
@@ -1524,8 +1495,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess -> Start -> 4'
 
   - id: 15100
@@ -1538,8 +1507,6 @@ checks:
       - cis_csc: ["4.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start -> 4'
 
   - id: 15101
@@ -1553,6 +1520,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp -> Start -> 4'
 
   - id: 15102
@@ -1580,6 +1548,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr -> Start -> 4'
 
   - id: 15104
@@ -1617,6 +1586,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc -> Start -> 4'
 
   - id: 15107
@@ -1654,6 +1624,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc -> Start -> 4'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc -> Start -> 4'
 
   - id: 15110
@@ -1715,6 +1686,7 @@ checks:
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC -> Start -> 4'
 
   - id: 15115
@@ -2755,8 +2727,6 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1 -> 0'
 
   - id: 15185
