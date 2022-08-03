@@ -20,7 +20,7 @@
 #include <logging/logging.hpp>
 #include <wdb/wdb.hpp>
 
-#include "opBuilderWdbSync.hpp"
+#include "opBuilderWdb.hpp"
 #include "socketAuxiliarFunctions.hpp"
 
 using namespace base;
@@ -29,18 +29,18 @@ namespace bld = builder::internals::builders;
 namespace unixStream = base::utils::socketInterface;
 
 // Build ok
-TEST(opBuilderWdbSyncQuery, BuildSimplest)
+TEST(opBuilderWdbQuery, BuildSimplest)
 {
     auto tuple {std::make_tuple(
         std::string {"/wdb/result"},
         std::string {"wdb_query"},
         std::vector<std::string> {"agent 007 syscheck integrity_clear ...."})};
 
-    ASSERT_NO_THROW(bld::opBuilderWdbSyncQuery(tuple));
+    ASSERT_NO_THROW(bld::opBuilderWdbQuery(tuple));
 }
 
 // TODO: the / of the path inside the json should be escaped!
-TEST(opBuilderWdbSyncQuery, BuildsWithJson)
+TEST(opBuilderWdbQuery, BuildsWithJson)
 {
     auto tuple {std::make_tuple(
         std::string {"/wdb/result"},
@@ -49,44 +49,44 @@ TEST(opBuilderWdbSyncQuery, BuildsWithJson)
             "agent 007 syscheck integrity_clear {\"tail\": \"tail\", "
             "\"checksum\":\"checksum\", \"begin\": \"/a/path\", \"end\": \"/z/path\"}"})};
 
-    ASSERT_NO_THROW(bld::opBuilderWdbSyncQuery(tuple));
+    ASSERT_NO_THROW(bld::opBuilderWdbQuery(tuple));
 }
 
-TEST(opBuilderWdbSyncQuery, BuildsWithQueryRef)
+TEST(opBuilderWdbQuery, BuildsWithQueryRef)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
 
-    ASSERT_NO_THROW(bld::opBuilderWdbSyncQuery(tuple));
+    ASSERT_NO_THROW(bld::opBuilderWdbQuery(tuple));
 }
 
-TEST(opBuilderWdbSyncQuery, checkWrongQttyParams)
+TEST(opBuilderWdbQuery, checkWrongQttyParams)
 {
     auto tuple {std::make_tuple(
         std::string {"/wdb/result"},
         std::string {"wdb_query"},
         std::vector<std::string> {"$wdb.query_parameter", "more params"})};
 
-    ASSERT_THROW(bld::opBuilderWdbSyncQuery(tuple), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderWdbQuery(tuple), std::runtime_error);
 }
 
-TEST(opBuilderWdbSyncQuery, checkNoParams)
+TEST(opBuilderWdbQuery, checkNoParams)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {})};
 
-    ASSERT_THROW(bld::opBuilderWdbSyncQuery(tuple), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderWdbQuery(tuple), std::runtime_error);
 }
 
-TEST(opBuilderWdbSyncQuery, gettingEmptyReference)
+TEST(opBuilderWdbQuery, gettingEmptyReference)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
 
-    auto op {bld::opBuilderWdbSyncQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto op {bld::opBuilderWdbQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
         "query_parameters": ""}
@@ -97,13 +97,13 @@ TEST(opBuilderWdbSyncQuery, gettingEmptyReference)
     ASSERT_FALSE(result1.payload().get()->exists("/wdb/result"));
 }
 
-TEST(opBuilderWdbSyncQuery, gettingNonExistingReference)
+TEST(opBuilderWdbQuery, gettingNonExistingReference)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
 
-    auto op {bld::opBuilderWdbSyncQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto op {bld::opBuilderWdbQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
         "not_query_parameters_": "query"}
@@ -114,12 +114,12 @@ TEST(opBuilderWdbSyncQuery, gettingNonExistingReference)
     ASSERT_FALSE(result1);
 }
 
-TEST(opBuilderWdbSyncQuery, completeFunctioningWithtDBresponseNotOk)
+TEST(opBuilderWdbQuery, completeFunctioningWithtDBresponseNotOk)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
-    auto op {bld::opBuilderWdbSyncQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto op {bld::opBuilderWdbQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {std::make_shared<json::Json>(R"({"wdb": {
         "query_parameters": "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"}
@@ -151,12 +151,12 @@ TEST(opBuilderWdbSyncQuery, completeFunctioningWithtDBresponseNotOk)
     close(serverSocketFD);
 }
 
-TEST(opBuilderWdbSyncQuery, completeFunctioningWithtDBresponseWithPayload)
+TEST(opBuilderWdbQuery, completeFunctioningWithtDBresponseWithPayload)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
-    auto op {bld::opBuilderWdbSyncQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto op {bld::opBuilderWdbQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {std::make_shared<json::Json>(R"({"wdb": {
         "query_parameters": "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"}
@@ -182,12 +182,12 @@ TEST(opBuilderWdbSyncQuery, completeFunctioningWithtDBresponseWithPayload)
     close(serverSocketFD);
 }
 
-TEST(opBuilderWdbSyncQuery, QueryResultCodeOkPayloadEmpty)
+TEST(opBuilderWdbQuery, QueryResultCodeOkPayloadEmpty)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
-    auto op {bld::opBuilderWdbSyncQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto op {bld::opBuilderWdbQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {std::make_shared<json::Json>(R"({"wdb": {
         "query_parameters": "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"}
@@ -213,12 +213,12 @@ TEST(opBuilderWdbSyncQuery, QueryResultCodeOkPayloadEmpty)
     close(serverSocketFD);
 }
 
-TEST(opBuilderWdbSyncQuery, QueryResultCodeOkNotPayload)
+TEST(opBuilderWdbQuery, QueryResultCodeOkNotPayload)
 {
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_query"},
                                 std::vector<std::string> {"$wdb.query_parameters"})};
-    auto op {bld::opBuilderWdbSyncQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto op {bld::opBuilderWdbQuery(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {std::make_shared<json::Json>(R"({"wdb": {
         "query_parameters": "agent 007 syscheck integrity_clear {\"tail\": \"tail\", \"checksum\": \"checksum\", \"begin\": \"path\", \"end\": \"path\"}"}
