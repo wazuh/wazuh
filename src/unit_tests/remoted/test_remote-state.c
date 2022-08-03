@@ -211,8 +211,8 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
     assert_non_null(cJSON_GetObjectItem(sent, "ar"));
     assert_int_equal(cJSON_GetObjectItem(sent, "ar")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(sent, "cfga"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "cfga")->valueint, 8);
+    assert_non_null(cJSON_GetObjectItem(sent, "sca"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "sca")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(sent, "request"));
     assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
     assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
@@ -287,7 +287,7 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack")->valueint, 2346);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared")->valueint, 235);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar")->valueint, 514);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "cfga")->valueint, 134);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "sca")->valueint, 134);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request")->valueint, 153);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
 
