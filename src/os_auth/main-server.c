@@ -33,6 +33,7 @@
 #include "wazuhdb_op.h"
 #include "os_err.h"
 #include "generate_cert.h"
+
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
@@ -329,38 +330,38 @@ int main(int argc, char **argv)
 
             // Sanitize parameters
             if (cert_val == NULL) {
-                merror_exit("Certificate validity not specified");
+                merror_exit("Certificate expiration time not defined.");
             }
 
             if (cert_key_bits == NULL) {
-                merror_exit("Certificate key size not specified");
+                merror_exit("Certificate key size not defined.");
             }
 
             if (cert_key_path == NULL) {
-                merror_exit("Key path not specified.");
+                merror_exit("Key path not not defined.");
             }
 
             if (cert_path == NULL) {
-                merror_exit("Certificate path not specified.");
+                merror_exit("Certificate path not defined.");
             }
 
             if (cert_subj == NULL) {
-                merror_exit("Certificate subject not specified.");
+                merror_exit("Certificate subject not defined.");
             }
 
             if (days_val = strtol(cert_val, NULL, 10), days_val == 0) {
-                merror_exit("Canot set certificate validity to 0 days");
+                merror_exit("Unable to set certificate validity to 0 days.");
             }
 
             if (key_bits = strtol(cert_key_bits, NULL, 10), key_bits == 0) {
-                merror_exit("Canot set certificate private key to 0 bits");
+                merror_exit("Unable to set certificate private key size to 0 bits.");
             }
 
             if (generate_cert(days_val, key_bits, cert_key_path, cert_path, cert_subj) == 0) {
-                mdebug2("Certificates generated successfuly");
+                mdebug2("Certificates generated successfully.");
                 exit(0);
             } else {
-                merror_exit("Cannot genereate certificates");
+                merror_exit("Unable to generate auth certificates.");
             }
         }
 
