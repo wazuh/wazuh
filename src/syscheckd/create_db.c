@@ -323,16 +323,16 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
         return;
     }
 
+    if (fim_check_ignore(path) == 1) {
+        return;
+    }
+
     switch (evt_data->statbuf.st_mode & S_IFMT) {
 #ifndef WIN32
     case FIM_LINK:
         // Fallthrough
 #endif
     case FIM_REGULAR:
-        if (fim_check_ignore(path) == 1) {
-            return;
-        }
-
         if (fim_check_restrict(path, configuration->filerestrict) == 1) {
             return;
         }
@@ -1192,7 +1192,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
+                mdebug2(FIM_IGNORE_ENTRY, file_name, syscheck.ignore[i]);
                 return 1;
             }
             i++;
@@ -1204,7 +1204,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug2(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
+                mdebug2(FIM_IGNORE_SREGEX, file_name, syscheck.ignore_regex[i]->raw);
                 return 1;
             }
             i++;

@@ -16,7 +16,6 @@
 # https://github.com/Azure/azure-sdk-for-python
 # https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python
 ################################################################################################
-
 import logging
 import sys
 from argparse import ArgumentParser
@@ -41,27 +40,27 @@ from utils import ANALYSISD
 
 
 # URLs
-url_logging = 'https://login.microsoftonline.com'
-url_analytics = 'https://api.loganalytics.io'
-url_graph = 'https://graph.microsoft.com'
+URL_LOGGING = 'https://login.microsoftonline.com'
+URL_ANALYTICS = 'https://api.loganalytics.io'
+URL_GRAPH = 'https://graph.microsoft.com'
 
-socket_header = '1:Azure:'
+SOCKET_HEADER = '1:Azure:'
 
 DATETIME_MASK = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 # Logger parameters
-logging_msg_format = '%(asctime)s azure: %(levelname)s: %(message)s'
-logging_date_format = '%Y/%m/%d %I:%M:%S'
-log_levels = {0: logging.WARNING,
+LOGGING_MSG_FORMAT = '%(asctime)s azure: %(levelname)s: %(message)s'
+LOGGING_DATE_FORMAT = '%Y/%m/%d %I:%M:%S'
+LOG_LEVELS = {0: logging.WARNING,
               1: logging.INFO,
               2: logging.DEBUG}
 
 
 def set_logger():
     """Set the logger configuration."""
-    logging.basicConfig(level=log_levels.get(args.debug_level, logging.INFO), format=logging_msg_format,
-                        datefmt=logging_date_format)
-    logging.getLogger('azure').setLevel(log_levels.get(args.debug_level, logging.WARNING))
+    logging.basicConfig(level=LOG_LEVELS.get(args.debug_level, logging.INFO), format=LOGGING_MSG_FORMAT,
+                        datefmt=LOGGING_DATE_FORMAT)
+    logging.getLogger('azure').setLevel(LOG_LEVELS.get(args.debug_level, logging.WARNING))
     logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
@@ -189,6 +188,10 @@ def read_auth_file(auth_path: str, fields: tuple):
                           f"and '{fields[1]}' fields.")
             sys.exit(1)
         return credentials[fields[0]], credentials[fields[1]]
+    except ValueError:
+        logging.error("Error: The authentication file format is not valid. "
+                      "Make sure that it is composed of only 2 lines with 'field = value' format.")
+        sys.exit(1)
     except OSError as e:
         logging.error(f"Error: The authentication file could not be opened: {e}")
         sys.exit(1)
@@ -229,7 +232,7 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
         logging.debug(f"Attempting to update a {table.__tablename__} row object. "
                       f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
         try:
-            success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query)
+            orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query)
         except orm.AzureORMError as e:
             logging.error(f"Error updating row object from {table.__tablename__}: {e}")
             sys.exit(1)
@@ -264,7 +267,7 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
     try:
         orm.add_row(row=item)
     except orm.AzureORMError as e:
-        logging.error(f"Error inserting row object into {table.__tablename__}: e")
+        logging.error(f"Error inserting row object into {table.__tablename__}: {e}")
         sys.exit(1)
     return item
 
@@ -288,11 +291,11 @@ def start_log_analytics():
 
     # Get authentication token
     logging.info("Log Analytics: Getting authentication token.")
-    token = get_token(client_id=client, secret=secret, domain=args.la_tenant_domain, scope=f'{url_analytics}/.default')
+    token = get_token(client_id=client, secret=secret, domain=args.la_tenant_domain, scope=f'{URL_ANALYTICS}/.default')
 
     # Build the request
     md5_hash = md5(args.la_query.encode()).hexdigest()
-    url = f"{url_analytics}/v1/workspaces/{args.workspace}/query"
+    url = f"{URL_ANALYTICS}/v1/workspaces/{args.workspace}/query"
     body = build_log_analytics_query(offset=args.la_time_offset, md5_hash=md5_hash)
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -305,7 +308,7 @@ def start_log_analytics():
 
 
 def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
-    """Prepares and makes the request, building the query based on the time of event generation.
+    """Prepare and make the request, building the query based on the time of event generation.
 
     Parameters
     ----------
@@ -324,7 +327,8 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
         if item is None:
             item = create_new_row(table=orm.LogAnalytics, query=args.la_query, md5_hash=md5_hash, offset=offset)
     except orm.AzureORMError as e:
-        logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}': {e}")
+        logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}': "
+                      f"{e}")
         sys.exit(1)
 
     min_str = item.min_processed_date
@@ -338,7 +342,6 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if args.reparse:
-        filter_value = f"TimeGenerated >= {desired_str}"
         filter_value = f"TimeGenerated >= {desired_str}"
     # Build the filter taking into account the min and max values from the file
     else:
@@ -357,7 +360,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
 
 
 def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str):
-    """Obtain the list with the last time generated of each query.
+    """Get the logs, process the response and iterate the events.
 
     Parameters
     ----------
@@ -381,12 +384,11 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
         try:
             columns = response.json()['tables'][0]['columns']
             rows = response.json()['tables'][0]['rows']
-
             if len(rows) == 0:
                 logging.info("Log Analytics: There are no new results")
             else:
                 time_position = get_time_position(columns)
-                if time_position:
+                if time_position is not None:
                     iter_log_analytics_events(columns, rows)
                     update_row_object(table=orm.LogAnalytics, md5_hash=md5_hash, new_min=rows[0][time_position],
                                       new_max=rows[len(rows) - 1][time_position], query=args.la_query)
@@ -418,7 +420,7 @@ def get_time_position(columns: list):
 
 
 def iter_log_analytics_events(columns: list, rows: list):
-    """Iterate through the columns and rows to build the events and sent them to the socket.
+    """Iterate through the columns and rows to build the events and send them to the socket.
 
     Parameters
     ----------
@@ -465,7 +467,7 @@ def start_graph():
 
     # Get the token
     logging.info("Graph: Getting authentication token.")
-    token = get_token(client_id=client, secret=secret, domain=args.graph_tenant_domain, scope=f"{url_graph}/.default")
+    token = get_token(client_id=client, secret=secret, domain=args.graph_tenant_domain, scope=f"{URL_GRAPH}/.default")
     headers = {'Authorization': f'Bearer {token}'}
 
     # Build the query
@@ -528,7 +530,7 @@ def build_graph_url(offset: str, md5_hash: str):
             filter_value = f"{filtering_condition}+gt+{max_str}"
 
     logging.info(f"Graph: The search starts for query: '{args.graph_query}' using {filter_value}")
-    return f"{url_graph}/v1.0/{args.graph_query}{'?' if '?' not in args.graph_query else ''}&$filter={filter_value}"
+    return f"{URL_GRAPH}/v1.0/{args.graph_query}{'?' if '?' not in args.graph_query else ''}&$filter={filter_value}"
 
 
 def get_graph_events(url: str, headers: dict, md5_hash: str):
@@ -569,6 +571,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
         if len(values_json) == 0:
             logging.info("Graph: There are no new results")
         next_url = response_json.get('@odata.nextLink')
+
         if next_url:
             get_graph_events(url=next_url, headers=headers, md5_hash=md5_hash)
     elif response.status_code == 400:
@@ -619,7 +622,7 @@ def start_storage():
             logging.error("Storage: Unable to list the containers. Invalid credentials.")
             sys.exit(1)
         except AzureException as e:
-            logging.error(f"Storage: The containers could not be listed: '{e.error_code}'.")
+            logging.error(f"Storage: The containers could not be listed: '{e}'.")
             sys.exit(1)
 
     # Restore the default max retry value
@@ -683,10 +686,9 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
 
         logging.info(f"Storage: The search starts from the date: {desired_datetime} for blobs in "
                      f"container: '{container_name}' ")
-        search = "." if not args.blobs else args.blobs
         for blob in blobs:
             # Skip the blob if its name has not the expected format
-            if search not in blob.name:
+            if args.blobs and args.blobs not in blob.name:
                 continue
 
             # Skip the blob if already processed
@@ -732,12 +734,13 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
                         else:
                             msg = "azure_tag: azure-storage."
                             if args.storage_tag:
-                                msg = f'{msg} azure_storage_tag: "{args.storage_tag}".'
+                                msg = f'{msg} azure_storage_tag: {args.storage_tag}.'
                             msg = f'{msg} {line}'
                         logging.info("Storage: Sending event by socket.")
                         send_message(msg)
-            update_row_object(table=orm.Storage, md5_hash=md5_hash, new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), query=container_name)
+            update_row_object(table=orm.Storage, md5_hash=md5_hash, query=container_name,
+                              new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
 
         # Continue until no marker is returned
         if blobs.next_marker:
@@ -771,7 +774,7 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
         'scope': scope,
         'grant_type': 'client_credentials'
     }
-    auth_url = f'{url_logging}/{domain}/oauth2/v2.0/token'
+    auth_url = f'{URL_LOGGING}/{domain}/oauth2/v2.0/token'
     try:
         token_response = post(auth_url, data=body).json()
         return token_response['access_token']
@@ -803,7 +806,7 @@ def send_message(message: str):
     s = socket(AF_UNIX, SOCK_DGRAM)
     try:
         s.connect(ANALYSISD)
-        s.send(f'{socket_header}{message}'.encode(errors='replace'))
+        s.send(f'{SOCKET_HEADER}{message}'.encode(errors='replace'))
     except socket_error as e:
         if e.errno == 111:
             logging.error("ERROR: Wazuh must be running.")
@@ -817,12 +820,12 @@ def send_message(message: str):
         s.close()
 
 
-def offset_to_datetime(date: str):
+def offset_to_datetime(offset: str):
     """Transform an offset value to a datetime object.
 
     Parameters
     ----------
-    date : str
+    offset : str
         A positive number containing a suffix character that indicates its time unit,
         such as, s (seconds), m (minutes), h (hours), d (days), w (weeks), M (months).
 
@@ -831,9 +834,9 @@ def offset_to_datetime(date: str):
     datetime
         The result of subtracting the offset value from the current datetime.
     """
-    date = date.replace(" ", "")
-    value = int(date[:len(date) - 1])
-    unit = date[len(date) - 1:]
+    offset = offset.replace(" ", "")
+    value = int(offset[:len(offset) - 1])
+    unit = offset[len(offset) - 1:]
 
     if unit == 'h':
         return datetime.utcnow().replace(tzinfo=UTC) - timedelta(hours=value)

@@ -445,8 +445,6 @@ def compare_files(good_files, check_files, node_name):
     -------
     files : dict
         Paths (keys) and metadata (values) of the files classified into four groups.
-    count : int
-        Number of files inside each classification.
     """
 
     def split_on_condition(seq, condition):
@@ -511,10 +509,7 @@ def compare_files(good_files, check_files, node_name):
     else:
         shared_files = {key: good_files[key] for key in shared}
 
-    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
-    count = {'missing': len(missing_files), 'extra': len(extra_files), 'shared': len(all_shared)}
-
-    return files, count
+    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
 
 def clean_up(node_name=""):
@@ -631,7 +626,7 @@ def unmerge_info(merge_type, path_file, filename):
         Name of the destination directory inside queue. I.e: {wazuh_path}/PATH/{merge_type}/<unmerge_files>.
     path_file : str
         Path to the unzipped merged file.
-    filename
+    filename : str
         Filename of the merged file.
 
     Yields

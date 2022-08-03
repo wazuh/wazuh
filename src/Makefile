@@ -1151,13 +1151,17 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 17
+DEPS_VERSION = 18
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-cpu_arch := ${uname_P}
+ifeq (${uname_S},Darwin)
+        cpu_arch := ${uname_M}
+else
+        cpu_arch := ${uname_P}
+endif
 ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif

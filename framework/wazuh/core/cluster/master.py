@@ -7,7 +7,6 @@ import json
 import operator
 import os
 import shutil
-import time
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
@@ -16,7 +15,6 @@ from time import perf_counter
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
-import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
@@ -49,7 +47,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its integrity information."""
-        return self.wazuh_common.sync_integrity
+        return self.wazuh_common.integrity_check
 
     def done_callback(self, future=None):
         """Check whether the synchronization process was correct and free its lock.
@@ -243,6 +241,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
+        self.integrity = None
+        # Maximum zip size allowed when syncing Integrity files.
         self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
     def to_dict(self):
@@ -431,7 +431,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
 
-        # Initialize agent-groups sending task
+        # SyncFiles instance used to zip and send integrity files to worker.
+        self.integrity = c_common.SyncFiles(cmd=b'syn_m_c', logger=self.task_loggers['Integrity sync'], manager=self)
+        # Initialize agent-groups sending task.
         self.agent_group_task = asyncio.ensure_future(self.send_agent_groups_information())
 
         return cmd, payload
@@ -730,18 +732,31 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
             await asyncio.sleep(1)
 
-    async def sync_integrity(self, task_id: str, received_file: asyncio.Event):
-        """Perform the integrity synchronization process by comparing local and received files.
+    def set_date_end_master(self, logger):
+        """Store the datetime when Integrity sync is completed and log 'Finished in' message.
 
-        It waits until the worker sends its integrity metadata. Once received, they are unzipped.
+        Parameters
+        ----------
+        logger : Logger object
+            Logger to use.
+        """
+        self.integrity_sync_status['date_end_master'] = utils.get_utc_now()
+        logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
+                                                   self.integrity_sync_status['tmp_date_start_master'])
+                                                  .total_seconds()))
+        self.integrity_sync_status['date_start_master'] = \
+            self.integrity_sync_status['tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
+        self.integrity_sync_status['date_end_master'] = \
+            self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
 
-        The information inside the unzipped files_metadata.json file (integrity metadata) is compared with the
-        local one (updated every self.cluster_items['intervals']['master']['recalculate_integrity'] seconds).
-        All files that are different (new, deleted, with a different BLAKE2b, etc) are classified into four groups:
-        shared, missing, extra and extra_valid.
+    async def integrity_check(self, task_id: str, received_file: asyncio.Event):
+        """Compare master and worker files and start Integrity sync if they differ.
 
-        Finally, a zip containing this classification (files_metadata.json) and the files that are missing
-        or that must be updated are sent to the worker.
+        Wait for worker integrity metadata and unzip it. The information inside the unzipped files_metadata.json
+        (integrity metadata) is compared with the metadata of local files.
+
+        Files which differ (new, deleted, with a different MD5, etc.) are classified into four groups:
+        shared, missing, extra and extra_valid. Integrity sync is started in this case.
 
         Parameters
         ----------
@@ -754,141 +769,66 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         date_start_master = utils.get_utc_now()
         logger.info(f"Starting.")
 
-        logger.debug("Waiting to receive zip file from worker.")
-        try:
-            await asyncio.wait_for(received_file.wait(),
-                                   timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
-            # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
-                                                          cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
-
+        await self.wait_for_file(file=received_file, task_id=task_id)
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
         if isinstance(received_filename, Exception):
             raise received_filename
-
         logger.debug(f"Received file from worker: '{received_filename}'")
 
-        # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
-        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
-            received_filename)
+        # Dict with metadata of files and path to zipdir (directory with decompressed files).
+        files_metadata, decompressed_files_path = await cluster.async_decompress_files(received_filename)
         # There are no files inside decompressed_files_path, only files_metadata.json which has already been loaded.
         shutil.rmtree(decompressed_files_path)
 
         # Classify files in shared, missing, extra and extra valid.
-        worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
-                                                                           files_metadata, self.name)
+        files_classif = cluster.compare_files(self.server.integrity_control, files_metadata, self.name)
 
         total_time = (utils.get_utc_now() - date_start_master).total_seconds()
-        # The 'TYPE' placeholder is replacing the type of files that we could need the worker to forwards to the master.
-        # This file used to the 'extra-valid', which is currently deprecated.
-        # self.extra_valid_requested = bool(worker_files_ko['TYPE'])
         self.extra_valid_requested = False
         self.integrity_check_status.update({'date_start_master': date_start_master.strftime(DECIMALS_DATE_FORMAT),
                                             'date_end_master': utils.get_utc_now().strftime(DECIMALS_DATE_FORMAT)})
 
         # Get the total number of files that require some change.
-        if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
+        if not functools.reduce(operator.add, map(len, files_classif.values())):
             logger.info(f"Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. "
                         f"Sync not required.")
             await self.send_request(command=b'syn_m_c_ok', data=b'')
         else:
             logger.info(f"Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. "
                         f"Sync required.")
+            await self.integrity_sync(files_classif)
 
-            logger = self.task_loggers['Integrity sync']
-            logger.info("Starting.")
-            self.integrity_sync_status.update({'tmp_date_start_master': utils.get_utc_now(), 'total_files': counts,
-                                               'total_extra_valid': 0})
-            logger.info(f"Files to create in worker: {len(worker_files_ko['missing'])} | Files to update in worker: "
-                        f"{len(worker_files_ko['shared'])} | Files to delete in worker: "
-                        f"{len(worker_files_ko['extra'])}")
+    async def integrity_sync(self, files_classif):
+        """Send files and their classification (missing, shared, etc.) to worker.
 
-            # Compress data: master files (only KO shared and missing).
-            logger.debug("Compressing files to be synced in worker.")
-            master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
-            compressed_data = await cluster.run_in_pool(self.loop, self.server.task_pool,
-                                                        wazuh.core.cluster.cluster.compress_files, self.name,
-                                                        master_files_paths, worker_files_ko, self.current_zip_limit)
+        Create a zip containing this classification (files_metadata.json) and the files
+        that are required in the worker.
 
-            time_to_send = 0
-            sent_size = 0
+        Parameters
+        ----------
+        files_classif : dict
+            Paths (keys) and metadata (values) of the files classified into four groups.
+        """
+        logger = self.task_loggers['Integrity sync']
+        logger.info("Starting.")
 
-            try:
-                # Start the synchronization process with the worker and get a taskID.
-                task_id = await self.send_request(command=b'syn_m_c', data=b'')
-                if isinstance(task_id, Exception) or task_id.startswith(b'Error'):
-                    exc_info = task_id if isinstance(task_id, Exception) else \
-                        exception.WazuhClusterError(3016, extra_message=str(task_id))
-                    task_id = b'None'
-                    raise exc_info
+        self.integrity_sync_status.update({'tmp_date_start_master': utils.get_utc_now(),
+                                           'total_files': {key: len(value) for key, value in files_classif.items()},
+                                           'total_extra_valid': 0})
+        logger.info(f"Files to create in worker: {len(files_classif['missing'])} | "
+                    f"Files to update in worker: {len(files_classif['shared'])} | "
+                    f"Files to delete in worker: {len(files_classif['extra'])}")
 
-                # Send zip file to the worker into chunks.
-                time_to_send = time.perf_counter()
-                sent_size = await self.send_file(compressed_data, task_id)
-                time_to_send = time.perf_counter() - time_to_send
-                logger.debug("Zip with files to be synced sent to worker.")
+        # Send files and metadata to the worker node.
+        metadata_len = functools.reduce(operator.add, map(len, files_classif.values()))
+        master_files_paths = files_classif['shared'].keys() | files_classif['missing'].keys()
+        await self.integrity.sync(master_files_paths, files_classif, metadata_len, self.server.task_pool,
+                                  self.current_zip_limit)
 
-                # Notify what is the zip path for the current taskID.
-                result = await self.send_request(command=b'syn_m_c_e', data=task_id + b' ' + os.path.relpath(
-                    compressed_data, common.WAZUH_PATH).encode())
-
-                if isinstance(result, Exception):
-                    raise result
-                elif result.startswith(b'Error'):
-                    raise exception.WazuhClusterError(3016, extra_message=result.decode())
-            except exception.WazuhException as e:
-                # Notify error to worker and delete its received file.
-                self.logger.error(f"Error sending files information: {e}")
-                await self.send_request(
-                    command=b'syn_m_c_r', data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
-            except Exception as e:
-                # Notify error to worker and delete its received file.
-                self.logger.error(f"Error sending files information: {e}")
-                exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                      cls=c_common.WazuhJSONEncoder).encode()
-                await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
-            finally:
-                try:
-                    # Decrease max zip size if task was interrupted (otherwise, KeyError exception raised).
-                    self.interrupted_tasks.remove(task_id)
-                    self.current_zip_limit = max(
-                        self.cluster_items['intervals']['communication']['min_zip_size'],
-                        sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
-                    )
-                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
-                except KeyError:
-                    # Increase max zip size if two conditions are met:
-                    #   1. Current zip limit is lower than default.
-                    #   2. Time to send zip was far under timeout_receiving_file.
-                    if (self.current_zip_limit < self.cluster_items['intervals']['communication']['max_zip_size'] and
-                            time_to_send < self.cluster_items['intervals']['communication']['timeout_receiving_file'] *
-                            (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])):
-                        self.current_zip_limit = min(
-                            self.cluster_items['intervals']['communication']['max_zip_size'],
-                            self.current_zip_limit * (
-                                    1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
-                            ))
-                        self.logger.debug(
-                            f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
-
-                # Remove local file.
-                os.unlink(compressed_data)
-                logger.debug("Finished sending files to worker.")
-                # Log 'Finished in' message only if there are no extra_valid files to sync.
-                if not self.extra_valid_requested:
-                    self.integrity_sync_status['date_end_master'] = utils.get_utc_now()
-                    logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                               self.integrity_sync_status['tmp_date_start_master'])
-                                                              .total_seconds()))
-                    self.integrity_sync_status['date_start_master'] = self.integrity_sync_status[
-                        'tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
-                    self.integrity_sync_status['date_end_master'] = \
-                        self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
+        # Log 'Finished in' message only if there are no extra_valid files to sync.
+        if not self.extra_valid_requested:
+            self.set_date_end_master(logger)
 
     async def sync_extra_valid(self, task_id: str, received_file: asyncio.Event):
         """Run extra valid sync process and set up necessary parameters.
@@ -902,14 +842,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_end_master'] = utils.get_utc_now()
-        logger.info("Finished in {:.3f}s.".format(
-            (self.integrity_sync_status['date_end_master'] -
-             self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
-        self.integrity_sync_status['date_start_master'] = \
-            self.integrity_sync_status['tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
-        self.integrity_sync_status['date_end_master'] = \
-            self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
+        self.set_date_end_master(logger)
         self.extra_valid_requested = False
         self.sync_integrity_free[0] = True
 
@@ -926,16 +859,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Logger to use (can't use self since one of the task loggers will be used).
         """
         logger.debug("Waiting to receive zip file from worker.")
-        try:
-            await asyncio.wait_for(received_file.wait(),
-                                   timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
-            # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
-                                                          cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+        await self.wait_for_file(file=received_file, task_id=task_id)
 
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
@@ -945,8 +869,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug(f"Received extra-valid file from worker: '{received_filename}'")
 
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
-        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
-            received_filename)
+        files_metadata, decompressed_files_path = await cluster.async_decompress_files(received_filename)
 
         # Create a child process to run the task.
         try:
@@ -1002,7 +925,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                     # If the file is merged, create individual files from it.
                     if data['merged']:
-                        for unmerged_file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(
+                        for unmerged_file_path, file_data, file_time in cluster.unmerge_info(
                                 data['merge_type'], decompressed_files_path, data['merge_name']
                         ):
                             try:
@@ -1220,8 +1143,7 @@ class Master(server.AbstractServer):
             before = perf_counter()
             file_integrity_logger.info("Starting.")
             try:
-                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
-                                                                   wazuh.core.cluster.cluster.get_files_status,
+                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool, cluster.get_files_status,
                                                                    self.integrity_control)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")

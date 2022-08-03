@@ -124,6 +124,7 @@ def test_localclient_initialization(mock_get_running_loop):
     assert lc.transport is None
 
 
+@pytest.mark.asyncio
 async def test_localclient_start():
     """Check that the start method works correctly. Exceptions are not tested."""
 
@@ -143,6 +144,7 @@ async def test_localclient_start():
                 assert lc.transport == "transport"
 
 
+@pytest.mark.asyncio
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
 async def test_localclient_start_ko(mock_get_running_loop):
     """Check the behavior of the start function for the different types of exceptions that may occur."""
