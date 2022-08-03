@@ -1643,13 +1643,11 @@ components:
           type: string
           format: date-time
         name:
-          type: array
+          type: string
           description: "Demon name"
-          items:
-            type: string
-            enum:
-              - wazuh-analysisd
-              - wazuh-remoted
+          enum:
+            - wazuh-analysisd
+            - wazuh-remoted
         statistics:
           type: object
 
