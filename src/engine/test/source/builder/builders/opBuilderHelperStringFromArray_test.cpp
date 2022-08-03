@@ -26,7 +26,7 @@ TEST(opBuilderHelperStringFromArray, Builds)
     ASSERT_NO_THROW(bld::opBuilderHelperStringFromArray(tuple));
 }
 
-TEST(opBuilderHelperStringFromArray, BuildsBadParameters)
+TEST(opBuilderHelperStringFromArray, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"s_from_array"},
@@ -35,7 +35,7 @@ TEST(opBuilderHelperStringFromArray, BuildsBadParameters)
     ASSERT_THROW(bld::opBuilderHelperStringFromArray(tuple), std::out_of_range);
 }
 
-TEST(opBuilderHelperStringFromArray, ExecStringFromArraySuccess)
+TEST(opBuilderHelperStringFromArray, Executes_with_string_from_array_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_from_array"},
@@ -52,7 +52,7 @@ TEST(opBuilderHelperStringFromArray, ExecStringFromArraySuccess)
     ASSERT_EQ("A-B-C-D-E", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperStringFromArray, ExecStringFromArrayWithRefSuccess)
+TEST(opBuilderHelperStringFromArray, Executes_string_from_array_with_reference_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_from_array"},
@@ -69,7 +69,7 @@ TEST(opBuilderHelperStringFromArray, ExecStringFromArrayWithRefSuccess)
     ASSERT_EQ("A,B", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperStringFromArray, FailedNotArray)
+TEST(opBuilderHelperStringFromArray, Failed_parameter_is_not_array)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_from_array"},
@@ -84,7 +84,7 @@ TEST(opBuilderHelperStringFromArray, FailedNotArray)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringFromArray, FailedArrayWithoutStrings)
+TEST(opBuilderHelperStringFromArray, Failed_array_without_strings)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_from_array"},
@@ -99,7 +99,7 @@ TEST(opBuilderHelperStringFromArray, FailedArrayWithoutStrings)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringFromArray, FailedEmptyArray)
+TEST(opBuilderHelperStringFromArray, Failed_empty_array)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_from_array"},
@@ -114,7 +114,7 @@ TEST(opBuilderHelperStringFromArray, FailedEmptyArray)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringFromArray, SuccessWithMultilevelAssignment)
+TEST(opBuilderHelperStringFromArray, Success_with_multi_level_assignment)
 {
     auto tuple = std::make_tuple(std::string {"/arrayResult/0/field2check"},
                                  std::string {"s_from_array"},
@@ -131,7 +131,7 @@ TEST(opBuilderHelperStringFromArray, SuccessWithMultilevelAssignment)
     ASSERT_EQ("A.B", result.payload()->getString("/arrayResult/0/field2check").value());
 }
 
-TEST(opBuilderHelperStringFromArray, FailedWithSeccondParameterNotReference)
+TEST(opBuilderHelperStringFromArray, Failed_with_seccond_parameter_not_reference)
 {
     auto tuple = std::make_tuple(std::string {"/arrayResult/0/field2check"},
                                  std::string {"s_from_array"},
