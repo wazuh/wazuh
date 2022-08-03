@@ -31,7 +31,7 @@ add_library(builders OBJECT
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperMap.cpp
   builders/baseHelper.cpp
-  builders/opBuilderWdbSync.cpp
+  builders/opBuilderWdb.cpp
   builders/opBuilderARWrite.cpp
   definitions.cpp
   asset.cpp

@@ -7,7 +7,7 @@
 #include "builders/opBuilderHelperMap.hpp"
 #include "builders/opBuilderKVDB.hpp"
 #include "builders/opBuilderLogqlParser.hpp"
-#include "builders/opBuilderWdbSync.hpp"
+#include "builders/opBuilderWdb.hpp"
 #include "builders/operationBuilder.hpp"
 #include "builders/stageBuilderCheck.hpp"
 #include "builders/stageBuilderMap.hpp"
@@ -98,8 +98,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
     // DB sync
-    Registry::registerBuilder(builders::opBuilderWdbSyncQuery, "helper.wdb_query");
-    Registry::registerBuilder(builders::opBuilderWdbSyncUpdate, "helper.wdb_update");
+    Registry::registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
+    Registry::registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
     Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
 }
 } // namespace builder::internals
