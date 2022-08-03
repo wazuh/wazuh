@@ -14,6 +14,9 @@
 #include "report_op.h"
 #include "global-config.h"
 
+#define AGENT_DELETE_STATUS_NEVER_CONNECTED "never_connected"
+#define AGENT_DELETE_STATUS_DISCONNECTED    "disconnected"
+
 /* Structure for the report */
 typedef struct _report_config {
     char *title;
@@ -24,12 +27,21 @@ typedef struct _report_config {
     report_filter r_filter;
 } report_config;
 
-typedef struct _delete_agents{
+typedef struct monitor_delete_agents_filters {
+    char** status_list;
     time_t older_than; /*in seconds*/
+    char** os_name_list;
+    char** os_platform_list;
+    char** os_version_list;
+    char** version_list;
+    char** group_list;
+    struct monitor_delete_agents_filters *next;
+} monitor_delete_agents_filters;
+
+typedef struct _delete_agents{
     time_t interval; /*in seconds*/
     int enabled;
-    char** status_list;
-    char** os_name_list;
+    monitor_delete_agents_filters *filters;
 }delete_agents_t;
 
 typedef struct _monitor_config {

@@ -184,20 +184,29 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 #endif
 
 
-int Read_AgentDeletion(XML_NODE node, void *d1)
+int Read_AgentDeletion(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *d1)
 {
-    int i = 0;
+    int i,j = 0;
+
+    xml_node **children = NULL;
 
     /* XML definitions */
-    const char *xml_interval_tag = "interval";
     const char *xml_enabled_tag = "enabled";
+    const char *xml_interval_tag = "interval";
+    const char *xml_filters_tag = "filters";
     const char *xml_status_tag = "status";
-    const char *xml_os_name_tag = "os-name";
     const char *xml_older_than_tag = "older_than";
+    const char *xml_os_name_tag = "os_name";
+    const char *xml_os_platform_tag = "os_platform";
+    const char *xml_os_version_tag = "os_version";
+    const char *xml_version_tag = "version";
+    const char *xml_group_tag = "group";
 
     monitor_config *mondc = (monitor_config *)d1;
     delete_agents_t * config = &mondc->delete_agents;
     memset(config, 0, sizeof(delete_agents_t));
+
+    monitor_delete_agents_filters *delete_agents_filters = NULL;
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
@@ -220,29 +229,108 @@ int Read_AgentDeletion(XML_NODE node, void *d1)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[i]->element, xml_status_tag) == 0) {
-            char* token = strtok(node[i]->content, ",");
-            int i = 0;
-            for(; token != 0; ++i) {
-                //We need space for the item and a null-item terminator
-                config->status_list = realloc(config->status_list, sizeof(char*) * (i + 2));
-                config->status_list[i] = strdup(token);
-                token = strtok(NULL, ",");
+        } else if (strcmp(node[i]->element, xml_filters_tag) == 0) {
+            // Create filters node
+            if (delete_agents_filters) {
+                os_calloc(1, sizeof(monitor_delete_agents_filters), delete_agents_filters->next);
+                delete_agents_filters = delete_agents_filters->next;
+            } else {
+                // First filter node
+                os_calloc(1, sizeof(monitor_delete_agents_filters), delete_agents_filters);
+                config->filters = delete_agents_filters;
             }
-            config->status_list[i] = 0;
-        } else if (strcmp(node[i]->element, xml_os_name_tag) == 0) {
-            char* token = strtok(node[i]->content, ",");
-            int i = 0;
-            for(; token != 0; ++i) {
-                //We need space for the item and a null-item terminator
-                config->os_name_list = realloc(config->os_name_list, sizeof(char*) * (i + 2));
-                config->os_name_list[i] = strdup(token);
-                token = strtok(NULL, ",");
+
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
             }
-            config->os_name_list[i] = 0;
-        } else if (strcmp(node[i]->element, xml_older_than_tag) == 0) {
-            if(get_time_interval(node[i]->content, &config->older_than) != 0) {
-                merror("Invalid interval for '%s' option", node[i]->element);
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_status_tag) == 0) {
+                    char* token = strtok(children[j]->content, ",");
+                    int i = 0;
+                    for(; token != 0; ++i) {
+                        //We need space for the item and a null-item terminator
+                        delete_agents_filters->status_list = realloc(delete_agents_filters->status_list, sizeof(char*) * (i + 2));
+                        delete_agents_filters->status_list[i] = strdup(token);
+                        token = strtok(NULL, ",");
+                    }
+                    delete_agents_filters->status_list[i] = 0;
+                } else if (strcmp(children[j]->element, xml_older_than_tag) == 0) {
+                    if(get_time_interval(children[j]->content, &delete_agents_filters->older_than) != 0) {
+                        merror("Invalid interval for '%s' option", children[j]->element);
+                    }
+                } else if (strcmp(children[j]->element, xml_os_name_tag) == 0) {
+                    char* token = strtok(children[j]->content, ",");
+                    int i = 0;
+                    for(; token != 0; ++i) {
+                        //We need space for the item and a null-item terminator
+                        delete_agents_filters->os_name_list = realloc(delete_agents_filters->os_name_list, sizeof(char*) * (i + 2));
+                        delete_agents_filters->os_name_list[i] = strdup(token);
+                        token = strtok(NULL, ",");
+                    }
+                    delete_agents_filters->os_name_list[i] = 0;
+                } else if (strcmp(children[j]->element, xml_os_platform_tag) == 0) {
+                    char* token = strtok(children[j]->content, ",");
+                    int i = 0;
+                    for(; token != 0; ++i) {
+                        //We need space for the item and a null-item terminator
+                        delete_agents_filters->os_platform_list = realloc(delete_agents_filters->os_platform_list, sizeof(char*) * (i + 2));
+                        delete_agents_filters->os_platform_list[i] = strdup(token);
+                        token = strtok(NULL, ",");
+                    }
+                    delete_agents_filters->os_platform_list[i] = 0;
+                } else if (strcmp(children[j]->element, xml_os_version_tag) == 0) {
+                    char* token = strtok(children[j]->content, ",");
+                    int i = 0;
+                    for(; token != 0; ++i) {
+                        //We need space for the item and a null-item terminator
+                        delete_agents_filters->os_version_list = realloc(delete_agents_filters->os_version_list, sizeof(char*) * (i + 2));
+                        delete_agents_filters->os_version_list[i] = strdup(token);
+                        token = strtok(NULL, ",");
+                    }
+                    delete_agents_filters->os_version_list[i] = 0;
+                } else if (strcmp(children[j]->element, xml_version_tag) == 0) {
+                    char* token = strtok(children[j]->content, ",");
+                    int i = 0;
+                    for(; token != 0; ++i) {
+                        //We need space for the item and a null-item terminator
+                        delete_agents_filters->version_list = realloc(delete_agents_filters->version_list, sizeof(char*) * (i + 2));
+                        delete_agents_filters->version_list[i] = strdup(token);
+                        token = strtok(NULL, ",");
+                    }
+                    delete_agents_filters->version_list[i] = 0;
+                } else if (strcmp(children[j]->element, xml_group_tag) == 0) {
+                    char* token = strtok(children[j]->content, ",");
+                    int i = 0;
+                    for(; token != 0; ++i) {
+                        //We need space for the item and a null-item terminator
+                        delete_agents_filters->group_list = realloc(delete_agents_filters->group_list, sizeof(char*) * (i + 2));
+                        delete_agents_filters->group_list[i] = strdup(token);
+                        token = strtok(NULL, ",");
+                    }
+                    delete_agents_filters->group_list[i] = 0;
+                }
+            }
+            OS_ClearNode(children);
+
+            if (!delete_agents_filters->status_list) {
+                merror("'%s' is missing at module '%s'.", xml_status_tag, "delete_agents");
+                return OS_INVALID;
+            } else {
+                // Validating status
+                for (unsigned int i = 0; delete_agents_filters->status_list[i] != 0; i++) {
+                    if (strcmp(delete_agents_filters->status_list[i], AGENT_DELETE_STATUS_NEVER_CONNECTED) &&
+                                    strcmp(delete_agents_filters->status_list[i], AGENT_DELETE_STATUS_DISCONNECTED)) {
+                        merror("Invalid status '%s' in '%s' tag.", delete_agents_filters->status_list[i], xml_status_tag);
+                        return OS_INVALID;
+                    } else if (strcmp(delete_agents_filters->status_list[i], AGENT_DELETE_STATUS_NEVER_CONNECTED) == 0 &&
+                                (delete_agents_filters->group_list || delete_agents_filters->version_list ||
+                                delete_agents_filters->os_version_list || delete_agents_filters->os_platform_list ||
+                                delete_agents_filters->os_name_list)) {
+                        merror("In <delete_agents> block, the status '%s' is not compatible with the filters %s, %s, %s, %s or %s.", 
+                                delete_agents_filters->status_list[i], xml_os_name_tag, xml_os_platform_tag, xml_os_version_tag, xml_version_tag, xml_group_tag);
+                        return OS_INVALID;
+                    }
+                }
             }
         } else {
             merror(XML_INVELEM, node[i]->element);

@@ -63,6 +63,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *office365 = "office365";                /* Office365 Module */
 #endif
 
+    bool delete_agent_flag = false;
+
     while (node[i]) {
         XML_NODE chld_node = NULL;
 
@@ -157,9 +159,13 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 #ifndef WIN32
         else if (chld_node && (strcmp(node[i]->element, delete_agents) == 0)) {
-            if ((modules & CAGENTDEL) && (Read_AgentDeletion(chld_node, d1) < 0)) {
+            if (delete_agent_flag) {
+                merror("Duplicate tag, only one <%s> block is allowed.", delete_agents);
+                goto fail;
+            } else if ((modules & CAGENTDEL) && (Read_AgentDeletion(xml, chld_node, d1) < 0)) {
                 goto fail;
             }
+            delete_agent_flag = true;
         }
         else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {

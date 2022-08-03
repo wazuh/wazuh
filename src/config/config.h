@@ -66,7 +66,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
-int Read_AgentDeletion(XML_NODE node, void *config1);
+int Read_AgentDeletion(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *config1);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);

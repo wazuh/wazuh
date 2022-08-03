@@ -14,6 +14,8 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 
 static int mon_send_agent_msg(char *agent, char *msg);
+static bool validate_single_filter(cJSON *j_agent_info, char** filter_listm, char *field_to_validate);
+static bool validate_filters(cJSON *j_agent_info, monitor_delete_agents_filters* current_filters);
 int sock = -1;
 
 void monitor_send_deletion_msg(char *agent) {
@@ -118,87 +120,120 @@ void monitor_agents_alert(){
 
 void monitor_agents_deletion(void) {
     int *agents_array[5] = {0};
+    monitor_delete_agents_filters* next_filters = NULL;
+    monitor_delete_agents_filters* current_filters = mond.delete_agents.filters;
 
-    if (mond.delete_agents.status_list) {
-        for (unsigned int i = 0; mond.delete_agents.status_list[i] != 0; i++) {
-            agents_array[i] = wdb_get_agents_by_connection_status(mond.delete_agents.status_list[i], &sock);
+    while (current_filters != NULL) {
+        next_filters = current_filters->next;
+
+        if (current_filters->status_list) {
+            for (unsigned int i = 0; current_filters->status_list[i] != 0; i++) {
+                agents_array[i] = wdb_get_agents_by_connection_status(current_filters->status_list[i], &sock);
+            }
         }
-    }
 
-    for (unsigned int i = 0; agents_array[i] != 0; i++) {
-        for (unsigned int j = 0; agents_array[i][j] != -1; j++) {
-            const int agent_id = agents_array[i][j];
-            cJSON *j_agent_info = wdb_get_agent_info(agent_id, &sock);
+        for (unsigned int i = 0; agents_array[i] != 0; i++) {
+            for (unsigned int j = 0; agents_array[i][j] != -1; j++) {
+                const int agent_id = agents_array[i][j];
+                cJSON *j_agent_info = wdb_get_agent_info(agent_id, &sock);
 
-            if (j_agent_info) {
+                if (j_agent_info) {
 
-                cJSON *j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+                    cJSON *j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
 
-                if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL) {
+                    if (cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL) {
 
-                    int should_delete_agent = 0;
+                        int should_delete_agent = 0;
 
-                    if (strcmp(j_agent_status->valuestring, "never_connected") == 0) {
-                        cJSON *j_agent_reg_time = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+                        if (strcmp(j_agent_status->valuestring, AGENT_DELETE_STATUS_NEVER_CONNECTED) == 0) {
+                            cJSON *j_agent_reg_time = cJSON_GetObjectItem(j_agent_info->child, "date_add");
 
-                        if(cJSON_IsNumber(j_agent_reg_time)) {
-                            should_delete_agent = (long int) difftime(time(0), j_agent_reg_time->valueint) > mond.delete_agents.older_than ? 1 : 0;
+                            if(cJSON_IsNumber(j_agent_reg_time)) {
+                                should_delete_agent = (long int) difftime(time(0), j_agent_reg_time->valueint) > current_filters->older_than ? 1 : 0;
+                            }
                         }
-                    }
-                    else {
-                        cJSON *j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
+                        else {
+                            cJSON *j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
 
-                        if (cJSON_IsNumber(j_agent_lastkeepalive)) {
-                            should_delete_agent = (long int) difftime(time(0), j_agent_lastkeepalive->valueint) > mond.delete_agents.older_than ? 1 : 0;
+                            if (cJSON_IsNumber(j_agent_lastkeepalive)) {
+                                should_delete_agent = (long int) difftime(time(0), j_agent_lastkeepalive->valueint) > current_filters->older_than ? 1 : 0;
+                            }
                         }
-                    }
-                    if (should_delete_agent) {
-                        int os_matches = 1;
+                        if (should_delete_agent) {
+                            if (validate_filters(j_agent_info, current_filters) && (0 == delete_old_agent(agent_id))) {
+                                cJSON *j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
+                                cJSON *j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
 
-                        if (mond.delete_agents.os_name_list) {
-                            os_matches = 0;
-                            cJSON *j_agent_os_name = cJSON_GetObjectItem(j_agent_info->child, "os_name");
+                                if (cJSON_IsString(j_agent_name) && j_agent_name->valuestring !=0 &&
+                                        cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring !=0) {
+                                    char *agent_name_ip = NULL;
 
-                            if (cJSON_IsString(j_agent_os_name) && j_agent_os_name != 0) {
-                                for (int os_indx = 0;
-                                        mond.delete_agents.os_name_list[os_indx] != 0;
-                                        ++os_indx) {
-                                    if (strcmp(mond.delete_agents.os_name_list[os_indx], j_agent_os_name->valuestring)) {
-                                        os_matches = 1;
-                                        break;
-                                    }
+                                    os_strdup(j_agent_name->valuestring, agent_name_ip);
+                                    wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
+                                    monitor_send_deletion_msg(agent_name_ip);
+                                    os_free(agent_name_ip);
                                 }
                             }
                         }
-
-                        if (os_matches && (0 == delete_old_agent(agent_id))) {
-                            cJSON *j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
-                            cJSON *j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
-
-                            if (cJSON_IsString(j_agent_name) && j_agent_name->valuestring !=0 &&
-                                    cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring !=0) {
-                                char *agent_name_ip = NULL;
-
-                                os_strdup(j_agent_name->valuestring, agent_name_ip);
-                                wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
-                                monitor_send_deletion_msg(agent_name_ip);
-                                os_free(agent_name_ip);
-                            }
-                        }
+                        cJSON_Delete(j_agent_info);
                     }
-                    cJSON_Delete(j_agent_info);
+                }
+                else {
+                    char str_agent_id[12];
+                    mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agent_id);
+                    snprintf(str_agent_id, 12, "%d", agent_id);
+                    OSHash_Delete(agents_to_alert_hash, str_agent_id);
                 }
             }
-            else {
-                char str_agent_id[12];
-                mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agent_id);
-                snprintf(str_agent_id, 12, "%d", agent_id);
-                OSHash_Delete(agents_to_alert_hash, str_agent_id);
+            os_free(agents_array[i]);
+            agents_array[i] = 0;
+        }
+        current_filters = next_filters;
+    }
+}
+
+static bool validate_single_filter(cJSON *j_agent_info, char** filter_listm, char *field_to_validate) {
+    cJSON *j_agent_field = cJSON_GetObjectItem(j_agent_info->child, field_to_validate);
+
+    if (cJSON_IsString(j_agent_field) && j_agent_field != 0) {
+        for (int os_indx = 0; filter_listm[os_indx] != 0; ++os_indx) {
+            if (strcmp(field_to_validate, "group") == 0){
+                char* token = strtok(j_agent_field->valuestring, ",");
+                int i = 0;
+                for(; token != 0; ++i) {
+                    if (strcmp(filter_listm[os_indx], token) == 0) {
+                        return true;
+                    }
+                    token = strtok(NULL, ",");
+                }
+            } else {
+                if (strcmp(filter_listm[os_indx], j_agent_field->valuestring) == 0) {
+                    return true;
+                }
             }
         }
-        os_free(agents_array[i]);
-        agents_array[i] = 0;
     }
+    return false;
+}
+
+static bool validate_filters(cJSON *j_agent_info, monitor_delete_agents_filters* current_filters) {
+    if (current_filters->os_name_list && validate_single_filter(j_agent_info, current_filters->os_name_list, "os_name") == false) {
+        return false;
+    }
+    if (current_filters->os_platform_list && validate_single_filter(j_agent_info, current_filters->os_platform_list, "os_platform") == false) {
+        return false;
+    }
+    if (current_filters->os_version_list && validate_single_filter(j_agent_info, current_filters->os_version_list, "os_version") == false) {
+        return false;
+    }
+    if (current_filters->version_list && validate_single_filter(j_agent_info, current_filters->version_list, "version") == false) {
+        return false;
+    }
+    if (current_filters->group_list && validate_single_filter(j_agent_info, current_filters->group_list, "group") == false) {
+        return false;
+    }
+
+    return true;
 }
 
 void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH_MAX]) {
