@@ -1416,6 +1416,51 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Show the config of wazuh-db/internal on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wazuh_db:
+                commit_time_max: !anyint
+                commit_time_min: !anyint
+                open_db_limit: !anyint
+                worker_pool_size: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of wazuh-db/wdb on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/wdb"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wdb:
+                backup:
+                  - database: !anystr
+                    enabled: !anybool
+                    interval: !anyint
+                    max_files: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
   - name: Show the config of wmodules/wmodules on master
     request:
       verify: False

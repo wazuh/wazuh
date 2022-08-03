@@ -943,7 +943,7 @@ test_name: GET /manager/configuration/{component}/{configuration}
 
 stages:
 
-  - name: Try to show the config of analysis/global in the manager
+  - name: Sow the config of analysis/global in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
@@ -961,7 +961,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of analysis/active_response in the manager
+  - name: Show the config of analysis/active_response in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/active_response"
@@ -980,7 +980,7 @@ stages:
           total_failed_items: 0
         message: !anystr
 
-  - name: Try to show the config of analysis/alerts in the manager
+  - name: Show the config of analysis/alerts in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/alerts"
@@ -998,7 +998,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of analysis/command in the manager
+  - name: Show the config of analysis/command in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/command"
@@ -1016,7 +1016,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of analysis/internal in the manager
+  - name: Show the config of analysis/internal in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/internal"
@@ -1034,7 +1034,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of auth in the manager
+  - name: Show the config of auth in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/auth/auth"
@@ -1052,7 +1052,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of com/internal in the manager
+  - name: Show the config of com/internal in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/com/internal"
@@ -1070,7 +1070,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of logcollector/localfile in the manager
+  - name: Show the config of logcollector/localfile in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/localfile"
@@ -1088,7 +1088,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of logcollector/socket in the manager
+  - name: Show the config of logcollector/socket in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/socket"
@@ -1105,7 +1105,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
-  - name: Try to show the config of logcollector/internal in the manager
+  - name: Show the config of logcollector/internal in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/internal"
@@ -1123,7 +1123,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of monitor/internal in the manager
+  - name: Show the config of monitor/internal in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/internal"
@@ -1141,7 +1141,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of request/remote in the manager
+  - name: Show the config of request/remote in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/remote"
@@ -1159,7 +1159,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of request/internal in the manager
+  - name: Show the config of request/internal in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/internal"
@@ -1177,7 +1177,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of syscheck/syscheck in the manager
+  - name: Show the config of syscheck/syscheck in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/syscheck"
@@ -1195,7 +1195,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of syscheck/rootcheck in the manager
+  - name: Show the config of syscheck/rootcheck in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/rootcheck"
@@ -1213,7 +1213,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to show the config of syscheck/internal in the manager
+  - name: Show the config of syscheck/internal in the manager
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/internal"
@@ -1227,6 +1227,51 @@ stages:
         data:
           affected_items:
             - internal: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of wazuh-db/internal in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wazuh-db/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wazuh_db:
+                commit_time_max: !anyint
+                commit_time_min: !anyint
+                open_db_limit: !anyint
+                worker_pool_size: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of wazuh-db/wdb in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wazuh-db/wdb"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wdb:
+                backup:
+                  - database: !anystr
+                    enabled: !anybool
+                    interval: !anyint
+                    max_files: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

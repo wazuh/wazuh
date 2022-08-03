@@ -1898,6 +1898,42 @@ stages:
             rootcheck:
               sleep: !anyint
 
+  - name: Request-Wazuh-db-Internal
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-db/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          wazuh_db:
+            commit_time_max: !anyint
+            commit_time_min: !anyint
+            open_db_limit: !anyint
+            worker_pool_size: !anyint
+
+  - name: Request-Wazuh-db-Wdb
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-db/wdb"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          wdb:
+            backup:
+              - database: !anystr
+                enabled: !anybool
+                interval: !anyint
+                max_files: !anyint
 
   - name: Request-Wmodules-Wmodules (Manager)
     request:
