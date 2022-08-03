@@ -8,12 +8,15 @@
  */
 #include "opBuilderSCAdecoder.hpp"
 
+#include <algorithm>
+#include <optional>
 #include <string>
+#include <variant>
 
-#include <fmt/format.h>
-
-#include "protocolHandler.hpp"
 #include "syntax.hpp"
+
+#include "baseTypes.hpp"
+#include <baseHelper.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/stringUtils.hpp>
 #include <wdb/wdb.hpp>
@@ -23,32 +26,172 @@ namespace builder::internals::builders
 
 // TODO: remove when undoing set for testing
 constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
+/* Security configuration assessment remoted queue */
+constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
+
+// SCA event json fields
+namespace sca_field
+{
+
+enum class Name
+{
+    ID,
+    POLICY,
+    POLICY_ID,
+    CHECK,
+    CHECK_ID,
+    CHECK_TITLE,
+    CHECK_DESCRIPTION,
+    CHECK_RATIONALE,
+    CHECK_REMEDIATION,
+    CHECK_REFERENCES,
+    CHECK_COMPLIANCE,
+    CHECK_CONDITION,
+    CHECK_DIRECTORY,
+    CHECK_PROCESS,
+    CHECK_REGISTRY,
+    CHECK_COMMAND,
+    CHECK_RULES,
+    CHECK_STATUS,
+    CHECK_REASON,
+    CHECK_RESULT
+};
+
+enum class Type
+{
+    STRING,
+    INT,
+    BOOL,
+    ARRAY,
+    OBJECT
+};
+
+constexpr Type getType(Name field)
+{
+    return Type::OBJECT;
+}
+
+constexpr std::string_view getPath(Name field)
+{
+    switch (field)
+    {
+        case Name::ID: return "/id";
+        case Name::POLICY: return "/policy";
+        case Name::POLICY_ID: return "/policy_id";
+        case Name::CHECK: return "/check";
+        case Name::CHECK_ID: return "/check_id";
+        case Name::CHECK_TITLE: return "/check/title";
+        case Name::CHECK_DESCRIPTION: return "/check/description";
+        case Name::CHECK_RATIONALE: return "/check/rationale";
+        case Name::CHECK_REMEDIATION: return "/check/remediation";
+        case Name::CHECK_REFERENCES: return "/check/references";
+        case Name::CHECK_COMPLIANCE: return "/check/compliance";
+        case Name::CHECK_CONDITION: return "/check/condition";
+        case Name::CHECK_DIRECTORY: return "/check/directory";
+        case Name::CHECK_PROCESS: return "/check/process";
+        case Name::CHECK_REGISTRY: return "/check/registry";
+        case Name::CHECK_COMMAND: return "/check/command";
+        case Name::CHECK_RULES: return "/check/rules";
+        case Name::CHECK_STATUS: return "/check/status";
+        case Name::CHECK_REASON: return "/check/reason";
+        case Name::CHECK_RESULT: return "/check/result";
+        default: return "";
+    }
+}
+
+// Same as getScaPath but every path is prefixed with "/sca"
+constexpr std::string_view getMappedPath(Name field)
+{
+    switch (field)
+    {
+        case Name::ID: return "/sca/id";
+        case Name::POLICY: return "/sca/policy";
+        case Name::POLICY_ID: return "/sca/policy_id";
+        case Name::CHECK: return "/sca/check";
+        case Name::CHECK_ID: return "/sca/check_id";
+        case Name::CHECK_TITLE: return "/sca/check/title";
+        case Name::CHECK_DESCRIPTION: return "/sca/check/description";
+        case Name::CHECK_RATIONALE: return "/sca/check/rationale";
+        case Name::CHECK_REMEDIATION: return "/sca/check/remediation";
+        case Name::CHECK_REFERENCES: return "/sca/check/references";
+        case Name::CHECK_COMPLIANCE: return "/sca/check/compliance";
+        case Name::CHECK_CONDITION: return "/sca/check/condition";
+        case Name::CHECK_DIRECTORY: return "/sca/check/directory";
+        case Name::CHECK_PROCESS: return "/sca/check/process";
+        case Name::CHECK_REGISTRY: return "/sca/check/registry";
+        case Name::CHECK_COMMAND: return "/sca/check/command";
+        case Name::CHECK_RULES: return "/sca/check/rules";
+        case Name::CHECK_STATUS: return "/sca/check/status";
+        case Name::CHECK_REASON: return "/sca/check/reason";
+        case Name::CHECK_RESULT: return "/sca/check/result";
+        default: return "";
+    }
+}
+
+} // namespace sca_field
+
+// CheckEventJson Optional fields
+static const std::vector<std::string> optionalFields {
+    "/check/description",
+    "/check/rationale",
+    "/check/remediation",
+    "/check/references",
+    "/check/file",
+    "/check/condition",
+    "/check/directory",
+    "/check/process",
+    "/check/registry",
+    "/check/command",
+};
+
+enum class DbOperation
+{
+    ERROR = -1,
+    INSERT,
+    UPDATE
+};
+
+// doc and move to json.hpp/cpp
+// Get json value from json object (Navigate on the json object is expensive, it is copied
+// a lot
+std::optional<json::Json>
+getValueFromObject(std::vector<std::tuple<std::string, json::Json>> object,
+                   std::string_view key)
+{
+    auto it = std::find_if(object.begin(),
+                           object.end(),
+                           [key](const auto& t) { return std::get<0>(t) == key; });
+    if (it != object.end())
+    {
+        return std::optional<json::Json> {std::get<1>(*it)};
+    }
+
+    return {};
+}
 
 /// Event Info Functions ///
 
-static std::unordered_map<std::string, std::string> eventKeyValues {{"policy", ""},
-                                                                    {"policy_id", ""}};
+static std::unordered_map<std::string, std::string> eventKeyValues {
+    {"/policy", ""},
+    {"/policy_id", ""},
+    {"/check/title", ""},
+};
 
-static bool CheckEventJSON(base::Event& e)
+// Chequea los tipos, campos opcionales y obligatorios, rellena eventKeyValues?
+static bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
 {
+    // TODO: check value types should always return false if not matched as espected
     // Check existance and fill all mandatory fields
-    const rapidjson::Value* doc {};
-    try
-    {
-        doc = &e->getEvent()->get(engineserver::EVENT_LOG);
-    }
-    catch (const std::exception& e)
-    {
-        return false;
-    }
-
+    // no se usan pero se obtienen :
+    //"/check/compliance", -> ???
+    //"/check/rules", -> ???
     for (auto& pairKeyValue : eventKeyValues)
     {
-        const std::string key = pairKeyValue.first;
-        json::Value::ConstMemberIterator itr = doc->FindMember(key.c_str());
-        if (itr != doc->MemberEnd() && itr->value.IsString())
+        const std::string key = scaEventPath + "/" + pairKeyValue.first;
+        auto value = event->getString(key);
+        if (value)
         {
-            eventKeyValues[key] = itr->value.GetString();
+            eventKeyValues[pairKeyValue.first] = value.value();
         }
         else
         {
@@ -57,40 +200,22 @@ static bool CheckEventJSON(base::Event& e)
     }
 
     // scan_id
-    json::Value::ConstMemberIterator itr = doc->FindMember("id");
-    if (itr != doc->MemberEnd() && itr->value.IsInt())
+    auto value = event->getInt(scaEventPath + "/id");
+    if (value)
     {
-        eventKeyValues["id"] = std::to_string(itr->value.GetUint64());
+        // TODO: make it varaiant in order to avoid double casting
+        eventKeyValues["/id"] = std::to_string(value.value());
     }
     else
     {
         return false;
     }
 
-    // Look for fields inside Check object
-    try
+    // check_id
+    value = event->getInt(scaEventPath + "/check_id");
+    if (value)
     {
-        doc = &e->getEvent()->get(std::string(engineserver::EVENT_LOG) + "/check");
-    }
-    catch (const std::exception& e)
-    {
-        return false;
-    }
-
-    itr = doc->FindMember("title");
-    if (itr != doc->MemberEnd() && itr->value.IsString())
-    {
-        eventKeyValues["check.title"] = itr->value.GetString();
-    }
-    else
-    {
-        return false;
-    }
-
-    itr = doc->FindMember("id");
-    if (itr != doc->MemberEnd() && itr->value.IsInt())
-    {
-        eventKeyValues["check.id"] = std::to_string(itr->value.GetInt());
+        eventKeyValues["/check_id"] = std::to_string(value.value());
     }
     else
     {
@@ -98,367 +223,462 @@ static bool CheckEventJSON(base::Event& e)
     }
 
     // Continue filling all other not mandatory Event fields
-    std::vector<std::string> notMandatoryFields {
-        "check.description",
-        "check.rationale",
-        "check.remediation",
-        "check.references",
-        "check.file",
-        "check.condition",
-        "check.directory",
-        "check.process",
-        "check.registry",
-        "check.command",
-    };
-
-    for (auto& key : notMandatoryFields)
+    for (auto& key : optionalFields)
     {
-        auto keySeparated {utils::string::split(key, '.')};
-        const auto& field = keySeparated.at(1);
-        json::Value::ConstMemberIterator itr = doc->FindMember(field.c_str());
-        if (itr != doc->MemberEnd())
+        const auto scaKey = scaEventPath + key;
+        if (event->exists(scaKey))
         {
-            if (!itr->value.IsString())
+            if (!event->isString(scaKey))
             {
                 return false;
             }
-            eventKeyValues.insert({key, itr->value.GetString()});
+
+            auto value = event->getString(scaKey);
+            if (value)
+            {
+                eventKeyValues[key] = value.value();
+            }
         }
     }
 
-    itr = doc->FindMember("status");
-    bool statusFound = false;
-    if (itr != doc->MemberEnd())
+    // TODO: why is not in the mandatory fields?
+    // check.status && check.reason
+    auto statusKey = scaEventPath + "/check/status";
+    auto reasonKey = scaEventPath + "/check/reason";
+    auto resultKey = scaEventPath + "/check/result";
+
+    // TODO: format
+    if (event->exists(statusKey) && event->isString(statusKey) && event->exists(reasonKey)
+        && event->isString(reasonKey) && event->exists(resultKey)
+        && event->isString(resultKey))
     {
-        statusFound = true;
-        json::Value::ConstMemberIterator itrReason = doc->FindMember("reason");
-        if (itrReason == doc->MemberEnd() || !itrReason->value.IsString()
-            || !itr->value.IsString())
+        auto status = event->getString(statusKey);
+        auto reason = event->getString(reasonKey);
+        auto result = event->getString(resultKey);
+        if (status && reason && result)
+        {
+            eventKeyValues["/check/status"] = status.value();
+            eventKeyValues["/check/reason"] = reason.value();
+            eventKeyValues["/check/result"] = result.value();
+        }
+        else
         {
             return false;
         }
-        eventKeyValues["check.reason"] = itrReason->value.GetString();
-        eventKeyValues["check.status"] = itr->value.GetString();
     }
-
-    itr = doc->FindMember("result");
-    if (itr != doc->MemberEnd() && (statusFound || !itr->value.IsString()))
+    else
     {
         return false;
     }
-    eventKeyValues["check.result"] = itr->value.GetString();
 
     return true;
 }
 
-static void FillCheckEventInfo(base::Event& e, std::string response)
+static void FillCheckEventInfo(base::Event& event,
+                               const std::string& response,
+                               const std::string& scaEventPath)
 {
-    std::string field = {json::formatJsonPath("sca.type")};
-    e->getEvent()->set(field,
-                       rapidjson::Value("check", e->getEventDocAllocator()).Move());
 
-    field = json::formatJsonPath("sca.check.previous_result");
-    e->getEvent()->set(
-        field, rapidjson::Value(response.c_str(), e->getEventDocAllocator()).Move());
+    // std::string field = {json::formatJsonPath("sca.type")};
+    // e->getEvent()->set(field,
+    //                    rapidjson::Value("check", e->getEventDocAllocator()).Move());
+    event->setString("check", "/sca/type");
 
-    field = {json::formatJsonPath("sca.scan_id")};
-    e->getEvent()->set(
-        field,
-        rapidjson::Value(eventKeyValues["id"].c_str(), e->getEventDocAllocator()).Move());
+    // field = json::formatJsonPath("sca.check.previous_result");
+    // e->getEvent()->set(
+    //     field, rapidjson::Value(response.c_str(), e->getEventDocAllocator()).Move());
 
-    field = {json::formatJsonPath("sca.policy")};
-    e->getEvent()->set(
-        field,
-        rapidjson::Value(eventKeyValues["policy"].c_str(), e->getEventDocAllocator())
-            .Move());
+    event->setString(response.c_str(), "/sca/check/previous_result");
 
-    field = {json::formatJsonPath("sca.check.id")};
-    e->getEvent()->set(
-        field,
-        rapidjson::Value(eventKeyValues["check.id"].c_str(), e->getEventDocAllocator())
-            .Move());
+    // field = {json::formatJsonPath("sca.scan_id")};
+    // e->getEvent()->set(
+    // field,
+    // rapidjson::Value(eventKeyValues["/id"].c_str(), e->getEventDocAllocator())
+    // .Move());
+    // TODO: Maybe int or string or double
+    // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
+    event->setString(eventKeyValues["/id"].c_str(), "/sca/id");
 
-    if (!eventKeyValues["check.title"].empty())
+    // field = {json::formatJsonPath("sca.policy")};
+    // e->getEvent()->set(
+    //     field,
+    //     rapidjson::Value(eventKeyValues["/policy"].c_str(), e->getEventDocAllocator())
+    //         .Move());
+    event->setString(eventKeyValues["/policy"].c_str(), "/sca/policy");
+
+    // field = {json::formatJsonPath("sca.check.id")};
+    // e->getEvent()->set(
+    //     field,
+    //     rapidjson::Value(eventKeyValues["/check/id"].c_str(),
+    //     e->getEventDocAllocator())
+    //         .Move());
+    // TODO: Maybe int or string or double
+    // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
+    event->setString(eventKeyValues["/check/id"].c_str(), "/sca/check/id");
+
+    // if (!eventKeyValues["/check/title"].empty())
+    // {
+    //     field = {json::formatJsonPath("sca.check.title")};
+    //     e->getEvent()->set(field,
+    //                        rapidjson::Value(eventKeyValues["/check/title"].c_str(),
+    //                                         e->getEventDocAllocator())
+    //                            .Move());
+    // }
+    if (!eventKeyValues["/check/title"].empty())
     {
-        field = {json::formatJsonPath("sca.check.title")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.title"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        event->setString(eventKeyValues["/check/title"].c_str(), "/sca/check/title");
     }
 
-    if (!eventKeyValues["check.description"].empty())
+    if (!eventKeyValues["/check/description"].empty())
     {
-        field = {json::formatJsonPath("sca.check.description")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.description"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        // field = {json::formatJsonPath("sca.check.description")};
+        // e->getEvent()->set(field,
+        //                    rapidjson::Value(eventKeyValues["/check/description"].c_str(),
+        //                                     e->getEventDocAllocator())
+        //                        .Move());
+        event->setString(eventKeyValues["/check/description"].c_str(),
+                         "/sca/check/description");
     }
 
-    if (!eventKeyValues["check.rationale"].empty())
+    if (!eventKeyValues["/check/rationale"].empty())
     {
-        field = {json::formatJsonPath("sca.check.rationale")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.rationale"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        // field = {json::formatJsonPath("sca.check.rationale")};
+        // e->getEvent()->set(field,
+        //                    rapidjson::Value(eventKeyValues["/check/rationale"].c_str(),
+        //                                     e->getEventDocAllocator())
+        //                        .Move());
+        event->setString(eventKeyValues["/check/rationale"].c_str(),
+                         "/sca/check/rationale");
     }
 
-    if (!eventKeyValues["check.remediation"].empty())
+    if (!eventKeyValues["/check/remediation"].empty())
     {
-        field = {json::formatJsonPath("sca.check.remediation")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.remediation"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        // field = {json::formatJsonPath("sca.check.remediation")};
+        // e->getEvent()->set(field,
+        //                    rapidjson::Value(eventKeyValues["/check/remediation"].c_str(),
+        //                                     e->getEventDocAllocator())
+        //                        .Move());
+        event->setString(eventKeyValues["/check/remediation"].c_str(),
+                         "/sca/check/remediation");
     }
 
-    const auto& compliance =
-        e->getEvent()->get(std::string(engineserver::EVENT_LOG) + "/check/compliance");
-    for (rapidjson::Value::ConstMemberIterator itr = compliance.MemberBegin();
-         itr != compliance.MemberEnd();
-         ++itr)
+    // const auto& compliance = e->getEvent()->get("/event/original/check/compliance");
+    // for (rapidjson::Value::ConstMemberIterator itr = compliance.MemberBegin();
+    //      itr != compliance.MemberEnd();
+    //      ++itr)
+    // {
+    //     const std::string& key = itr->name.GetString();
+    //     field = {json::formatJsonPath(std::string("sca.check.compliance.") + key)};
+    //     if (itr->value.IsInt())
+    //     {
+    //         const int& value = itr->value.GetInt();
+    //         e->getEvent()->set(field, rapidjson::Value(value));
+    //     }
+    //     else if (itr->value.IsDouble())
+    //     {
+    //         const double& value = itr->value.GetDouble();
+    //         e->getEvent()->set(field, rapidjson::Value(value));
+    //     }
+    //     else
+    //     {
+    //         const std::string& value = itr->value.GetString();
+    //         e->getEvent()->set(
+    //             field, rapidjson::Value(value.c_str(),
+    //             e->getEventDocAllocator()).Move());
+    //     }
+    // }
+    event->set("/sca/check/compliance", std::string {scaEventPath + "/check/compliance"});
+
+    if (!eventKeyValues["/check/references"].empty())
     {
-        const std::string& key = itr->name.GetString();
-        field = {json::formatJsonPath(std::string("sca.check.compliance.") + key)};
-        if (itr->value.IsInt())
+        // field = {json::formatJsonPath("sca.check.references")};
+        // e->getEvent()->set(field,
+        //                    rapidjson::Value(eventKeyValues["/check/references"].c_str(),
+        //                                     e->getEventDocAllocator())
+        //                        .Move());
+        event->setString(eventKeyValues["/check/references"].c_str(),
+                         "/sca/check/references");
+    }
+
+    if (!eventKeyValues["/check/file"].empty())
+    {
+        // field = {json::formatJsonPath("sca.check.file")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/file"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+
+        // TODO: this is an array of strings
+        auto arrayFile = utils::string::split(eventKeyValues["/check/file"].c_str(), ',');
+        event->setArray("/sca/check/file");
+        for (auto& file : arrayFile)
         {
-            const int& value = itr->value.GetInt();
-            e->getEvent()->set(field, rapidjson::Value(value));
+            event->appendString(file, "/sca/check/file");
         }
-        else if (itr->value.IsDouble())
+        // For each file in the array, append /sca/check/file[x].
+    }
+
+    if (!eventKeyValues["/check/directory"].empty())
+    {
+        // field = {json::formatJsonPath("sca.check.directory")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/directory"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+        // TODO: this is an array of strings
+        auto arrayDirectory =
+            utils::string::split(eventKeyValues["/check/directory"].c_str(), ',');
+        event->setArray("/sca/check/directory");
+        for (auto& directory : arrayDirectory)
         {
-            const double& value = itr->value.GetDouble();
-            e->getEvent()->set(field, rapidjson::Value(value));
+            event->appendString(directory, "/sca/check/directory");
         }
-        else
+        // For each directory in the array, append. /sca/check/directory[x]
+    }
+
+    if (!eventKeyValues["/check/registry"].empty())
+    {
+        // field = {json::formatJsonPath("sca.check.registry")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/registry"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+
+        // TODO: this is an array of strings
+        auto arrayRegistry =
+            utils::string::split(eventKeyValues["/check/registry"].c_str(), ',');
+        event->setArray("/sca/check/registry");
+        for (auto& registry : arrayRegistry)
         {
-            const std::string& value = itr->value.GetString();
-            e->getEvent()->set(
-                field, rapidjson::Value(value.c_str(), e->getEventDocAllocator()).Move());
+            event->appendString(registry, "/sca/check/registry");
         }
+        // For each directory in the array, append. /sca/check/registry[x]
     }
 
-    if (!eventKeyValues["check.references"].empty())
+    if (!eventKeyValues["/check/process"].empty())
     {
-        field = {json::formatJsonPath("sca.check.references")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.references"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        // field = {json::formatJsonPath("sca.check.process")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/process"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+
+        // TODO: this is an array of strings
+        auto arrayRegistry =
+            utils::string::split(eventKeyValues["/check/process"].c_str(), ',');
+        event->setArray("/sca/check/process");
+        for (auto& process : arrayRegistry)
+        {
+            event->appendString(process, "/sca/check/process");
+        }
+        // For each directory in the array, append. /sca/check/process[x]
     }
 
-    if (!eventKeyValues["check.file"].empty())
+    if (!eventKeyValues["/check/command"].empty())
     {
-        field = {json::formatJsonPath("sca.check.file")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.file"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        // field = {json::formatJsonPath("sca.check.command")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/command"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+
+        // TODO: this is an array of strings
+        auto arrayRegistry =
+            utils::string::split(eventKeyValues["/check/command"].c_str(), ',');
+        event->setArray("/sca/check/command");
+        for (auto& command : arrayRegistry)
+        {
+            event->appendString(command, "/sca/check/command");
+        }
+        // For each directory in the array, append. /sca/check/command[x]
     }
 
-    if (!eventKeyValues["check.directory"].empty())
+    if (!eventKeyValues["/check/result"].empty())
     {
-        field = {json::formatJsonPath("sca.check.directory")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.directory"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
-    }
-
-    if (!eventKeyValues["check.registry"].empty())
-    {
-        field = {json::formatJsonPath("sca.check.registry")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.registry"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
-    }
-
-    if (!eventKeyValues["check.process"].empty())
-    {
-        field = {json::formatJsonPath("sca.check.process")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.process"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
-    }
-
-    if (!eventKeyValues["check.command"].empty())
-    {
-        field = {json::formatJsonPath("sca.check.command")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.command"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
-    }
-
-    if (!eventKeyValues["check.result"].empty())
-    {
-        field = {json::formatJsonPath("sca.check.result")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.result"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
+        // field = {json::formatJsonPath("sca.check.result")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/result"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+        event->setString(eventKeyValues["/check/result"].c_str(), "/sca/check/result");
     }
     else
     {
-        field = {json::formatJsonPath("sca.check.status")};
-        e->getEvent()->set(field,
-                           rapidjson::Value(eventKeyValues["check.status"].c_str(),
-                                            e->getEventDocAllocator())
-                               .Move());
-        if (!eventKeyValues["check.reason"].empty())
+        // field = {json::formatJsonPath("sca.check.status")};
+        // e->getEvent()->set(field,
+        //                   rapidjson::Value(eventKeyValues["/check/status"].c_str(),
+        //                                    e->getEventDocAllocator())
+        //                       .Move());
+        event->setString(eventKeyValues["/check/status"].c_str(), "/sca/check/status");
+        if (!eventKeyValues["/check/reason"].empty())
         {
-            field = {json::formatJsonPath("sca.check.reason")};
-            e->getEvent()->set(field,
-                               rapidjson::Value(eventKeyValues["check.reason"].c_str(),
-                                                e->getEventDocAllocator())
-                                   .Move());
+            // field = {json::formatJsonPath("sca.check.reason")};
+            // e->getEvent()->set(field,
+            //                   rapidjson::Value(eventKeyValues["/check/reason"].c_str(),
+            //                                    e->getEventDocAllocator())
+            //                       .Move());
+            event->setString(eventKeyValues["/check/reason"].c_str(),
+                             "/sca/check/reason");
         }
     }
 }
 
 // - Event Info Handling - //
 
-static bool HandleCheckEvent(base::Event& e, types::TracerFn tr)
+static std::optional<std::string> HandleCheckEvent(base::Event& event,
+                                                   const std::string& agent_id,
+                                                   const std::string& scaEventPath)
 {
-    std::string failureTrace = fmt::format("HandleCheckEvent sca_decode Failure");
 
-    if (!CheckEventJSON(e))
+    // CheckEventJSON
+    if (!CheckEventJSON(event, scaEventPath)) // Rework this
     {
-        tr(failureTrace);
-        return false;
+        // exit error
+        return "Mandatory fields missing in event";
     }
-
+    // TODO: delete sock_path!
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    std::string agent_id;
-    std::string scan_id = eventKeyValues["id"];
-    std::string id = eventKeyValues["check.id"];
-    try
-    {
-        agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    }
-    catch (const std::exception& e)
-    {
-        return false;
-    }
 
+    // ??? esto ya esta hecho en CheckEventJSON ??
+    auto pmId = event->getString(scaEventPath + "/id");
+    if (!pmId.has_value())
+    {
+        return "Field [id] missing in event";
+    }
     // FindEventcheck wdb_response
-    const std::string findEventQuery =
-        std::string("agent ") + agent_id + " sca query " + id;
-    auto findEventResponse = wdb.tryQueryAndParseResult(findEventQuery);
-    auto findEventCode = std::get<0>(findEventResponse);
-    std::string wdb_response;
+    const auto scaQuery = std::string("agent ") + agent_id + " sca query " + pmId.value();
+    auto tupleScaResponse = wdb.tryQueryAndParseResult(scaQuery);
 
-    if (findEventCode != wazuhdb::QueryResultCodes::OK)
+    // WDB query
+    const auto resultCode = std::get<0>(tupleScaResponse);
+    if (wazuhdb::QueryResultCodes::OK != resultCode
+        || !std::get<1>(tupleScaResponse).has_value())
     {
-        tr(failureTrace);
-        return false;
+        std::string msg =
+            "Error from [wdb]: " + std::to_string(static_cast<int>(resultCode));
+        return msg; // Error in wdb, failure
     }
+    auto& wdb_response = std::get<1>(tupleScaResponse).value();
 
-    std::string SaveEventQuery;
-    wdb_response = std::get<1>(findEventResponse).value();
-    int result_db = -1;
-    std::string result = eventKeyValues["check.result"];
-    std::string status = eventKeyValues["check.status"];
-    std::string reason = eventKeyValues["check.reason"];
+    auto scan_id = eventKeyValues["/id"]; // scan_id if not vailable = -1
+    auto id = eventKeyValues["/check/id"];
+    auto result = eventKeyValues["/check/result"];
+    auto status = eventKeyValues["/check/status"];
+    auto reason = eventKeyValues["/check/reason"];
 
-    if (wdb_response.find("not found") != std::string::npos)
+    std::string SaveEventQuery {};
+
+    auto result_db = DbOperation::ERROR;
+    if (std::strncmp(wdb_response.c_str(), "not found", 9) == 0)
     {
         // It exists, update
-        result_db = 1;
+        result_db = DbOperation::UPDATE;
         SaveEventQuery = std::string("agent ") + agent_id + " sca update " + id + "|"
                          + result + "|" + status + "|" + reason + "|" + scan_id;
     }
-    else if (wdb_response.find("found") != std::string::npos)
+    else if (std::strncmp(wdb_response.c_str(), "found", 5) == 0)
     {
-        // Convert the rapidjson Value of event to std::string
-        const json::Document& event = e->getEvent()->get(engineserver::EVENT_LOG);
-
-        // It doen't exists, insert
-        result_db = 0;
+        // It not exists, insert
+        result_db = DbOperation::INSERT;
         wdb_response = wdb_response.substr(5); // removing "found"
-        SaveEventQuery = std::string("agent ") + agent_id + " sca insert " + event.str();
-    }
-    else
-    {
-        tr(failureTrace);
-        return false;
+        auto event_original = event->getString("/event/original");
+        if (event_original)
+        {
+            SaveEventQuery = std::string("agent ") + agent_id + " sca insert "
+                             + event_original.value();
+        }
+        else
+        {
+            return "Error: Field [/event/original] missing in event";
+        }
     }
 
     auto saveEventTuple = wdb.tryQueryAndParseResult(SaveEventQuery);
-    const auto result_event = std::get<0>(saveEventTuple);
-    bool functionResult = true;
+    std::string saveEventResponse = std::get<1>(saveEventTuple).value();
+    const auto result_event =
+        (std::get<0>(saveEventTuple) == wazuhdb::QueryResultCodes::OK) ? 0 : 1;
+
     switch (result_db)
     {
-        case -1:
-            // Error querying policy monitoring database for agent
-            tr(failureTrace);
-            functionResult = false;
-            break;
-        case 0:
+        case DbOperation::ERROR:
+            return "Error querying policy monitoring database for agent";
+        case DbOperation::INSERT:
             if (!result.empty() && (wdb_response == result))
             {
-                FillCheckEventInfo(e, wdb_response);
+                FillCheckEventInfo(event, wdb_response, scaEventPath);
             }
             else if (result.empty() && !status.empty() && (wdb_response == status))
             {
-                FillCheckEventInfo(e, wdb_response);
+                FillCheckEventInfo(event, wdb_response, scaEventPath);
             }
 
-            if (result_event != wazuhdb::QueryResultCodes::OK)
+            if (result_event < 0)
             {
-                // Error updating policy monitoring database for agent
-                tr(failureTrace);
-                functionResult = false;
+                return "Error updating policy monitoring database for agent";
             }
-            break;
-        case 1:
+            return std::nullopt;
+
+        case DbOperation::UPDATE:
+        {
             if (!result.empty() && (wdb_response == result))
             {
-                FillCheckEventInfo(e, wdb_response);
+                FillCheckEventInfo(event, wdb_response, scaEventPath);
             }
             else if (result.empty() && !status.empty() && (wdb_response == status))
             {
-                FillCheckEventInfo(e, wdb_response);
+                FillCheckEventInfo(event, wdb_response, scaEventPath);
             }
 
-            if (result_event != wazuhdb::QueryResultCodes::OK)
+            if (result_event < 0)
             {
                 // Error storing policy monitoring information for agent
-                tr(failureTrace);
-                functionResult = false;
+                return "Error storing policy monitoring information for agent";
             }
-            else
-            {
-                // Saving compliance fields to database for event id
-                const auto& compliance = e->getEvent()->get(
-                    std::string(engineserver::EVENT_LOG) + "/check/compliance");
 
-                for (rapidjson::Value::ConstMemberIterator itr = compliance.MemberBegin();
-                     itr != compliance.MemberEnd();
-                     ++itr)
+            // Saving compliance fields to database for event id
+            const auto compliance = event->getObject(scaEventPath + "/compliance");
+            // e->getEvent()->get("/event/original/check/compliance");
+            if (compliance)
+            {
+                for (auto& [key, jsonValue] : compliance.value())
                 {
-                    const std::string& key = itr->name.GetString();
-                    const std::string& value = itr->value.GetString();
+                    std::string value;
+                    if (jsonValue.isString())
+                    {
+                        value = jsonValue.getString().value();
+                    }
+                    else if (jsonValue.isInt())
+                    {
+                        value = std::to_string(jsonValue.getInt().value());
+                    }
+                    else if (jsonValue.isDouble())
+                    {
+                        value = std::to_string(jsonValue.getDouble().value());
+                    }
+                    else
+                    {
+                        return "Error: Expected string for compliance [" + key + "]";
+                    }
+
                     std::string saveComplianceQuery = std::string("agent ") + agent_id
                                                       + " sca insert_compliance " + id
                                                       + "|" + key + "|" + value;
                     wdb.tryQueryAndParseResult(saveComplianceQuery);
+                    // Should I warn if ResultCode isn't ok ?
                 }
+            }
 
-                // Save rules
-                const auto& rules = e->getEvent()->get(
-                    std::string(engineserver::EVENT_LOG) + "/check/rules");
-                for (auto const& rule : rules.GetArray())
+            // Save rules
+            const auto rules = event->getArray(scaEventPath + "/rules");
+            if (rules)
+            {
+                for (const auto& jsonRule : rules.value())
                 {
-                    if (rule.IsString())
+                    auto rule = jsonRule.getString();
+                    if (rule)
                     {
-                        char flag = rule.GetString()[0];
                         std::string type;
-                        switch (flag)
+                        switch (rule.value()[0])
                         {
                             case 'f': type = "file"; break;
                             case 'd': type = "directory"; break;
@@ -472,44 +692,62 @@ static bool HandleCheckEvent(base::Event& e, types::TracerFn tr)
                         }
                         std::string saveRulesQuery = std::string("agent ") + agent_id
                                                      + " sca insert_rules " + id + "|"
-                                                     + type + "|" + rule.GetString();
+                                                     + type + "|" + rule.value();
                         wdb.tryQueryAndParseResult(saveRulesQuery);
                     }
                 }
             }
-            break;
 
-        default: functionResult = false; break;
+            return std::nullopt;
+        }
+
+        default: return "Unexpected result from policy monitoring database for agent";
     }
-    return functionResult;
 }
 
 /// Scan Info Functions ///
 
-// Map where needed json fields will be stored
-static std::unordered_map<std::string, std::string> scanInfoKeyValues {
-    {"policy_id", ""}, {"hash", ""}, {"hash_file", ""}, {"file", ""}, {"name", ""}};
+static std::unordered_map<std::string, std::string> scanInfoKeyValues {{"/policy_id", ""},
+                                                                       {"/hash", ""},
+                                                                       {"/hash_file", ""},
+                                                                       {"/file", ""},
+                                                                       {"/policy", ""}};
 
-static bool CheckScanInfoJSON(base::Event& e)
+static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
 {
+
     // Check and get fields with string type checking
-    const rapidjson::Value* doc {};
-    try
-    {
-        doc = &e->getEvent()->get(engineserver::EVENT_LOG);
-    }
-    catch (const std::exception& e)
+    // const auto& doc = e->getEvent()->get(engineserver::EVENT_LOG);
+    // for (auto& pairKeyValue : scanInfoKeyValues)
+    // {
+    //     const std::string key = pairKeyValue.first;
+    //     json::Value::ConstMemberIterator itr = doc.FindMember(key.c_str());
+    //     if (itr != doc.MemberEnd() && itr->value.IsString())
+    //     {
+    //         scanInfoKeyValues[key] = itr->value.GetString();
+    //     }
+    //     else
+    //     {
+    //         return false;
+    //     }
+    // }
+
+    // TODO Remnove this, why isObject trow exception, should be false  to avoid double
+    // search (exists+isObject)?
+    if (!event->isObject(scaEventPath))
     {
         return false;
     }
 
-    for (auto& pairKeyValue : scanInfoKeyValues)
+    for (const auto& [key, _val] : scanInfoKeyValues)
     {
-        const std::string key = pairKeyValue.first;
-        json::Value::ConstMemberIterator itr = doc->FindMember(key.c_str());
-        if (itr != doc->MemberEnd() && itr->value.IsString())
+
+        const auto value = event->getString(scaEventPath + key);
+        // TODO Remnove this, why isObject trow exception, should be false  to avoid
+        // double search (exists+isObject)?
+        if (value)
         {
-            scanInfoKeyValues[key] = itr->value.GetString();
+            scanInfoKeyValues[key] = value.value();
         }
         else
         {
@@ -518,10 +756,23 @@ static bool CheckScanInfoJSON(base::Event& e)
     }
 
     // scan_id
-    json::Value::ConstMemberIterator itr = doc->FindMember("scan_id");
-    if (itr != doc->MemberEnd() && itr->value.IsInt())
+    // json::Value::ConstMemberIterator itr = doc.FindMember("/scan_id");
+    // if (itr != doc.MemberEnd() && itr->value.IsInt())
+    //{
+    //    // TODO: make it varaiant in order to avoid double casting
+    //    // afterwars it will be used as string on query, double check this!
+    //    scanInfoKeyValues["/scan_id"] = std::to_string(itr->value.GetInt());
+    //}
+    // else
+    //{
+    //    return false;
+    //}
+    auto scanId = event->getInt("/scan_id");
+    if (scanId.has_value())
     {
-        scanInfoKeyValues["scan_id"] = std::to_string(itr->value.GetInt());
+        //    // TODO: make it varaiant in order to avoid double casting
+        // afterwars it will be used as string on query, double check this!
+        scanInfoKeyValues["/scan_id"] = std::to_string(scanId.value());
     }
     else
     {
@@ -529,22 +780,32 @@ static bool CheckScanInfoJSON(base::Event& e)
     }
 
     // Check and get fields
-    std::vector<std::string> mandatoryFields = {
-        "start_time", "end_time", "passed", "failed", "invalid", "total_checks", "score"};
+    std::vector<std::string> mandatoryFields = {"/start_time",
+                                                "/end_time",
+                                                "/passed",
+                                                "/failed",
+                                                "/invalid",
+                                                "/total_checks",
+                                                "/score"};
 
-    for (auto& key : mandatoryFields)
+    // for (auto& key : mandatoryFields)
+    //{
+    //     json::Value::ConstMemberIterator itr = doc.FindMember(key.c_str());
+    //     if (itr != doc.MemberEnd())
+    //     {
+    //         scanInfoKeyValues.insert({key, itr->value.GetString()});
+    //     }
+    //     else
+    //     {
+    //         return false;
+    //     }
+    // }
+    for (const auto& key : mandatoryFields)
     {
-        json::Value::ConstMemberIterator itr = doc->FindMember(key.c_str());
-        if (itr != doc->MemberEnd())
+        const auto value = event->getString(scaEventPath + key);
+        if (value)
         {
-            if (itr->value.IsUint())
-            {
-                scanInfoKeyValues.insert({key, std::to_string(itr->value.GetUint())});
-            }
-            else
-            {
-                scanInfoKeyValues.insert({key, std::to_string(itr->value.GetDouble())});
-            }
+            scanInfoKeyValues.insert({key, value.value()});
         }
         else
         {
@@ -552,74 +813,80 @@ static bool CheckScanInfoJSON(base::Event& e)
         }
     }
 
-    // Not mandatory fields
+    // TODO: maybe not neccesary! Get other fields
     std::vector<std::string> notMandatoryFields = {
-        "first_scan", "force_alert", "description", "references"};
+        "/first_scan", "/force_alert", "/description", "/references"};
 
-    for (auto& key : notMandatoryFields)
+    // for (auto& key : notMandatoryFields)
+    //{
+    //     json::Value::ConstMemberIterator itr = doc.FindMember(key.c_str());
+    //     if (itr != doc.MemberEnd())
+    //     {
+    //         scanInfoKeyValues.insert({key, itr->value.GetString()});
+    //     }
+    // }
+    for (const auto& key : notMandatoryFields)
     {
-        json::Value::ConstMemberIterator itr = doc->FindMember(key.c_str());
-        if (itr != doc->MemberEnd())
+        const auto value = event->getString(scaEventPath + key);
+        if (value)
         {
-            scanInfoKeyValues.insert({key, itr->value.GetString()});
+            scanInfoKeyValues.insert({key, value.value()});
         }
     }
 
     return true;
 }
 
-static int FindScanInfo(base::Event& e, std::string& hash_scan_info)
+// TODO: Change, No use parameter as output, returno tuple with optional
+static int FindScanInfo(base::Event& event,
+                        const std::string& agentId,
+                        const std::string& scaEventPath,
+                        std::string& hashScanInfo)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
-    std::string agent_id;
-    int result_db = -1;
-    try
-    {
-        agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    }
-    catch (const std::exception& e)
-    {
-        return result_db;
-    }
+    // std::string agent_id = e->getEvent()->get("/agent/id").GetString();
+    std::string FindScanInfoQuery = std::string("agent ") + agentId + " sca query_scan "
+                                    + scanInfoKeyValues["/policy_id"];
 
-    std::string FindScanInfoQuery = std::string("agent ") + agent_id + " sca query_scan "
-                                    + scanInfoKeyValues["policy_id"];
+    auto wdb = wazuhdb::WazuhDB(
+        STREAM_SOCK_PATH); // This create, open and close the connection, must be unique
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto FindScanInfoTuple = wdb.tryQueryAndParseResult(FindScanInfoQuery);
-    std::string FindScanInfoResponse = std::get<1>(FindScanInfoTuple).value();
 
-    if (std::get<0>(FindScanInfoTuple) == wazuhdb::QueryResultCodes::OK)
+    int resultDb = -1;
+    if (wazuhdb::QueryResultCodes::OK == std::get<0>(FindScanInfoTuple))
     {
-        if (FindScanInfoResponse.find("not found") != std::string::npos)
+        const auto& FindScanInfoResponse = std::get<1>(FindScanInfoTuple).value();
+        if (0 == std::strncmp(FindScanInfoResponse.c_str(), "not found", 9))
         {
-            result_db = 1;
+            resultDb = 1;
         }
-        else if (FindScanInfoResponse.find("found") != std::string::npos)
+        else if (0 == std::strncmp(FindScanInfoResponse.c_str(), "found", 5))
         {
-            hash_scan_info = FindScanInfoResponse.substr(5); // removing found
-            result_db = 0;
+            hashScanInfo = FindScanInfoResponse.substr(5); // removing found
+            resultDb = 0;
         }
     }
-    return result_db;
+    return resultDb;
 }
 
-static int SaveScanInfo(base::Event& e, int update)
+static int SaveScanInfo(base::Event& event, const std::string& agent_id, int update)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
-    std::string agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    std::string SaveScanInfoQuery;
+    std::string SaveScanInfoQuery {};
 
-    std::string pm_start_scan = scanInfoKeyValues["start_time"];
-    std::string pm_end_scan = scanInfoKeyValues["end_time"];
-    std::string scan_id = scanInfoKeyValues["id"];
-    std::string policy_id = scanInfoKeyValues["policy_id"];
-    std::string pass = scanInfoKeyValues["passed"];
-    std::string failed = scanInfoKeyValues["failed"];
-    std::string invalid = scanInfoKeyValues["invalid"];
-    std::string total_checks = scanInfoKeyValues["total_checks"];
-    std::string score = scanInfoKeyValues["score"];
-    std::string hash = scanInfoKeyValues["hash"];
+    // TODO Avoid copy, use auto&, std::string_view or other technique
+    std::string pm_start_scan = scanInfoKeyValues["/start_time"];
+    std::string pm_end_scan = scanInfoKeyValues["/end_time"];
+    std::string scan_id = scanInfoKeyValues["/id"];
+    std::string policy_id = scanInfoKeyValues["/policy_id"];
+    std::string pass = scanInfoKeyValues["/passed"];
+    std::string failed = scanInfoKeyValues["/failed"];
+    std::string invalid = scanInfoKeyValues["/invalid"];
+    std::string total_checks = scanInfoKeyValues["/total_checks"];
+    std::string score = scanInfoKeyValues["/score"];
+    std::string hash = scanInfoKeyValues["/hash"];
+    // TODO This is a int
     if (!update)
     {
         SaveScanInfoQuery = std::string("agent ") + agent_id + " sca insert_scan_info "
@@ -646,35 +913,26 @@ static int SaveScanInfo(base::Event& e, int update)
     return result_db;
 }
 
-static int FindPolicyInfo(base::Event& e)
+static int FindPolicyInfo(base::Event& event, const std::string& agent_id)
 {
-    // "Find policies IDs for policy  agent id "
-    std::string agent_id;
-    int result_db = -1;
-    try
-    {
-        agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    }
-    catch (const std::exception& e)
-    {
-        return result_db;
-    }
-
-    std::string FindPolicyInfoQuery = std::string("agent ") + agent_id
-                                      + " sca query_policy "
-                                      + scanInfoKeyValues["policy_id"];
+    // "Find policies IDs for policy '%s', agent id '%s'"
+    const auto FindPolicyInfoQuery = std::string("agent ") + agent_id
+                                     + " sca query_policy "
+                                     + scanInfoKeyValues["/policy_id"];
 
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto FindPolicyInfoTuple = wdb.tryQueryAndParseResult(FindPolicyInfoQuery);
-    std::string FindPolicyInfoResponse = std::get<1>(FindPolicyInfoTuple).value();
 
-    if (std::get<0>(FindPolicyInfoTuple) == wazuhdb::QueryResultCodes::OK)
+    int result_db = -1;
+    if (std::get<0>(FindPolicyInfoTuple) == wazuhdb::QueryResultCodes::OK
+        && std::get<1>(FindPolicyInfoTuple).has_value())
     {
-        if (FindPolicyInfoResponse.find("not found") != std::string::npos)
+        const auto& FindPolicyInfoResponse = std::get<1>(FindPolicyInfoTuple).value();
+        if (std::strncmp(FindPolicyInfoResponse.c_str(), "not found", 9) == 0)
         {
             result_db = 1;
         }
-        else if (FindPolicyInfoResponse.find("found") != std::string::npos)
+        else if (std::strncmp(FindPolicyInfoResponse.c_str(), "found", 5) == 0)
         {
             result_db = 0;
         }
@@ -682,19 +940,17 @@ static int FindPolicyInfo(base::Event& e)
     return result_db;
 }
 
-static bool PushDumpRequest(base::Event& e, int first_scan)
+// TODO: check return value and implications if the operation fails
+static bool PushDumpRequest(base::Event& event, const std::string& agentId, int firstScan)
 {
     // from RequestDBThread I'm assuming there's no chance a manager can be the agent
     // that's why Im using just opening CFGARQUEUE
-    std::string agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    std::string policy_id = e->getEvent()
-                                ->get(std::string(engineserver::EVENT_LOG) + "/policy_id")
-                                .GetString();
-    std::string msg =
-        agent_id + ":sca-dump:" + policy_id + ":" + std::to_string(first_scan);
+
+    const auto& policy_id = scanInfoKeyValues["/policy_id"];
+    const auto msg = agentId + ":sca-dump:" + policy_id + ":" + std::to_string(firstScan);
 
     base::utils::socketInterface::unixDatagram socketCFFGA(CFGARQUEUE);
-
+    // TODO Check retval, maybe if is ok save in the event?
     bool result;
     try
     {
@@ -705,18 +961,19 @@ static bool PushDumpRequest(base::Event& e, int first_scan)
     {
         result = false;
     }
+
     return result;
 }
 
-static int
-SavePolicyInfo(base::Event& e, std::string& description_db, std::string& references_db)
+static int SavePolicyInfo(const std::string& agent_id,
+                          std::string& description_db,
+                          std::string& references_db)
 {
-    // "Saving policy info for policy id agent id"
-    std::string agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    std::string policy_id = scanInfoKeyValues["policy_id"];
-    std::string name = scanInfoKeyValues["name"];
-    std::string file = scanInfoKeyValues["file"];
-    std::string hash_file = scanInfoKeyValues["hash_file"];
+    // "Saving policy info for policy id '%s', agent id '%s'"
+    std::string policy_id = scanInfoKeyValues["/policy_id"];
+    std::string name = scanInfoKeyValues["/policy"];
+    std::string file = scanInfoKeyValues["/file"];
+    std::string hash_file = scanInfoKeyValues["/hash_file"];
     std::string desc = description_db.empty() ? "NULL" : description_db;
     std::string ref = references_db.empty() ? "NULL" : references_db;
     std::string SavePolicyInfoTupleQuery =
@@ -734,26 +991,25 @@ SavePolicyInfo(base::Event& e, std::string& description_db, std::string& referen
     return result_db;
 }
 
-static int FindPolicySHA256(base::Event& e, std::string& old_hash)
+static int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
 {
     // "Find sha256 for policy X, agent id Y"
-    std::string agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
     std::string FindPolicySHA256Query = std::string("agent ") + agent_id
                                         + " sca query_policy_sha256 "
-                                        + scanInfoKeyValues["policy_id"];
+                                        + scanInfoKeyValues["/policy_id"];
 
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto FindPolicySHA256Tuple = wdb.tryQueryAndParseResult(FindPolicySHA256Query);
-    std::string FindPolicySHA256Response = std::get<1>(FindPolicySHA256Tuple).value();
 
     int result_db = -1;
     if (std::get<0>(FindPolicySHA256Tuple) == wazuhdb::QueryResultCodes::OK)
     {
-        if (FindPolicySHA256Response.find("not found") != std::string::npos)
+        std::string FindPolicySHA256Response = std::get<1>(FindPolicySHA256Tuple).value();
+        if (std::strncmp(FindPolicySHA256Response.c_str(), "not found", 9) == 0)
         {
             result_db = 1;
         }
-        else if (FindPolicySHA256Response.find("found") != std::string::npos)
+        else if (std::strncmp(FindPolicySHA256Response.c_str(), "found", 5) == 0)
         {
             old_hash = FindPolicySHA256Response.substr(5); // removing found
             result_db = 0;
@@ -762,11 +1018,10 @@ static int FindPolicySHA256(base::Event& e, std::string& old_hash)
     return result_db;
 }
 
-static int DeletePolicy(base::Event& e)
+static int DeletePolicy(const std::string& agent_id)
 {
-    // "Deleting policy"
-    std::string agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    std::string policy_id = scanInfoKeyValues["policy_id"];
+    // "Deleting policy '%s', agent id '%s'"
+    std::string policy_id = scanInfoKeyValues["/policy_id"];
     std::string deletePolicyQuery =
         std::string("agent ") + agent_id + " sca delete_policy " + policy_id;
 
@@ -787,11 +1042,10 @@ static int DeletePolicy(base::Event& e)
     return result_db;
 }
 
-static int DeletePolicyCheck(base::Event& e)
+static int DeletePolicyCheck(const std::string& agent_id)
 {
-    // "Deleting check for policy agent id "
-    std::string agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    std::string policy_id = scanInfoKeyValues["policy_id"];
+    // "Deleting check for policy '%s', agent id '%s'"
+    std::string policy_id = scanInfoKeyValues["/policy_id"];
     std::string deletePolicyCheckQuery =
         std::string("agent ") + agent_id + " sca delete_check " + policy_id;
 
@@ -812,54 +1066,44 @@ static int DeletePolicyCheck(base::Event& e)
     return result_db;
 }
 
-static int FindCheckResults(base::Event& e, std::string& wdb_response)
+static int FindCheckResults(const std::string& agentId, std::string& wdbResponse)
 {
-    // "Find check results for policy id"
-    std::string agent_id;
-    int result_db = -1;
-    try
-    {
-        agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    }
-    catch (const std::exception& e)
-    {
-        return result_db;
-    }
-
-    std::string findCheckResultsQuery = std::string("agent ") + agent_id
+    // "Find check results for policy id: %s"
+    std::string findCheckResultsQuery = std::string("agent ") + agentId
                                         + " sca query_results "
-                                        + scanInfoKeyValues["policy_id"];
+                                        + scanInfoKeyValues["/policy_id"];
 
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto findCheckResultsTuple = wdb.tryQueryAndParseResult(findCheckResultsQuery);
     std::string findCheckResultsResponse = std::get<1>(findCheckResultsTuple).value();
 
+    int resultDb = -1;
     if (std::get<0>(findCheckResultsTuple) == wazuhdb::QueryResultCodes::OK)
     {
         if (findCheckResultsResponse.find("not found") != std::string::npos)
         {
-            result_db = 1;
+            resultDb = 1;
         }
         else if (findCheckResultsResponse.find("found") != std::string::npos)
         {
-            wdb_response = findCheckResultsResponse.substr(5); // removing found
-            result_db = 0;
+            wdbResponse = findCheckResultsResponse.substr(5); // removing found
+            resultDb = 0;
         }
     }
-    return result_db;
+    return resultDb;
 }
 
-static void FillScanInfo(base::Event& e)
+static void FillScanInfo(base::Event& event,
+                         const std::string& agent_id,
+                         const std::string& scaEventPath)
 {
-    std::string field = {json::formatJsonPath("sca.type")};
-    e->getEvent()->set(field,
-                       rapidjson::Value("summary", e->getEventDocAllocator()).Move());
+    event->setString("/sca/type", "summary");
 
     const std::unordered_map<std::string, std::string> string_field_newKey = {
-        {"policy", "sca.policy"},
-        {"description", "sca.description"},
-        {"policy_id", "sca.policy_id"},
-        {"file", "sca.file"},
+        {"/policy", "/sca/policy"},
+        {"/description", "/sca/description"},
+        {"/policy_id", "/sca/policy_id"},
+        {"/file", "/sca/file"},
     };
 
     for (auto& [key, newKey] : string_field_newKey)
@@ -868,115 +1112,109 @@ static void FillScanInfo(base::Event& e)
         if (scanInfoKeyValues.find(key) != scanInfoKeyValues.end())
         {
             value = scanInfoKeyValues[key];
+            event->setString(scaEventPath + newKey, value);
         }
-        std::string field = {json::formatJsonPath(newKey)};
-        e->getEvent()->set(
-            field, rapidjson::Value(value.c_str(), e->getEventDocAllocator()).Move());
     }
 
     const std::unordered_map<std::string, std::string> integer_field_newKey = {
-        {"scan_id", "sca.scan_id"},
-        {"passed", "sca.passed"},
-        {"failed", "sca.failed"},
-        {"invalid", "sca.invalid"},
-        {"total_checks", "sca.total_checks"},
-        {"score", "sca.score"},
+        {"/scan_id", "/sca/scan_id"},
+        {"/passed", "/sca/passed"},
+        {"/policy_id", "/sca/failed"},
+        {"/invalid", "/sca/invalid"},
+        {"/total_checks", "/sca/total_checks"},
+        {"/score", "/sca/score"},
     };
 
     for (auto& [key, newKey] : integer_field_newKey)
     {
-        long int value;
         if (scanInfoKeyValues.find(key) != scanInfoKeyValues.end())
         {
-            value = std::stol(scanInfoKeyValues[key]);
+            // TODO stoi can throw an exception
+            auto value = stoi(scanInfoKeyValues[key]);
+            event->setInt(value, scaEventPath + newKey);
         }
-        e->getEvent()->set(json::formatJsonPath(newKey), rapidjson::Value(value));
     }
 }
 
 // - Scan Info Handling - //
 
-static bool HandleScanInfo(base::Event& e, types::TracerFn tr)
+static std::optional<std::string> HandleScanInfo(base::Event& event,
+                                                 const std::string& agent_id,
+                                                 const std::string& scaEventPath)
 {
-    std::string failureTrace = fmt::format("HandleScanInfo sca_decode Failure");
-
     int alert_data_fill = 0;
-    if (!CheckScanInfoJSON(e))
+    if (!CheckScanInfoJSON(event, scaEventPath))
     {
-        tr(failureTrace);
-        return false;
+        return "fail on CheckScanInfoJSON"; // Fail on check
     }
 
     int result_event = 0;
     std::string hash_scan_info;
-    int result_db = FindScanInfo(e, hash_scan_info);
+    int result_db = FindScanInfo(event, agent_id, scaEventPath, hash_scan_info);
 
     const auto& separated_hash = utils::string::split(hash_scan_info, ' ');
 
     if (separated_hash.size() < 2)
     {
-        // "Retrieving sha256 hash for policy"
-        tr(failureTrace);
-        return false;
+        // TODO: Whats is this?, why is commented?
+        // mdebug1("Retrieving sha256 hash for policy: '%s'", policy_id->valuestring);
     }
+    // TODO, capture exception, stoi can throw exception (Also, at method)
+    auto scan_id_old = stoi(separated_hash.at(1));
+    auto hash_sha256 = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
 
-    std::string hash_sha256 = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
-    std::string hash = scanInfoKeyValues["hash"];
+    std::string hash = scanInfoKeyValues["/hash"];
     std::string first_scan;
     std::string force_alert;
-    bool result = true;
 
-    if (scanInfoKeyValues.find("first_scan") != scanInfoKeyValues.end())
+    if (scanInfoKeyValues.find("/first_scan") != scanInfoKeyValues.end())
     {
-        first_scan = scanInfoKeyValues["first_scan"];
+        first_scan = scanInfoKeyValues["/first_scan"];
     }
-    if (scanInfoKeyValues.find("force_alert") != scanInfoKeyValues.end())
+    if (scanInfoKeyValues.find("/force_alert") != scanInfoKeyValues.end())
     {
-        force_alert = scanInfoKeyValues["force_alert"];
+        force_alert = scanInfoKeyValues["/force_alert"];
     }
 
     switch (result_db)
     {
         case -1:
-            // "Error querying policy monitoring database for agent
-            tr(failureTrace);
-            result = false;
+            // merror("Error querying policy monitoring database for agent
             break;
         case 0:
             // It exists, update
-            result_event = SaveScanInfo(e, 1);
+            result_event = SaveScanInfo(event, agent_id, 1);
             if (result_event < 0)
             {
-                // "Error updating scan policy monitoring database for agent
-                tr(failureTrace);
-                result = false;
+                // TODO, why is commented?, what should be do?
+                // merror("Error updating scan policy monitoring database for agent
             }
             else
             {
                 /* Compare hash with previous hash */
+                // TODO Can be only 1 condition for fillscaninfo
                 if (hash_sha256 == hash)
                 {
                     if (first_scan.empty())
                     {
-                        FillScanInfo(e);
+                        FillScanInfo(event, agent_id, scaEventPath);
                         alert_data_fill = 1;
                     }
                 }
 
                 if (!force_alert.empty() && !alert_data_fill)
                 {
-                    FillScanInfo(e);
+                    FillScanInfo(event, agent_id, scaEventPath);
                 }
             }
             break;
         case 1:
-            // It doesn't exists, insert
-            result_event = SaveScanInfo(e, 0);
+            // It not exists, insert
+            result_event = SaveScanInfo(event, agent_id, 0);
             if (result_event < 0)
             {
-                // "Error storing scan policy monitoring information for
-                tr(failureTrace);
-                result = false;
+                // TODO, why is commented?, what should be do?
+                // merror("Error storing scan policy monitoring information for
             }
             else
             {
@@ -985,80 +1223,77 @@ static bool HandleScanInfo(base::Event& e, types::TracerFn tr)
                 {
                     if (first_scan.empty())
                     {
-                        FillScanInfo(e);
+                        FillScanInfo(event, agent_id, scaEventPath);
                         alert_data_fill = 1;
                     }
                     else
                     {
                         /* Request dump */
-                        if (!PushDumpRequest(e, 1))
-                        {
-                            //Error but not originally logged
-                        }
+                        PushDumpRequest(event, agent_id, 1);
                     }
                 }
 
                 if (!force_alert.empty() && !alert_data_fill)
                 {
-                    FillScanInfo(e);
+                    FillScanInfo(event, agent_id, scaEventPath);
                 }
             }
 
             break;
-        default: result = false; break;
+        default: break;
     }
 
-    std::string references_db;
-    std::string description_db;
-    std::string old_hash;
-    result_db = FindPolicyInfo(e);
+    result_db = FindPolicyInfo(event, agent_id);
 
     switch (result_db)
     {
         case -1:
-            // "Error querying policy monitoring database for agent"
-            tr(failureTrace);
-            result = false;
+            // merror("Error querying policy monitoring database for agent
             break;
         case 1:
-            // "It not exists, insert from event"
-            if (scanInfoKeyValues.find("references") != scanInfoKeyValues.end())
+        {
+            std::string references_db {};
+            std::string description_db {};
+            // It not exists, insert from event
+            if (scanInfoKeyValues.find("/references") != scanInfoKeyValues.end())
             {
-                references_db = scanInfoKeyValues["references"];
+                // Double check value type
+                references_db = scanInfoKeyValues["/references"];
             }
 
-            if (scanInfoKeyValues.find("description") != scanInfoKeyValues.end())
+            if (scanInfoKeyValues.find("/description") != scanInfoKeyValues.end())
             {
-                description_db = scanInfoKeyValues["description"];
+                // Double check value type
+                description_db = scanInfoKeyValues["/description"];
             }
 
-            result_event = SavePolicyInfo(e, description_db, references_db);
+            result_event = SavePolicyInfo(agent_id, description_db, references_db);
             if (result_event < 0)
             {
-                // "Error storing scan policy monitoring information"
-                tr(failureTrace);
-                result = false;
+                // merror("Error storing scan policy monitoring information for
             }
-            break;
+        }
+        break;
         default:
             std::string old_hash;
-            if (!FindPolicySHA256(e, old_hash))
+            if (!FindPolicySHA256(agent_id, old_hash))
             {
-                std::string hash_file = scanInfoKeyValues["hash_file"];
+                std::string hash_file = scanInfoKeyValues["/hash_file"];
                 if (hash_file == old_hash)
                 {
-                    int delete_status = DeletePolicy(e);
+                    int delete_status = DeletePolicy(agent_id);
                     switch (delete_status)
                     {
                         case 0:
                             /* Delete checks */
-                            DeletePolicyCheck(e);
-                            PushDumpRequest(e, 1);
-                            // "Policy information for agent is outdated.Requested latest scan results"
+                            DeletePolicyCheck(agent_id);
+                            PushDumpRequest(event, agent_id, 1);
+                            // minfo("Policy '%s' information for agent '%s' is
+                            // TODO Check debug and handle error
+                            // outdated.Requested latest scan results.",
                             break;
                         default:
-                            // "Unable to purge DB content for policy
-                            result = false;
+                            // merror("Unable to purge DB content for policy
                             break;
                     }
                 }
@@ -1066,8 +1301,8 @@ static bool HandleScanInfo(base::Event& e, types::TracerFn tr)
             break;
     }
 
-    std::string wdb_response;
-    result_db = FindCheckResults(e, wdb_response);
+    std::string wdb_response {};
+    result_db = FindCheckResults(agent_id, wdb_response);
 
     switch (result_db)
     {
@@ -1075,56 +1310,54 @@ static bool HandleScanInfo(base::Event& e, types::TracerFn tr)
             /* Integrity check */
             if (wdb_response == hash)
             {
-                // "Scan result integrity failed for policy. Requesting DB dump."
+                // mdebug1("Scan result integrity failed for policy '%s'. Hash from
+                // DB:'%s', hash from summary: '%s'. Requesting DB
+                // dump.",policy_id->valuestring, wdb_response, hash->valuestring);
                 if (first_scan.empty())
                 {
-                    PushDumpRequest(e, 0);
+                    PushDumpRequest(event, agent_id, 0);
                 }
                 else
                 {
-                    PushDumpRequest(e, 1);
+                    PushDumpRequest(event, agent_id, 1);
                 }
             }
             break;
         case 1:
             /* Empty DB */
-            // "Check results DB empty for policy. Requesting DB dump."
+            // mdebug1("Check results DB empty for policy '%s'. Requesting DB
+            // dump.",policy_id->valuestring);
             if (first_scan.empty())
             {
-                PushDumpRequest(e, 0);
+                PushDumpRequest(event, agent_id, 0);
             }
             else
             {
-                PushDumpRequest(e, 1);
+                PushDumpRequest(event, agent_id, 1);
             }
             break;
         default:
-            // "Error querying policy monitoring database for agent
-            tr(failureTrace);
-            result = false;
+            // merror("Error querying policy monitoring database for agent
+            // '%s'",lf->agent_id);
             break;
     }
 
-    // TODO: If it fails on any check it will resturn false
-    return result;
+    return {};
 }
 
 /// Policies Functions ///
 
-static int FindPoliciesIds(base::Event& e, std::string& policies_ids)
+static int FindPoliciesIds(const std::string& agentId, std::string& policiesIds)
 {
-    // "Find policies IDs for agent id"
-    int result_db = -1;
-    const std::string& agent_id =
-        e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-
+    // "Find policies IDs for agent id: %s"
     std::string FindPoliciesIdsQuery =
-        std::string("agent ") + agent_id + " sca query_policies ";
+        std::string("agent ") + agentId + " sca query_policies ";
 
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto FindPoliciesIdsTuple = wdb.tryQueryAndParseResult(FindPoliciesIdsQuery);
     std::string FindPoliciesIdsResponse = std::get<1>(FindPoliciesIdsTuple).value();
 
+    int result_db = -1;
     if (std::get<0>(FindPoliciesIdsTuple) == wazuhdb::QueryResultCodes::OK)
     {
         if (FindPoliciesIdsResponse.find("not found") != std::string::npos)
@@ -1133,7 +1366,7 @@ static int FindPoliciesIds(base::Event& e, std::string& policies_ids)
         }
         else if (FindPoliciesIdsResponse.find("found") != std::string::npos)
         {
-            policies_ids = FindPoliciesIdsResponse.substr(5); // removing found
+            policiesIds = FindPoliciesIdsResponse.substr(5); // removing found
             result_db = 0;
         }
     }
@@ -1142,57 +1375,44 @@ static int FindPoliciesIds(base::Event& e, std::string& policies_ids)
 
 // - Policies Handling - //
 
-static bool HandlePoliciesInfo(base::Event& e, types::TracerFn tr)
+static std::optional<std::string> HandlePoliciesInfo(base::Event& event,
+                                                     const std::string& agentId,
+                                                     const std::string& scaEventPath)
 {
-    std::string failureTrace = fmt::format("HandlePoliciesInfo sca_decode Failure");
-    const rapidjson::Value* doc {};
-    try
+    // TODO: policies not found in examples, check it
+    if (!event->exists(scaEventPath + "/policies")
+        || !event->isArray(scaEventPath + "/policies"))
     {
-        doc = &e->getEvent()->get(engineserver::EVENT_LOG);
+        return "Error: policies array not found";
     }
-    catch (const std::exception& e)
-    {
-        return false;
-    }
-
-    json::Value::ConstMemberIterator itr = doc->FindMember("policies");
-    if (itr == doc->MemberEnd() || !itr->value.IsArray())
-    {
-        tr(failureTrace);
-        return false;
-    }
-    const auto& policies = itr->value;
+    auto policies = event->getArray(scaEventPath + "/policies").value();
 
     //"Checking policy JSON fields"
-    std::string policies_ids;
+    std::string policiesIds;
 
     // "Retrieving policies from database."
-    int result_db = FindPoliciesIds(e, policies_ids);
-    bool result = true;
-    switch (result_db)
+    int resultDb = FindPoliciesIds(agentId, policiesIds);
+    switch (resultDb)
     {
-        case -1:
-            // "Error querying policy monitoring database for agent"
-            tr(failureTrace);
-            result = false;
-            break;
+        case -1: return "Error querying policy monitoring database for agent";
 
         default:
             /* For each policy id, look if we have scanned it */
-            const auto& policies_list = utils::string::split(policies_ids, ',');
+            const auto& policiesList = utils::string::split(policiesIds, ',');
 
-            if (policies_list.size() > 0)
+            if (policiesList.size() > 0)
             {
-                for (auto& p_id : policies_list)
+
+                for (auto& pId : policiesList)
                 {
                     int exists = 0;
-                    for (auto& policy : policies.GetArray())
+                    for (auto& jsonPolicy : policies)
                     {
-                        std::string s_policy = policy.GetString();
-                        if (!s_policy.empty())
+                        auto policy = jsonPolicy.getString();
+                        if (policy && !policy.value().empty())
                         {
-                            // "Comparing policy
-                            if (s_policy == p_id)
+                            // "Comparing policy: '%s' '%s'", policy, p_id);
+                            if (policy.value() == pId)
                             {
                                 exists = 1;
                                 break;
@@ -1203,98 +1423,69 @@ static bool HandlePoliciesInfo(base::Event& e, types::TracerFn tr)
                     /* This policy is not being scanned anymore, delete it */
                     if (!exists)
                     {
-                        // "Policy id doesn't exist Deleting it"
-                        int result_delete = DeletePolicy(e);
+                        // "Policy id doesn't exist: '%s'. Deleting it.", p_id);
+                        int resultDelete = DeletePolicy(agentId);
 
-                        switch (result_delete)
+                        switch (resultDelete)
                         {
                             case 0:
                                 /* Delete checks */
-                                DeletePolicyCheck(e);
+                                DeletePolicyCheck(agentId);
                                 break;
 
                             default:
-                                // "Unable to purge DB content for policy
-                                tr(failureTrace);
-                                result = false;
-                                break;
+                                // "Unable to purge DB content for policy '%s'", p_id
+                                return "Error: Unable to purge DB content for policy";
                         }
                     }
                 }
             }
             break;
     }
-    return result;
+
+    return std::nullopt;
 }
 
 /// Dump Functions ///
 
-static bool CheckDumpJSON(base::Event& e,
-                          std::string& elements_sent,
-                          std::string& policy_id,
-                          std::string& scan_id)
+static std::optional<std::string> CheckDumpJSON(base::Event event,
+                                                std::string& elementsSent,
+                                                std::string& policyId,
+                                                std::string& scanId,
+                                                const std::string& scaEventPath)
 {
-    const rapidjson::Value* doc {};
-    try
+    if (!event->exists(scaEventPath + "/elements_sent")
+        || !event->isInt(scaEventPath + "/elements_sent"))
     {
-        doc = &e->getEvent()->get(engineserver::EVENT_LOG);
+        return "Error: elements_sent not found";
     }
-    catch (const std::exception& e)
-    {
-        return false;
-    }
+    elementsSent = event->getInt(scaEventPath + "/elements_sent").value();
 
-    json::Value::ConstMemberIterator itr = doc->FindMember("elements_sent");
-    if (itr != doc->MemberEnd())
+    if (!event->exists(scaEventPath + "/policy_id")
+        || !event->isString(scaEventPath + "/policy_id"))
     {
-        elements_sent = itr->value.GetInt(); // Check value type
+        return "Error: policy_id not found";
     }
-    else
-    {
-        return false;
-    }
+    policyId = event->getString(scaEventPath + "/policy_id").value();
 
-    itr = doc->FindMember("policy_id");
-    if (itr != doc->MemberEnd())
+    if (!event->exists(scaEventPath + "/scan_id")
+        || !event->isString(scaEventPath + "/scan_id"))
     {
-        policy_id = itr->value.GetString();
+        return "Error: scan_id not found";
     }
-    else
-    {
-        return false;
-    }
+    scanId = event->getString(scaEventPath + "/scan_id").value();
 
-    itr = doc->FindMember("scan_id");
-    if (itr != doc->MemberEnd())
-    {
-        scan_id = std::to_string(itr->value.GetUint());
-    }
-    else
-    {
-        return false;
-    }
-
-    return true;
+    return std::nullopt;
 }
 
-static int
-DeletePolicyCheckDistinct(base::Event& e, std::string& policy_id, std::string& scan_id)
+static int DeletePolicyCheckDistinct(const std::string& agentId,
+                                     const std::string& policyId,
+                                     const std::string& scanId)
 {
     // "Deleting check distinct policy id , agent id "
-    std::string agent_id;
-    int result_db = -1;
-    try
-    {
-        agent_id = e->getEvent()->get(engineserver::EVENT_AGENT_ID).GetString();
-    }
-    catch (const std::exception& e)
-    {
-        return result_db;
-    }
-
-    std::string DeletePolicyCheckDistinctQuery = std::string("agent ") + agent_id
+    std::string DeletePolicyCheckDistinctQuery = std::string {"agent "} + agentId
                                                  + " sca delete_check_distinct "
-                                                 + policy_id + "|" + scan_id;
+                                                 + policyId + "|" + scanId;
 
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto DeletePolicyCheckDistinctTuple =
@@ -1303,158 +1494,158 @@ DeletePolicyCheckDistinct(base::Event& e, std::string& policy_id, std::string& s
 
     if (DeletePolicyCheckDistinctStatus == wazuhdb::QueryResultCodes::OK)
     {
-        result_db = 0;
+        return 0;
     }
     else if (DeletePolicyCheckDistinctStatus == wazuhdb::QueryResultCodes::ERROR)
     {
-        result_db = 1;
+        return 1;
     }
 
-    return result_db;
+    return -1;
 }
 
 // - Dump Handling - //
 
-static bool HandleDumpEvent(base::Event& e, types::TracerFn tr)
+static std::optional<std::string> HandleDumpEvent(base::Event& event,
+                                                  const std::string& agentId,
+                                                  const std::string& scaEventPath)
 {
-    std::string failureTrace = fmt::format("HandleDumpEvent sca_decode Failure");
-
-    std::string elements_sent;
-    std::string policy_id;
-    std::string scan_id;
-    bool result = true;
+    std::string elementsSent;
+    std::string policyId;
+    std::string scanId;
 
     // "Checking dump event JSON fields"
-    if (CheckDumpJSON(e, elements_sent, policy_id, scan_id))
+    if (CheckDumpJSON(event, elementsSent, policyId, scanId, scaEventPath))
     {
-        int result_db = DeletePolicyCheckDistinct(e, policy_id, scan_id);
-        switch (result_db)
+        int resultDb = DeletePolicyCheckDistinct(agentId, policyId, scanId);
+        if (-1 == resultDb)
         {
-            case -1:
-                //  "Error querying policy monitoring database for agent"
-                tr(failureTrace);
-                result = false;
-                break;
-            default: break;
+            return "Error querying policy monitoring database for agent";
         }
 
         /* Check the new sha256 */
-        std::string wdb_response;
-        result_db = FindCheckResults(e, wdb_response);
-        if (!result_db)
+        std::string wdbResponse;
+        resultDb = FindCheckResults(agentId, wdbResponse);
+        if (!resultDb)
         {
-            std::string hash_scan_info;
+            std::string hashScanInfo;
             // TODO: check if it's ok "%s64" -> should I check length ?
-            int result_db_hash = FindScanInfo(e, hash_scan_info);
+            int resultDbHash = FindScanInfo(event, agentId, scaEventPath, hashScanInfo);
 
-            if (hash_scan_info.empty())
+            if (hashScanInfo.empty())
             {
-                // "Retrieving sha256 hash while handling dump for policy"
-                tr(failureTrace);
-                result = false;
+                return "Error: sha256 hash not found for policy";
             }
 
-            if (!result_db_hash)
+            if (!resultDbHash)
             {
                 /* Integrity check */
-                if (wdb_response == hash_scan_info)
+                if (wdbResponse == hashScanInfo)
                 {
                     //"Scan result integrity failed for policy requesting DB dump."
-                    PushDumpRequest(e, 0);
+                    // TODO: handle return value
+                    PushDumpRequest(event, agentId, 0);
                 }
             }
         }
     }
     else
     {
-        result = false;
+        return "Error: unexpected fields for sca dump event";
     }
-    return result;
+    return std::nullopt;
 }
 
 // - Helper - //
 
-base::Lifter opBuilderSCAdecoder(const base::DocumentValue& def, types::TracerFn tr)
+base::Expression opBuilderSCAdecoder(const std::any& definition)
 {
-    const std::string decode_result_status {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    // Extract parameters from any
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters {helper::base::processParameters(raw_parameters)};
+    // Assert expected number of parameters
+    helper::base::checkParametersSize(parameters, 2);
+    // Parameter type check
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
 
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
-    {
-        throw std::runtime_error("Invalid parameter type for sca_decode "
-                                 "operator (str expected)");
-    }
+    // const std::string rValue {parameters[0].m_value};
 
-    // Parse parameter
-    auto parametersArr {utils::string::split(def.MemberBegin()->value.GetString(), '/')};
-    if (parametersArr.size() != 1)
-    {
-        throw std::runtime_error("Invalid number of parameters for sca_decode operator");
-    }
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    base::Document doc {def};
-    std::string successTrace = fmt::format("{} sca_decode Success", doc.str());
-    std::string failureTrace = fmt::format("{} sca_decode Failure", doc.str());
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    // Return Lifter
-    return [=, tr = std::move(tr)](base::Observable o) {
-        // Append rxcpp operation
-        return o.map([=, tr = std::move(tr)](base::Event e) {
-            bool proccessResult = false;
-            try
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {fmt::format(
+        "[{}] -> Failure: [{}] is empty or is not an object", name, targetField)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name)};
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=,
+         name = std::string {name},
+         targetField = std::move(targetField),
+         scaEventPath = parameters[0].m_value,
+         agentId = parameters[1].m_value](base::Event event) -> base::result::Result<base::Event>
+        {
+            // auto resolvedRValue {event->getObject(rValue)};
+
+            if (event->exists(scaEventPath))
             {
-                // Get Type value
-                const std::string& type =
-                    e->getEvent()->get(std::string(engineserver::EVENT_LOG) + "/type").GetString();
-                if (type == "check")
+                // const auto& scaEvent = resolvedRValue.value();
+
+                // Type object is mandatory
+                auto typeIt = event->getString(
+                    scaEventPath + "/type"); // getValueFromObject(scaEvent, "type");
+
+                if (!typeIt.has_value())
                 {
-                    proccessResult = HandleCheckEvent(e, tr);
+                    return base::result::makeFailure(event, failureTrace1);
                 }
-                else if (type == "summary")
+
+                // const auto& typeValue = typeIt.value().getString().value();
+
+                // TODO: The agent id should be obtained from parameters
+                std::optional<std::string> result;
+                if ("check" == typeIt.value())
                 {
-                    proccessResult = HandleScanInfo(e, tr);
+                    result = HandleCheckEvent(event, agentId, scaEventPath);
                 }
-                else if (type == "policies")
+                else if ("summary" == typeIt.value())
                 {
-                    proccessResult = HandlePoliciesInfo(e, tr);
+                    result = HandleScanInfo(event, agentId, scaEventPath);
                 }
-                else if (type == "dump_end")
+                else if ("policies" == typeIt.value())
                 {
-                    proccessResult = HandleDumpEvent(e, tr);
+                    result = HandlePoliciesInfo(event, agentId, scaEventPath);
+                }
+                else if ("dump_end" == typeIt.value())
+                {
+                    result = HandleDumpEvent(event, agentId, scaEventPath);
                 }
                 else
                 {
-                    throw std::invalid_argument("wrong type for SCA decoder");
+                    return base::result::makeFailure(event, failureTrace2);
                 }
-                proccessResult ? tr(successTrace) : tr(failureTrace);
-            }
-            catch (const std::invalid_argument& e)
-            {
-                tr(failureTrace + ": " + e.what());
-            }
-            catch (const std::exception& e)
-            {
-                tr(failureTrace + ": " + e.what());
-            }
-            catch (...)
-            {
-                tr(failureTrace);
-            }
 
-            try
-            {
-                e->getEvent()->set(decode_result_status,
-                                   rapidjson::Value(proccessResult));
+                if (result)
+                {
+                    return base::result::makeSuccess(event, successTrace);
+                }
+                return base::result::makeFailure(event, failureTrace3 + result.value());
             }
-            catch (const std::exception& e)
+            else
             {
-                tr(failureTrace);
+                return base::result::makeFailure(event, failureTrace1);
             }
-
-            return e;
         });
-    };
 }
 
 } // namespace builder::internals::builders
