@@ -18,7 +18,7 @@
 namespace
 {
 
-std::string wdbi_strings_hash(const std::vector<std::string>& input)
+std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& input)
 {
     char* parameter = NULL;
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -119,21 +119,16 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                         }
 
                         auto s_paramValue = event->getString(param.m_value);
-                        if (s_paramValue.has_value() && s_paramValue.value().empty())
+                        if (!s_paramValue.has_value())
                         {
                             return base::result::makeFailure(event, failureTrace1);
                         }
 
                         resolvedParameter.emplace_back(s_paramValue.value());
                         break;
-
                     }
                     case helper::base::Parameter::Type::VALUE:
                     {
-                        if (param.m_value.empty())
-                        {
-                            return base::result::makeFailure(event, failureTrace1);
-                        }
                         resolvedParameter.emplace_back(param.m_value);
                         break;
                     }
@@ -149,7 +144,12 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
 
             try
             {
-                event->setString(wdbi_strings_hash(resolvedParameter), targetField);
+                auto resultHash = wdbi_strings_hash(resolvedParameter);
+                if (!resultHash.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace3);
+                }
+                event->setString(resultHash.value(), targetField);
             }
             catch (const std::exception& e)
             {
