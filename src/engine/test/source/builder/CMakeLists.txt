@@ -170,9 +170,9 @@ gtest_discover_tests(opBuilderARWrite_test)
 
 # TODO: Updated KVDB tests
 # add_executable(opBuilderKVDBTest
-#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
-#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
-#   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
+# ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
+# ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
+# ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
 # )
 # gtest_discover_tests(opBuilderKVDBTest)
 
@@ -186,8 +186,8 @@ gtest_discover_tests(definitions_test)
 add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
 )
-
 gtest_discover_tests(register_test)
+
 add_executable(opBuilderSCAdecoderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSCAdecoder_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp

@@ -107,6 +107,9 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
     Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
 
+    // SCA decoder
+    Registry::registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
+
     //SysCollector - netInfo
     Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4,
                               "helper.saveNetInfoIPv4");
