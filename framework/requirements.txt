@@ -51,7 +51,7 @@ jsonschema==2.6.0
 libcst==0.3.20
 MarkupSafe==1.1.1
 more-itertools==8.2.0
-multidict==5.1.0
+multidict==6.0.2
 mypy-extensions==0.4.3
 openapi-spec-validator==0.2.6
 packaging==20.9
@@ -67,7 +67,7 @@ python-dateutil==2.8.1
 python-jose==3.1.0
 python-json-logger==2.0.2
 pytz==2020.1
-PyYAML==5.4.1
+PyYAML==6.0
 requests==2.25.1
 rsa==4.7.2
 s3transfer==0.4.2
@@ -78,8 +78,8 @@ tabulate==0.8.9
 typing-extensions==3.10.0.2
 typing-inspect==0.7.1
 urllib3==1.26.5
-uvloop==0.15.2
+uvloop==0.16.0
 websocket-client==0.57.0
 Werkzeug==2.0.2
 xmltodict==0.12.0
-yarl==1.6.3
+yarl==1.8.1
