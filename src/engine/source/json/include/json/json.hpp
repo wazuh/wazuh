@@ -344,6 +344,20 @@ public:
     bool isInt(std::string_view path = "") const;
 
     /**
+     * @brief Check if the Json described by the path is double.
+     *
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Double.
+     * @return false if Json is not Double.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
+     */
+    bool isDouble(std::string_view path = "") const;
+
+    /**
      * @brief Check if the Json described by the path is String.
      *
      * Ensure that the path exists before calling this function.
