@@ -279,51 +279,19 @@ static void FillCheckEventInfo(base::Event& event,
                                const std::string& scaEventPath)
 {
 
-    // std::string field = {json::formatJsonPath("sca.type")};
-    // e->getEvent()->set(field,
-    //                    rapidjson::Value("check", e->getEventDocAllocator()).Move());
     event->setString("check", "/sca/type");
 
-    // field = json::formatJsonPath("sca.check.previous_result");
-    // e->getEvent()->set(
-    //     field, rapidjson::Value(response.c_str(), e->getEventDocAllocator()).Move());
-
     event->setString(response.c_str(), "/sca/check/previous_result");
-
-    // field = {json::formatJsonPath("sca.scan_id")};
-    // e->getEvent()->set(
-    // field,
-    // rapidjson::Value(eventKeyValues["/id"].c_str(), e->getEventDocAllocator())
-    // .Move());
     // TODO: Maybe int or string or double
     // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
     event->setString(eventKeyValues["/id"].c_str(), "/sca/id");
 
-    // field = {json::formatJsonPath("sca.policy")};
-    // e->getEvent()->set(
-    //     field,
-    //     rapidjson::Value(eventKeyValues["/policy"].c_str(), e->getEventDocAllocator())
-    //         .Move());
     event->setString(eventKeyValues["/policy"].c_str(), "/sca/policy");
 
-    // field = {json::formatJsonPath("sca.check.id")};
-    // e->getEvent()->set(
-    //     field,
-    //     rapidjson::Value(eventKeyValues["/check/id"].c_str(),
-    //     e->getEventDocAllocator())
-    //         .Move());
     // TODO: Maybe int or string or double
     // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
     event->setString(eventKeyValues["/check/id"].c_str(), "/sca/check/id");
 
-    // if (!eventKeyValues["/check/title"].empty())
-    // {
-    //     field = {json::formatJsonPath("sca.check.title")};
-    //     e->getEvent()->set(field,
-    //                        rapidjson::Value(eventKeyValues["/check/title"].c_str(),
-    //                                         e->getEventDocAllocator())
-    //                            .Move());
-    // }
     if (!eventKeyValues["/check/title"].empty())
     {
         event->setString(eventKeyValues["/check/title"].c_str(), "/sca/check/title");
@@ -331,101 +299,42 @@ static void FillCheckEventInfo(base::Event& event,
 
     if (!eventKeyValues["/check/description"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.description")};
-        // e->getEvent()->set(field,
-        //                    rapidjson::Value(eventKeyValues["/check/description"].c_str(),
-        //                                     e->getEventDocAllocator())
-        //                        .Move());
         event->setString(eventKeyValues["/check/description"].c_str(),
                          "/sca/check/description");
     }
 
     if (!eventKeyValues["/check/rationale"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.rationale")};
-        // e->getEvent()->set(field,
-        //                    rapidjson::Value(eventKeyValues["/check/rationale"].c_str(),
-        //                                     e->getEventDocAllocator())
-        //                        .Move());
         event->setString(eventKeyValues["/check/rationale"].c_str(),
                          "/sca/check/rationale");
     }
 
     if (!eventKeyValues["/check/remediation"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.remediation")};
-        // e->getEvent()->set(field,
-        //                    rapidjson::Value(eventKeyValues["/check/remediation"].c_str(),
-        //                                     e->getEventDocAllocator())
-        //                        .Move());
         event->setString(eventKeyValues["/check/remediation"].c_str(),
                          "/sca/check/remediation");
     }
 
-    // const auto& compliance = e->getEvent()->get("/event/original/check/compliance");
-    // for (rapidjson::Value::ConstMemberIterator itr = compliance.MemberBegin();
-    //      itr != compliance.MemberEnd();
-    //      ++itr)
-    // {
-    //     const std::string& key = itr->name.GetString();
-    //     field = {json::formatJsonPath(std::string("sca.check.compliance.") + key)};
-    //     if (itr->value.IsInt())
-    //     {
-    //         const int& value = itr->value.GetInt();
-    //         e->getEvent()->set(field, rapidjson::Value(value));
-    //     }
-    //     else if (itr->value.IsDouble())
-    //     {
-    //         const double& value = itr->value.GetDouble();
-    //         e->getEvent()->set(field, rapidjson::Value(value));
-    //     }
-    //     else
-    //     {
-    //         const std::string& value = itr->value.GetString();
-    //         e->getEvent()->set(
-    //             field, rapidjson::Value(value.c_str(),
-    //             e->getEventDocAllocator()).Move());
-    //     }
-    // }
     event->set("/sca/check/compliance", std::string {scaEventPath + "/check/compliance"});
 
     if (!eventKeyValues["/check/references"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.references")};
-        // e->getEvent()->set(field,
-        //                    rapidjson::Value(eventKeyValues["/check/references"].c_str(),
-        //                                     e->getEventDocAllocator())
-        //                        .Move());
         event->setString(eventKeyValues["/check/references"].c_str(),
                          "/sca/check/references");
     }
 
     if (!eventKeyValues["/check/file"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.file")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/file"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
-
-        // TODO: this is an array of strings
         auto arrayFile = utils::string::split(eventKeyValues["/check/file"].c_str(), ',');
         event->setArray("/sca/check/file");
         for (auto& file : arrayFile)
         {
             event->appendString(file, "/sca/check/file");
         }
-        // For each file in the array, append /sca/check/file[x].
     }
 
     if (!eventKeyValues["/check/directory"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.directory")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/directory"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
-        // TODO: this is an array of strings
         auto arrayDirectory =
             utils::string::split(eventKeyValues["/check/directory"].c_str(), ',');
         event->setArray("/sca/check/directory");
@@ -438,13 +347,6 @@ static void FillCheckEventInfo(base::Event& event,
 
     if (!eventKeyValues["/check/registry"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.registry")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/registry"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
-
-        // TODO: this is an array of strings
         auto arrayRegistry =
             utils::string::split(eventKeyValues["/check/registry"].c_str(), ',');
         event->setArray("/sca/check/registry");
@@ -452,18 +354,10 @@ static void FillCheckEventInfo(base::Event& event,
         {
             event->appendString(registry, "/sca/check/registry");
         }
-        // For each directory in the array, append. /sca/check/registry[x]
     }
 
     if (!eventKeyValues["/check/process"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.process")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/process"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
-
-        // TODO: this is an array of strings
         auto arrayRegistry =
             utils::string::split(eventKeyValues["/check/process"].c_str(), ',');
         event->setArray("/sca/check/process");
@@ -471,18 +365,10 @@ static void FillCheckEventInfo(base::Event& event,
         {
             event->appendString(process, "/sca/check/process");
         }
-        // For each directory in the array, append. /sca/check/process[x]
     }
 
     if (!eventKeyValues["/check/command"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.command")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/command"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
-
-        // TODO: this is an array of strings
         auto arrayRegistry =
             utils::string::split(eventKeyValues["/check/command"].c_str(), ',');
         event->setArray("/sca/check/command");
@@ -490,33 +376,17 @@ static void FillCheckEventInfo(base::Event& event,
         {
             event->appendString(command, "/sca/check/command");
         }
-        // For each directory in the array, append. /sca/check/command[x]
     }
 
     if (!eventKeyValues["/check/result"].empty())
     {
-        // field = {json::formatJsonPath("sca.check.result")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/result"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
         event->setString(eventKeyValues["/check/result"].c_str(), "/sca/check/result");
     }
     else
     {
-        // field = {json::formatJsonPath("sca.check.status")};
-        // e->getEvent()->set(field,
-        //                   rapidjson::Value(eventKeyValues["/check/status"].c_str(),
-        //                                    e->getEventDocAllocator())
-        //                       .Move());
         event->setString(eventKeyValues["/check/status"].c_str(), "/sca/check/status");
         if (!eventKeyValues["/check/reason"].empty())
         {
-            // field = {json::formatJsonPath("sca.check.reason")};
-            // e->getEvent()->set(field,
-            //                   rapidjson::Value(eventKeyValues["/check/reason"].c_str(),
-            //                                    e->getEventDocAllocator())
-            //                       .Move());
             event->setString(eventKeyValues["/check/reason"].c_str(),
                              "/sca/check/reason");
         }
@@ -715,25 +585,6 @@ static std::unordered_map<std::string, std::string> scanInfoKeyValues {{"/policy
 
 static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
 {
-
-    // Check and get fields with string type checking
-    // const auto& doc = e->getEvent()->get(engineserver::EVENT_LOG);
-    // for (auto& pairKeyValue : scanInfoKeyValues)
-    // {
-    //     const std::string key = pairKeyValue.first;
-    //     json::Value::ConstMemberIterator itr = doc.FindMember(key.c_str());
-    //     if (itr != doc.MemberEnd() && itr->value.IsString())
-    //     {
-    //         scanInfoKeyValues[key] = itr->value.GetString();
-    //     }
-    //     else
-    //     {
-    //         return false;
-    //     }
-    // }
-
-    // TODO Remnove this, why isObject trow exception, should be false  to avoid double
-    // search (exists+isObject)?
     if (!event->isObject(scaEventPath))
     {
         return false;
@@ -755,18 +606,6 @@ static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPat
         }
     }
 
-    // scan_id
-    // json::Value::ConstMemberIterator itr = doc.FindMember("/scan_id");
-    // if (itr != doc.MemberEnd() && itr->value.IsInt())
-    //{
-    //    // TODO: make it varaiant in order to avoid double casting
-    //    // afterwars it will be used as string on query, double check this!
-    //    scanInfoKeyValues["/scan_id"] = std::to_string(itr->value.GetInt());
-    //}
-    // else
-    //{
-    //    return false;
-    //}
     auto scanId = event->getInt("/scan_id");
     if (scanId.has_value())
     {
@@ -788,18 +627,6 @@ static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPat
                                                 "/total_checks",
                                                 "/score"};
 
-    // for (auto& key : mandatoryFields)
-    //{
-    //     json::Value::ConstMemberIterator itr = doc.FindMember(key.c_str());
-    //     if (itr != doc.MemberEnd())
-    //     {
-    //         scanInfoKeyValues.insert({key, itr->value.GetString()});
-    //     }
-    //     else
-    //     {
-    //         return false;
-    //     }
-    // }
     for (const auto& key : mandatoryFields)
     {
         const auto value = event->getString(scaEventPath + key);
@@ -817,14 +644,6 @@ static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPat
     std::vector<std::string> notMandatoryFields = {
         "/first_scan", "/force_alert", "/description", "/references"};
 
-    // for (auto& key : notMandatoryFields)
-    //{
-    //     json::Value::ConstMemberIterator itr = doc.FindMember(key.c_str());
-    //     if (itr != doc.MemberEnd())
-    //     {
-    //         scanInfoKeyValues.insert({key, itr->value.GetString()});
-    //     }
-    // }
     for (const auto& key : notMandatoryFields)
     {
         const auto value = event->getString(scaEventPath + key);
@@ -844,7 +663,6 @@ static int FindScanInfo(base::Event& event,
                         std::string& hashScanInfo)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
-    // std::string agent_id = e->getEvent()->get("/agent/id").GetString();
     std::string FindScanInfoQuery = std::string("agent ") + agentId + " sca query_scan "
                                     + scanInfoKeyValues["/policy_id"];
 
@@ -1570,7 +1388,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     // Parameter type check
     helper::base::checkParameterType(parameters[0],
                                      helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::REFERENCE);
 
     // const std::string rValue {parameters[0].m_value};
 
