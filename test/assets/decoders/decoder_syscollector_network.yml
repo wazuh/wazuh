@@ -132,13 +132,13 @@ normalize:
 
   - map:
       _query: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|/$event.original.iface.name/|0/|/$event.original.iface.IPv4.gateway/|/$event.original.iface.IPv4.dhcp/|/$event.original.iface.IPv4.metric
-      _iface4_proto_save_response: +wdb_update/$_query
+      _result_netproto_save: +wdb_update/$_query
 
   #sys_netaddr - address
   - check:
       - event.original.iface.IPv4.address: +exists
     map:
-      _result_netInfoAddreses4: +saveNetAddressIPv6
+      _result_saveNetInfoIPv4: +saveNetInfoIPv4
 
 ---
 
@@ -170,13 +170,13 @@ normalize:
 
   - map:
       _query: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|/$event.original.iface.name/|0/|/$event.original.iface.IPv6.gateway/|/$event.original.iface.IPv6.dhcp/|/$event.original.iface.IPv6.metric
-      _iface4_proto_save_response: +wdb_update/$_query
+      _netproto_save_result: +wdb_update/$_query
 
   #sys_netaddr - address
   - check:
       - event.original.iface.IPv6.address: +exists
     map:
-      _result_netInfoAddreses4: +saveNetAddressIPv6
+      _result_saveNetInfoIPv6: +saveNetInfoIPv6
 
 ---
 
@@ -187,12 +187,10 @@ parents:
 
 check:
   - event.original.iface: +not_exists
+  - event.original.type: +s_eq/network_end
 
 normalize:
   #not iface type == network_end
-  - check:
-    - event.original.type: +s_eq/network_end
-    - event.original.iface: +not_exists
-    map:
-      _query_save: +s_concat/agent /$event.original.agent.id /netinfo del /$event.original.ID
-      _iface_save_response: +wdb_update/$_query_save
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /netinfo del /$event.original.ID
+      _netinfo_del_result: +wdb_update/$_query
