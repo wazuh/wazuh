@@ -18,7 +18,11 @@ namespace builder::internals::builders
 {
 
 // /* Security configuration assessment remoted queue */
-// constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
+
+// TODO: remove when undoing set for testing
+constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
+/* Security configuration assessment remoted queue */
+constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 
 /**
  * @brief Executes query on WDB returning status ok or not ok.

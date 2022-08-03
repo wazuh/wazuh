@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <tuple>
 
 #include "syntax.hpp"
 
@@ -23,11 +24,6 @@
 
 namespace builder::internals::builders
 {
-
-// TODO: remove when undoing set for testing
-constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
-/* Security configuration assessment remoted queue */
-constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 
 // SCA event json fields
 namespace sca_field
@@ -54,7 +50,11 @@ enum class Name
     CHECK_RULES,
     CHECK_STATUS,
     CHECK_REASON,
-    CHECK_RESULT
+    CHECK_RESULT,
+    CHECK_FILE,
+    // Aditional types
+    TYPE,
+    CHECK_PREVIOUS_RESULT
 };
 
 enum class Type
@@ -66,12 +66,7 @@ enum class Type
     OBJECT
 };
 
-constexpr Type getType(Name field)
-{
-    return Type::OBJECT;
-}
-
-constexpr std::string_view getPath(Name field)
+const std::string getRawPath(Name field)
 {
     switch (field)
     {
@@ -95,37 +90,23 @@ constexpr std::string_view getPath(Name field)
         case Name::CHECK_STATUS: return "/check/status";
         case Name::CHECK_REASON: return "/check/reason";
         case Name::CHECK_RESULT: return "/check/result";
+        case Name::CHECK_FILE: return "/check/file";
+        // Aditional fields
+        case Name::TYPE: return "/type";
+        case Name::CHECK_PREVIOUS_RESULT: return "/check/previous_result";
         default: return "";
     }
 }
 
-// Same as getScaPath but every path is prefixed with "/sca"
-constexpr std::string_view getMappedPath(Name field)
+inline std::string getEventPath(Name field, const std::string& scaEventPath)
 {
-    switch (field)
-    {
-        case Name::ID: return "/sca/id";
-        case Name::POLICY: return "/sca/policy";
-        case Name::POLICY_ID: return "/sca/policy_id";
-        case Name::CHECK: return "/sca/check";
-        case Name::CHECK_ID: return "/sca/check_id";
-        case Name::CHECK_TITLE: return "/sca/check/title";
-        case Name::CHECK_DESCRIPTION: return "/sca/check/description";
-        case Name::CHECK_RATIONALE: return "/sca/check/rationale";
-        case Name::CHECK_REMEDIATION: return "/sca/check/remediation";
-        case Name::CHECK_REFERENCES: return "/sca/check/references";
-        case Name::CHECK_COMPLIANCE: return "/sca/check/compliance";
-        case Name::CHECK_CONDITION: return "/sca/check/condition";
-        case Name::CHECK_DIRECTORY: return "/sca/check/directory";
-        case Name::CHECK_PROCESS: return "/sca/check/process";
-        case Name::CHECK_REGISTRY: return "/sca/check/registry";
-        case Name::CHECK_COMMAND: return "/sca/check/command";
-        case Name::CHECK_RULES: return "/sca/check/rules";
-        case Name::CHECK_STATUS: return "/sca/check/status";
-        case Name::CHECK_REASON: return "/sca/check/reason";
-        case Name::CHECK_RESULT: return "/sca/check/result";
-        default: return "";
-    }
+    return std::string {scaEventPath + getRawPath(field)};
+}
+
+// Same as getScaPath but every path is prefixed with "/sca"
+inline std::string getSCAPath(Name field)
+{
+    return std::string {"/sca"} + getRawPath(field);
 }
 
 } // namespace sca_field
@@ -151,245 +132,169 @@ enum class DbOperation
     UPDATE
 };
 
-// doc and move to json.hpp/cpp
-// Get json value from json object (Navigate on the json object is expensive, it is copied
-// a lot
-std::optional<json::Json>
-getValueFromObject(std::vector<std::tuple<std::string, json::Json>> object,
-                   std::string_view key)
-{
-    auto it = std::find_if(object.begin(),
-                           object.end(),
-                           [key](const auto& t) { return std::get<0>(t) == key; });
-    if (it != object.end())
-    {
-        return std::optional<json::Json> {std::get<1>(*it)};
-    }
+/********************************************
+                Event info
+*********************************************/
 
-    return {};
-}
-
-/// Event Info Functions ///
-
-static std::unordered_map<std::string, std::string> eventKeyValues {
-    {"/policy", ""},
-    {"/policy_id", ""},
-    {"/check/title", ""},
-};
-
-// Chequea los tipos, campos opcionales y obligatorios, rellena eventKeyValues?
+// Returns false if not found mandatory fields or the fields has the invalid type
+/**
+ * @brief
+ *
+ * @param event
+ * @param scaEventPath
+ * @return true
+ * @return false
+ */
 static bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
 {
-    // TODO: check value types should always return false if not matched as espected
-    // Check existance and fill all mandatory fields
-    // no se usan pero se obtienen :
-    //"/check/compliance", -> ???
-    //"/check/rules", -> ???
-    for (auto& pairKeyValue : eventKeyValues)
-    {
-        const std::string key = scaEventPath + "/" + pairKeyValue.first;
-        auto value = event->getString(key);
-        if (value)
-        {
-            eventKeyValues[pairKeyValue.first] = value.value();
-        }
-        else
-        {
-            return false;
-        }
-    }
 
-    // scan_id
-    auto value = event->getInt(scaEventPath + "/id");
-    if (value)
-    {
-        // TODO: make it varaiant in order to avoid double casting
-        eventKeyValues["/id"] = std::to_string(value.value());
-    }
-    else
-    {
-        return false;
-    }
-
-    // check_id
-    value = event->getInt(scaEventPath + "/check_id");
-    if (value)
-    {
-        eventKeyValues["/check_id"] = std::to_string(value.value());
-    }
-    else
-    {
-        return false;
-    }
-
-    // Continue filling all other not mandatory Event fields
-    for (auto& key : optionalFields)
-    {
-        const auto scaKey = scaEventPath + key;
-        if (event->exists(scaKey))
-        {
-            if (!event->isString(scaKey))
+    // Check types and mandatory fields if is necessary. Return false on fail.
+    auto checkType =
+        [&event](sca_field::Type type, const std::string& path, bool mandatory) {
+            if (event->exists(path))
+            {
+                switch (type)
+                {
+                    case sca_field::Type::STRING: return event->isString(path);
+                    case sca_field::Type::INT: return event->isInt(path);
+                    case sca_field::Type::BOOL: return event->isBool(path);
+                    case sca_field::Type::ARRAY: return event->isArray(path);
+                    case sca_field::Type::OBJECT: return event->isObject(path);
+                    default: return false; // TODO Logic error?
+                }
+            }
+            else if (mandatory)
             {
                 return false;
             }
+            return true;
+        };
 
-            auto value = event->getString(scaKey);
-            if (value)
-            {
-                eventKeyValues[key] = value.value();
-            }
-        }
-    }
+    // Valid ONLY CheckEventJSON
+    std::tuple<sca_field::Name, sca_field::Type, bool> listFieldConditions[] = {
+        {sca_field::Name::ID, sca_field::Type::INT, true},
+        {sca_field::Name::POLICY, sca_field::Type::STRING, true},
+        {sca_field::Name::POLICY_ID, sca_field::Type::STRING, true},
+        {sca_field::Name::CHECK, sca_field::Type::OBJECT, true},
+        {sca_field::Name::CHECK_ID, sca_field::Type::INT, true},
+        {sca_field::Name::CHECK_TITLE, sca_field::Type::STRING, true},
+        {sca_field::Name::CHECK_DESCRIPTION, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_RATIONALE, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_REMEDIATION, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_REFERENCES, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_COMPLIANCE, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_CONDITION, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_DIRECTORY, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_PROCESS, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_REGISTRY, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_COMMAND, sca_field::Type::STRING, false}
+        //"/check/compliance", -> ??? // TODO Check this
+        //"/check/rules", -> ???
+    };
 
-    // TODO: why is not in the mandatory fields?
-    // check.status && check.reason
-    auto statusKey = scaEventPath + "/check/status";
-    auto reasonKey = scaEventPath + "/check/reason";
-    auto resultKey = scaEventPath + "/check/result";
-
-    // TODO: format
-    if (event->exists(statusKey) && event->isString(statusKey) && event->exists(reasonKey)
-        && event->isString(reasonKey) && event->exists(resultKey)
-        && event->isString(resultKey))
+    for (const auto& fieldInfo : listFieldConditions)
     {
-        auto status = event->getString(statusKey);
-        auto reason = event->getString(reasonKey);
-        auto result = event->getString(resultKey);
-        if (status && reason && result)
-        {
-            eventKeyValues["/check/status"] = status.value();
-            eventKeyValues["/check/reason"] = reason.value();
-            eventKeyValues["/check/result"] = result.value();
-        }
-        else
+        const auto& field = std::get<0>(fieldInfo);
+        const auto& type = std::get<1>(fieldInfo);
+        const auto& mandatory = std::get<2>(fieldInfo);
+
+        const auto path = sca_field::getEventPath(field, scaEventPath);
+        if (!checkType(type, path, mandatory))
         {
             return false;
         }
     }
-    else
+
+    // If /CHECK_RESULT exist status then, shoud exists /CHECK/REASON
+    if (event->exists(
+            sca_field::getEventPath(sca_field::Name::CHECK_RESULT, scaEventPath)))
     {
+        bool validResult = event->isString(
+            sca_field::getEventPath(sca_field::Name::CHECK_RESULT, scaEventPath));
+        if (!validResult)
+        {
+            return false;
+        }
+    }
+    else if (event->exists(
+                 sca_field::getEventPath(sca_field::Name::CHECK_STATUS, scaEventPath)))
+    {
+        // If the result doesn't exist, the state shouldn't either.
         return false;
     }
 
     return true;
 }
-
+// Simpre se llama en handle check event
 static void FillCheckEventInfo(base::Event& event,
                                const std::string& response,
                                const std::string& scaEventPath)
 {
 
-    event->setString("check", "/sca/type");
+    event->setString("check", sca_field::getSCAPath(sca_field::Name::TYPE));
 
-    event->setString(response.c_str(), "/sca/check/previous_result");
-    // TODO: Maybe int or string or double
+    event->setString("check",
+                     sca_field::getSCAPath(sca_field::Name::CHECK_PREVIOUS_RESULT));
+
+    // Copy if exist from event to sca
+    auto copyIfExist = [&event, &scaEventPath](sca_field::Name field) {
+        event->set(sca_field::getEventPath(field, scaEventPath),
+                   sca_field::getSCAPath(field));
+    };
+
+    // Convert cvs (string) from event if exist, to array in SCA
+    auto cvsStr2ArrayIfExist = [&event, &scaEventPath](sca_field::Name field) {
+        if (event->exists(sca_field::getEventPath(field, scaEventPath)))
+        {
+            auto cvs = event->getString(sca_field::getEventPath(field, scaEventPath));
+            if (cvs)
+            {
+                const auto scaArrayPath = sca_field::getSCAPath(field);
+                const auto cvaArray = utils::string::split(cvs.value().c_str(), ',');
+
+                event->setArray(scaArrayPath);
+                for (auto& cvsItem : cvaArray)
+                {
+                    event->appendString(scaArrayPath);
+                }
+            }
+        }
+    };
+
+    // TODO: Maybe id, policy_id is a int or string or double ()
     // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
-    event->setString(eventKeyValues["/id"].c_str(), "/sca/id");
+    // But here check if is int
+    // https://github.dev/wazuh/wazuh/blob/af2a42a4f2a2566943e6700efa38068a68049788/src/analysisd/decoders/security_configuration_assessment.c#L1371-L1375
 
-    event->setString(eventKeyValues["/policy"].c_str(), "/sca/policy");
+    copyIfExist(sca_field::Name::ID);
+    copyIfExist(sca_field::Name::POLICY);
+    copyIfExist(sca_field::Name::POLICY_ID);
 
-    // TODO: Maybe int or string or double
-    // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
-    event->setString(eventKeyValues["/check/id"].c_str(), "/sca/check/id");
+    // Optional fields
+    copyIfExist(sca_field::Name::CHECK_TITLE);
+    copyIfExist(sca_field::Name::CHECK_DESCRIPTION);
+    copyIfExist(sca_field::Name::CHECK_RATIONALE);
+    copyIfExist(sca_field::Name::CHECK_REMEDIATION);
+    copyIfExist(sca_field::Name::CHECK_COMPLIANCE);
+    copyIfExist(sca_field::Name::CHECK_REFERENCES);
 
-    if (!eventKeyValues["/check/title"].empty())
+    // Optional fields with cvs
+    cvsStr2ArrayIfExist(sca_field::Name::CHECK_FILE);
+    cvsStr2ArrayIfExist(sca_field::Name::CHECK_DIRECTORY);
+    cvsStr2ArrayIfExist(sca_field::Name::CHECK_REGISTRY);
+    cvsStr2ArrayIfExist(sca_field::Name::CHECK_PROCESS);
+    cvsStr2ArrayIfExist(sca_field::Name::CHECK_COMMAND);
+
+    if (event->exists(
+            sca_field::getEventPath(sca_field::Name::CHECK_RESULT, scaEventPath)))
     {
-        event->setString(eventKeyValues["/check/title"].c_str(), "/sca/check/title");
-    }
-
-    if (!eventKeyValues["/check/description"].empty())
-    {
-        event->setString(eventKeyValues["/check/description"].c_str(),
-                         "/sca/check/description");
-    }
-
-    if (!eventKeyValues["/check/rationale"].empty())
-    {
-        event->setString(eventKeyValues["/check/rationale"].c_str(),
-                         "/sca/check/rationale");
-    }
-
-    if (!eventKeyValues["/check/remediation"].empty())
-    {
-        event->setString(eventKeyValues["/check/remediation"].c_str(),
-                         "/sca/check/remediation");
-    }
-
-    event->set("/sca/check/compliance", std::string {scaEventPath + "/check/compliance"});
-
-    if (!eventKeyValues["/check/references"].empty())
-    {
-        event->setString(eventKeyValues["/check/references"].c_str(),
-                         "/sca/check/references");
-    }
-
-    if (!eventKeyValues["/check/file"].empty())
-    {
-        auto arrayFile = utils::string::split(eventKeyValues["/check/file"].c_str(), ',');
-        event->setArray("/sca/check/file");
-        for (auto& file : arrayFile)
-        {
-            event->appendString(file, "/sca/check/file");
-        }
-    }
-
-    if (!eventKeyValues["/check/directory"].empty())
-    {
-        auto arrayDirectory =
-            utils::string::split(eventKeyValues["/check/directory"].c_str(), ',');
-        event->setArray("/sca/check/directory");
-        for (auto& directory : arrayDirectory)
-        {
-            event->appendString(directory, "/sca/check/directory");
-        }
-        // For each directory in the array, append. /sca/check/directory[x]
-    }
-
-    if (!eventKeyValues["/check/registry"].empty())
-    {
-        auto arrayRegistry =
-            utils::string::split(eventKeyValues["/check/registry"].c_str(), ',');
-        event->setArray("/sca/check/registry");
-        for (auto& registry : arrayRegistry)
-        {
-            event->appendString(registry, "/sca/check/registry");
-        }
-    }
-
-    if (!eventKeyValues["/check/process"].empty())
-    {
-        auto arrayRegistry =
-            utils::string::split(eventKeyValues["/check/process"].c_str(), ',');
-        event->setArray("/sca/check/process");
-        for (auto& process : arrayRegistry)
-        {
-            event->appendString(process, "/sca/check/process");
-        }
-    }
-
-    if (!eventKeyValues["/check/command"].empty())
-    {
-        auto arrayRegistry =
-            utils::string::split(eventKeyValues["/check/command"].c_str(), ',');
-        event->setArray("/sca/check/command");
-        for (auto& command : arrayRegistry)
-        {
-            event->appendString(command, "/sca/check/command");
-        }
-    }
-
-    if (!eventKeyValues["/check/result"].empty())
-    {
-        event->setString(eventKeyValues["/check/result"].c_str(), "/sca/check/result");
+        event->set(sca_field::getEventPath(sca_field::Name::CHECK_RESULT, scaEventPath),
+                   sca_field::getSCAPath(sca_field::Name::CHECK_RESULT));
     }
     else
     {
-        event->setString(eventKeyValues["/check/status"].c_str(), "/sca/check/status");
-        if (!eventKeyValues["/check/reason"].empty())
-        {
-            event->setString(eventKeyValues["/check/reason"].c_str(),
-                             "/sca/check/reason");
-        }
+        copyIfExist(sca_field::Name::CHECK_STATUS);
+        copyIfExist(sca_field::Name::CHECK_REASON);
     }
 }
 
@@ -400,51 +305,73 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
                                                    const std::string& scaEventPath)
 {
 
-    // CheckEventJSON
-    if (!CheckEventJSON(event, scaEventPath)) // Rework this
+    // Check types of fields and if they are mandatory
+    if (!CheckEventJSON(event, scaEventPath))
     {
-        // exit error
+        // TODO: Check this message. exit error
         return "Mandatory fields missing in event";
     }
     // TODO: delete sock_path!
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
 
-    // ??? esto ya esta hecho en CheckEventJSON ??
-    auto pmId = event->getString(scaEventPath + "/id");
-    if (!pmId.has_value())
-    {
-        return "Field [id] missing in event";
-    }
-    // FindEventcheck wdb_response
-    const auto scaQuery = std::string("agent ") + agent_id + " sca query " + pmId.value();
+    // ----------------- Create funcition 1 ----------------- //
+
+    /* Find the sca event in the wazuhdb */
+    // Prepare the query
+    const auto eventID =
+        event->getInt(sca_field::getEventPath(sca_field::Name::ID, scaEventPath));
+    const auto scaQuery = fmt::format("agent {} sca query {}", agent_id, eventID.value());
+
+    // Query the wazuhdb
     auto tupleScaResponse = wdb.tryQueryAndParseResult(scaQuery);
 
-    // WDB query
-    const auto resultCode = std::get<0>(tupleScaResponse);
-    if (wazuhdb::QueryResultCodes::OK != resultCode
-        || !std::get<1>(tupleScaResponse).has_value())
+    // Check if the query was successful and the result is not empty
     {
-        std::string msg =
-            "Error from [wdb]: " + std::to_string(static_cast<int>(resultCode));
-        return msg; // Error in wdb, failure
+        const auto resultCode = std::get<0>(tupleScaResponse);
+        if (wazuhdb::QueryResultCodes::OK != resultCode
+            || !std::get<1>(tupleScaResponse).has_value())
+        {
+            std::string msg =
+                "Error from [wdb]: " + std::to_string(static_cast<int>(resultCode));
+            return msg; // Error in wdb, failure
+        }
     }
     auto& wdb_response = std::get<1>(tupleScaResponse).value();
+    // ----------------- End funcition 1 ----------------- //
 
-    auto scan_id = eventKeyValues["/id"]; // scan_id if not vailable = -1
-    auto id = eventKeyValues["/check/id"];
-    auto result = eventKeyValues["/check/result"];
-    auto status = eventKeyValues["/check/status"];
-    auto reason = eventKeyValues["/check/reason"];
+    // Mandatory int field
+    auto checkIDint = event->getInt(sca_field::getEventPath(sca_field::Name::CHECK_ID, scaEventPath));
+    auto checkID = std::to_string(checkIDint.value());
 
+    // Return empty string if not found
+    auto getStringIfExist = [&event, &scaEventPath](sca_field::Name field) {
+        std::string value {};
+        if (event->exists(sca_field::getEventPath(field, scaEventPath)))
+        {
+            auto optVal = event->getString(sca_field::getEventPath(field, scaEventPath));
+            if (optVal.has_value())
+            {
+                value = std::move(optVal.value());
+            }
+        }
+        return value;
+    };
+
+    std::string result = getStringIfExist(sca_field::Name::CHECK_RESULT);
+    std::string status = getStringIfExist(sca_field::Name::CHECK_STATUS);
+    std::string reason = getStringIfExist(sca_field::Name::CHECK_REASON);
+
+    // ----------------- Create funcition 2 ----------------- //
     std::string SaveEventQuery {};
 
+    // Process result, check if the event exists in the wazuhdb, then update it or insert it
     auto result_db = DbOperation::ERROR;
     if (std::strncmp(wdb_response.c_str(), "not found", 9) == 0)
     {
         // It exists, update
         result_db = DbOperation::UPDATE;
-        SaveEventQuery = std::string("agent ") + agent_id + " sca update " + id + "|"
-                         + result + "|" + status + "|" + reason + "|" + scan_id;
+        SaveEventQuery = std::string("agent ") + agent_id + " sca update " + checkID + "|"
+                         + result + "|" + status + "|" + reason + "|" + std::to_string(eventID.value());
     }
     else if (std::strncmp(wdb_response.c_str(), "found", 5) == 0)
     {
@@ -531,7 +458,7 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
                     }
 
                     std::string saveComplianceQuery = std::string("agent ") + agent_id
-                                                      + " sca insert_compliance " + id
+                                                      + " sca insert_compliance " + checkID
                                                       + "|" + key + "|" + value;
                     wdb.tryQueryAndParseResult(saveComplianceQuery);
                     // Should I warn if ResultCode isn't ok ?
@@ -561,7 +488,7 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
                                 continue;
                         }
                         std::string saveRulesQuery = std::string("agent ") + agent_id
-                                                     + " sca insert_rules " + id + "|"
+                                                     + " sca insert_rules " + checkID + "|"
                                                      + type + "|" + rule.value();
                         wdb.tryQueryAndParseResult(saveRulesQuery);
                     }
@@ -1388,7 +1315,8 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     // Parameter type check
     helper::base::checkParameterType(parameters[0],
                                      helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[1],
+                                     helper::base::Parameter::Type::REFERENCE);
 
     // const std::string rValue {parameters[0].m_value};
 
@@ -1411,8 +1339,8 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
          name = std::string {name},
          targetField = std::move(targetField),
          scaEventPath = parameters[0].m_value,
-         agentId = parameters[1].m_value](base::Event event) -> base::result::Result<base::Event>
-        {
+         agentId = parameters[1].m_value](
+            base::Event event) -> base::result::Result<base::Event> {
             // auto resolvedRValue {event->getObject(rValue)};
 
             if (event->exists(scaEventPath))
@@ -1420,8 +1348,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
                 // const auto& scaEvent = resolvedRValue.value();
 
                 // Type object is mandatory
-                auto typeIt = event->getString(
-                    scaEventPath + "/type"); // getValueFromObject(scaEvent, "type");
+                auto typeIt = event->getString(scaEventPath + "/type");
 
                 if (!typeIt.has_value())
                 {
