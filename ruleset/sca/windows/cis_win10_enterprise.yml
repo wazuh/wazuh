@@ -161,8 +161,6 @@ checks:
       - cis: ["2.3.1.2"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-36147-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -191,8 +189,6 @@ checks:
       - cis_csc: ["5.2"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-37615-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
@@ -236,8 +232,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-37850-5"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
@@ -253,8 +247,6 @@ checks:
       - cis: ["2.3.2.2"]
       - cis_csc: ["8.3"]
       - pci_dss: ["10.7"]
-    references:
-      - "CCE-35907-5"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
@@ -270,8 +262,6 @@ checks:
       - cis: ["2.3.4.1"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-37701-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -288,8 +278,6 @@ checks:
       - pci_dss: ["2.2.4", "2.2.5"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC6.3", "CC5.2"]
-    references:
-      - "CCE-37942-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers'
@@ -308,8 +296,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-36142-8"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
@@ -328,8 +314,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-37130-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
@@ -347,8 +331,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-37222-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
@@ -364,8 +346,6 @@ checks:
       - cis: ["2.3.6.4"]
       - pci_dss: ["8.2.4"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-37508-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
@@ -395,8 +375,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-37614-5"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
@@ -429,8 +407,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-36056-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -462,8 +438,6 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.1.8"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-38235-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -502,8 +476,6 @@ checks:
       - cis: ["2.3.7.7"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-34901-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -519,8 +491,6 @@ checks:
       - cis: ["2.3.7.8"]
       - pci_dss: ["8.2.4"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35274-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -537,8 +507,6 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.6"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-34988-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -556,8 +524,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35222-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
@@ -575,8 +541,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-34908-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
@@ -595,8 +559,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-33717-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
@@ -613,8 +575,6 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.1.8"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-34909-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -632,8 +592,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35065-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -651,8 +609,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35182-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -669,8 +625,6 @@ checks:
       - cis_csc: ["5.6"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34911-8"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -686,8 +640,6 @@ checks:
       - cis: ["2.3.9.5"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35299-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
@@ -714,8 +666,6 @@ checks:
       - cis: ["2.3.10.2"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34631-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
@@ -731,8 +681,6 @@ checks:
       - cis: ["2.3.10.3"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34723-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
@@ -747,8 +695,6 @@ checks:
     compliance:
       - cis: ["2.3.10.4"]
       - pci_dss: ["3.1"]
-    references:
-      - "CCE-33718-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
@@ -764,8 +710,6 @@ checks:
       - cis: ["2.3.10.5"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35367-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
@@ -781,8 +725,6 @@ checks:
       - cis: ["2.3.10.6"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34965-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -798,8 +740,6 @@ checks:
       - cis: ["2.3.10.7"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33976-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths'
@@ -815,8 +755,6 @@ checks:
       - cis: ["2.3.10.8"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35300-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths'
@@ -842,8 +780,6 @@ checks:
       - cis: ["2.3.10.9"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33563-8"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -875,8 +811,6 @@ checks:
       - cis_csc: ["3.3"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34651-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
@@ -892,8 +826,6 @@ checks:
       - cis: ["2.3.10.12"]
       - pci_dss: ["7.1.3"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33719-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
@@ -912,8 +844,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-38341-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
@@ -932,8 +862,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-37035-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
@@ -952,8 +880,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-38047-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
@@ -973,8 +899,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-37755-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters'
@@ -992,8 +916,6 @@ checks:
       - cis_csc: ["3.11"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-36326-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
@@ -1011,8 +933,6 @@ checks:
       - cis_csc: ["5.6"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-36270-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
@@ -1032,8 +952,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-36173-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
@@ -1053,8 +971,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-36858-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP'
@@ -1074,8 +990,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-37553-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
@@ -1097,7 +1011,6 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - https://workbench.cisecurity.org/benchmarks/288
-      - "CCE-37835-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
@@ -1129,8 +1042,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-37885-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel'
@@ -1147,8 +1058,6 @@ checks:
       - cis: ["2.3.15.2"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-37644-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager'
@@ -1165,8 +1074,6 @@ checks:
       - cis: ["2.3.17.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-36494-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1182,8 +1089,6 @@ checks:
       - cis: ["2.3.17.2"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-37029-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1199,8 +1104,6 @@ checks:
       - cis: ["2.3.17.3"]
       - pci_dss: ["7.1.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-36864-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1216,8 +1119,6 @@ checks:
       - cis: ["2.3.17.4"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-36533-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1234,8 +1135,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-37057-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1251,8 +1150,6 @@ checks:
       - cis: ["2.3.17.6"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-36869-6"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1269,8 +1166,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-36866-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1286,8 +1181,6 @@ checks:
       - cis: ["2.3.17.8"]
       - pci_dss: ["6.5.8"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-37064-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -1882,8 +1775,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33160-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
@@ -1900,8 +1791,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33063-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
@@ -1918,8 +1807,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33098-5"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
@@ -1936,8 +1823,6 @@ checks:
       - cis_csc: ['4.5']
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33062-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
@@ -1958,8 +1843,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-34176-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
@@ -1980,8 +1863,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35083-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
@@ -2002,8 +1883,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35252-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
@@ -2024,8 +1903,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35306-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
@@ -2042,8 +1919,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33066-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
@@ -2060,8 +1935,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33161-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
@@ -2078,8 +1951,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33162-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
@@ -2096,8 +1967,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33065-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
@@ -2118,8 +1987,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33437-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
@@ -2140,8 +2007,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-34356-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
@@ -2162,8 +2027,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33436-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
@@ -2184,8 +2047,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-34177-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
@@ -2202,8 +2063,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35703-8"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
@@ -2220,8 +2079,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33069-6"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
@@ -2238,8 +2095,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33070-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
@@ -2256,8 +2111,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33068-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
@@ -2274,8 +2127,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35537-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
@@ -2292,8 +2143,6 @@ checks:
       - cis_csc: ["4.5"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-33099-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
@@ -2314,8 +2163,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35117-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
@@ -2336,8 +2183,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35421-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
@@ -2358,8 +2203,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35116-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
@@ -2380,8 +2223,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33734-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
@@ -2721,8 +2562,6 @@ checks:
       - cis: ["18.1.1.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35799-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization'
@@ -2738,8 +2577,6 @@ checks:
       - cis: ["18.1.1.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35800-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization'
@@ -2755,8 +2592,6 @@ checks:
       - cis: ["18.1.2.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-41387-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\InputPersonalization'
@@ -2886,8 +2721,6 @@ checks:
       - cis_csc: ["5.4"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35486-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -2984,8 +2817,6 @@ checks:
       - cis_csc: ["3.11"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35815-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest'
@@ -3002,8 +2833,6 @@ checks:
       - cis_csc: ["3.11"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35438-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -3022,8 +2851,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
-    references:
-      - "CCE-33790-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
@@ -3042,8 +2869,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
-    references:
-      - "CCE-33816-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
@@ -3079,8 +2904,6 @@ checks:
       - pci_dss: ["1.3.3"]
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
       - nist_800_53: ["SC.5"]
-    references:
-      - "CCE-34597-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
@@ -3100,7 +2923,6 @@ checks:
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
     references:
       - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
-      - "CCE-35469-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
@@ -3119,8 +2941,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
-    references:
-      - "CCE-35405-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters'
@@ -3140,7 +2960,6 @@ checks:
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
     references:
       - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
-      - "CCE-34614-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
@@ -3161,8 +2980,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-34022-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager'
@@ -3179,8 +2996,6 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.1.8"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-34619-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -3199,7 +3014,6 @@ checks:
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
     references:
       - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
-      - "CCE-34622-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters'
@@ -3219,7 +3033,6 @@ checks:
       - tsc: ["A1.1", "CC6.1", "CC7.2"]
     references:
       - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
-      - "CCE-34623-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
@@ -3234,8 +3047,6 @@ checks:
     compliance:
       - cis: ["18.4.13"]
       - pci_dss: ["10.7"]
-    references:
-      - "CCE-35406-8"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security'
@@ -3266,8 +3077,6 @@ checks:
       - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34055-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
@@ -3316,8 +3125,6 @@ checks:
       - cis: ["18.5.9.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34262-6"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD'
@@ -3332,8 +3139,6 @@ checks:
     compliance:
       - cis: ["18.5.9.2"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34073-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD'
@@ -3350,8 +3155,6 @@ checks:
       - cis_csc: ["4.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33208-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet'
@@ -3367,8 +3170,6 @@ checks:
       - cis: ["18.5.11.2"]
       - cis_csc: ["12.2"]
       - pci_dss: ["1.3.5"]
-    references:
-      - "CCE-33107-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
@@ -3400,8 +3201,6 @@ checks:
       - cis_csc: ["5.4"]
       - pci_dss: ["1.3.5"]
       - tsc: ["CC6.6"]
-    references:
-      - "CCE-35554-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
@@ -3451,8 +3250,6 @@ checks:
       - cis: ["18.5.20.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34326-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars'
@@ -3477,8 +3274,6 @@ checks:
       - cis_csc: ["15.4", "15.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35606-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI'
@@ -3496,8 +3291,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35242-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
@@ -3515,8 +3308,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35375-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
@@ -3534,8 +3325,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-41378-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config'
@@ -3603,8 +3392,6 @@ checks:
       - cis: ["18.8.3.1"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35802-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit'
@@ -3753,8 +3540,6 @@ checks:
       - pci_dss: ["5.1.1"]
       - nist_800_53: ["SI.3"]
       - tsc: ["CC6.8"]
-    references:
-      - "CCE-33231-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch'
@@ -3771,8 +3556,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-35384-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}'
@@ -3788,8 +3571,6 @@ checks:
       - cis: ["18.8.21.3"]
       - pci_dss: ["11.5.1"]
       - tsc: ["PI1.4", "PI1.5", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
-    references:
-      - "CCE-35384-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}'
@@ -3818,8 +3599,6 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Turn off background refresh of Group Policy. Note: This Group Policy path is provided by the Group Policy template GroupPolicy.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.8.21.5"]
-    references:
-      - "CCE-35776-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -3834,8 +3613,6 @@ checks:
       - cis: ["18.8.22.1.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35626-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
@@ -3853,8 +3630,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-35781-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'
@@ -3870,8 +3645,6 @@ checks:
       - cis: ["18.8.22.1.3"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-32945-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC'
@@ -3887,8 +3660,6 @@ checks:
       - cis: ["18.8.22.1.4"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35784-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports'
@@ -3904,8 +3675,6 @@ checks:
       - cis: ["18.8.22.1.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33153-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard'
@@ -3934,8 +3703,6 @@ checks:
       - cis: ["18.8.22.1.7"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33783-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'
@@ -3951,8 +3718,6 @@ checks:
       - cis: ["18.8.22.1.8"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33216-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control'
@@ -3968,8 +3733,6 @@ checks:
       - cis: ["18.8.22.1.9"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33817-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion'
@@ -3985,8 +3748,6 @@ checks:
       - cis: ["18.8.22.1.10"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34061-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
@@ -4002,8 +3763,6 @@ checks:
       - cis: ["18.8.22.1.11"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33246-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
@@ -4019,8 +3778,6 @@ checks:
       - cis: ["18.8.22.1.12"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33957-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client'
@@ -4036,8 +3793,6 @@ checks:
       - cis: ["18.8.22.1.13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33255-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows'
@@ -4053,8 +3808,6 @@ checks:
       - cis: ["18.8.22.1.14"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34260-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting'
@@ -4072,8 +3825,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-41396-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitBehavior -> 0'
@@ -4088,8 +3839,6 @@ checks:
       - cis: ["18.8.26.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33783-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'
@@ -4105,8 +3854,6 @@ checks:
       - cis: ["18.8.27.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35101-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International'
@@ -4137,8 +3884,6 @@ checks:
       - cis: ["18.8.28.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33822-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4154,8 +3899,6 @@ checks:
       - cis: ["18.8.28.3"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35207-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4171,8 +3914,6 @@ checks:
       - cis: ["18.8.28.4"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34838-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4188,8 +3929,6 @@ checks:
       - cis: ["18.8.28.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34837-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4205,8 +3944,6 @@ checks:
       - cis: ["18.8.28.6"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35291-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4222,8 +3959,6 @@ checks:
       - cis: ["18.8.28.7"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35095-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4239,8 +3974,6 @@ checks:
       - cis: ["18.8.31.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34972-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4302,8 +4035,6 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33782-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
@@ -4320,8 +4051,6 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35462-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
@@ -4337,8 +4066,6 @@ checks:
       - cis: ["18.8.36.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33801-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -4354,8 +4081,6 @@ checks:
       - cis: ["18.8.36.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35331-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -4375,8 +4100,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-35392-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
@@ -4396,8 +4119,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-35391-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
@@ -4428,8 +4149,6 @@ checks:
       - cis: ["18.8.48.11.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33662-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d}'
@@ -4445,8 +4164,6 @@ checks:
       - cis: ["18.8.50.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33823-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo'
@@ -4464,8 +4181,6 @@ checks:
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC7.2"]
-    references:
-      - "CCE-33661-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient'
@@ -4483,8 +4198,6 @@ checks:
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC7.2"]
-    references:
-      - "CCE-35135-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer'
@@ -4503,8 +4216,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-41397-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager'
@@ -4532,8 +4243,6 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Deny: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Privacy\\Let Windows apps activate with voice while the system is locked. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppPrivacy.admx/adml that is included with the Microsoft Windows 10 Release 1903 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.5.1"]
-    references:
-      - "CCE-38354-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
@@ -4550,8 +4259,6 @@ checks:
       - cis_csc: ["5.6"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35803-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -4583,8 +4290,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-35289-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
@@ -4602,8 +4307,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-34771-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
@@ -4621,8 +4324,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-33791-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
@@ -4729,8 +4430,6 @@ checks:
       - cis: ["18.9.16.1"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-32965-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI'
@@ -4746,8 +4445,6 @@ checks:
       - cis: ["18.9.16.2"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35194-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI'
@@ -4761,8 +4458,6 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Prevent the use of security questions for local accounts. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredUI.admx/adml that is included with the Microsoft Windows 10 Release 1903 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.16.3"]
-    references:
-      - "CCE-36512-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -4780,8 +4475,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-41400-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
@@ -4887,8 +4580,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-41380-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds'
@@ -4927,8 +4618,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-34169-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
@@ -4949,8 +4638,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33975-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application'
@@ -4971,8 +4658,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35090-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
@@ -4993,8 +4678,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33428-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security'
@@ -5015,8 +4698,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-34170-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
@@ -5037,8 +4718,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35091-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup'
@@ -5059,8 +4738,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33729-5"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
@@ -5081,8 +4758,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-35288-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System'
@@ -5103,8 +4778,6 @@ checks:
       - gdpr_IV: [35.7.d]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3"]
-    references:
-      - "CCE-33608-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
@@ -5121,8 +4794,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-33745-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
@@ -5139,8 +4810,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-33764-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
@@ -5156,8 +4825,6 @@ checks:
       - cis: ["18.9.36.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34776-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup'
@@ -5173,8 +4840,6 @@ checks:
       - cis: ["18.9.41.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33743-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors'
@@ -5223,8 +4888,6 @@ checks:
       - cis: ["18.9.47.4.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33833-5"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
@@ -5396,8 +5059,6 @@ checks:
       - cis: ["18.9.47.11.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-33880-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting'
@@ -5418,8 +5079,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-33888-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
@@ -5439,8 +5098,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-33906-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
@@ -5499,8 +5156,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-33826-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive'
@@ -5530,8 +5185,6 @@ checks:
     compliance:
       - cis: ["18.9.65.2.2"]
       - pci_dss: ["12.3.8"]
-    references:
-      - "CCE-34506-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5547,8 +5200,6 @@ checks:
       - cis: ["18.9.65.3.2.1"]
       - pci_dss: ["7.2"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35255-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5577,8 +5228,6 @@ checks:
       - cis: ["18.9.65.3.3.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34496-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5596,8 +5245,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-34697-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5626,8 +5273,6 @@ checks:
       - cis: ["18.9.65.3.3.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34698-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5643,8 +5288,6 @@ checks:
       - cis: ["18.9.65.3.3.6"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-34790-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5660,8 +5303,6 @@ checks:
       - cis: ["18.9.65.3.9.1"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33960-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5677,8 +5318,6 @@ checks:
       - cis: ["18.9.65.3.9.2"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35723-6"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5738,7 +5377,6 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - https://workbench.cisecurity.org/benchmarks/766
-      - "CCE-35595-8"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5755,8 +5393,6 @@ checks:
       - cis: ["18.9.65.3.10.2"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-35599-0"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5772,8 +5408,6 @@ checks:
       - cis: ["18.9.65.3.11.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-34136-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -5791,8 +5425,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-34822-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds'
@@ -5828,8 +5460,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-41421-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
@@ -5864,8 +5494,6 @@ checks:
       - cis: ["18.9.67.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35314-4"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
@@ -5885,8 +5513,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-41372-4"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
@@ -5948,8 +5574,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35807-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore'
@@ -5968,8 +5592,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35809-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore'
@@ -5989,7 +5611,6 @@ checks:
     references:
       - https://docs.microsoft.com/en-us/windows/client-management/group-policies-for-enterprise-and-education-editions
       - https://support.microsoft.com/en-us/help/3135657/can-t-disable-windows-store-in-windows-10-pro-through-group-policy
-      - "CCE-35811-9"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore'
@@ -6020,8 +5641,6 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    references:
-      - "CCE-34026-5"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
@@ -6125,8 +5744,6 @@ checks:
       - cis_csc: ["2.5"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35431-6"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
@@ -6143,8 +5760,6 @@ checks:
       - cis_csc: ["5.4"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
-    references:
-      - "CCE-35400-1"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
@@ -6161,8 +5776,6 @@ checks:
       - cis_csc: ["2.5"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
-    references:
-      - "CCE-35086-8"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
@@ -6178,8 +5791,6 @@ checks:
       - cis: ["18.9.91.1"]
       - pci_dss: ["8.6"]
       - tsc: ["CC6.1"]
-    references:
-      - "CCE-33891-3"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -6227,8 +5838,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35258-3"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
@@ -6247,8 +5856,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-34458-0"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
@@ -6267,8 +5874,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-34778-1"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
@@ -6287,8 +5892,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-34779-9"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
@@ -6306,8 +5909,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-33146-2"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
@@ -6326,8 +5927,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-35054-6"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
@@ -6342,8 +5941,6 @@ checks:
     compliance:
       - cis: ["18.9.102.2.4"]
       - pci_dss: ["12.3.8"]
-    references:
-      - "CCE-35416-7"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
@@ -6361,8 +5958,6 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
-    references:
-      - "CCE-33740-2"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS'
@@ -6425,8 +6020,6 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["A1.2", "CC6.8"]
-    references:
-      - "CCE-33813-7"
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
