@@ -38,7 +38,7 @@ typedef struct wm_context {
     wm_routine destroy;                 // Configuration destructor
     cJSON *(* dump)(const void *);
     int (* sync)(const char*);          // Sync
-    wm_routine stop;                    // Module destructor
+    void (*stop)(void *);               // Module destructor
 } wm_context;
 
 // Main module structure
