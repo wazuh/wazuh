@@ -1210,7 +1210,6 @@ class Master(server.AbstractServer):
             except agents_reconnect.SkippingException:
                 # Skip current iteration
                 logger.info("Skipping current iteration.")
-                pass
 
             # Check if the current phase is Halt
             if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
