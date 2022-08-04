@@ -1,0 +1,13 @@
+name : syscollector_port_del
+
+parents:
+  - syscollector_port
+
+check:
+  - event.original.port: +not_exists
+  - event.original.type: +s_eq/port_end
+
+normalize:
+  - map:
+    _query: +s_concat/agent /$event.original.agent.id /port del /$event.original.ID
+    _port_del_result: +wdb_update/$_query

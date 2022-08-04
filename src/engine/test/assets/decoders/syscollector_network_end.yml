@@ -1,0 +1,13 @@
+name: syscollector_network_end
+
+parents:
+  - syscollector_netinfo
+
+check:
+  - event.original.iface: +not_exists
+  - event.original.type: +s_eq/network_end
+
+normalize:
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /netinfo del /$event.original.ID
+      _netinfo_del_result: +wdb_update/$_query

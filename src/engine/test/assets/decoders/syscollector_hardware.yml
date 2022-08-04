@@ -1,11 +1,11 @@
-name: decoder_syscollector_hardware
+name: syscollector_hardware
 
 parents:
-  - decoder_syscollector_base
+  - syscollector_base
 
 check:
   - event.original.type: +s_eq/hardware
-  - event.original.inventory: +exist
+  - event.original.inventory: +exists
 
 normalize:
   - check:
