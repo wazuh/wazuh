@@ -2841,7 +2841,7 @@ class AWSCloudWatchLogs(AWSService):
                 start_time,
                 end_time)
             VALUES
-                (':aws_region',
+                (:aws_region,
                 :aws_log_group,
                 :aws_log_stream,
                 :next_token,
