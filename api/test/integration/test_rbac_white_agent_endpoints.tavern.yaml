@@ -222,14 +222,14 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/{agent_id}/daemon_stats
+test_name: GET /agents/{agent_id}/daemons/stats
 
 stages:
 
   - name: Try to get daemon stats from agent 001 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemon_stats"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -239,7 +239,7 @@ stages:
   - name: Get all daemons' stats from agent 002 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/daemon_stats"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

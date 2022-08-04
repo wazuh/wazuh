@@ -6182,7 +6182,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/daemon_stats:
+  /agents/{agent_id}/daemons/stats:
     get:
       tags:
         - Agents
