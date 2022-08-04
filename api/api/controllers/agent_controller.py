@@ -862,7 +862,7 @@ async def get_component_stats(request, pretty: bool = False, wait_for_complete: 
 
 async def post_new_agent(request, agent_name: str, pretty: bool = False,
                          wait_for_complete: bool = False) -> web.Response:
-    """Add agent (quick method)
+    """Add agent (quick method).
     
     Parameters
     ----------
@@ -1061,22 +1061,40 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
-                              select=None, sort=None, search=None, status=None, q=None):
+async def get_agents_in_group(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                              offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
+                              search: str = None, status: str = None, q: str = None) -> web.Response:
     """Get the list of agents that belongs to the specified group.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: AllItemsResponseAgents
+    Parameters
+    ----------
+    request : connexion.request
+    group_id : str
+        Group ID.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return. Default: DATABASE_LIMIT
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    status : str
+        Filters by agent status. Use commas to enter multiple statuses.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'group_list': [group_id],
                 'offset': offset,
@@ -1103,7 +1121,7 @@ async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def post_group(request, pretty=False, wait_for_complete=False):
+async def post_group(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Create a new group.
     
     Parameters
@@ -1115,7 +1133,8 @@ async def post_group(request, pretty=False, wait_for_complete=False):
 
     Returns
     -------
-    ApiResponse
+    web.Response
+        API response.
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
@@ -1134,15 +1153,28 @@ async def post_group(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT):
+async def get_group_config(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                           offset: int = 0, limit: int = DATABASE_LIMIT) -> web.Response:
     """Get group configuration defined in the `agent.conf` file.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :return: GroupConfiguration
+    Parameters
+    ----------
+    request : connexion.request
+    group_id : str
+        Group ID.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return. Default: DATABASE_LIMIT
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'group_list': [group_id],
                 'offset': offset,
@@ -1161,17 +1193,30 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_group_config(request, body, group_id, pretty=False, wait_for_complete=False):
+async def put_group_config(request, body: dict, group_id: str, pretty: bool = False,
+                           wait_for_complete: bool = False) -> web.Response:
     """Update group configuration.
 
-    Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration
+    Update a specified group's configuration. This API call expects a full valid XML file with the shared configuration
     tags/syntax.
 
-    :param body: Body parameters
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :return: ApiResponse
+    Parameters
+    ----------
+    request : connexion.request
+    body : dict
+        Dictionary with the new group configuration.
+        The body is obtained from the XML file and decoded in this function.
+    group_id : str
+        Group ID.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/xml')
@@ -1193,19 +1238,33 @@ async def put_group_config(request, body, group_id, pretty=False, wait_for_compl
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_files(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                          search=None):
-    """Get the files placed under the group directory
+async def get_group_files(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None) -> web.Response:
+    """Get the files placed under the group directory.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return: GroupFile
+    Parameters
+    ----------
+    request : connexion.request
+    group_id : str
+        Group ID.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     hash_ = request.query.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
     f_kwargs = {'group_list': [group_id],
@@ -1230,14 +1289,26 @@ async def get_group_files(request, group_id, pretty=False, wait_for_complete=Fal
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file_json(request, group_id, file_name, pretty=False, wait_for_complete=False):
-    """Get the files placed under the group directory in json format.
+async def get_group_file_json(request, group_id: str, file_name: str, pretty: bool = False,
+                              wait_for_complete: bool = False) -> web.Response:
+    """Get the files placed under the group directory in JSON format.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param file_name: Filename
-    :return: File data in JSON
+    Parameters
+    ----------
+    request : connexion.request
+    group_id : str
+        Group ID.
+    file_name : str
+        Name of the file to be obtained.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
@@ -1257,14 +1328,26 @@ async def get_group_file_json(request, group_id, file_name, pretty=False, wait_f
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_for_complete=False):
-    """Get the files placed under the group directory in xml format.
+async def get_group_file_xml(request, group_id: str, file_name: str, pretty: bool = False,
+                             wait_for_complete: bool = False) -> ConnexionResponse:
+    """Get the files placed under the group directory in XML format.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :param file_name: Filename
-    :return: File data in XML
+    Parameters
+    ----------
+    request : connexion.request
+    group_id : str
+        Group ID.
+    file_name : str
+        Name of the file to be obtained.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    connexion.lifecycle.ConnexionResponse
+        API response.
     """
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
@@ -1285,14 +1368,15 @@ async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_fo
     return response
 
 
-async def restart_agents_by_group(request, group_id, pretty=False, wait_for_complete=False):
+async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
+                                  wait_for_complete: bool = False) -> web.Response:
     """Restart all agents from a group.
 
     Parameters
     ----------
-    request
+    request : connexion.request
     group_id : str
-        Group name
+        Group name.
     pretty : bool, optional
         Show results in human-readable format. Default `False`
     wait_for_complete : bool, optional
@@ -1300,7 +1384,8 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
 
     Returns
     -------
-    Response
+    web.Response
+        API response.
     """
     f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
     dapi = DistributedAPI(f=agent.get_agents_in_group,
@@ -1333,7 +1418,7 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def insert_agent(request, pretty=False, wait_for_complete=False):
+async def insert_agent(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Insert a new agent.
     
     Parameters
@@ -1345,7 +1430,8 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
 
     Returns
     -------
-    Response
+    web.Response
+        API response.
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
@@ -1364,20 +1450,35 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
-                             select=None, sort=None, search=None, q=None):
+async def get_agent_no_group(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                             limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> web.Response:
     """Get agents without group.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: AllItemsResponseAgents
+    Parameters
+    ----------
+    request : connexion.request
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return. Default: DATABASE_LIMIT
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    q : str
+        Query to filter results by. For example "q&#x3D;&amp;quot;status&#x3D;active&amp;quot;".
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -1399,19 +1500,34 @@ async def get_agent_no_group(request, pretty=False, wait_for_complete=False, off
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_outdated(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT, sort=None,
-                             search=None, q=None):
+async def get_agent_outdated(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                             limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
+                             q: str = None) -> web.Response:
     """Get outdated agents.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: AllItemsResponseAgentsSimple
+    Parameters
+    ----------
+    request : connexion.request
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return. Default: DATABASE_LIMIT
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    q : str
+        Query to filter results by. For example "q&#x3D;&amp;quot;status&#x3D;active&amp;quot;".
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -1442,6 +1558,7 @@ async def get_agent_fields(request, pretty: bool = False, wait_for_complete: boo
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -1463,6 +1580,7 @@ async def get_agent_fields(request, pretty: bool = False, wait_for_complete: boo
     Returns
     -------
     web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -1484,11 +1602,12 @@ async def get_agent_fields(request, pretty: bool = False, wait_for_complete: boo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_summary_status(request, pretty=False, wait_for_complete=False):
+async def get_agent_summary_status(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Get agents status summary.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format
     wait_for_complete : bool
@@ -1496,7 +1615,8 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
 
     Returns
     -------
-    AgentsSummaryStatus
+    web.Response
+        API response.
     """
     f_kwargs = {}
 
@@ -1513,11 +1633,12 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
+async def get_agent_summary_os(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     """Get agents OS summary.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format
     wait_for_complete : bool
@@ -1525,7 +1646,8 @@ async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
 
     Returns
     -------
-    ListMetadata
+    web.Response
+        API response.
     """
     f_kwargs = {}
 
