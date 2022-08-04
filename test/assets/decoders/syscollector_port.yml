@@ -1,0 +1,8 @@
+name: syscollector_port
+
+parents:
+  - syscollector_base
+
+check:
+  - event.original.type: +s_starts/port
+  - event.original.ID: +exists

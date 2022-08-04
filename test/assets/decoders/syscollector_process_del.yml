@@ -1,0 +1,13 @@
+name: syscollector_process_del
+
+parent:
+  - syscollector_process
+
+check:
+  - event.original.process: +not_exists
+  - event.original.type: +s_eq/process_end
+
+normalize:
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /process del /$event.original.ID
+      _process_del_result: +wdb_update/$_query
