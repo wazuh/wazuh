@@ -147,7 +147,7 @@ class AgentsReconnect:
             if self.previous_nodes == set():
                 self.previous_nodes = node_list.copy()
             if self.nodes_stability_counter >= self.nodes_stability_threshold:
-                self.logger.info(f"Cluster is stable.")
+                self.logger.info("Cluster is stable.")
                 return True
             else:
                 self.logger.info(f"Checking cluster stability "
@@ -371,7 +371,7 @@ class AgentsReconnect:
         dict
             Agents' IDs to reconnect, number of rounds necessary and whether there are enough agents to achieve balancing.
         """
-        total_agents = sum([len(info['agents']) for info in nodes_info.values()])
+        total_agents = sum(len(info['agents']) for info in nodes_info.values())
         nodes_info_cpy = copy.deepcopy(nodes_info)
         moved_agents = {node_name: 0 for node_name in nodes_info}
         partial_balance = False
@@ -399,7 +399,7 @@ class AgentsReconnect:
                     len(nodes_info[biggest_node]['agents'])):
                 partial_balance = True
                 # Break the loop only if there are no agents left in the whole cluster that can be redistributed.
-                if sum([total for total in moved_agents.values()]) >= total_agents:
+                if sum(list(moved_agents.values())) >= total_agents:
                     break
             else:
                 moved_agents[smallest_node] += 1
@@ -443,7 +443,7 @@ class AgentsReconnect:
             return
 
         self.current_phase = AgentsReconnectionPhases.RECONNECT_AGENTS
-        if (total_agents_to_reconnect := sum([len(info['agents']) for info in self.env_status.values()])) == 0:
+        if (total_agents_to_reconnect := sum(len(info['agents']) for info in self.env_status.values())) == 0:
             self.logger.warning('The cluster is unbalanced but none of the agents that should be redistributed support '
                                 'the reconnection feature (introduced in v4.3.0).')
             return
@@ -454,7 +454,7 @@ class AgentsReconnect:
             if predict_info['partial_balance']:
                 self.logger.warning('Not all agents that should reconnect support that feature (introduced in v4.3.0). '
                                     'The cluster could remain unbalanced.')
-            total_active_agents = sum([info['total'] for info in self.env_status.values()])
+            total_active_agents = sum(info['total'] for info in self.env_status.values())
             max_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
             predict_info = self.predict_distribution(self.env_status, max_assigns)
             self.logger.info(f'It will take {self.expected_rounds} rounds to reconnect {total_agents_to_reconnect} '

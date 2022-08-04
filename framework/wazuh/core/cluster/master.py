@@ -1208,21 +1208,19 @@ class Master(server.AbstractServer):
                 await asyncio.sleep(
                     self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_time"])
 
-            # Check agents balance
             try:
+                # Check agents balance
                 await self.agents_reconnect.balance_previous_conditions()
+                # Check if the current phase is Halt
+                if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
+                    break
+                # Balance agents
+                await self.agents_reconnect.balance_agents(
+                    self.cluster_items["intervals"]["master"]["agent_reconnection"]["max_assignments_per_node"])
             except agents_reconnect.SkippingException:
                 # Skip current iteration
                 logger.info("Skipping current iteration.")
-                continue
-
-            # Check if the current phase is Halt
-            if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
-                break
-
-            # Balance agents
-            await self.agents_reconnect.balance_agents(
-                self.cluster_items["intervals"]["master"]["agent_reconnection"]["max_assignments_per_node"])
+                pass
 
             if self.agents_reconnect.get_current_phase() == agents_reconnect.AgentsReconnectionPhases.HALT:
                 break
