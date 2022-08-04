@@ -362,8 +362,22 @@ End Function
 
 Public Function CheckSvcRunning()
 	Set wmi = GetObject("winmgmts://./root/cimv2")
-	state = wmi.Get("Win32_Service.Name='OssecSvc'").State
-	Session.Property("OSSECRUNNING") = state
+
+    SERVICE = "OssecSvc"
+    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
+
+    If svc.Count <> 0 Then
+        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
+        Session.Property("OSSECRUNNING") = state
+    End If
+
+    SERVICE = "WazuhSvc"
+    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
+
+    If svc.Count <> 0 Then
+        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
+        Session.Property("WAZUHRUNNING") = state
+    End If
 
 	CheckSvcRunning = 0
 End Function

@@ -88,7 +88,7 @@
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
+        <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
@@ -120,7 +120,7 @@
             <Custom Action="SetAgentGroup" Before="SetCustomActionDataValue">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
 
             <!-- Delete OSSEC service if it exist -->
-            <Custom Action="CheckSvcRunning_OssecSvc" After="AppSearch">OSSECINSTALLED</Custom>
+            <Custom Action="CheckSvcRunning" After="AppSearch"></Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
@@ -203,13 +203,13 @@
                         <File Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent-eventchannel.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec" />
                         <ServiceControl Id="ServiceControl_ossec_upgrade" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
-                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR (WAZUHINSTALLED = "Wazuh")) AND (VersionNT &gt;= 600)</Condition>
+                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR ((WAZUHINSTALLED = "Wazuh") AND (WAZUHRUNNING = "Running"))) AND (VersionNT &gt;= 600)</Condition>
                     </Component>
                     <Component Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" DiskId="1" Guid="B19AF43F-43AD-40D2-95B7-512E429DF099">
                         <File Id="WAZUH_AGENT_UPGRADE_OSSEC_NOEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec_noec" />
                         <ServiceControl Id="ServiceControl_ossec_upgrade_noec" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
-                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR (WAZUHINSTALLED = "Wazuh")) AND (VersionNT &lt; 600)</Condition>
+                        <Condition>((OSSECINSTALLED AND (OSSECRUNNING = "Running")) OR ((WAZUHINSTALLED = "Wazuh") AND (WAZUHRUNNING = "Running"))) AND (VersionNT &lt; 600)</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
