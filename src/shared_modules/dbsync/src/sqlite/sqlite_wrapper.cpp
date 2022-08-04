@@ -232,10 +232,10 @@ void Statement::bind(const int32_t index, const double_t value)
 
 std::string Statement::expand()
 {
-    auto c_str_exp = sqlite3_expanded_sql(m_stmt.get());
-    std::string str_exp (c_str_exp);
-    sqlite3_free(c_str_exp);
-    return str_exp;
+    auto pExpandedSQL{ sqlite3_expanded_sql(m_stmt.get()) };
+    std::string expandedSQLString{ pExpandedSQL };
+    sqlite3_free(pExpandedSQL);
+    return expandedSQLString;
 }
 
 std::unique_ptr<IColumn> Statement::column(const int32_t index)
