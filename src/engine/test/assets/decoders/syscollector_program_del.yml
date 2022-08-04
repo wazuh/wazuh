@@ -1,0 +1,13 @@
+name: syscollector_program_del
+
+parents:
+  - syscollector_program
+
+check:
+  - event.original.program: +not_exists
+  - event.original.type: +s_eq/program_end
+
+normalize:
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /package del /$event.original.ID
+      _package_del_result: +wdb_update/$_query

@@ -1,18 +1,7 @@
-name: decoder_syscollector_program
+name: syscollector_program_save
 
 parents:
-  - decoder_syscollector_base
-
-check:
-  - event.original.type: +s_starts/program
-  - event.original.ID: +exists
-
----
-
-name: decoder_syscollector_program_save
-
-parents:
-  - decoder_syscollector_program
+  - syscollector_program
 
 check:
   - event.original.program: +exists
@@ -99,19 +88,3 @@ normalize:
   - map:
       _query: +s_concat/agent /$event.original.agent.id /package save /$event.original.ID/|/$event.original.timestamp/|/$event.original.format/|/$event.original.name/|/$event.original.priority/|/$event.original.group/|/$event.original.size/|/$event.original.vendor/|/$event.original.install_time/|/$event.original.version/|/$event.original.architecture/|/$event.original.multi-arch/|/$event.original.source/|/$event.original.description/|/$event.original.location/|/$_hexDigest
       _package_save_result: +wdb_update/$_query
-
----
-
-name: decoder_syscollector_program_del
-
-parents:
-  - decoder_syscollector_program
-
-check:
-  - event.original.program: +not_exists
-  - event.original.type: +s_eq/program_end
-
-normalize:
-  - map:
-      _query: +s_concat/agent /$event.original.agent.id /package del /$event.original.ID
-      _package_del_result: +wdb_update/$_query
