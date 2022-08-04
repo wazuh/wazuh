@@ -241,12 +241,39 @@ TEST_F(SQLiteTest, ColumnValue)
 TEST_F(SQLiteTest, StatementExpand)
 {
     std::shared_ptr<IConnection> spConnection{ new Connection };
-    Statement stmt
+    Statement createStmt
     {
         spConnection,
-        R"(CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);)"
+        "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);"
     };
-    std::string stmt_exp = stmt.expand();
-    std::string query("CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);");
-    EXPECT_EQ(true,query.compare(stmt_exp)==0);
+    createStmt.step();
+    Statement selectStmt
+    {
+        spConnection,
+        R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
+    };
+    std::string stmt_exp = selectStmt.expand();
+    std::string expected_query("INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,NULL,NULL,NULL,NULL);");
+    EXPECT_EQ(true,expected_query.compare(stmt_exp)==0);
+}
+
+TEST_F(SQLiteTest, StatementExpandBind)
+{
+    std::shared_ptr<IConnection> spConnection{ new Connection };
+    Statement createStmt
+    {
+        spConnection,
+        "CREATE TABLE test_table (Colum1 INTEGER, Colum2 TEXT, Colum3 BIGINT, Colum4 BIGINT, Colum5 FLOAT);"
+    };
+    createStmt.step();
+    Statement selectStmt
+    {
+        spConnection,
+        R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
+    };
+    selectStmt.bind(2,"bar");
+    selectStmt.bind(3,1000);
+    std::string stmt_exp = selectStmt.expand();
+    std::string expected_query("INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,'bar',1000,NULL,NULL);");
+    EXPECT_EQ(true,expected_query.compare(stmt_exp)==0);
 }
