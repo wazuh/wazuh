@@ -820,11 +820,11 @@ static int FindCheckResults(const std::string& agentId, std::string& wdbResponse
 
     auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
     auto findCheckResultsTuple = wdb.tryQueryAndParseResult(findCheckResultsQuery);
-    std::string findCheckResultsResponse = std::get<1>(findCheckResultsTuple).value();
 
     int resultDb = -1;
     if (std::get<0>(findCheckResultsTuple) == wazuhdb::QueryResultCodes::OK)
     {
+        std::string findCheckResultsResponse = std::get<1>(findCheckResultsTuple).value();
         if (findCheckResultsResponse.find("not found") != std::string::npos)
         {
             resultDb = 1;
@@ -1271,7 +1271,7 @@ static std::optional<std::string> HandleDumpEvent(base::Event& event,
         /* Check the new sha256 */
         std::string wdbResponse;
         resultDb = FindCheckResults(agentId, wdbResponse);
-        if (!resultDb)
+        if (0 == resultDb)
         {
             std::string hashScanInfo;
             // TODO: check if it's ok "%s64" -> should I check length ?
@@ -1382,7 +1382,30 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
 
                 if (result)
                 {
+                    // TODO: improve this
+                    if (result.has_value() && !result.value().empty())
+                    {
+                        auto targetFieldValue{true};
+
+                        if (0 == result.value().rfind("Error"))
+                        {
+                            targetFieldValue = false;
+                        }
+
+                        event->setBool(targetFieldValue, targetField);
+                    }
+                    else
+                    {
+                        event->setBool(true, targetField);
+                    }
+
                     return base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    event->setBool(false, targetField);
+                    return base::result::makeFailure(
+                        event, failureTrace3 + "result does not exist.");
                 }
                 return base::result::makeFailure(event, failureTrace3 + result.value());
             }
