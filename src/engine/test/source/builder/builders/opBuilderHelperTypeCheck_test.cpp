@@ -7,135 +7,148 @@
 #include "opBuilderHelperFilter.hpp"
 
 using namespace base;
-namespace bld = builder::internals::builders;
+using namespace builder::internals::builders;
+
+const std::string targetField {"/check_field"};
+const std::vector<std::string> arguments {};
 
 TEST(opBuilderHelperTypeCheck, BuildIsNumber)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_number"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNumber(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNumber(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNotNumber(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNotNumber(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsString)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_string"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsString(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsString(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotString)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNotString(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNotString(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsBool)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_bool"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsBool(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsBool(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotBool)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_not_bool"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNotBool(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNotBool(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsArray)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_array"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsArray(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsArray(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotArray)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNotArray(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNotArray(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsObject)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_object"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsObject(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsObject(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotObject)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNotObject(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNotObject(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNull)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_null"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNull(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNull(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotNull)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_not_null"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsNotNull(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsNotNull(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, BuildIsTrue)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_true"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsTrue(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsTrue(tuple));
 }
 
 TEST(opBuilderHelperTypeCheck, IsFalseIsFalse)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"is_faslse"}, std::vector<std::string> {});
+    const std::string helperFunctionName {"is_faslse"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIsFalse(tuple));
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    ASSERT_NO_THROW(opBuilderHelperIsFalse(tuple));
 }
 
 // Check a String
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -144,13 +157,13 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -159,13 +172,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -174,13 +187,13 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -189,13 +202,13 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -204,13 +217,13 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -219,13 +232,13 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -234,13 +247,13 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -249,13 +262,13 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -264,13 +277,13 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -279,13 +292,13 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -294,13 +307,13 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -309,13 +322,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -324,13 +337,13 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckString)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": "string"})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -341,13 +354,13 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -356,13 +369,13 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -371,13 +384,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -386,13 +399,13 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -401,13 +414,13 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -416,13 +429,13 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -431,13 +444,13 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -446,13 +459,13 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -461,13 +474,13 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -476,13 +489,13 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -491,13 +504,13 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -506,13 +519,13 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -521,13 +534,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -536,13 +549,13 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckNumber)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": 1234.5678})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -553,13 +566,13 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -568,13 +581,13 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -583,13 +596,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -598,13 +611,13 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -613,13 +626,13 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -628,13 +641,13 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -643,13 +656,13 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -658,13 +671,13 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -673,13 +686,13 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -688,13 +701,13 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -703,13 +716,13 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -718,13 +731,13 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -733,13 +746,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -748,13 +761,13 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolTrue)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": true})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -765,13 +778,13 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -780,13 +793,13 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -795,13 +808,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -810,13 +823,13 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -825,13 +838,13 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -840,13 +853,13 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -855,13 +868,13 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -870,13 +883,13 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -885,13 +898,13 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -900,13 +913,13 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -915,13 +928,13 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -930,13 +943,13 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -945,13 +958,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -960,13 +973,13 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolFalse)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": false})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -977,14 +990,14 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -993,14 +1006,14 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1009,14 +1022,14 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1025,14 +1038,14 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1041,14 +1054,14 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1057,14 +1070,14 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1073,14 +1086,14 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1089,14 +1102,14 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1105,14 +1118,14 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1121,14 +1134,14 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1137,14 +1150,14 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1153,14 +1166,14 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1169,14 +1182,14 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ]})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ]})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1185,14 +1198,14 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckArray)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event =
-        std::make_shared<json::Json>(R"({"fieldcheck": [ 123, false, "dummy" ] })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1203,13 +1216,14 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1218,13 +1232,14 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1233,13 +1248,14 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1248,13 +1264,14 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1263,13 +1280,14 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1278,13 +1296,14 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1293,13 +1312,14 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1308,13 +1328,14 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1323,13 +1344,14 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1338,13 +1360,14 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1353,13 +1376,14 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1368,13 +1392,14 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1383,13 +1408,14 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" }})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1398,13 +1424,14 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckObject)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": { "key": "value" } })");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event =
+        std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1415,13 +1442,13 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1430,13 +1457,13 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1445,13 +1472,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1460,13 +1487,13 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1475,13 +1502,13 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1490,13 +1517,13 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1505,13 +1532,13 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1520,13 +1547,13 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1535,13 +1562,13 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1550,13 +1577,13 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1565,13 +1592,13 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1580,13 +1607,13 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1595,13 +1622,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1610,13 +1637,13 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckNull)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1627,13 +1654,13 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1642,13 +1669,13 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_not_number"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_number"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNotNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1657,13 +1684,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1672,13 +1699,13 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_not_string"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_string"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNotString(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1687,13 +1714,13 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1702,13 +1729,13 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_not_bool"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_bool"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNotBool(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1717,13 +1744,13 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1732,13 +1759,13 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_not_array"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_array"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNotArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1747,13 +1774,13 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1762,13 +1789,13 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_not_object"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_object"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNotObject(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1777,13 +1804,13 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1792,13 +1819,13 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_not_null"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_not_null"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsNotNull(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1807,13 +1834,13 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_true"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_true"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsTrue(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -1822,13 +1849,13 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckNonexistentField)
 {
-    auto tuple = std::make_tuple(std::string {"/nonexistent_field"},
-                                 std::string {"is_false"},
-                                 std::vector<std::string> {});
+    const std::string helperFunctionName {"is_false"};
 
-    auto event = std::make_shared<json::Json>(R"({"fieldcheck": null})");
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto op = bld::opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
+
+    const auto op = opBuilderHelperIsFalse(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
