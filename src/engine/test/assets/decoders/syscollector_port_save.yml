@@ -1,18 +1,7 @@
-name: decoder_syscollector_port
+name: syscollector_port_save
 
 parents:
-  - decoder_syscollector_base
-
-check:
-  - event.original.type: +s_starts/port
-  - event.original.ID: +exists
-
----
-
-name: decoder_syscollector_port_save
-
-parents:
-  - decoder_syscollector_port
+  - syscollector_port
 
 check:
   - event.original.port: +exist
@@ -81,19 +70,3 @@ normalize:
   - map:
     _query: +s_concat/agent /$event.original.agent.id /port save /$event.original.ID/|/$event.original.timestamp/|/$event.original.port.protocol/|/$event.original.port.local_ip/|/$event.original.port.local_port/|/$event.original.port.remote_ip/|/$event.original.port.remote_port/|/$event.original.port.tx_queue/|/$event.original.port.rx_queue/|/$event.original.port.inode/|/$event.original.port.state/|/$event.original.port.PID/|/$event.original.port.process
     _port_save_result: +wdb_update/$_query
-
----
-
-name : decoder_syscollector_port_del
-
-parents:
-  - decoder_syscollector_port
-
-check:
-  - event.original.port: +not_exists
-  - event.original.type: +s_eq/port_end
-
-normalize:
-  - map:
-    _query: +s_concat/agent /$event.original.agent.id /port del /$event.original.ID
-    _port_del_result: +wdb_update/$_query

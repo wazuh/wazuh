@@ -1,0 +1,8 @@
+name: syscollector_process
+
+parents:
+  - syscollector_base
+
+check:
+    - event.original.type: +s_starts/process
+    - event.original.ID: +exists

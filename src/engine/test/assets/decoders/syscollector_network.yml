@@ -1,0 +1,92 @@
+name: syscollector_network
+
+parents:
+  - syscollector_netinfo
+
+check:
+  - event.original.iface: +exists
+
+normalize:
+  - check:
+      - event.original.ID: +not_exists
+    map:
+      event.original.ID: "NULL"
+
+  - check:
+      - event.original.timestamp: +not_exists
+    map:
+      event.original.timestamp: "NULL"
+
+  - check:
+      - event.original.iface.name: +not_exists
+    map:
+      event.original.iface.name: "NULL"
+
+  - check:
+      - event.original.iface.adapter: +not_exists
+    map:
+      event.original.iface.adapter: "NULL"
+
+  - check:
+      - event.original.iface.type: +not_exists
+    map:
+      event.original.iface.type: "NULL"
+
+  - check:
+      - event.original.iface.state: +not_exists
+    map:
+      event.original.iface.state: "NULL"
+
+  - check:
+      - event.original.iface.MTU: +not_exists
+    map:
+      event.original.iface.MTU: "NULL"
+
+  - check:
+      - event.original.iface.MAC: +not_exists
+    map:
+      event.original.iface.MAC: "NULL"
+
+  - check:
+      - event.original.iface.tx_packets: +not_exists
+    map:
+      event.original.iface.tx_packets: "NULL"
+
+  - check:
+      - event.original.iface.rx_packets: +not_exists
+    map:
+      event.original.iface.rx_packets: "NULL"
+
+  - check:
+      - event.original.iface.tx_bytes: +not_exists
+    map:
+      event.original.iface.tx_bytes: "NULL"
+
+  - check:
+      - event.original.iface.rx_bytes: +not_exists
+    map:
+      event.original.iface.rx_bytes: "NULL"
+
+  - check:
+      - event.original.iface.tx_errors: +not_exists
+    map:
+      event.original.iface.tx_errors: "NULL"
+
+  - check:
+      - event.original.iface.rx_errors: +not_exists
+    map:
+      event.original.iface.rx_errors: "NULL"
+
+  - check:
+      - event.original.iface.tx_dropped: +not_exists
+    map:
+      event.original.iface.tx_dropped: "NULL"
+
+  - check:
+      - event.original.iface.rx_dropped: +not_exists
+    map:
+      event.original.iface.rx_dropped: "NULL"
+
+  - map:
+      _query: +s_concat/agent /$event.original.agent.id /netinfo save /$event.original.ID/|/$event.original.timestamp/|/$event.original.iface.name/|/$event.original.iface.adapter/|/$event.original.iface.type/|/$event.original.iface.state/|/$event.original.iface.MTU/|/$event.original.iface.MAC/|/$event.original.iface.tx_packets/|/$event.original.iface.rx_packets/|/$event.original.iface.tx_bytes/|/$event.original.iface.rx_bytes/|/$event.original.iface.tx_errors/|/$event.original.iface.rx_errors/|/$event.original.iface.tx_dropped/|/$event.original.iface.rx_dropped
+      _iface_save_response: +wdb_update/$_query
