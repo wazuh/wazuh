@@ -8680,7 +8680,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /cluster/{node_id}/daemon_stats:
+  /cluster/{node_id}/daemons/stats:
     get:
       tags:
         - Cluster
@@ -10174,7 +10174,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /manager/daemon_stats:
+  /manager/daemons/stats:
     get:
       tags:
       - Manager

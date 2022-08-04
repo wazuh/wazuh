@@ -91,14 +91,14 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /manager/daemon_stats
+test_name: GET /manager/daemons/stats
 
 stages:
 
   - name: Request daemons statistics (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/daemon_stats"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
