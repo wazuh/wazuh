@@ -254,7 +254,7 @@ TEST_F(SQLiteTest, StatementExpand)
     };
     std::string stmt_exp = selectStmt.expand();
     std::string expected_query("INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,NULL,NULL,NULL,NULL);");
-    EXPECT_EQ(true,expected_query.compare(stmt_exp)==0);
+    EXPECT_EQ(true, expected_query.compare(stmt_exp) == 0);
 }
 
 TEST_F(SQLiteTest, StatementExpandBind)
@@ -271,9 +271,9 @@ TEST_F(SQLiteTest, StatementExpandBind)
         spConnection,
         R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
     };
-    selectStmt.bind(2,"bar");
-    selectStmt.bind(3,1000);
+    selectStmt.bind(2, "bar");
+    selectStmt.bind(3, 1000);
     std::string stmt_exp = selectStmt.expand();
     std::string expected_query("INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,'bar',1000,NULL,NULL);");
-    EXPECT_EQ(true,expected_query.compare(stmt_exp)==0);
+    EXPECT_EQ(true, expected_query.compare(stmt_exp) == 0);
 }
