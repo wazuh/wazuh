@@ -119,7 +119,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             config->flags.use_source_ip = b;
         } else if (!strcmp(node[i]->element, xml_force_insert)) {
-            mdebug1("The <%s> tag is deprecated since version 4.3.0.", xml_force_insert);
+            mwarn("The <%s> tag is deprecated since version 4.3.0.", xml_force_insert);
             short b = eval_bool(node[i]->content);
             if (b < 0) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -127,7 +127,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
             legacy_force_insert = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
-             mdebug1("The <%s> tag is deprecated since version 4.3.0.", xml_force_time);
+             mwarn("The <%s> tag is deprecated since version 4.3.0.", xml_force_time);
         } else if (!strcmp(node[i]->element, xml_force)) {
             xml_node **chld_node = NULL;
 
@@ -298,6 +298,10 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
             config->force_options.key_mismatch = b;
         }
         // disconnected_time
+        else if (!strcmp(node[i]->element, "force_time")){
+            config->force_options.disconnected_time_enabled = false;
+            config->force_options.disconnected_time = 0;
+        }
         else if (!strcmp(node[i]->element, xml_disconnected_time)) {
             if (node[i]->attributes && node[i]->attributes[0]) {
                 if (!strcmp(node[i]->attributes[0], xml_enabled)) {
