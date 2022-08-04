@@ -111,18 +111,18 @@ inline std::string getSCAPath(Name field)
 
 } // namespace sca_field
 
-// CheckEventJson Optional fields
-static const std::vector<std::string> optionalFields {
-    "/check/description",
-    "/check/rationale",
-    "/check/remediation",
-    "/check/references",
-    "/check/file",
-    "/check/condition",
-    "/check/directory",
-    "/check/process",
-    "/check/registry",
-    "/check/command",
+inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
+{
+    switch (ruleChar)
+    {
+        case 'f': return "file";
+        case 'd': return "directory";
+        case 'r': return "registry";
+        case 'c': return "command";
+        case 'p': return "process";
+        case 'n': return "numeric";
+        default: return {};
+    }
 };
 
 enum class DbOperation
@@ -130,6 +130,7 @@ enum class DbOperation
     ERROR = -1,
     INSERT,
     UPDATE
+
 };
 
 /********************************************
@@ -182,7 +183,8 @@ static bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
         {sca_field::Name::CHECK_RATIONALE, sca_field::Type::STRING, false},
         {sca_field::Name::CHECK_REMEDIATION, sca_field::Type::STRING, false},
         {sca_field::Name::CHECK_REFERENCES, sca_field::Type::STRING, false},
-        {sca_field::Name::CHECK_COMPLIANCE, sca_field::Type::STRING, false},
+        {sca_field::Name::CHECK_COMPLIANCE, sca_field::Type::OBJECT, false},
+        {sca_field::Name::CHECK_RULES, sca_field::Type::ARRAY, false},
         {sca_field::Name::CHECK_CONDITION, sca_field::Type::STRING, false},
         {sca_field::Name::CHECK_DIRECTORY, sca_field::Type::STRING, false},
         {sca_field::Name::CHECK_PROCESS, sca_field::Type::STRING, false},
@@ -233,8 +235,12 @@ static void FillCheckEventInfo(base::Event& event,
 
     event->setString("check", sca_field::getSCAPath(sca_field::Name::TYPE));
 
-    event->setString("check",
-                     sca_field::getSCAPath(sca_field::Name::CHECK_PREVIOUS_RESULT));
+    // Save the previous result
+    if (!response.empty())
+    {
+        event->setString(response.c_str(),
+                         sca_field::getSCAPath(sca_field::Name::CHECK_PREVIOUS_RESULT));
+    }
 
     // Copy if exist from event to sca
     auto copyIfExist = [&event, &scaEventPath](sca_field::Name field) {
@@ -270,13 +276,14 @@ static void FillCheckEventInfo(base::Event& event,
     copyIfExist(sca_field::Name::POLICY);
     copyIfExist(sca_field::Name::POLICY_ID);
 
-    // Optional fields
+    copyIfExist(sca_field::Name::CHECK_ID);
     copyIfExist(sca_field::Name::CHECK_TITLE);
     copyIfExist(sca_field::Name::CHECK_DESCRIPTION);
     copyIfExist(sca_field::Name::CHECK_RATIONALE);
     copyIfExist(sca_field::Name::CHECK_REMEDIATION);
     copyIfExist(sca_field::Name::CHECK_COMPLIANCE);
     copyIfExist(sca_field::Name::CHECK_REFERENCES);
+    // copyIfExist(sca_field::Name::CHECK_RULES);  TODO: Why not copy this?
 
     // Optional fields with cvs
     cvsStr2ArrayIfExist(sca_field::Name::CHECK_FILE);
@@ -318,9 +325,9 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
 
     /* Find the sca event in the wazuhdb */
     // Prepare the query
-    const auto eventID =
+    const auto scanID =
         event->getInt(sca_field::getEventPath(sca_field::Name::ID, scaEventPath));
-    const auto scaQuery = fmt::format("agent {} sca query {}", agent_id, eventID.value());
+    const auto scaQuery = fmt::format("agent {} sca query {}", agent_id, scanID.value());
 
     // Query the wazuhdb
     auto tupleScaResponse = wdb.tryQueryAndParseResult(scaQuery);
@@ -340,7 +347,8 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
     // ----------------- End funcition 1 ----------------- //
 
     // Mandatory int field
-    auto checkIDint = event->getInt(sca_field::getEventPath(sca_field::Name::CHECK_ID, scaEventPath));
+    auto checkIDint =
+        event->getInt(sca_field::getEventPath(sca_field::Name::CHECK_ID, scaEventPath));
     auto checkID = std::to_string(checkIDint.value());
 
     // Return empty string if not found
@@ -357,89 +365,125 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
         return value;
     };
 
-    std::string result = getStringIfExist(sca_field::Name::CHECK_RESULT);
-    std::string status = getStringIfExist(sca_field::Name::CHECK_STATUS);
-    std::string reason = getStringIfExist(sca_field::Name::CHECK_REASON);
+    auto result = getStringIfExist(sca_field::Name::CHECK_RESULT);
+    auto status = getStringIfExist(sca_field::Name::CHECK_STATUS);
+    auto reason = getStringIfExist(sca_field::Name::CHECK_REASON);
 
     // ----------------- Create funcition 2 ----------------- //
-    std::string SaveEventQuery {};
 
-    // Process result, check if the event exists in the wazuhdb, then update it or insert it
-    auto result_db = DbOperation::ERROR;
-    if (std::strncmp(wdb_response.c_str(), "not found", 9) == 0)
-    {
-        // It exists, update
-        result_db = DbOperation::UPDATE;
-        SaveEventQuery = std::string("agent ") + agent_id + " sca update " + checkID + "|"
-                         + result + "|" + status + "|" + reason + "|" + std::to_string(eventID.value());
-    }
-    else if (std::strncmp(wdb_response.c_str(), "found", 5) == 0)
-    {
-        // It not exists, insert
-        result_db = DbOperation::INSERT;
-        wdb_response = wdb_response.substr(5); // removing "found"
-        auto event_original = event->getString("/event/original");
-        if (event_original)
+    // Process result, check if the event exists in the wazuhdb, then update it or insert
+    // it
+    auto getOperationAndQuery = [&event,
+                                 &agent_id,
+                                 checkIDint,
+                                 scanID,
+                                 &wdb_response,
+                                 &result,
+                                 &status,
+                                 &reason]() {
+        auto operation = DbOperation::ERROR;
+        std::string query {};
+
+        if (std::strncmp(wdb_response.c_str(), "not found", 9) == 0)
         {
-            SaveEventQuery = std::string("agent ") + agent_id + " sca insert "
-                             + event_original.value();
+            // It exists, update (SaveEventcheck)
+            operation = DbOperation::UPDATE;
+
+            query = fmt::format("agent {} sca update {}|{}|{}|{}|{}",
+                                agent_id,
+                                checkIDint.value(),
+                                result,
+                                status,
+                                reason,
+                                scanID.value());
         }
-        else
+        else if (std::strncmp(wdb_response.c_str(), "found", 5) == 0)
         {
-            return "Error: Field [/event/original] missing in event";
+            // It not exists, insert
+            operation = DbOperation::INSERT;
+
+            // TODO CHANGE THIS, IT IS NOT THE RIGHT WAY TO DO IT
+            auto event_original = event->getString("/event/original");
+
+            query = fmt::format("agent {} sca insert {}", agent_id, event_original.value());
+
+            // wdb_response = response.substr(5); // removing "found "
         }
-    }
 
-    auto saveEventTuple = wdb.tryQueryAndParseResult(SaveEventQuery);
-    std::string saveEventResponse = std::get<1>(saveEventTuple).value();
-    const auto result_event =
-        (std::get<0>(saveEventTuple) == wazuhdb::QueryResultCodes::OK) ? 0 : 1;
+        return std::make_tuple<>(operation, query);
+    };
 
-    switch (result_db)
+    auto [operation, SaveEventQuery] = getOperationAndQuery();
+
+    if (DbOperation::ERROR == operation)
     {
-        case DbOperation::ERROR:
-            return "Error querying policy monitoring database for agent";
-        case DbOperation::INSERT:
-            if (!result.empty() && (wdb_response == result))
+        return "Error querying policy monitoring database";
+    }
+    // TODO Delete this, it is not the right way to do it
+    if (DbOperation::UPDATE == operation)
+    {
+        wdb_response = wdb_response.substr(6); // removing "found " if is a update
+    }
+    // ----------------- end funcition 2 ----------------- //
+
+    auto [saveResult, emptyPayload] = wdb.tryQueryAndParseResult(SaveEventQuery);
+
+    // std::string saveEventResponse = std::get<1>(saveEventTuple).value();
+    //    const auto result_event =
+    //        (std::get<0>(saveEventTuple) == wazuhdb::QueryResultCodes::OK) ? 0 : 1;
+    //
+    switch (operation)
+    {
+        // case DbOperation::ERROR:
+        //    return "Error querying policy monitoring database for agent";
+        case DbOperation::UPDATE:
+        {
+            bool doFillCheckInfo = result.empty()
+                                       ? (wdb_response != result)
+                                       : (!status.empty() && (wdb_response != status));
+
+            if (doFillCheckInfo)
             {
                 FillCheckEventInfo(event, wdb_response, scaEventPath);
             }
-            else if (result.empty() && !status.empty() && (wdb_response == status))
-            {
-                FillCheckEventInfo(event, wdb_response, scaEventPath);
-            }
 
-            if (result_event < 0)
+            if (wazuhdb::QueryResultCodes::OK != saveResult)
             {
                 return "Error updating policy monitoring database for agent";
             }
-            return std::nullopt;
+            return std::nullopt; // Success
+        }
 
-        case DbOperation::UPDATE:
+        case DbOperation::INSERT:
         {
-            if (!result.empty() && (wdb_response == result))
+            bool doFillCheckInfo = result.empty()
+                                       ? (wdb_response != result)
+                                       : (!status.empty() && (wdb_response != status));
+
+            if (doFillCheckInfo)
             {
-                FillCheckEventInfo(event, wdb_response, scaEventPath);
-            }
-            else if (result.empty() && !status.empty() && (wdb_response == status))
-            {
-                FillCheckEventInfo(event, wdb_response, scaEventPath);
+                // If inserted, then there is no previous result
+                FillCheckEventInfo(event, {}, scaEventPath);
             }
 
-            if (result_event < 0)
+            if (wazuhdb::QueryResultCodes::OK != saveResult)
             {
                 // Error storing policy monitoring information for agent
                 return "Error storing policy monitoring information for agent";
             }
 
             // Saving compliance fields to database for event id
-            const auto compliance = event->getObject(scaEventPath + "/compliance");
-            // e->getEvent()->get("/event/original/check/compliance");
-            if (compliance)
+            auto compliacePath =
+                sca_field::getEventPath(sca_field::Name::CHECK_COMPLIANCE, scaEventPath);
+            if (event->exists(compliacePath))
             {
-                for (auto& [key, jsonValue] : compliance.value())
+                // Mandatory object type for this field (TODO: Add logic error)
+                const auto& compliance = event->getObject(compliacePath);
+                for (const auto& [key, jsonValue] : compliance.value())
                 {
-                    std::string value;
+                    // TODO Check compliance types, can be stringyfied or not (implement
+                    // getNumber as string in json)
+                    std::string value {};
                     if (jsonValue.isString())
                     {
                         value = jsonValue.getString().value();
@@ -454,43 +498,43 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
                     }
                     else
                     {
-                        return "Error: Expected string for compliance [" + key + "]";
+                        return "Error: Expected string for compliance item";
                     }
 
-                    std::string saveComplianceQuery = std::string("agent ") + agent_id
-                                                      + " sca insert_compliance " + checkID
-                                                      + "|" + key + "|" + value;
-                    wdb.tryQueryAndParseResult(saveComplianceQuery);
+                    std::string saveComplianceQuery =
+                        fmt::format("agent {} sca insert_compliance {}|{}|{}",
+                                    agent_id,
+                                    checkID,
+                                    key,
+                                    value);
                     // Should I warn if ResultCode isn't ok ?
+                    wdb.tryQueryAndParseResult(saveComplianceQuery);
                 }
             }
 
             // Save rules
-            const auto rules = event->getArray(scaEventPath + "/rules");
-            if (rules)
+            auto rulesPath =
+                sca_field::getEventPath(sca_field::Name::CHECK_RULES, scaEventPath);
+            if (event->exists(rulesPath))
             {
+                // Mandatory array type for this field (TODO: Add logic error)
+                const auto rules = event->getArray(rulesPath);
                 for (const auto& jsonRule : rules.value())
                 {
                     auto rule = jsonRule.getString();
                     if (rule)
                     {
-                        std::string type;
-                        switch (rule.value()[0])
+                        auto type = getRuleTypeStr(rule.value()[0]);
+                        if (type)
                         {
-                            case 'f': type = "file"; break;
-                            case 'd': type = "directory"; break;
-                            case 'r': type = "registry"; break;
-                            case 'c': type = "command"; break;
-                            case 'p': type = "process"; break;
-                            case 'n': type = "numeric"; break;
-                            default:
-                                // Invalid type: flag
-                                continue;
+                            auto saveRulesQuery =
+                                fmt::format("agent {} sca insert_rules {}|{}|{}",
+                                            agent_id,
+                                            checkID,
+                                            type.value(),
+                                            rule.value());
+                            wdb.tryQueryAndParseResult(saveRulesQuery);
                         }
-                        std::string saveRulesQuery = std::string("agent ") + agent_id
-                                                     + " sca insert_rules " + checkID + "|"
-                                                     + type + "|" + rule.value();
-                        wdb.tryQueryAndParseResult(saveRulesQuery);
                     }
                 }
             }
