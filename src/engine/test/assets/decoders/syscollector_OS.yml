@@ -1,7 +1,7 @@
-name: decoder_syscollector_osinfo
+name: syscollector_osinfo
 
 parents:
-  - decoder_syscollector_base
+  - syscollector_base
 
 check:
   - event.original.inventory: +exists
