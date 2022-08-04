@@ -1,5 +1,4 @@
 import contextlib
-
 from datetime import timedelta
 from enum import Enum
 from math import ceil
@@ -270,7 +269,8 @@ class AgentsReconnect:
                 if info['agents'] > 0:
                     agent_query = WazuhDBQueryAgents(
                         count=False, filters={"status": "active", "node_name": node},
-                        limit=info['agents'], sort={"fields": ["id"], "order": "desc"}, select=["id"])
+                        limit=info['agents'], sort={"fields": ["id"], "order": "desc"}, select=["id"],
+                        query="(version>Wazuh v4.3.0,version=Wazuh v4.3.0);id!=000")
                     current_balance[node]['agents'] = [info["id"] for info in agent_query.run()["items"]]
                 else:
                     current_balance[node]['agents'] = []
