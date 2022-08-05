@@ -51,8 +51,7 @@ using Delimeter = std::pair<char, bool>;
  * @return std::vector<std::string> Vector of strings
  */
 template<typename... Delim>
-std::vector<std::string> splitMulti(std::string_view input,
-                                    Delim&&... delimiters)
+std::vector<std::string> splitMulti(std::string_view input, Delim&&... delimiters)
 {
     std::vector<std::string> splitted;
     for (auto i = 0, last = i; i < input.size(); ++i)
@@ -87,6 +86,11 @@ std::vector<std::string> splitMulti(std::string_view input,
     }
 
     return splitted;
+}
+
+inline bool startsWith(std::string_view str, std::string_view prefix)
+{
+    return str.substr(0, prefix.size()) == prefix;
 }
 
 } // namespace utils::string
