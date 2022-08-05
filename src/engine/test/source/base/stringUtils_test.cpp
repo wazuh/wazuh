@@ -76,6 +76,23 @@ TEST(splitMulti, ThreeDelimiters) {
     ASSERT_EQ(result, expected);
 }
 
+TEST(startsWith, Success)
+{
+    std::string input = "this is a test";
+    std::string prefix = "this";
+    ASSERT_TRUE(utils::string::startsWith(input, prefix));
+}
+
+TEST(startsWith, Failure)
+{
+    std::string input = "this is a test";
+    std::string prefix = "that";
+    ASSERT_FALSE(utils::string::startsWith(input, prefix));
+
+    prefix = "his is";
+    ASSERT_FALSE(utils::string::startsWith(input, prefix));
+}
+
 TEST(join, defaut_separator)
 {
     const std::string expected = "test";
