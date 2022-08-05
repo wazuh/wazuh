@@ -1,5 +1,5 @@
 ---
-name: WPK upgrade tests 
+name: Release Candidate - WPK upgrade tests 
 about: Report the results after upgrade agent via WPK.
 title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - WPK upgrade tests'
 labels: 'WPK, core'

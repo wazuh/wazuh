@@ -8,6 +8,9 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
+# Enable testing
+enable_testing()
+
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 

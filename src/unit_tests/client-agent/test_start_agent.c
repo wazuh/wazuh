@@ -114,7 +114,6 @@ static int setup_test(void **state) {
     agt = (agent *)calloc(1, sizeof(agent));
     /* Default conf */
     agt->server = NULL;
-    agt->lip = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->cfgadq = -1;
