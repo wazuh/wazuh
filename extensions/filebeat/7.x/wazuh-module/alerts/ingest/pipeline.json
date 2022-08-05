@@ -3,8 +3,71 @@
   "processors": [
     { "json" : { "field" : "message", "add_to_root": true } },
     {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.src_ip}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.srcip}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.win.eventdata.ipAddress}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.aws.sourceIPAddress}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.gcp.jsonPayload.sourceIP}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.office365.ClientIP}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "source.ip",
+        "value": "{{data.parameters.alert.data.srcip}}",
+        "ignore_empty_value": true
+      }
+    },
+    {
+      "set": {
+        "field": "destination.ip",
+        "value": "{{data.dstip}}",
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "destination.ip",
+        "value": "{{data.dest_ip}}",
+        "ignore_failure": true
+      }
+    },
+    {
       "geoip": {
-        "field": "data.srcip",
+        "field": "source.ip",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
@@ -13,34 +76,7 @@
     },
     {
       "geoip": {
-        "field": "data.win.eventdata.ipAddress",
-        "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
-        "ignore_missing": true,
-        "ignore_failure": true
-      }
-    },
-    {
-      "geoip": {
-        "field": "data.aws.sourceIPAddress",
-        "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
-        "ignore_missing": true,
-        "ignore_failure": true
-      }
-    },
-    {
-      "geoip": {
-        "field": "data.gcp.jsonPayload.sourceIP",
-        "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
-        "ignore_missing": true,
-        "ignore_failure": true
-      }
-    },
-    {
-      "geoip": {
-        "field": "data.office365.ClientIP",
+        "field": "destination.ip",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
@@ -52,7 +88,7 @@
         "field": "timestamp",
         "target_field": "@timestamp",
         "formats": ["ISO8601"],
-        "ignore_failure": false 
+        "ignore_failure": false
       }
     },
     {
@@ -61,7 +97,7 @@
         "date_rounding": "d",
         "index_name_prefix": "{{fields.index_prefix}}",
         "index_name_format": "yyyy.MM.dd",
-        "ignore_failure": false 
+        "ignore_failure": false
       }
     },
     { "remove": { "field": "message", "ignore_missing": true, "ignore_failure": true } },
