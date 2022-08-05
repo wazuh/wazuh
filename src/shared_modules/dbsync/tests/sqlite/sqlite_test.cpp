@@ -240,7 +240,7 @@ TEST_F(SQLiteTest, ColumnValue)
 
 TEST_F(SQLiteTest, StatementExpand)
 {
-    std::shared_ptr<IConnection> spConnection{ new Connection };
+    std::shared_ptr<IConnection> spConnection = std::make_shared<Connection>();
     Statement createStmt
     {
         spConnection,
@@ -253,12 +253,12 @@ TEST_F(SQLiteTest, StatementExpand)
         R"(INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (?,?,?,?,?);)"
     };
     const auto expectedStringStmt{ selectStmt.expand() };
-    EXPECT_TRUE(expectedStringStmt.compare("INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,NULL,NULL,NULL,NULL);") == 0);
+    EXPECT_EQ(expectedStringStmt, "INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,NULL,NULL,NULL,NULL);");
 }
 
 TEST_F(SQLiteTest, StatementExpandBind)
 {
-    std::shared_ptr<IConnection> spConnection{ new Connection };
+    std::shared_ptr<IConnection> spConnection = std::make_shared<Connection>();
     Statement createStmt
     {
         spConnection,
@@ -273,5 +273,5 @@ TEST_F(SQLiteTest, StatementExpandBind)
     insertStmt.bind(2, "bar");
     insertStmt.bind(3, 1000);
     const auto expectedStringStmt{ insertStmt.expand() };
-    EXPECT_TRUE(expectedStringStmt.compare("INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,'bar',1000,NULL,NULL);") == 0);
+    EXPECT_EQ(expectedStringStmt, "INSERT INTO test_table (Colum1, Colum2, Colum3, Colum4, Colum5) VALUES (NULL,'bar',1000,NULL,NULL);");
 }
