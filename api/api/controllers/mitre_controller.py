@@ -14,20 +14,21 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_metadata(request, pretty=False, wait_for_complete=False):
-    """Return the metadata of the MITRE's database
+async def get_metadata(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
+    """Return the metadata of the MITRE's database.
 
     Parameters
     ----------
     request : connexion.request
     pretty : bool, optional
-        Show results in human-readable format
+        Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable timeout response
+        Disable timeout response.
 
     Returns
     -------
-    Metadata of MITRE's db
+    web.Response
+        API response.
     """
 
     dapi = DistributedAPI(f=mitre.mitre_metadata,
@@ -45,7 +46,7 @@ async def get_metadata(request, pretty=False, wait_for_complete=False):
 
 async def get_references(request, reference_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                          offset: int = None, limit: int = None, sort: str = None, search: str = None,
-                         select: list = None, q: str = None):
+                         select: list = None, q: str = None) -> web.Response:
     """Get information of specified MITRE's references.
 
     Parameters
@@ -73,7 +74,8 @@ async def get_references(request, reference_ids: list = None, pretty: bool = Fal
 
     Returns
     -------
-    MITRE's references information.
+    web.Response
+        API response with the MITRE's references information.
     """
     f_kwargs = {
         'filters': {
@@ -104,7 +106,7 @@ async def get_references(request, reference_ids: list = None, pretty: bool = Fal
 
 async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                       offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                      q: str = None):
+                      q: str = None) -> web.Response:
     """Get information of specified MITRE's tactics.
 
     Parameters
@@ -132,7 +134,8 @@ async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wa
 
     Returns
     -------
-    MITRE's tactics information.
+    web.Response
+        API response with the MITRE's tactics information.
     """
     f_kwargs = {
         'filters': {
@@ -161,36 +164,38 @@ async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wa
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_techniques(request, technique_ids=None, pretty=False, wait_for_complete=False, offset=None,
-                         limit=None, sort=None, search=None, select=None, q=None):
+async def get_techniques(request, technique_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                         offset: int = None, limit: int = None, sort: str = None, search: str = None,
+                         select: list = None, q: str = None) -> web.Response:
     """Get information of specified MITRE's techniques.
 
     Parameters
     ----------
     request : connexion.request
     technique_ids : list, optional
-        List of technique ids to be obtained
+        List of technique ids to be obtained.
     pretty : bool, optional
-        Show results in human-readable format
+        Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable timeout response
+        Disable timeout response.
     offset : int, optional
-        First item to return
+        First item to return.
     limit : int, optional
-        Maximum number of items to return
+        Maximum number of items to return.
     search : str
-        Looks for elements with the specified string
+        Looks for elements with the specified string.
     select : list[str]
         Select which fields to return (separated by comma).
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-        ascending or descending order
+        ascending or descending order.
     q : str
         Query to filter by.
 
     Returns
     -------
-    MITRE's techniques information
+    web.Response
+        API response with the MITRE's techniques information.
     """
     f_kwargs = {'filters': {
         'id': technique_ids,
@@ -216,36 +221,38 @@ async def get_techniques(request, technique_ids=None, pretty=False, wait_for_com
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_mitigations(request, mitigation_ids=None, pretty=False, wait_for_complete=False, offset=None,
-                          limit=None, sort=None, search=None, select=None, q=None):
+async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                          offset: int = None, limit: int = None, sort: str = None, search: str = None,
+                          select: list = None, q: str = None) -> web.Response:
     """Get information of specified MITRE's mitigations.
 
     Parameters
     ----------
     request : connexion.request
     mitigation_ids : list, optional
-        List of mitigation ids to be obtained
+        List of mitigation ids to be obtained.
     pretty : bool, optional
-        Show results in human-readable format
+        Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable timeout response
+        Disable timeout response.
     offset : int, optional
-        First item to return
+        First item to return.
     limit : int, optional
-        Maximum number of items to return
+        Maximum number of items to return.
     search : str
-        Looks for elements with the specified string
+        Looks for elements with the specified string.
     select : list[str]
         Select which fields to return (separated by comma).
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-        ascending or descending order
+        ascending or descending order.
     q : str
         Query to filter by.
 
     Returns
     -------
-    MITRE's mitigations information
+    web.Response
+        API response with the MITRE's mitigations information.
     """
     f_kwargs = {'filters': {
         'id': mitigation_ids,
@@ -271,36 +278,38 @@ async def get_mitigations(request, mitigation_ids=None, pretty=False, wait_for_c
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_groups(request, group_ids=None, pretty=False, wait_for_complete=False, offset=None,
-                     limit=None, sort=None, search=None, select=None, q=None):
+async def get_groups(request, group_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                     offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
+                     q: str = None) -> web.Response:
     """Get information of specified MITRE's groups.
 
     Parameters
     ----------
     request : connexion.request
     group_ids : list, optional
-        List of group IDs to be obtained
+        List of group IDs to be obtained.
     pretty : bool, optional
-        Show results in human-readable format
+        Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable timeout response
+        Disable timeout response.
     offset : int, optional
-        First item to return
+        First item to return.
     limit : int, optional
-        Maximum number of items to return
+        Maximum number of items to return.
     search : str
-        Looks for elements with the specified string
+        Looks for elements with the specified string.
     select : list[str]
         Select which fields to return (separated by comma).
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-        ascending or descending order
+        ascending or descending order.
     q : str
         Query to filter by.
 
     Returns
     -------
-    MITRE's groups information
+    web.Response
+        API response with the MITRE's groups information.
     """
     f_kwargs = {
         'filters': {
@@ -328,36 +337,38 @@ async def get_groups(request, group_ids=None, pretty=False, wait_for_complete=Fa
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_software(request, software_ids=None, pretty=False, wait_for_complete=False, offset=None,
-                       limit=None, sort=None, search=None, select=None, q=None):
+async def get_software(request, software_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                       offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
+                       q: str = None) -> web.Response:
     """Get information of specified MITRE's software.
 
     Parameters
     ----------
     request : connexion.request
     software_ids : list, optional
-        List of softwware IDs to be obtained
+        List of softwware IDs to be obtained.
     pretty : bool, optional
-        Show results in human-readable format
+        Show results in human-readable format.
     wait_for_complete : bool, optional
-        Disable timeout response
+        Disable timeout response.
     offset : int, optional
-        First item to return
+        First item to return.
     limit : int, optional
-        Maximum number of items to return
+        Maximum number of items to return.
     search : str
-        Looks for elements with the specified string
+        Looks for elements with the specified string.
     select : list[str]
         Select which fields to return (separated by comma).
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-        ascending or descending order
+        ascending or descending order.
     q : str
         Query to filter by.
 
     Returns
     -------
-    MITRE's software information
+    web.Response
+        API response with the MITRE's software information
     """
     f_kwargs = {
         'filters': {

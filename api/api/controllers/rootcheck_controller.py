@@ -20,12 +20,18 @@ async def put_rootcheck(request, agents_list: str = '*', pretty: bool = False,
 
     Parameters
     ----------
-    agents_list : list
+    request : connexion.request
+    agents_list : str
         List of agent's IDs.
-    pretty : bool
+    pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -43,16 +49,24 @@ async def put_rootcheck(request, agents_list: str = '*', pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_rootcheck(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = ''):
+async def delete_rootcheck(request, pretty: bool = False, wait_for_complete: bool = False,
+                           agent_id: str = '') -> web.Response:
     """Clear the rootcheck database for a list of agents.
+
     Parameters
     ----------
-    pretty : bool
+    request : connexion.request
+    pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        ID of the agent's rootcheck info to retrieve.
+        ID of the agent which rootcheck info we want to retrieve.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -69,19 +83,21 @@ async def delete_rootcheck(request, pretty: bool = False, wait_for_complete: boo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, agent_id=None, offset=0, limit=None,
-                              sort=None, search=None, select=None, q='', distinct=None, status='all', pci_dss=None,
-                              cis=None):
+async def get_rootcheck_agent(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
+                              offset: int = 0, limit: int = None, sort: str = None, search: str = None,
+                              select: str = None, q: str = '', distinct: bool = None, status: str = 'all',
+                              pci_dss: str = None, cis: str = None) -> web.Response:
     """Return a list of events from the rootcheck database.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        ID of the agent's rootcheck info to retrieve.
+        ID of the agent which rootcheck info we want to retrieve.
     offset : int
         First element to return in the collection.
     limit : int
@@ -103,6 +119,11 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
         Filter by PCI requirement.
     cis : str
         Filter by CIS requirement.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -116,7 +137,7 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
                     'status': status,
                     'pci_dss': pci_dss,
                     'cis': cis
-                    },
+                },
                 }
 
     dapi = DistributedAPI(f=rootcheck.get_rootcheck_agent,
@@ -132,17 +153,24 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_last_scan_agent(request, pretty=False, wait_for_complete=False, agent_id=None):
+async def get_last_scan_agent(request, pretty: bool = False, wait_for_complete: bool = False,
+                              agent_id: str = None) -> web.Response:
     """Get the last rootcheck scan of an agent.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        ID of the agent's rootcheck info to retrieve.
+        ID of the agent which rootcheck info we want to retrieve.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
