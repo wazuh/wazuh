@@ -19,11 +19,10 @@
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
-static DWORD WINAPI wm_sys_destroy(void *data);      // Destroy data
 #else
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
-static void wm_sys_destroy(wm_sys_t *data);      // Destroy data
 #endif
+static void wm_sys_destroy(wm_sys_t *data);      // Destroy data
 static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
@@ -37,7 +36,7 @@ bool shutdown_process_started = false;
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
-    (wm_routine)(void *)wm_sys_destroy,
+    (void(*)(void *))wm_sys_destroy,
     (cJSON * (*)(const void *))wm_sys_dump,
     (int(*)(const char*))wm_sync_message,
     (void(*)(void *))wm_sys_stop
@@ -207,15 +206,8 @@ void* wm_sys_main(wm_sys_t *sys) {
     return 0;
 }
 
-#ifdef WIN32
-DWORD WINAPI wm_sys_destroy(void *data) {
-#else
 void wm_sys_destroy(wm_sys_t *data) {
-#endif
     free(data);
-#ifdef WIN32
-    return 0;
-#endif
 }
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
