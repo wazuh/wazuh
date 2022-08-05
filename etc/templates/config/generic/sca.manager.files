@@ -43,4 +43,3 @@ windows/cis_win10_enterprise.yml
 windows/cis_win2012r2.yml
 windows/cis_win2016.yml
 windows/cis_win2019.yml
-windows/sca_win_audit.yml
