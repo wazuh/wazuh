@@ -55,7 +55,8 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event> {
+            base::Event event) -> base::result::Result<base::Event>
+        {
             std::string completeQuery {};
 
             // Check if the value comes from a reference
