@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from typing import Union
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
@@ -19,26 +20,46 @@ logger = logging.getLogger('wazuh-api')
 
 async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = 0, limit: int = None, select: list = None, sort: str = None, search: str = None,
-                       q: str = None, filename: str = None, relative_dirname: str = None, status: str = None):
-    """Get all decoders
+                       q: str = None, filename: str = None, relative_dirname: str = None,
+                       status: str = None) -> web.Response:
+    """Get all decoders.
 
-    Returns information about all decoders included in ossec.conf. This information include decoder's route,
-    decoder's name, decoder's file among others
+    Returns information about all the decoders included in the ossec.conf file.
+    This information includes the decoders' routes, decoders' names, decoders' files, etc.
 
-    :param decoder_names: Filters by decoder name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: List of selected fields to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :param filename: List of filenames to filter by.
-    :param relative_dirname: Filters by relative dirname.
-    :param status: Filters by list status.
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    decoder_names : list
+        Filters by decoder name.
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    filename : str
+        List of filenames to filter by.
+    relative_dirname : str
+        Filters by relative dirname.
+    status : str
+        Filters by status.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'names': decoder_names,
                 'offset': offset,
@@ -68,23 +89,43 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
 
 async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = None, sort: str = None, search: str = None, filename: str = None,
-                             relative_dirname: str = None, status: str = None):
-    """Get all decoders files
+                             relative_dirname: str = None, status: str = None) -> web.Response:
+    """Get all decoders' files.
 
-    Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route
-    and decoder's status among others
+    Returns information about all decoders' files used in Wazuh.
+    This information includes the decoders' file, decoders' routes, decoders' statuses, etc.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param filename: List of filenames to filter by.
-    :param relative_dirname: Filters by relative dirname
-    :param status: Filters by list status
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    filename : str
+        List of filenames to filter by.
+    relative_dirname : str
+        Filters by relative dirname.
+    status : str
+        Filters by status.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -110,20 +151,35 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
 
 
 async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                               limit: int = None, select : list = None, sort: str = None, search: str = None):
-    """Get decoders by parents
+                               limit: int = None, select: list = None, sort: str = None,
+                               search: str = None) -> web.Response:
+    """Get decoders by parents.
 
-    Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders
+    Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: List of selected fields to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -148,11 +204,12 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
 
 
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                   raw: bool = False):
+                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
     """Get decoder file content.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format. It only works when `raw` is False (JSON format).
     wait_for_complete : bool
@@ -164,11 +221,11 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
 
     Returns
     -------
-    web.json_response or ConnexionResponse
-        Depending on the `raw` parameter, it will return an object or other:
+    Union[web.json_response, ConnexionResponse]
+        Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
             raw=True            -> ConnexionResponse (application/xml)
-            raw=False (default) -> web.json_response (application/json)
-        If any exception was raised, it will return a web.json_response with details.
+            raw=False (default) -> web.Response (application/json)
+        If any exception was raised, it will return a web.Response with details.
     """
     f_kwargs = {'filename': filename, 'raw': raw}
 
@@ -189,11 +246,13 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body, filename=None, overwrite=False, pretty=False, wait_for_complete=False):
+async def put_file(request, body: dict, filename: str = None, overwrite: bool = False, pretty: bool = False,
+                   wait_for_complete: bool = False) -> web.Response:
     """Upload a decoder file.
 
     Parameters
     ----------
+    request : connexion.request
     body : dict
         Body request with the file content to be uploaded.
     filename : str
@@ -207,7 +266,8 @@ async def put_file(request, body, filename=None, overwrite=False, pretty=False, 
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
@@ -230,11 +290,13 @@ async def put_file(request, body, filename=None, overwrite=False, pretty=False, 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, filename=None, pretty=False, wait_for_complete=False):
+async def delete_file(request, filename: str = None, pretty: bool = False,
+                      wait_for_complete: bool = False) -> web.Response:
     """Delete a decoder file.
 
     Parameters
     ----------
+    request : connexion.request
     filename : str
         Name of the file.
     pretty : bool
@@ -244,7 +306,8 @@ async def delete_file(request, filename=None, pretty=False, wait_for_complete=Fa
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     f_kwargs = {'filename': filename}
 

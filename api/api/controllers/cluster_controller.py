@@ -364,7 +364,7 @@ async def get_configuration_node(request, node_id: str, pretty: bool = False, wa
     Union[web.Response, ConnexionResponse]
         Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
             raw=True            -> ConnexionResponse (application/xml)
-            raw=False (default) -> web.json_response (application/json)
+            raw=False (default) -> web.Response (application/json)
         If any exception was raised, it will return a web.Response with details.
     """
     f_kwargs = {'node_id': node_id,
