@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from typing import Union
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
@@ -19,11 +20,12 @@ logger = logging.getLogger('wazuh-api')
 
 async def get_lists(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                     select: list = None, sort: str = None, search: str = None, filename: str = None,
-                    relative_dirname: str = None):
+                    relative_dirname: str = None) -> web.Response:
     """Get all CDB lists.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -46,7 +48,8 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'select': select,
@@ -74,11 +77,12 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
 
 
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                   raw: bool = False):
-    """Get content of one CDB list file, in raw or dict format.
+                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+    """"Get content of one CDB list file, in raw or dict format.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -90,11 +94,11 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
 
     Returns
     -------
-    web.json_response, ConnexionResponse
-        Depending on the `raw` parameter, it will return an object or other:
+    Union[web.Response, ConnexionResponse]
+        Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
             raw=True            -> ConnexionResponse (text/plain)
-            raw=False (default) -> web.json_response (application/json)
-        If any exception was raised, it will return a web.json_response with details.
+            raw=False (default) -> web.Response      (application/json)
+        If any exception was raised, it will return a web.Response with details.
     """
     f_kwargs = {'filename': filename, 'raw': raw}
 
@@ -115,13 +119,15 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
+async def put_file(request, body: dict, overwrite: bool = False, pretty: bool = False, wait_for_complete: bool = False,
+                   filename: str = None) -> web.Response:
     """Upload content of CDB list file.
 
     Parameters
     ----------
-    body : Body object
-        Body request with the content of the file to be uploaded.
+    request : connexion.request
+    body : dict
+        Dictionary with the content of the file to be uploaded.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -133,7 +139,8 @@ async def put_file(request, body, overwrite=False, pretty=False, wait_for_comple
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
@@ -156,21 +163,24 @@ async def put_file(request, body, overwrite=False, pretty=False, wait_for_comple
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, pretty=False, wait_for_complete=False, filename=None):
+async def delete_file(request, pretty: bool = False, wait_for_complete: bool = False,
+                      filename: str = None) -> web.Response:
     """Delete a CDB list file.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
     filename : str
-        Name of the file to delete.
+        Name of the CDB list file to delete.
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     f_kwargs = {'filename': filename}
 
@@ -189,11 +199,12 @@ async def delete_file(request, pretty=False, wait_for_complete=False, filename=N
 
 async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                           limit: int = None, sort: str = None, search: str = None, filename: str = None,
-                          relative_dirname: str = None):
+                          relative_dirname: str = None) -> web.Response:
     """Get paths from all CDB lists.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -214,7 +225,8 @@ async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
