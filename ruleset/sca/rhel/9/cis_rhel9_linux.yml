@@ -3032,7 +3032,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28157
@@ -3048,7 +3048,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28158
@@ -3064,7 +3064,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28159
@@ -3080,7 +3080,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28160
@@ -3096,7 +3096,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28161
@@ -3112,7 +3112,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated) - Not implemented
   # 5.1.9 Ensure at/cron is restricted to authorized users (Automated) - Not implemented
@@ -3134,7 +3134,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured (Automated)
   - id: 28163
@@ -3150,9 +3150,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$ || r:^Access: \(0400/-r--------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$ || r:^Access: \(0400/-r--------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ '
-      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key -> r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$  r:^Access: \(0400/-r--------\) Uid: \( 0/ root\) Gid: \( 0/ root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \( 0/ root\) Gid: \(\s+\d+/ssh_keys\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ '
+      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$  r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28164
@@ -3168,9 +3168,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \( 0/ root\) Gid: \( 0/ root\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 28165
@@ -3619,7 +3619,7 @@ checks:
     title: "Ensure lockout for failed password attempts is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. - deny=<n> - Number of attempts before the account is locked - unlock_time=<n> - Time in seconds before the account is unlocked Note: The maximum configurable value for unlock_time is 604800."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: 'et password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900 Versions 8.0 and 8.1: Run the following script to update the system-auth and password-auth files. This script will update/add the deny=5 and unlock_time=900 options. This script should be modified as needed to follow local site policy. #!/usr/bin/env bash for fn in system-auth password-auth; do file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep ''custom/'')/$fn" if grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=(0|[6-9]|[1- 9][0-9]+)\b.*$'' "$file"; then sed -ri ''/pam_faillock.so/s/deny=\S+/deny=5/g'' "$file" elif ! grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=\d*\b.*$'' "$file"; then sed -r ''s/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$ /\1\2\3 deny=5 \4/'' $file fi if grep -P -- ''^\h*(auth\h+required\h+pam_faillock\.so\h+)([^#\n\r]+)?\h+unlock_time=([1- 9]|[1-9][0-9]|[1-8][0-9][0-9])\b.*$'' "$file"; then sed -ri ''/pam_faillock.so/s/unlock_time=\S+/unlock_time=900/g'' "$file" elif ! grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+unlock_time=\d*\b.*$ '' "$file"; then sed -ri ''s/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$ /\1\2\3 unlock_time=900 \4/'' "$file" fi done authselect apply-changes.'
+    remediation: 'Set password lockouts and unlock times to conform to site policy. deny should be not greater than 5 and unlock_time should be 0 (never), or 900 seconds or greater. Depending on the version you are running, follow one of the two methods bellow. Versions 8.2 and later: Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900 Versions 8.0 and 8.1: Run the following script to update the system-auth and password-auth files. This script will update/add the deny=5 and unlock_time=900 options. This script should be modified as needed to follow local site policy. #!/usr/bin/env bash for fn in system-auth password-auth; do file="/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep ''custom/'')/$fn" if grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=(0|[6-9]|[1- 9][0-9]+)\b.*$'' "$file"; then sed -ri ''/pam_faillock.so/s/deny=\S+/deny=5/g'' "$file" elif ! grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+deny=\d*\b.*$'' "$file"; then sed -r ''s/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$ /\1\2\3 deny=5 \4/'' $file fi if grep -P -- ''^\h*(auth\h+required\h+pam_faillock\.so\h+)([^#\n\r]+)?\h+unlock_time=([1- 9]|[1-9][0-9]|[1-8][0-9][0-9])\b.*$'' "$file"; then sed -ri ''/pam_faillock.so/s/unlock_time=\S+/unlock_time=900/g'' "$file" elif ! grep -Pq -- ''^\h*auth\h+required\h+pam_faillock\.so(\h+[^#\n\r]+)?\h+unlock_time=\d*\b.*$ '' "$file"; then sed -ri ''s/^\s*(auth\s+required\s+pam_faillock\.so\s+)([^{}#\n\r]+)?\s*(\{.*\})?(.*)$ /\1\2\3 unlock_time=900 \4/'' "$file" fi done authselect apply-changes.'
     compliance:
       - cis: ["5.5.2"]
       - cis_csc: ["6.2", "16.7"]
