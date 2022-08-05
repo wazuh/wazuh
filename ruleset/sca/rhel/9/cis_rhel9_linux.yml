@@ -3032,7 +3032,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 28157
@@ -3048,7 +3048,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 28158
@@ -3064,7 +3064,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 28159
@@ -3080,7 +3080,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 28160
@@ -3096,7 +3096,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 28161
@@ -3112,7 +3112,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated) - Not implemented
   # 5.1.9 Ensure at/cron is restricted to authorized users (Automated) - Not implemented
@@ -3134,7 +3134,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured (Automated)
   - id: 28163
@@ -3150,9 +3150,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ '
-      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key -> r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$  r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\) Uid: \(\s*0/\s*root\) Gid: \(\s+\d+/ssh_keys\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$ || r:^Access: \(0400/-r--------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$ || r:^Access: \(0400/-r--------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ '
+      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$  r:^Access: \(0400/-r--------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$ || r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$ || r:^Access: \(0400/-r--------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s+\d+/ssh_keys\)$'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
   - id: 28164
@@ -3168,9 +3168,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
-      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key.pub -> r:^Access: \(0644/-rw-r--r--\) Uid: \(\s*0/\s*root\) Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0644/-rw-r--r--\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0644/-rw-r--r--\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - 'c:stat -L /etc/ssh/ssh_host_ed228519_key.pub -> r:^Access: \(0644/-rw-r--r--\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 28165
