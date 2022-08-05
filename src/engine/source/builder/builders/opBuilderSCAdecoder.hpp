@@ -11,6 +11,9 @@
 #define _OP_BUILDER_SCA_DECODER_H
 
 #include <any>
+#include <memory>
+
+#include <wdb/wdb.hpp>
 
 #include "base/baseTypes.hpp"
 #include "expression.hpp"
@@ -42,16 +45,17 @@ void FillCheckEventInfo(base::Event& event,
 
 bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath);
 
-int FindScanInfo(base::Event& event,
-                 const std::string& agentId,
-                 const std::string& scaEventPath,
-                 std::string& hashScanInfo);
+std::tuple<int, std::string> findScanInfo(const std::string& agentId,
+                                          const std::string& policyId,
+                                          std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 int SaveScanInfo(base::Event& event, const std::string& agent_id, int update);
 
 int FindPolicyInfo(base::Event& event, const std::string& agent_id);
 
-bool PushDumpRequest(base::Event& event, const std::string& agentId, int firstScan);
+bool pushDumpRequest(const std::string& agentId,
+                     const std::string& policyId,
+                     int firstScan);
 
 int SavePolicyInfo(const std::string& agent_id,
                    std::string& description_db,
@@ -63,35 +67,39 @@ int DeletePolicy(const std::string& agent_id);
 
 int DeletePolicyCheck(const std::string& agent_id);
 
-int FindCheckResults(const std::string& agentId, std::string& wdbResponse);
+std::tuple<int, std::string> findCheckResults(const std::string& agentId,
+                                              const std::string& policyId,
+                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-int FindPoliciesIds(const std::string& agentId, std::string& policiesIds);
+int findPoliciesIds(const std::string& agentId, std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::optional<std::string> CheckDumpJSON(base::Event event,
-                                         std::string& elementsSent,
-                                         std::string& policyId,
-                                         std::string& scanId,
-                                         const std::string& scaEventPath);
+std::tuple<std::optional<std::string>, std::string, std::string>
+checkDumpJSON(const base::Event& event, const std::string& scaEventPath);
 
-int DeletePolicyCheckDistinct(const std::string& agentId,
-                              const std::string& policyId,
-                              const std::string& scanId);
+bool deletePolicyCheckDistinct(const std::string& agentId,
+                               const std::string& policyId,
+                               const std::string& scanId,
+                               std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::optional<std::string> HandleCheckEvent(base::Event& event,
                                             const std::string& agent_id,
                                             const std::string& scaEventPath);
 
-std::optional<std::string> HandleScanInfo(base::Event& event,
+std::optional<std::string> handleScanInfo(base::Event& event,
                                           const std::string& agent_id,
-                                          const std::string& scaEventPath);
+                                          const std::string& scaEventPath,
+                                          std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::optional<std::string> HandlePoliciesInfo(base::Event& event,
+std::optional<std::string> handlePoliciesInfo(base::Event& event,
                                               const std::string& agentId,
-                                              const std::string& scaEventPath);
+                                              const std::string& scaEventPath,
+                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::optional<std::string> HandleDumpEvent(base::Event& event,
+std::optional<std::string> handleDumpEvent(base::Event& event,
                                            const std::string& agentId,
-                                           const std::string& scaEventPath);
+                                           const std::string& scaEventPath,
+                                           std::shared_ptr<wazuhdb::WazuhDB> wdb);
+
 } // namespace sca
 
 /**

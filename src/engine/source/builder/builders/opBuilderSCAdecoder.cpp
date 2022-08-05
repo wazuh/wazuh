@@ -25,6 +25,13 @@
 namespace builder::internals::builders
 {
 
+namespace sca
+{
+constexpr auto TYPE_CHECK = "check";
+constexpr auto TYPE_SUMMARY = "summary";
+constexpr auto TYPE_POLICIES = "policies";
+constexpr auto TYPE_DUMP_END = "dump_end";
+} // namespace sca
 // SCA event json fields
 namespace sca_field
 {
@@ -631,35 +638,26 @@ bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
 }
 
 // TODO: Change, No use parameter as output, returno tuple with optional
-int FindScanInfo(base::Event& event,
-                 const std::string& agentId,
-                 const std::string& scaEventPath,
-                 std::string& hashScanInfo)
+std::tuple<int, std::string> findScanInfo(const std::string& agentId,
+                                          const std::string& policyId,
+                                          std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
-    std::string FindScanInfoQuery = std::string("agent ") + agentId + " sca query_scan "
-                                    + scanInfoKeyValues["/policy_id"];
+    std::string query = fmt::format("agent {} sca query_scan {}", agentId, policyId);
 
-    auto wdb = wazuhdb::WazuhDB(
-        STREAM_SOCK_PATH); // This create, open and close the connection, must be unique
-
-    auto FindScanInfoTuple = wdb.tryQueryAndParseResult(FindScanInfoQuery);
-
-    int resultDb = -1;
-    if (wazuhdb::QueryResultCodes::OK == std::get<0>(FindScanInfoTuple))
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
+    if (wazuhdb::QueryResultCodes::OK == resultCode && payload)
     {
-        const auto& FindScanInfoResponse = std::get<1>(FindScanInfoTuple).value();
-        if (0 == std::strncmp(FindScanInfoResponse.c_str(), "not found", 9))
+        if (utils::string::startsWith(payload.value(), "found"))
         {
-            resultDb = 1;
+            return {0, payload.value().substr(6)}; // removing found
         }
-        else if (0 == std::strncmp(FindScanInfoResponse.c_str(), "found", 5))
+        else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            hashScanInfo = FindScanInfoResponse.substr(5); // removing found
-            resultDb = 0;
+            return {1, ""};
         }
     }
-    return resultDb;
+    return {-1, ""};
 }
 
 int SaveScanInfo(base::Event& event, const std::string& agent_id, int update)
@@ -733,13 +731,13 @@ int FindPolicyInfo(base::Event& event, const std::string& agent_id)
 }
 
 // TODO: check return value and implications if the operation fails
-bool PushDumpRequest(base::Event& event, const std::string& agentId, int firstScan)
+bool pushDumpRequest(const std::string& agentId,
+                     const std::string& policyId,
+                     int firstScan)
 {
     // from RequestDBThread I'm assuming there's no chance a manager can be the agent
     // that's why Im using just opening CFGARQUEUE
-
-    const auto& policy_id = scanInfoKeyValues["/policy_id"];
-    const auto msg = agentId + ":sca-dump:" + policy_id + ":" + std::to_string(firstScan);
+    const auto msg = fmt::format("{}:sca-dump:{}:{}", agentId, policyId, firstScan);
 
     base::utils::socketInterface::unixDatagram socketCFFGA(CFGARQUEUE);
     // TODO Check retval, maybe if is ok save in the event?
@@ -858,31 +856,27 @@ int DeletePolicyCheck(const std::string& agent_id)
     return result_db;
 }
 
-int FindCheckResults(const std::string& agentId, std::string& wdbResponse)
+std::tuple<int, std::string> findCheckResults(const std::string& agentId,
+                                              const std::string& policyId,
+                                              std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Find check results for policy id: %s"
-    std::string findCheckResultsQuery = std::string("agent ") + agentId
-                                        + " sca query_results "
-                                        + scanInfoKeyValues["/policy_id"];
+    std::string query = fmt::format("agent {} sca query_results {}", agentId, policyId);
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto findCheckResultsTuple = wdb.tryQueryAndParseResult(findCheckResultsQuery);
-
-    int resultDb = -1;
-    if (std::get<0>(findCheckResultsTuple) == wazuhdb::QueryResultCodes::OK)
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
+    if (wazuhdb::QueryResultCodes::OK == resultCode && payload)
     {
-        std::string findCheckResultsResponse = std::get<1>(findCheckResultsTuple).value();
-        if (findCheckResultsResponse.find("not found") != std::string::npos)
+        if (utils::string::startsWith(payload.value(), "found"))
         {
-            resultDb = 1;
+            return {0, payload.value().substr(6)}; // removing found
         }
-        else if (findCheckResultsResponse.find("found") != std::string::npos)
+        else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            wdbResponse = findCheckResultsResponse.substr(5); // removing found
-            resultDb = 0;
+            return {1, ""};
         }
     }
-    return resultDb;
+
+    return {-1, ""};
 }
 
 void FillScanInfo(base::Event& event,
@@ -930,9 +924,10 @@ void FillScanInfo(base::Event& event,
 
 // - Scan Info Handling - //
 
-std::optional<std::string> HandleScanInfo(base::Event& event,
+std::optional<std::string> handleScanInfo(base::Event& event,
                                           const std::string& agent_id,
-                                          const std::string& scaEventPath)
+                                          const std::string& scaEventPath,
+                                          std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     int alert_data_fill = 0;
     if (!CheckScanInfoJSON(event, scaEventPath))
@@ -941,8 +936,8 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
     }
 
     int result_event = 0;
-    std::string hash_scan_info;
-    int result_db = FindScanInfo(event, agent_id, scaEventPath, hash_scan_info);
+    std::string policyId; // TODO: Get policyId
+    auto [result_db, hash_scan_info] = findScanInfo(agent_id, policyId, wdb);
 
     const auto& separated_hash = utils::string::split(hash_scan_info, ' ');
 
@@ -1021,7 +1016,7 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
                     else
                     {
                         /* Request dump */
-                        PushDumpRequest(event, agent_id, 1);
+                        pushDumpRequest(agent_id, policyId, 1);
                     }
                 }
 
@@ -1079,7 +1074,7 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
                         case 0:
                             /* Delete checks */
                             DeletePolicyCheck(agent_id);
-                            PushDumpRequest(event, agent_id, 1);
+                            pushDumpRequest(agent_id, policyId, 1);
                             // minfo("Policy '%s' information for agent '%s' is
                             // TODO Check debug and handle error
                             // outdated.Requested latest scan results.",
@@ -1092,11 +1087,10 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
             }
             break;
     }
+    // TODO: change result name
+    auto [result_db2, wdb_response] = findCheckResults(agent_id, policyId, wdb);
 
-    std::string wdb_response {};
-    result_db = FindCheckResults(agent_id, wdb_response);
-
-    switch (result_db)
+    switch (result_db2)
     {
         case 0:
             /* Integrity check */
@@ -1107,11 +1101,11 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
                 // dump.",policy_id->valuestring, wdb_response, hash->valuestring);
                 if (first_scan.empty())
                 {
-                    PushDumpRequest(event, agent_id, 0);
+                    pushDumpRequest(agent_id, policyId, 0);
                 }
                 else
                 {
-                    PushDumpRequest(event, agent_id, 1);
+                    pushDumpRequest(agent_id, policyId, 1);
                 }
             }
             break;
@@ -1121,11 +1115,11 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
             // dump.",policy_id->valuestring);
             if (first_scan.empty())
             {
-                PushDumpRequest(event, agent_id, 0);
+                pushDumpRequest(agent_id, policyId, 0);
             }
             else
             {
-                PushDumpRequest(event, agent_id, 1);
+                pushDumpRequest(agent_id, policyId, 1);
             }
             break;
         default:
@@ -1139,14 +1133,16 @@ std::optional<std::string> HandleScanInfo(base::Event& event,
 
 /// Policies Functions ///
 
-int FindPoliciesIds(const std::string& agentId, std::string& policiesIds)
+int findPoliciesIds(const std::string& agentId, std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Find policies IDs for agent id: %s"
     std::string FindPoliciesIdsQuery =
         std::string("agent ") + agentId + " sca query_policies ";
+    std::string query = fmt::format("agent {} sca query_policies ", agentId);
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto FindPoliciesIdsTuple = wdb.tryQueryAndParseResult(FindPoliciesIdsQuery);
+    std::string policiesIds;
+
+    auto FindPoliciesIdsTuple = wdb->tryQueryAndParseResult(FindPoliciesIdsQuery);
     std::string FindPoliciesIdsResponse = std::get<1>(FindPoliciesIdsTuple).value();
 
     int result_db = -1;
@@ -1167,9 +1163,10 @@ int FindPoliciesIds(const std::string& agentId, std::string& policiesIds)
 
 // - Policies Handling - //
 
-std::optional<std::string> HandlePoliciesInfo(base::Event& event,
+std::optional<std::string> handlePoliciesInfo(base::Event& event,
                                               const std::string& agentId,
-                                              const std::string& scaEventPath)
+                                              const std::string& scaEventPath,
+                                              std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // TODO: policies not found in examples, check it
     if (!event->exists(scaEventPath + "/policies")
@@ -1180,10 +1177,10 @@ std::optional<std::string> HandlePoliciesInfo(base::Event& event,
     auto policies = event->getArray(scaEventPath + "/policies").value();
 
     //"Checking policy JSON fields"
-    std::string policiesIds;
+    std::string policiesIds{};
 
     // "Retrieving policies from database."
-    int resultDb = FindPoliciesIds(agentId, policiesIds);
+    int resultDb = findPoliciesIds(agentId, wdb);
     switch (resultDb)
     {
         case -1: return "Error querying policy monitoring database for agent";
@@ -1240,111 +1237,118 @@ std::optional<std::string> HandlePoliciesInfo(base::Event& event,
 
 /// Dump Functions ///
 
-std::optional<std::string> CheckDumpJSON(base::Event event,
-                                         std::string& elementsSent,
-                                         std::string& policyId,
-                                         std::string& scanId,
-                                         const std::string& scaEventPath)
+std::tuple<std::optional<std::string>, std::string, std::string>
+checkDumpJSON(const base::Event& event, const std::string& scaEventPath)
 {
+
+    std::string policyId {};
+    std::string scanId {};
+
     if (!event->exists(scaEventPath + "/elements_sent")
         || !event->isInt(scaEventPath + "/elements_sent"))
     {
-        return "Error: elements_sent not found";
+        return {"Error: elements_sent not found", policyId, scanId};
     }
-    elementsSent = event->getInt(scaEventPath + "/elements_sent").value();
 
     if (!event->exists(scaEventPath + "/policy_id")
         || !event->isString(scaEventPath + "/policy_id"))
     {
-        return "Error: policy_id not found";
+        return {"Error: policy_id not found", policyId, scanId};
     }
     policyId = event->getString(scaEventPath + "/policy_id").value();
 
     if (!event->exists(scaEventPath + "/scan_id")
         || !event->isString(scaEventPath + "/scan_id"))
     {
-        return "Error: scan_id not found";
+        return {"Error: scan_id not found", policyId, scanId};
     }
     scanId = event->getString(scaEventPath + "/scan_id").value();
 
-    return std::nullopt;
+    return {std::nullopt, policyId, scanId};
 }
 
-int DeletePolicyCheckDistinct(const std::string& agentId,
-                              const std::string& policyId,
-                              const std::string& scanId)
+bool deletePolicyCheckDistinct(const std::string& agentId,
+                               const std::string& policyId,
+                               const std::string& scanId,
+                               std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Deleting check distinct policy id , agent id "
-    std::string DeletePolicyCheckDistinctQuery = std::string {"agent "} + agentId
-                                                 + " sca delete_check_distinct "
-                                                 + policyId + "|" + scanId;
+    auto query = fmt::format(
+        "agent {} sca delete_check_distinct {}|{}", agentId, policyId, scanId);
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto DeletePolicyCheckDistinctTuple =
-        wdb.tryQueryAndParseResult(DeletePolicyCheckDistinctQuery);
-    auto DeletePolicyCheckDistinctStatus = std::get<0>(DeletePolicyCheckDistinctTuple);
-
-    if (DeletePolicyCheckDistinctStatus == wazuhdb::QueryResultCodes::OK)
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
+    switch (resultCode)
     {
-        return 0;
+        // If deleted or error we return true
+        case wazuhdb::QueryResultCodes::OK:
+        case wazuhdb::QueryResultCodes::ERROR: return true;
+        // If other result we return false why?
+        default: return false;
     }
-    else if (DeletePolicyCheckDistinctStatus == wazuhdb::QueryResultCodes::ERROR)
-    {
-        return 1;
-    }
-
-    return -1;
 }
 
 // - Dump Handling - //
 
-std::optional<std::string> HandleDumpEvent(base::Event& event,
+// Dump event received (type = dump), if is well formed we proceed to perform
+// deletePolicyCheckDistinct and we compare policy hashes
+// TODO: When this operations fails ??
+std::optional<std::string> handleDumpEvent(base::Event& event,
                                            const std::string& agentId,
-                                           const std::string& scaEventPath)
+                                           const std::string& scaEventPath,
+                                           std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
-    std::string elementsSent;
-    std::string policyId;
-    std::string scanId;
+    std::optional<std::string> error;
 
-    // "Checking dump event JSON fields"
-    if (CheckDumpJSON(event, elementsSent, policyId, scanId, scaEventPath))
+    // Check dump event JSON fields
+    // If all the fields are ok continue, if not do nothing
+    auto [checkError, policyId, scanId] = checkDumpJSON(event, scaEventPath);
+    if (!checkError)
     {
-        int resultDb = DeletePolicyCheckDistinct(agentId, policyId, scanId);
-        if (-1 == resultDb)
+        // "Deleting check distinct policy id , agent id "
+        // Continue always, if rare error log error
+        if (!deletePolicyCheckDistinct(agentId, policyId, scanId, wdb))
         {
-            return "Error querying policy monitoring database for agent";
+            // DUE,    ///< Command processed successfully with pending data
+            // IGNORE, ///< Command ignored
+            // UNKNOWN ///< Unknown status / Unknown protocol
+            // Abort
+
+            // In the c code it logs the error and continues
+            // return "Error: unknown, due or ignored error when deleting policy check "
+            //        "distint wdb";
         }
 
-        /* Check the new sha256 */
-        std::string wdbResponse;
-        resultDb = FindCheckResults(agentId, wdbResponse);
-        if (0 == resultDb)
+        // OK,     ///< Command processed successfully
+        // ERROR,  ///< An error occurred
+        // Deleted succesfully or not, we dont know here so we try to find checks in wdb
+
+        // Retreive hash from db
+        auto [resultCode, hashCheckResults] = findCheckResults(agentId, policyId, wdb);
+        if (0 == resultCode)
         {
-            std::string hashScanInfo;
-            // TODO: check if it's ok "%s64" -> should I check length ?
-            int resultDbHash = FindScanInfo(event, agentId, scaEventPath, hashScanInfo);
-
-            if (hashScanInfo.empty())
+            // Retreive hash from summary
+            auto [scanResultCode, hashScanInfo] = findScanInfo(agentId, policyId, wdb);
+            if (0 == scanResultCode && hashScanInfo.size() == 64)
             {
-                return "Error: sha256 hash not found for policy";
-            }
-
-            if (!resultDbHash)
-            {
-                /* Integrity check */
-                if (wdbResponse == hashScanInfo)
+                if (hashCheckResults != hashScanInfo)
                 {
-                    //"Scan result integrity failed for policy requesting DB dump."
-                    // TODO: handle return value
-                    PushDumpRequest(event, agentId, 0);
+                    // C Here logs error
+                    //                     mdebug1("Scan result integrity failed for
+                    //                     policy '%s'. Hash from DB: '%s' hash from
+                    //                     summary: '%s'. Requesting DB dump.",
+                    pushDumpRequest(agentId, policyId, 0);
+                    return fmt::format(
+                        "Scan result integrity failed for policy '{}'. Hash from DB: "
+                        "'{}' hash from summary: '{}'. Requesting DB dump.",
+                        policyId,
+                        hashCheckResults,
+                        hashScanInfo);
                 }
             }
         }
     }
-    else
-    {
-        return "Error: unexpected fields for sca dump event";
-    }
+
+    // If error do nothing
     return std::nullopt;
 }
 
@@ -1367,8 +1371,6 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     helper::base::checkParameterType(parameters[1],
                                      helper::base::Parameter::Type::REFERENCE);
 
-    // const std::string rValue {parameters[0].m_value};
-
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
@@ -1381,6 +1383,10 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
         "[{}] -> Failure: [{}] is empty or is not an object", name, targetField)};
     const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name)};
 
+    // TODO: we are not doing nothing on buildtime, wazuhdb initializer has 11 refs...
+    // EventPaths and mappedPaths can be set in buildtime
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
@@ -1388,80 +1394,64 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
          name = std::string {name},
          targetField = std::move(targetField),
          scaEventPath = parameters[0].m_value,
-         agentId = parameters[1].m_value](
-            base::Event event) -> base::result::Result<base::Event>
+         agentId = parameters[1].m_value,
+         wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
         {
-            // auto resolvedRValue {event->getObject(rValue)};
+            std::optional<std::string> error;
 
+            // TODO: this should be checked in the decoder
             if (event->exists(scaEventPath))
             {
-                // const auto& scaEvent = resolvedRValue.value();
-
-                // Type object is mandatory
-                auto typeIt = event->getString(scaEventPath + "/type");
-
-                if (!typeIt.has_value())
+                // TODO: Field type is mandatory and should be checked in the decoder
+                auto type = event->getString(scaEventPath + "/type");
+                if (!type)
                 {
-                    return base::result::makeFailure(event, failureTrace1);
+                    // TODO: Change trace message
+                    error = failureTrace1;
                 }
-
-                // const auto& typeValue = typeIt.value().getString().value();
-
-                // TODO: The agent id should be obtained from parameters
-                std::optional<std::string> result;
-                if ("check" == typeIt.value())
+                // Proccess event with the appropriate handler
+                else if (sca::TYPE_CHECK == type.value())
                 {
-                    result = sca::HandleCheckEvent(event, agentId, scaEventPath);
+                    error = sca::HandleCheckEvent(event, agentId, scaEventPath);
                 }
-                else if ("summary" == typeIt.value())
+                else if (sca::TYPE_SUMMARY == type.value())
                 {
-                    result = sca::HandleScanInfo(event, agentId, scaEventPath);
+                    error = sca::handleScanInfo(event, agentId, scaEventPath, wdb);
                 }
-                else if ("policies" == typeIt.value())
+                else if (sca::TYPE_POLICIES == type.value())
                 {
-                    result = sca::HandlePoliciesInfo(event, agentId, scaEventPath);
+                    error = sca::handlePoliciesInfo(event, agentId, scaEventPath, wdb);
                 }
-                else if ("dump_end" == typeIt.value())
+                else if (sca::TYPE_DUMP_END == type.value())
                 {
-                    result = sca::HandleDumpEvent(event, agentId, scaEventPath);
+                    error = sca::handleDumpEvent(event, agentId, scaEventPath, wdb);
                 }
+                // Unknown type value
                 else
                 {
-                    return base::result::makeFailure(event, failureTrace2);
+                    // TODO: Change trace message
+                    error = failureTrace2;
                 }
-
-                if (result)
-                {
-                    // TODO: improve this
-                    if (result.has_value() && !result.value().empty())
-                    {
-                        auto targetFieldValue {true};
-
-                        if (0 == result.value().rfind("Error"))
-                        {
-                            targetFieldValue = false;
-                        }
-
-                        event->setBool(targetFieldValue, targetField);
-                    }
-                    else
-                    {
-                        event->setBool(true, targetField);
-                    }
-
-                    return base::result::makeSuccess(event, successTrace);
-                }
-                else
-                {
-                    event->setBool(false, targetField);
-                    return base::result::makeFailure(
-                        event, failureTrace3 + "result does not exist.");
-                }
-                return base::result::makeFailure(event, failureTrace3 + result.value());
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace1);
+                error = failureTrace1;
+            }
+
+            // Event is processed, return base::Result accordingly
+            // Error is nullopt if no error occurred, otherwise it contains the error
+            // message
+            // TODO: Is realy needed to set targetField bool? makes more sense that
+            // targetField is the sca field, that is where we are mapping the fields
+            if (error)
+            {
+                event->setBool(false, targetField);
+                return base::result::makeFailure(event, error.value());
+            }
+            else
+            {
+                event->setBool(true, targetField);
+                return base::result::makeSuccess(event, successTrace);
             }
         });
 }
