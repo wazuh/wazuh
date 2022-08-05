@@ -366,6 +366,16 @@ def test_custom_get_creation_date(log_file: dict, expected_date: int, aws_custom
     expected_date : int
         The date that the method should return.
     aws_custom_bucket : aws_s3.AWSCustomBucket
-        Instance of the AWSCustomBucket class.  
+        Instance of the AWSCustomBucket class.
     """
     assert aws_custom_bucket.get_creation_date(log_file) == expected_date
+
+
+@pytest.mark.parametrize("error,message_map,expected_message", [
+    ({"Error": {"Code": "Foo", "Message": "Bar"}}, {"Foo": "Baz"}, "Baz"),
+    ({"Error": {"Code": "Foo", "Message": "Bar"}}, {}, "Bar"),
+])
+def test_get_client_error_message_return_a_valid_message(error: {}, message_map: dict, expected_message: str):
+    client_error_mock = MagicMock()
+    client_error_mock.response = error
+    assert aws_s3.AWSBucket._get_client_error_message(client_error_mock, message_map) == expected_message
