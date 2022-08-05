@@ -11,8 +11,8 @@
 #include <algorithm>
 #include <optional>
 #include <string>
-#include <variant>
 #include <tuple>
+#include <variant>
 
 #include "syntax.hpp"
 
@@ -111,6 +111,9 @@ inline std::string getSCAPath(Name field)
 
 } // namespace sca_field
 
+namespace sca
+{
+
 inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
 {
     switch (ruleChar)
@@ -146,30 +149,31 @@ enum class DbOperation
  * @return true
  * @return false
  */
-static bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
+bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
 {
 
     // Check types and mandatory fields if is necessary. Return false on fail.
     auto checkType =
-        [&event](sca_field::Type type, const std::string& path, bool mandatory) {
-            if (event->exists(path))
+        [&event](sca_field::Type type, const std::string& path, bool mandatory)
+    {
+        if (event->exists(path))
+        {
+            switch (type)
             {
-                switch (type)
-                {
-                    case sca_field::Type::STRING: return event->isString(path);
-                    case sca_field::Type::INT: return event->isInt(path);
-                    case sca_field::Type::BOOL: return event->isBool(path);
-                    case sca_field::Type::ARRAY: return event->isArray(path);
-                    case sca_field::Type::OBJECT: return event->isObject(path);
-                    default: return false; // TODO Logic error?
-                }
+                case sca_field::Type::STRING: return event->isString(path);
+                case sca_field::Type::INT: return event->isInt(path);
+                case sca_field::Type::BOOL: return event->isBool(path);
+                case sca_field::Type::ARRAY: return event->isArray(path);
+                case sca_field::Type::OBJECT: return event->isObject(path);
+                default: return false; // TODO Logic error?
             }
-            else if (mandatory)
-            {
-                return false;
-            }
-            return true;
-        };
+        }
+        else if (mandatory)
+        {
+            return false;
+        }
+        return true;
+    };
 
     // Valid ONLY CheckEventJSON
     std::tuple<sca_field::Name, sca_field::Type, bool> listFieldConditions[] = {
@@ -228,9 +232,9 @@ static bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
     return true;
 }
 // Simpre se llama en handle check event
-static void FillCheckEventInfo(base::Event& event,
-                               const std::string& response,
-                               const std::string& scaEventPath)
+void FillCheckEventInfo(base::Event& event,
+                        const std::string& response,
+                        const std::string& scaEventPath)
 {
 
     event->setString("check", sca_field::getSCAPath(sca_field::Name::TYPE));
@@ -243,13 +247,15 @@ static void FillCheckEventInfo(base::Event& event,
     }
 
     // Copy if exist from event to sca
-    auto copyIfExist = [&event, &scaEventPath](sca_field::Name field) {
+    auto copyIfExist = [&event, &scaEventPath](sca_field::Name field)
+    {
         event->set(sca_field::getEventPath(field, scaEventPath),
                    sca_field::getSCAPath(field));
     };
 
     // Convert cvs (string) from event if exist, to array in SCA
-    auto cvsStr2ArrayIfExist = [&event, &scaEventPath](sca_field::Name field) {
+    auto cvsStr2ArrayIfExist = [&event, &scaEventPath](sca_field::Name field)
+    {
         if (event->exists(sca_field::getEventPath(field, scaEventPath)))
         {
             auto cvs = event->getString(sca_field::getEventPath(field, scaEventPath));
@@ -307,9 +313,9 @@ static void FillCheckEventInfo(base::Event& event,
 
 // - Event Info Handling - //
 
-static std::optional<std::string> HandleCheckEvent(base::Event& event,
-                                                   const std::string& agent_id,
-                                                   const std::string& scaEventPath)
+std::optional<std::string> HandleCheckEvent(base::Event& event,
+                                            const std::string& agent_id,
+                                            const std::string& scaEventPath)
 {
 
     // Check types of fields and if they are mandatory
@@ -352,7 +358,8 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
     auto checkID = std::to_string(checkIDint.value());
 
     // Return empty string if not found
-    auto getStringIfExist = [&event, &scaEventPath](sca_field::Name field) {
+    auto getStringIfExist = [&event, &scaEventPath](sca_field::Name field)
+    {
         std::string value {};
         if (event->exists(sca_field::getEventPath(field, scaEventPath)))
         {
@@ -380,7 +387,8 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
                                  &wdb_response,
                                  &result,
                                  &status,
-                                 &reason]() {
+                                 &reason]()
+    {
         auto operation = DbOperation::ERROR;
         std::string query {};
 
@@ -405,7 +413,8 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
             // TODO CHANGE THIS, IT IS NOT THE RIGHT WAY TO DO IT
             auto event_original = event->getString("/event/original");
 
-            query = fmt::format("agent {} sca insert {}", agent_id, event_original.value());
+            query =
+                fmt::format("agent {} sca insert {}", agent_id, event_original.value());
 
             // wdb_response = response.substr(5); // removing "found "
         }
@@ -548,13 +557,7 @@ static std::optional<std::string> HandleCheckEvent(base::Event& event,
 
 /// Scan Info Functions ///
 
-static std::unordered_map<std::string, std::string> scanInfoKeyValues {{"/policy_id", ""},
-                                                                       {"/hash", ""},
-                                                                       {"/hash_file", ""},
-                                                                       {"/file", ""},
-                                                                       {"/policy", ""}};
-
-static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
+bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
 {
     if (!event->isObject(scaEventPath))
     {
@@ -628,10 +631,10 @@ static bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPat
 }
 
 // TODO: Change, No use parameter as output, returno tuple with optional
-static int FindScanInfo(base::Event& event,
-                        const std::string& agentId,
-                        const std::string& scaEventPath,
-                        std::string& hashScanInfo)
+int FindScanInfo(base::Event& event,
+                 const std::string& agentId,
+                 const std::string& scaEventPath,
+                 std::string& hashScanInfo)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
     std::string FindScanInfoQuery = std::string("agent ") + agentId + " sca query_scan "
@@ -659,7 +662,7 @@ static int FindScanInfo(base::Event& event,
     return resultDb;
 }
 
-static int SaveScanInfo(base::Event& event, const std::string& agent_id, int update)
+int SaveScanInfo(base::Event& event, const std::string& agent_id, int update)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
     std::string SaveScanInfoQuery {};
@@ -702,7 +705,7 @@ static int SaveScanInfo(base::Event& event, const std::string& agent_id, int upd
     return result_db;
 }
 
-static int FindPolicyInfo(base::Event& event, const std::string& agent_id)
+int FindPolicyInfo(base::Event& event, const std::string& agent_id)
 {
     // "Find policies IDs for policy '%s', agent id '%s'"
     const auto FindPolicyInfoQuery = std::string("agent ") + agent_id
@@ -730,7 +733,7 @@ static int FindPolicyInfo(base::Event& event, const std::string& agent_id)
 }
 
 // TODO: check return value and implications if the operation fails
-static bool PushDumpRequest(base::Event& event, const std::string& agentId, int firstScan)
+bool PushDumpRequest(base::Event& event, const std::string& agentId, int firstScan)
 {
     // from RequestDBThread I'm assuming there's no chance a manager can be the agent
     // that's why Im using just opening CFGARQUEUE
@@ -754,9 +757,9 @@ static bool PushDumpRequest(base::Event& event, const std::string& agentId, int 
     return result;
 }
 
-static int SavePolicyInfo(const std::string& agent_id,
-                          std::string& description_db,
-                          std::string& references_db)
+int SavePolicyInfo(const std::string& agent_id,
+                   std::string& description_db,
+                   std::string& references_db)
 {
     // "Saving policy info for policy id '%s', agent id '%s'"
     std::string policy_id = scanInfoKeyValues["/policy_id"];
@@ -780,7 +783,7 @@ static int SavePolicyInfo(const std::string& agent_id,
     return result_db;
 }
 
-static int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
+int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
 {
     // "Find sha256 for policy X, agent id Y"
     std::string FindPolicySHA256Query = std::string("agent ") + agent_id
@@ -807,7 +810,7 @@ static int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
     return result_db;
 }
 
-static int DeletePolicy(const std::string& agent_id)
+int DeletePolicy(const std::string& agent_id)
 {
     // "Deleting policy '%s', agent id '%s'"
     std::string policy_id = scanInfoKeyValues["/policy_id"];
@@ -831,7 +834,7 @@ static int DeletePolicy(const std::string& agent_id)
     return result_db;
 }
 
-static int DeletePolicyCheck(const std::string& agent_id)
+int DeletePolicyCheck(const std::string& agent_id)
 {
     // "Deleting check for policy '%s', agent id '%s'"
     std::string policy_id = scanInfoKeyValues["/policy_id"];
@@ -855,7 +858,7 @@ static int DeletePolicyCheck(const std::string& agent_id)
     return result_db;
 }
 
-static int FindCheckResults(const std::string& agentId, std::string& wdbResponse)
+int FindCheckResults(const std::string& agentId, std::string& wdbResponse)
 {
     // "Find check results for policy id: %s"
     std::string findCheckResultsQuery = std::string("agent ") + agentId
@@ -882,9 +885,9 @@ static int FindCheckResults(const std::string& agentId, std::string& wdbResponse
     return resultDb;
 }
 
-static void FillScanInfo(base::Event& event,
-                         const std::string& agent_id,
-                         const std::string& scaEventPath)
+void FillScanInfo(base::Event& event,
+                  const std::string& agent_id,
+                  const std::string& scaEventPath)
 {
     event->setString("/sca/type", "summary");
 
@@ -927,9 +930,9 @@ static void FillScanInfo(base::Event& event,
 
 // - Scan Info Handling - //
 
-static std::optional<std::string> HandleScanInfo(base::Event& event,
-                                                 const std::string& agent_id,
-                                                 const std::string& scaEventPath)
+std::optional<std::string> HandleScanInfo(base::Event& event,
+                                          const std::string& agent_id,
+                                          const std::string& scaEventPath)
 {
     int alert_data_fill = 0;
     if (!CheckScanInfoJSON(event, scaEventPath))
@@ -1136,7 +1139,7 @@ static std::optional<std::string> HandleScanInfo(base::Event& event,
 
 /// Policies Functions ///
 
-static int FindPoliciesIds(const std::string& agentId, std::string& policiesIds)
+int FindPoliciesIds(const std::string& agentId, std::string& policiesIds)
 {
     // "Find policies IDs for agent id: %s"
     std::string FindPoliciesIdsQuery =
@@ -1164,9 +1167,9 @@ static int FindPoliciesIds(const std::string& agentId, std::string& policiesIds)
 
 // - Policies Handling - //
 
-static std::optional<std::string> HandlePoliciesInfo(base::Event& event,
-                                                     const std::string& agentId,
-                                                     const std::string& scaEventPath)
+std::optional<std::string> HandlePoliciesInfo(base::Event& event,
+                                              const std::string& agentId,
+                                              const std::string& scaEventPath)
 {
     // TODO: policies not found in examples, check it
     if (!event->exists(scaEventPath + "/policies")
@@ -1237,11 +1240,11 @@ static std::optional<std::string> HandlePoliciesInfo(base::Event& event,
 
 /// Dump Functions ///
 
-static std::optional<std::string> CheckDumpJSON(base::Event event,
-                                                std::string& elementsSent,
-                                                std::string& policyId,
-                                                std::string& scanId,
-                                                const std::string& scaEventPath)
+std::optional<std::string> CheckDumpJSON(base::Event event,
+                                         std::string& elementsSent,
+                                         std::string& policyId,
+                                         std::string& scanId,
+                                         const std::string& scaEventPath)
 {
     if (!event->exists(scaEventPath + "/elements_sent")
         || !event->isInt(scaEventPath + "/elements_sent"))
@@ -1267,9 +1270,9 @@ static std::optional<std::string> CheckDumpJSON(base::Event event,
     return std::nullopt;
 }
 
-static int DeletePolicyCheckDistinct(const std::string& agentId,
-                                     const std::string& policyId,
-                                     const std::string& scanId)
+int DeletePolicyCheckDistinct(const std::string& agentId,
+                              const std::string& policyId,
+                              const std::string& scanId)
 {
     // "Deleting check distinct policy id , agent id "
     std::string DeletePolicyCheckDistinctQuery = std::string {"agent "} + agentId
@@ -1295,9 +1298,9 @@ static int DeletePolicyCheckDistinct(const std::string& agentId,
 
 // - Dump Handling - //
 
-static std::optional<std::string> HandleDumpEvent(base::Event& event,
-                                                  const std::string& agentId,
-                                                  const std::string& scaEventPath)
+std::optional<std::string> HandleDumpEvent(base::Event& event,
+                                           const std::string& agentId,
+                                           const std::string& scaEventPath)
 {
     std::string elementsSent;
     std::string policyId;
@@ -1345,6 +1348,8 @@ static std::optional<std::string> HandleDumpEvent(base::Event& event,
     return std::nullopt;
 }
 
+} // namespace sca
+
 // - Helper - //
 
 base::Expression opBuilderSCAdecoder(const std::any& definition)
@@ -1384,7 +1389,8 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
          targetField = std::move(targetField),
          scaEventPath = parameters[0].m_value,
          agentId = parameters[1].m_value](
-            base::Event event) -> base::result::Result<base::Event> {
+            base::Event event) -> base::result::Result<base::Event>
+        {
             // auto resolvedRValue {event->getObject(rValue)};
 
             if (event->exists(scaEventPath))
@@ -1405,19 +1411,19 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
                 std::optional<std::string> result;
                 if ("check" == typeIt.value())
                 {
-                    result = HandleCheckEvent(event, agentId, scaEventPath);
+                    result = sca::HandleCheckEvent(event, agentId, scaEventPath);
                 }
                 else if ("summary" == typeIt.value())
                 {
-                    result = HandleScanInfo(event, agentId, scaEventPath);
+                    result = sca::HandleScanInfo(event, agentId, scaEventPath);
                 }
                 else if ("policies" == typeIt.value())
                 {
-                    result = HandlePoliciesInfo(event, agentId, scaEventPath);
+                    result = sca::HandlePoliciesInfo(event, agentId, scaEventPath);
                 }
                 else if ("dump_end" == typeIt.value())
                 {
-                    result = HandleDumpEvent(event, agentId, scaEventPath);
+                    result = sca::HandleDumpEvent(event, agentId, scaEventPath);
                 }
                 else
                 {
@@ -1429,7 +1435,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
                     // TODO: improve this
                     if (result.has_value() && !result.value().empty())
                     {
-                        auto targetFieldValue{true};
+                        auto targetFieldValue {true};
 
                         if (0 == result.value().rfind("Error"))
                         {
