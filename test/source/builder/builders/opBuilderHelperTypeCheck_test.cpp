@@ -1,6 +1,7 @@
 #include <any>
-#include <gtest/gtest.h>
 #include <vector>
+
+#include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
 
