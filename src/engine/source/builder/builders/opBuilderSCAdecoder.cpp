@@ -261,8 +261,7 @@ bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
         {field::Name::CHECK, field::Type::OBJECT, true},
         {field::Name::ID, field::Type::INT, true},
         {field::Name::POLICY_ID, field::Type::STRING, true},
-        {field::Name::POLICY, field::Type::STRING, true}
-};
+        {field::Name::POLICY, field::Type::STRING, true}};
 
     if (!field::isValidEvent(event, scaEventPath, listFieldConditions))
     {
@@ -622,9 +621,11 @@ bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
         {field::Name::DESCRIPTION, field::Type::STRING, false},
         {field::Name::REFERENCES, field::Type::STRING, false},
         {field::Name::NAME, field::Type::STRING, true},
-        // '/first_scan' field is a number (0/1) or not present on icoming event (sca module)
+        // '/first_scan' field is a number (0/1) or not present on icoming event (sca
+        // module)
         //{field::Name::FORCE_ALERT, field::Type::STRING, false},
-        // '/force_alert' field is "1" (string) or not present on icoming event (sca module)
+        // '/force_alert' field is "1" (string) or not present on icoming event (sca
+        // module)
         //{field::Name::FIRST_SCAN, field::Type::INT, false},
 
     };
@@ -634,8 +635,8 @@ bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
 
 // TODO: Change, No use parameter as output, returno tuple with optional
 std::tuple<SearchResult, std::string> findScanInfo(const std::string& agentId,
-                                          const std::string& policyId,
-                                          std::shared_ptr<wazuhdb::WazuhDB> wdb)
+                                                   const std::string& policyId,
+                                                   std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
     std::string query = fmt::format("agent {} sca query_scan {}", agentId, policyId);
@@ -706,22 +707,22 @@ bool SaveScanInfo(base::Event& event,
     }
     else
     {
-        SaveScanInfoQuery =
-            fmt::format("agent {} sca update_scan_info_start {}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
-                        agent_id,
-                        policy_id,
-                        pm_start_scan,
-                        pm_end_scan,
-                        scan_id,
-                        pass,
-                        failed,
-                        invalid,
-                        total_checks,
-                        score,
-                        hash);
+        SaveScanInfoQuery = fmt::format(
+            "agent {} sca update_scan_info_start {}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+            agent_id,
+            policy_id,
+            pm_start_scan,
+            pm_end_scan,
+            scan_id,
+            pass,
+            failed,
+            invalid,
+            total_checks,
+            score,
+            hash);
     }
 
-    auto [queryResult, discartPayload]= wdb->tryQueryAndParseResult(SaveScanInfoQuery);
+    auto [queryResult, discartPayload] = wdb->tryQueryAndParseResult(SaveScanInfoQuery);
     return queryResult == wazuhdb::QueryResultCodes::OK;
 }
 
@@ -734,7 +735,8 @@ SearchResult findPolicyInfo(base::Event& event,
     const auto query = fmt::format(
         "agent {} sca query_policy {}",
         agent_id,
-        event->getString(field::getEventPath(field::Name::POLICY_ID, scaEventPath)).value());
+        event->getString(field::getEventPath(field::Name::POLICY_ID, scaEventPath))
+            .value());
 
     auto [code, payload] = wdb->tryQueryAndParseResult(query);
 
@@ -781,9 +783,9 @@ bool pushDumpRequest(const std::string& agentId,
 
 // Returns true if the operation was successful, false otherwise
 bool SavePolicyInfo(base::Event& event,
-                   const std::string& agent_id,
-                   const std::string& scaEventPath,
-                   std::shared_ptr<wazuhdb::WazuhDB> wdb)
+                    const std::string& agent_id,
+                    const std::string& scaEventPath,
+                    std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
 
     auto getInt = [&](field::Name field) -> int
@@ -797,15 +799,14 @@ bool SavePolicyInfo(base::Event& event,
             .value_or("NULL");
     };
 
-    auto query = fmt::format(
-        "agent {} sca insert_policy {}|{}|{}|{}|{}|{}",
-        agent_id,
-        getStringOrNULL(field::Name::NAME),
-        getStringOrNULL(field::Name::FILE),
-        getStringOrNULL(field::Name::POLICY_ID),
-        getStringOrNULL(field::Name::DESCRIPTION),
-        getStringOrNULL(field::Name::REFERENCES),
-        getStringOrNULL(field::Name::HASH_FILE));
+    auto query = fmt::format("agent {} sca insert_policy {}|{}|{}|{}|{}|{}",
+                             agent_id,
+                             getStringOrNULL(field::Name::NAME),
+                             getStringOrNULL(field::Name::FILE),
+                             getStringOrNULL(field::Name::POLICY_ID),
+                             getStringOrNULL(field::Name::DESCRIPTION),
+                             getStringOrNULL(field::Name::REFERENCES),
+                             getStringOrNULL(field::Name::HASH_FILE));
 
     auto [result, payload] = wdb->tryQueryAndParseResult(query);
 
@@ -839,52 +840,46 @@ int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
     return result_db;
 }
 
-int DeletePolicy(const std::string& agent_id)
+int deletePolicy(const std::string& agent_id,
+                 const std::string& policyId,
+                 std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Deleting policy '%s', agent id '%s'"
-    std::string policy_id = scanInfoKeyValues["/policy_id"];
-    std::string deletePolicyQuery =
-        std::string("agent ") + agent_id + " sca delete_policy " + policy_id;
+    auto query = fmt::format("agent {} sca delete_policy {}", agent_id, policyId);
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto deletePolicyTuple = wdb.tryQueryAndParseResult(deletePolicyQuery);
-    auto deletePolicyResponseStatus = std::get<0>(deletePolicyTuple);
-
-    int result_db = -1;
-    if (deletePolicyResponseStatus == wazuhdb::QueryResultCodes::OK)
+    if (wazuhdb::QueryResultCodes::OK == resultCode)
     {
-        result_db = 0;
+        return 0;
     }
-    else if (deletePolicyResponseStatus == wazuhdb::QueryResultCodes::ERROR)
+    else if (wazuhdb::QueryResultCodes::ERROR == resultCode)
     {
-        result_db = 1;
+        return 1;
     }
 
-    return result_db;
+    return -1;
 }
 
-int DeletePolicyCheck(const std::string& agent_id)
+int deletePolicyCheck(const std::string& agent_id,
+                      const std::string& policyId,
+                      std::shared_ptr<wazuhdb::WazuhDB> wdb)
+
 {
     // "Deleting check for policy '%s', agent id '%s'"
-    std::string policy_id = scanInfoKeyValues["/policy_id"];
-    std::string deletePolicyCheckQuery =
-        std::string("agent ") + agent_id + " sca delete_check " + policy_id;
+    auto query = fmt::format("agent {} sca delete_check {}", agent_id, policyId);
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto deletePolicyCheckTuple = wdb.tryQueryAndParseResult(deletePolicyCheckQuery);
-    auto deletePolicyCheckStatus = std::get<0>(deletePolicyCheckTuple);
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
 
-    int result_db = -1;
-    if (deletePolicyCheckStatus == wazuhdb::QueryResultCodes::OK)
+    if (wazuhdb::QueryResultCodes::OK == resultCode)
     {
-        result_db = 0;
+        return 0;
     }
-    else if (deletePolicyCheckStatus == wazuhdb::QueryResultCodes::ERROR)
+    else if (wazuhdb::QueryResultCodes::ERROR == resultCode)
     {
-        result_db = 1;
+        return 1;
     }
 
-    return result_db;
+    return -1;
 }
 
 std::tuple<int, std::string> findCheckResults(const std::string& agentId,
@@ -1044,7 +1039,8 @@ std::optional<std::string> handleScanInfo(base::Event& event,
     auto result_db3 = findPolicyInfo(event, agent_id, scaEventPath, wdb);
 
     // Returns the string of field if exist or "NULL" string if not exist
-    auto getStringOrNullStr = [&](field::Name fild) -> std::string {
+    auto getStringOrNullStr = [&](field::Name fild) -> std::string
+    {
         if (event->exists(field::getEventPath(fild, scaEventPath)))
         {
             return event->getString(field::getEventPath(fild, scaEventPath)).value();
@@ -1053,7 +1049,6 @@ std::optional<std::string> handleScanInfo(base::Event& event,
         {
             return "NULL";
         }
-
     };
 
     switch (result_db3)
@@ -1077,12 +1072,12 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                 std::string hash_file = scanInfoKeyValues["/hash_file"];
                 if (hash_file == old_hash)
                 {
-                    int delete_status = DeletePolicy(agent_id);
+                    int delete_status = deletePolicy(agent_id, policyId, wdb);
                     switch (delete_status)
                     {
                         case 0:
                             /* Delete checks */
-                            DeletePolicyCheck(agent_id);
+                            deletePolicyCheck(agent_id, policyId, wdb);
                             pushDumpRequest(agent_id, policyId, 1);
                             // minfo("Policy '%s' information for agent '%s' is
                             // TODO Check debug and handle error
@@ -1094,7 +1089,6 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                     }
                 }
             }
-
         }
         break;
     }
@@ -1144,32 +1138,28 @@ std::optional<std::string> handleScanInfo(base::Event& event,
 
 /// Policies Functions ///
 
-int findPoliciesIds(const std::string& agentId, std::shared_ptr<wazuhdb::WazuhDB> wdb)
+std::tuple<int, std::string> findPoliciesIds(const std::string& agentId,
+                                             std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Find policies IDs for agent id: %s"
-    std::string FindPoliciesIdsQuery =
-        std::string("agent ") + agentId + " sca query_policies ";
     std::string query = fmt::format("agent {} sca query_policies ", agentId);
 
     std::string policiesIds;
 
-    auto FindPoliciesIdsTuple = wdb->tryQueryAndParseResult(FindPoliciesIdsQuery);
-    std::string FindPoliciesIdsResponse = std::get<1>(FindPoliciesIdsTuple).value();
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
 
-    int result_db = -1;
-    if (std::get<0>(FindPoliciesIdsTuple) == wazuhdb::QueryResultCodes::OK)
+    if (wazuhdb::QueryResultCodes::OK == resultCode && payload)
     {
-        if (FindPoliciesIdsResponse.find("not found") != std::string::npos)
+        if (utils::string::startsWith(payload.value(), "found"))
         {
-            result_db = 1;
+            return {0, payload.value().substr(6)}; // removing found
         }
-        else if (FindPoliciesIdsResponse.find("found") != std::string::npos)
+        else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            policiesIds = FindPoliciesIdsResponse.substr(5); // removing found
-            result_db = 0;
+            return {1, ""};
         }
     }
-    return result_db;
+    return {-1, ""};
 }
 
 // - Policies Handling - //
@@ -1185,62 +1175,44 @@ std::optional<std::string> handlePoliciesInfo(base::Event& event,
     {
         return "Error: policies array not found";
     }
+    // TODO: add proper Json method to check if array contains value/s
+    // This is needed only to check aboved.
     auto policies = event->getArray(scaEventPath + "/policies").value();
 
-    //"Checking policy JSON fields"
-    std::string policiesIds {};
-
     // "Retrieving policies from database."
-    int resultDb = findPoliciesIds(agentId, wdb);
-    switch (resultDb)
+    auto [resultDb, policiesIds] = findPoliciesIds(agentId, wdb);
+    if (-1 == resultDb)
     {
-        case -1: return "Error querying policy monitoring database for agent";
+        return "Error querying policy monitoring database for agent";
+    }
 
-        default:
-            /* For each policy id, look if we have scanned it */
-            const auto& policiesList = utils::string::split(policiesIds, ',');
+    /* For each policy id, look if we have scanned it */
+    // policiesIds may be empty, in c is the same
+    const auto& policiesList = utils::string::split(policiesIds, ',');
 
-            if (policiesList.size() > 0)
+    for (auto& pId : policiesList)
+    {
+        /* This policy is not being scanned anymore, delete it */
+        if (std::find_if(policies.begin(),
+                         policies.end(),
+                         [&](const auto& policy)
+                         {
+                             auto pStr = policy.getString();
+                             return pStr && pStr.value() == pId;
+                         })
+            == policies.end())
+        {
+            // "Policy id doesn't exist: '%s'. Deleting it.", p_id);
+            int resultDelete = deletePolicy(agentId, pId, wdb);
+            if (resultDelete == 0)
             {
-
-                for (auto& pId : policiesList)
-                {
-                    int exists = 0;
-                    for (auto& jsonPolicy : policies)
-                    {
-                        auto policy = jsonPolicy.getString();
-                        if (policy && !policy.value().empty())
-                        {
-                            // "Comparing policy: '%s' '%s'", policy, p_id);
-                            if (policy.value() == pId)
-                            {
-                                exists = 1;
-                                break;
-                            }
-                        }
-                    }
-
-                    /* This policy is not being scanned anymore, delete it */
-                    if (!exists)
-                    {
-                        // "Policy id doesn't exist: '%s'. Deleting it.", p_id);
-                        int resultDelete = DeletePolicy(agentId);
-
-                        switch (resultDelete)
-                        {
-                            case 0:
-                                /* Delete checks */
-                                DeletePolicyCheck(agentId);
-                                break;
-
-                            default:
-                                // "Unable to purge DB content for policy '%s'", p_id
-                                return "Error: Unable to purge DB content for policy";
-                        }
-                    }
-                }
+                deletePolicyCheck(agentId, pId, wdb);
             }
-            break;
+            else
+            {
+                return "Error: Unable to purge DB content for policy";
+            }
+        }
     }
 
     return std::nullopt;
