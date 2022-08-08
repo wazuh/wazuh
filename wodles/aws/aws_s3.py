@@ -24,6 +24,7 @@
 #   15 - Invalid endpoint URL
 #   16 - Throttling error
 #   17 - Invalid key format
+#   18 - Invalid prefix
 
 import argparse
 import signal
@@ -708,6 +709,8 @@ class AWSBucket(WazuhIntegration):
 
     def find_account_ids(self):
         try:
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('172.22.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
                                                    Delimiter='/')['CommonPrefixes']
             accounts = []
@@ -717,11 +720,8 @@ class AWSBucket(WazuhIntegration):
                     accounts.append(account_id)
             return accounts
         except KeyError:
-            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
-            print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
-                  f"type and this bucket does not contain log files from this type. Try with other type: "
-                  f"{bucket_types - {get_script_arguments().type.lower()}}")
-            sys.exit(12)
+            print(f"ERROR: No prefix named {self.get_base_prefix()} found . Check the provided prefix and the location of the logs "
+            sys.exit(18)
 
     def find_regions(self, account_id):
         regions = self.client.list_objects_v2(Bucket=self.bucket,
