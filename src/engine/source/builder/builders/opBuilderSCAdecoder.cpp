@@ -147,6 +147,24 @@ inline std::string getSCAPath(Name field)
 }
 
 /**
+ * @brief Copy field from original event to sca event if exist
+ *
+ * @param field
+ * @param event
+ * @param scaEventPath
+ */
+inline void copyIfExist(Name field,
+                 const base::Event& event,
+                 const std::string& scaEventPath)
+{
+    const auto origin = getEventPath(field, scaEventPath);
+    if (event->exists(origin))
+    {
+        event->set(field::getSCAPath(field), origin);
+    }
+};
+
+/**
  * @brief Represents a condition to check.
  *
  * field::name is the the field to check.
@@ -299,12 +317,6 @@ void FillCheckEventInfo(base::Event& event,
                          field::getSCAPath(field::Name::CHECK_PREVIOUS_RESULT));
     }
 
-    // Copy if exist from event to sca
-    auto copyIfExist = [&event, &scaEventPath](field::Name field)
-    {
-        event->set(field::getEventPath(field, scaEventPath), field::getSCAPath(field));
-    };
-
     // Convert cvs (string) from event if exist, to array in SCA
     auto cvsStr2ArrayIfExist = [&event, &scaEventPath](field::Name field)
     {
@@ -325,23 +337,18 @@ void FillCheckEventInfo(base::Event& event,
         }
     };
 
-    // TODO: Maybe id, policy_id is a int or string or double ()
-    // (https://github.dev/wazuh/wazuh/blob/master/src/analysisd/decoders/security_configuration_assessment.c#L1606-L1616)
-    // But here check if is int
-    // https://github.dev/wazuh/wazuh/blob/af2a42a4f2a2566943e6700efa38068a68049788/src/analysisd/decoders/security_configuration_assessment.c#L1371-L1375
+    field::copyIfExist(field::Name::ID, event, scaEventPath);
+    field::copyIfExist(field::Name::POLICY, event, scaEventPath);
+    field::copyIfExist(field::Name::POLICY_ID, event, scaEventPath);
 
-    copyIfExist(field::Name::ID);
-    copyIfExist(field::Name::POLICY);
-    copyIfExist(field::Name::POLICY_ID);
-
-    copyIfExist(field::Name::CHECK_ID);
-    copyIfExist(field::Name::CHECK_TITLE);
-    copyIfExist(field::Name::CHECK_DESCRIPTION);
-    copyIfExist(field::Name::CHECK_RATIONALE);
-    copyIfExist(field::Name::CHECK_REMEDIATION);
-    copyIfExist(field::Name::CHECK_COMPLIANCE);
-    copyIfExist(field::Name::CHECK_REFERENCES);
-    // copyIfExist(field::Name::CHECK_RULES);  TODO: Why not copy this?
+    field::copyIfExist(field::Name::CHECK_ID, event, scaEventPath);
+    field::copyIfExist(field::Name::CHECK_TITLE, event, scaEventPath);
+    field::copyIfExist(field::Name::CHECK_DESCRIPTION, event, scaEventPath);
+    field::copyIfExist(field::Name::CHECK_RATIONALE, event, scaEventPath);
+    field::copyIfExist(field::Name::CHECK_REMEDIATION, event, scaEventPath);
+    field::copyIfExist(field::Name::CHECK_COMPLIANCE, event, scaEventPath);
+    field::copyIfExist(field::Name::CHECK_REFERENCES, event, scaEventPath);
+    // field::copyIfExist(field::Name::CHECK_RULES);  TODO: Why not copy this?
 
     // Optional fields with cvs
     cvsStr2ArrayIfExist(field::Name::CHECK_FILE);
@@ -352,13 +359,13 @@ void FillCheckEventInfo(base::Event& event,
 
     if (event->exists(field::getEventPath(field::Name::CHECK_RESULT, scaEventPath)))
     {
-        event->set(field::getEventPath(field::Name::CHECK_RESULT, scaEventPath),
-                   field::getSCAPath(field::Name::CHECK_RESULT));
+        event->set(field::getSCAPath(field::Name::CHECK_RESULT),
+                   field::getEventPath(field::Name::CHECK_RESULT, scaEventPath));
     }
     else
     {
-        copyIfExist(field::Name::CHECK_STATUS);
-        copyIfExist(field::Name::CHECK_REASON);
+        field::copyIfExist(field::Name::CHECK_STATUS, event, scaEventPath);
+        field::copyIfExist(field::Name::CHECK_REASON, event, scaEventPath);
     }
 }
 
@@ -621,13 +628,12 @@ bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
         {field::Name::DESCRIPTION, field::Type::STRING, false},
         {field::Name::REFERENCES, field::Type::STRING, false},
         {field::Name::NAME, field::Type::STRING, true},
-        // '/first_scan' field is a number (0/1) or not present on icoming event (sca
-        // module)
-        //{field::Name::FORCE_ALERT, field::Type::STRING, false},
-        // '/force_alert' field is "1" (string) or not present on icoming event (sca
-        // module)
-        //{field::Name::FIRST_SCAN, field::Type::INT, false},
-
+        /*
+        '/force_alert' field is "1" (string) or not present on icoming event
+        {field::Name::FORCE_ALERT, field::Type::STRING, false},
+        '/first_scan' field is a number (0/1) or not present on icoming event
+        {field::Name::FIRST_SCAN, field::Type::INT, false},
+        */
     };
 
     return field::isValidEvent(event, scaEventPath, conditions);
@@ -767,18 +773,19 @@ bool pushDumpRequest(const std::string& agentId,
 
     base::utils::socketInterface::unixDatagram socketCFFGA(CFGARQUEUE);
     // TODO Check retval, maybe if is ok save in the event?
-    bool result;
+    bool retval;
     try
     {
-        result =
+        retval =
             socketCFFGA.sendMsg(msg) == base::utils::socketInterface::SendRetval::SUCCESS;
     }
-    catch (const std::exception& exception)
+    catch (const std::runtime_error& exception)
     {
-        result = false;
+        // TODO Log exception ?, we need the tracer here?
+        retval = false;
     }
 
-    return result;
+    return retval;
 }
 
 // Returns true if the operation was successful, false otherwise
@@ -909,43 +916,25 @@ void FillScanInfo(base::Event& event,
                   const std::string& agent_id,
                   const std::string& scaEventPath)
 {
-    event->setString("/sca/type", "summary");
+    event->setString("summary", field::getSCAPath(field::Name::TYPE));
 
-    const std::unordered_map<std::string, std::string> string_field_newKey = {
-        {"/policy", "/sca/policy"},
-        {"/description", "/sca/description"},
-        {"/policy_id", "/sca/policy_id"},
-        {"/file", "/sca/file"},
-    };
+    // Copy if exists
 
-    for (auto& [key, newKey] : string_field_newKey)
-    {
-        std::string value;
-        if (scanInfoKeyValues.find(key) != scanInfoKeyValues.end())
-        {
-            value = scanInfoKeyValues[key];
-            event->setString(scaEventPath + newKey, value);
-        }
-    }
+    field::copyIfExist(field::Name::SCAN_ID, event, scaEventPath);
+    // The /name field is renamed to /policy
+    // field::copyIfExist(field::Name::NAME, event, scaEventPath);
+    event->set(field::getSCAPath(field::Name::POLICY),
+               field::getEventPath(field::Name::NAME, scaEventPath));
 
-    const std::unordered_map<std::string, std::string> integer_field_newKey = {
-        {"/scan_id", "/sca/scan_id"},
-        {"/passed", "/sca/passed"},
-        {"/policy_id", "/sca/failed"},
-        {"/invalid", "/sca/invalid"},
-        {"/total_checks", "/sca/total_checks"},
-        {"/score", "/sca/score"},
-    };
+    field::copyIfExist(field::Name::DESCRIPTION, event, scaEventPath);
+    field::copyIfExist(field::Name::POLICY_ID, event, scaEventPath);
+    field::copyIfExist(field::Name::PASSED, event, scaEventPath);
+    field::copyIfExist(field::Name::FAILED, event, scaEventPath);
+    field::copyIfExist(field::Name::INVALID, event, scaEventPath);
+    field::copyIfExist(field::Name::TOTAL_CHECKS, event, scaEventPath);
+    field::copyIfExist(field::Name::SCORE, event, scaEventPath);
+    field::copyIfExist(field::Name::FILE, event, scaEventPath);
 
-    for (auto& [key, newKey] : integer_field_newKey)
-    {
-        if (scanInfoKeyValues.find(key) != scanInfoKeyValues.end())
-        {
-            // TODO stoi can throw an exception
-            auto value = stoi(scanInfoKeyValues[key]);
-            event->setInt(value, scaEventPath + newKey);
-        }
-    }
 }
 
 // - Scan Info Handling - //
