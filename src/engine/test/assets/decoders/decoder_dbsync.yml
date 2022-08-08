@@ -5,33 +5,30 @@ check:
 
 parse:
   logql:
-    - event.original: <labels>
+    - event.original: <_dbsyncEventOriginal/json>
 
 normalize:
-  - map:
-      event.original: $labels
+  - check:
+      - _dbsyncEventOriginal.type: +s_starts/integrity_check_
+    map:
+      _query: +s_concat/agent /$agent.id/ /$component/ /$type/ /$data_plain
+      _query_response: +wdb_query/$query
+  - check:
+      - _query_response: +exists
+    map:
+      _query_response.data.tail: +delete_field
+      _query_response.data.checksum: +delete_field
+      _ar_query: +s_concat/$component/ dbsync /$query_response/ /$data_plain
+      _ar_result: +ar_write/$ar_query
 
   - check:
-      - type: +s_starts/integrity_check_
+      - _dbsyncEventOriginal.type: +s_eq/state
     map:
-      query: +s_concat/agent /$agent.id/ /$component/ /$type/ /$data_plain
-      query_response: +wdb_query/$query
-  - check:
-      - query_response: +exists
-    map:
-      query_response.data.tail: +delete_field
-      query_response.data.checksum: +delete_field
-      ar_query: +s_concat/$component/ dbsync /$query_response/ /$data_plain
-      ar_result: +ar_write/$ar_query
+      _query: +s_concat/agent /$agent.id/ /$component/ save2 /$data_plain
+      _query_status: +wdb_update/$query
 
   - check:
-      - type: +s_eq/state
+      - _dbsyncEventOriginal.type: +s_eq/integrity_clear
     map:
-      query: +s_concat/agent /$agent.id/ /$component/ save2 /$data_plain
-      query_status: +wdb_update/$query
-
-  - check:
-      - type: +s_eq/integrity_clear
-    map:
-      query: +s_concat/agent /$agent.id/ /$component/ integrity_clear /$data_plain
-      query_status: +wdb_update/$query
+      _query: +s_concat/agent /$agent.id/ /$component/ integrity_clear /$data_plain
+      _query_status: +wdb_update/$query
