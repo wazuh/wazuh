@@ -61,6 +61,115 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_OnlyMandatoryFields)
     ASSERT_TRUE(sca::CheckEventJSON(event,"/event/original"));
 }
 
+// Result false, not containing policy_id fields
+TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryFieldPolicyId)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "result": "failed"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result false, not containing check_id field
+TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryFieldCheckId)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "title": "Ensure mounting of cramfs",
+                    "result": "failed"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result false, not containing check field
+TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryCheckField)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8"
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result false, not containing result fields
+TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryResultPolicyId)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
 // Result true, all fields present including not neccesary
 TEST(opBuilderSCAdecoder, CheckEventJSON_AllFields)
 {
@@ -388,6 +497,319 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
     ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),"/usr/lib/systemd/system/rescue.service");
     ASSERT_STREQ(event->getString("/sca/check/command/0").value().c_str(),"sysctl net.ipv4.ip_forward");
     ASSERT_STREQ(event->getString("/sca/check/command/1").value().c_str(),"sysctl net.ipv6.conf.all.forwarding");
+}
+
+// Result true, checks mandatory fields present
+TEST(opBuilderSCAdecoder, CheckDumpJSON_MandatoryField)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "elements_sent": 2,
+                "policy_id": "cis_centos8_linux",
+                "scan_id": "4602802"
+            }
+        }
+    })")};
+
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(event,"/event/original");
+
+    ASSERT_FALSE(checkError.has_value());
+    ASSERT_STREQ(policyId.c_str(), "cis_centos8_linux");
+    ASSERT_STREQ(scanId.c_str(), "4602802");
+}
+
+// Result false, not containing scan_id mandatory fields present
+TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldScan_id)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "elements_sent": 2,
+                "policy_id": "cis_centos8_linux"
+            }
+        }
+    })")};
+
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(event,"/event/original");
+
+    ASSERT_TRUE(checkError.has_value());
+}
+
+// Result false, not containing elements_sent mandatory fields present
+TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldElementsSent)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "policy_id": "cis_centos8_linux",
+                "scan_id": "4602802"
+            }
+        }
+    })")};
+
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(event,"/event/original");
+
+    ASSERT_TRUE(checkError.has_value());
+}
+
+// Result false, not containing policy_id mandatory fields present
+TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldPolicy_id)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "elements_sent": 2,
+                "scan_id": "4602802"
+            }
+        }
+    })")};
+
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(event,"/event/original");
+
+    ASSERT_TRUE(checkError.has_value());
+}
+
+// Result true, Executes Query and responds OK
+TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultOk)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca delete_check_distinct cis_centos8_linux|4602802");
+        testSendMsg(clientRemoteFD, "ok ");
+        close(clientRemoteFD);
+    });
+
+    ASSERT_TRUE(sca::deletePolicyCheckDistinct("vm-centos8","cis_centos8_linux","4602802",wdb));
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result true, Executes Query and responds Err
+TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos7 sca delete_check_distinct cis_centos7_linux|4602802");
+        testSendMsg(clientRemoteFD, "err ");
+        close(clientRemoteFD);
+    });
+
+    ASSERT_TRUE(sca::deletePolicyCheckDistinct("vm-centos7","cis_centos7_linux","4602802",wdb));
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result false, Executes Query and responds with anything besides regular options
+TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos7 sca delete_check_distinct cis_centos7_linux|4602802");
+        testSendMsg(clientRemoteFD, "anything_else ");
+        close(clientRemoteFD);
+    });
+
+    ASSERT_FALSE(sca::deletePolicyCheckDistinct("vm-centos7","cis_centos7_linux","4602802",wdb));
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result true, Executes Query and responds OK found paylod
+TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkFound)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca query_results cis_centos8_linux");
+        testSendMsg(clientRemoteFD, "ok found payload");
+        close(clientRemoteFD);
+    });
+
+    auto [resultCode, hashCheckResults] = sca::findCheckResults("vm-centos8","cis_centos8_linux",wdb);
+    ASSERT_EQ(resultCode,0);
+    ASSERT_STREQ(hashCheckResults.c_str(), "payload");
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result false, Executes Query and responds OK not found
+TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkNotFound)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca query_results cis_centos8_linux");
+        testSendMsg(clientRemoteFD, "ok not found");
+        close(clientRemoteFD);
+    });
+
+    auto [resultCode, hashCheckResults] = sca::findCheckResults("vm-centos8","cis_centos8_linux",wdb);
+    ASSERT_EQ(resultCode,1);
+    ASSERT_STREQ(hashCheckResults.c_str(),"");
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result false, Executes Query and responds anything else outside available options
+TEST(opBuilderSCAdecoder, FindCheckResults_ResultError)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca query_results cis_centos8_linux");
+        testSendMsg(clientRemoteFD, "err not_found");
+        close(clientRemoteFD);
+    });
+
+    auto [resultCode, hashCheckResults] = sca::findCheckResults("vm-centos8","cis_centos8_linux",wdb);
+    ASSERT_EQ(resultCode,-1);
+    ASSERT_STREQ(hashCheckResults.c_str(),"");
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result true, Executes Query and responds OK found paylod
+TEST(opBuilderSCAdecoder, FindScanInfo_ResultOkFound)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca query_scan cis_centos8_linux");
+        testSendMsg(clientRemoteFD, "ok found payload");
+        close(clientRemoteFD);
+    });
+
+    auto [scanResultCode, hashScanInfo] = sca::findScanInfo("vm-centos8","cis_centos8_linux",wdb);
+    ASSERT_EQ(scanResultCode,sca::SearchResult::FOUND);
+    ASSERT_STREQ(hashScanInfo.c_str(), "payload");
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result true, Executes Query and responds OK not found
+TEST(opBuilderSCAdecoder, FindScanInfo_ResultOkNotFound)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca query_scan cis_centos8_linux");
+        testSendMsg(clientRemoteFD, "ok not found");
+        close(clientRemoteFD);
+    });
+
+    auto [scanResultCode, hashScanInfo] = sca::findScanInfo("vm-centos8","cis_centos8_linux",wdb);
+    ASSERT_EQ(scanResultCode,sca::SearchResult::NOT_FOUND);
+    ASSERT_STREQ(hashScanInfo.c_str(), "");
+
+    t.join();
+    close(serverSocketFD);
+}
+
+// Result true, Executes Query and responds err
+TEST(opBuilderSCAdecoder, FindScanInfo_ResultErr)
+{
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),"agent vm-centos8 sca query_scan cis_centos8_linux");
+        testSendMsg(clientRemoteFD, "err");
+        close(clientRemoteFD);
+    });
+
+    auto [scanResultCode, hashScanInfo] = sca::findScanInfo("vm-centos8","cis_centos8_linux",wdb);
+    ASSERT_EQ(scanResultCode,sca::SearchResult::ERROR);
+    ASSERT_STREQ(hashScanInfo.c_str(), "");
+
+    t.join();
+    close(serverSocketFD);
 }
 
 TEST(opBuilderSCAdecoder, BuildSimplest)
