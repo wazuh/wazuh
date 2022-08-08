@@ -709,8 +709,6 @@ class AWSBucket(WazuhIntegration):
 
     def find_account_ids(self):
         try:
-            import pydevd_pycharm
-            pydevd_pycharm.settrace('172.22.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
             prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
                                                    Delimiter='/')['CommonPrefixes']
             accounts = []
