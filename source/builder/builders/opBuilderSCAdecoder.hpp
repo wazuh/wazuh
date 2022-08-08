@@ -53,36 +53,41 @@ void FillCheckEventInfo(base::Event& event,
 bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath);
 
 std::tuple<SearchResult, std::string> findScanInfo(const std::string& agentId,
-                                          const std::string& policyId,
-                                          std::shared_ptr<wazuhdb::WazuhDB> wdb);
+                                                   const std::string& policyId,
+                                                   std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 int SaveScanInfo(base::Event& event, const std::string& agent_id, int update);
 
 SearchResult findPolicyInfo(base::Event& event,
-                   const std::string& agent_id,
-                   const std::string& scaEventPath,
-                   std::shared_ptr<wazuhdb::WazuhDB> wdb);
+                            const std::string& agent_id,
+                            const std::string& scaEventPath,
+                            std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 bool pushDumpRequest(const std::string& agentId,
                      const std::string& policyId,
                      int firstScan);
 
 bool SavePolicyInfo(base::Event& event,
-                            const std::string& agent_id,
-                            const std::string& scaEventPath,
-                            std::shared_ptr<wazuhdb::WazuhDB> wdb);
+                    const std::string& agent_id,
+                    const std::string& scaEventPath,
+                    std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 int FindPolicySHA256(const std::string& agent_id, std::string& old_hash);
 
-int DeletePolicy(const std::string& agent_id);
+int deletePolicy(const std::string& agent_id,
+                 const std::string& policyId,
+                 std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-int DeletePolicyCheck(const std::string& agent_id);
+int deletePolicyCheck(const std::string& agent_id,
+                      const std::string& policyId,
+                      std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::tuple<int, std::string> findCheckResults(const std::string& agentId,
                                               const std::string& policyId,
                                               std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-int findPoliciesIds(const std::string& agentId, std::shared_ptr<wazuhdb::WazuhDB> wdb);
+std::tuple<int, std::string> findPoliciesIds(const std::string& agentId,
+                                             std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::tuple<std::optional<std::string>, std::string, std::string>
 checkDumpJSON(const base::Event& event, const std::string& scaEventPath);
