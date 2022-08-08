@@ -5,10 +5,10 @@ check:
 
 parse:
   logql:
-    event.original: <_event_json/Json>
+    event.original: <_sca_event_json/json>
 
 normalize:
   - check:
-      - _event_json.type: +exists
+      - _sca_event_json.type: +exists
     map:
-      decode_result: +sca_decoder/$_event_json/$agent.id
+      decode_result: +sca_decoder/$_sca_event_json/$agent.id
