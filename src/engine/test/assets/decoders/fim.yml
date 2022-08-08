@@ -1,0 +1,8 @@
+name: fim
+
+check:
+  - wazuh.queue: +i_eq/38
+
+parse:
+  logql:
+    - event.original: <_fimEventOriginal/json>
