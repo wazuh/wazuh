@@ -88,6 +88,7 @@ std::vector<std::string> splitMulti(std::string_view input, Delim&&... delimiter
     return splitted;
 }
 
+// TODO Adds Docuemntation
 inline bool startsWith(std::string_view str, std::string_view prefix)
 {
     return str.substr(0, prefix.size()) == prefix;
