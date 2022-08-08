@@ -31,6 +31,13 @@ constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 namespace sca
 {
 
+enum class SearchResult
+{
+    ERROR = -1,
+    NOT_FOUND,
+    FOUND
+};
+
 static std::unordered_map<std::string, std::string> scanInfoKeyValues {{"/policy_id", ""},
                                                                        {"/hash", ""},
                                                                        {"/hash_file", ""},
@@ -45,21 +52,25 @@ void FillCheckEventInfo(base::Event& event,
 
 bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath);
 
-std::tuple<int, std::string> findScanInfo(const std::string& agentId,
+std::tuple<SearchResult, std::string> findScanInfo(const std::string& agentId,
                                           const std::string& policyId,
                                           std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 int SaveScanInfo(base::Event& event, const std::string& agent_id, int update);
 
-int FindPolicyInfo(base::Event& event, const std::string& agent_id);
+SearchResult findPolicyInfo(base::Event& event,
+                   const std::string& agent_id,
+                   const std::string& scaEventPath,
+                   std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 bool pushDumpRequest(const std::string& agentId,
                      const std::string& policyId,
                      int firstScan);
 
-int SavePolicyInfo(const std::string& agent_id,
-                   std::string& description_db,
-                   std::string& references_db);
+bool SavePolicyInfo(base::Event& event,
+                            const std::string& agent_id,
+                            const std::string& scaEventPath,
+                            std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 int FindPolicySHA256(const std::string& agent_id, std::string& old_hash);
 

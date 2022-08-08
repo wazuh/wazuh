@@ -38,45 +38,45 @@ namespace field
 
 enum class Name
 {
-    ID,                   ///< checkEvent
-    SCAN_ID,              ///< scaninfo
-    DESCRIPTION,          ///< scaninfo
-    REFERENCES,           ///< scaninfo
-    START_TIME,           ///< scaninfo
-    END_TIME,             ///< scaninfo
-    PASSED,               ///< scaninfo
-    FAILED,               ///< scaninfo
-    INVALID,              ///< scaninfo
-    TOTAL_CHECKS,         ///< scaninfo
-    SCORE,                ///< scaninfo
-    HASH,                 ///< scaninfo
-    HASH_FILE,            ///< scaninfo
-    FILE,                 ///< scaninfo
-    NAME,                 ///< scaninfo
-    FIRST_SCAN,           ///< scaninfo
-    FORCE_ALERT,          ///< scaninfo
-    POLICY_ID,            ///< scaninfo, checkEvent
-    POLICY,               ///< checkEvent
-    CHECK,                ///< checkEvent
-    CHECK_ID,             ///< checkEvent
-    CHECK_TITLE,          ///< checkEvent
-    CHECK_DESCRIPTION,    ///< checkEvent
-    CHECK_RATIONALE,      ///< checkEvent
-    CHECK_REMEDIATION,    ///< checkEvent
-    CHECK_REFERENCES,     ///< checkEvent
-    CHECK_COMPLIANCE,     ///< checkEvent
-    CHECK_CONDITION,      ///< checkEvent
-    CHECK_DIRECTORY,      ///< checkEvent
-    CHECK_PROCESS,        ///< checkEvent
-    CHECK_REGISTRY,       ///< checkEvent
-    CHECK_COMMAND,        ///< checkEvent
-    CHECK_RULES,          ///< checkEvent
-    CHECK_STATUS,         ///< checkEvent
-    CHECK_REASON,         ///< checkEvent
-    CHECK_RESULT,         ///< checkEvent
-    CHECK_FILE,           ///< checkEvent
-    TYPE,                 ///< checkEvent
-    CHECK_PREVIOUS_RESULT ///< checkEvent
+    CHECK_COMMAND,         ///< checkEvent
+    CHECK_COMPLIANCE,      ///< checkEvent
+    CHECK_CONDITION,       ///< checkEvent
+    CHECK_DESCRIPTION,     ///< checkEvent
+    CHECK_DIRECTORY,       ///< checkEvent
+    CHECK_FILE,            ///< checkEvent
+    CHECK_ID,              ///< checkEvent
+    CHECK_PREVIOUS_RESULT, ///< checkEvent
+    CHECK_PROCESS,         ///< checkEvent
+    CHECK_RATIONALE,       ///< checkEvent
+    CHECK_REASON,          ///< checkEvent
+    CHECK_REFERENCES,      ///< checkEvent
+    CHECK_REGISTRY,        ///< checkEvent
+    CHECK_REMEDIATION,     ///< checkEvent
+    CHECK_RESULT,          ///< checkEvent
+    CHECK_RULES,           ///< checkEvent
+    CHECK_STATUS,          ///< checkEvent
+    CHECK_TITLE,           ///< checkEvent
+    CHECK,                 ///< checkEvent
+    DESCRIPTION,           ///< scaninfo
+    END_TIME,              ///< scaninfo
+    FAILED,                ///< scaninfo
+    FILE,                  ///< scaninfo
+    FIRST_SCAN,            ///< scaninfo
+    FORCE_ALERT,           ///< scaninfo
+    HASH_FILE,             ///< scaninfo
+    HASH,                  ///< scaninfo
+    ID,                    ///< checkEvent
+    INVALID,               ///< scaninfo
+    NAME,                  ///< scaninfo
+    PASSED,                ///< scaninfo
+    POLICY_ID,             ///< scaninfo, checkEvent
+    POLICY,                ///< checkEvent
+    REFERENCES,            ///< scaninfo
+    SCAN_ID,               ///< scaninfo
+    SCORE,                 ///< scaninfo
+    START_TIME,            ///< scaninfo
+    TOTAL_CHECKS,          ///< scaninfo
+    TYPE,                  ///< checkEvent
 };
 
 enum class Type
@@ -225,14 +225,6 @@ inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
     }
 };
 
-enum class DbOperation
-{
-    ERROR = -1,
-    INSERT,
-    UPDATE
-
-};
-
 /********************************************
                Check Event info
 *********************************************/
@@ -250,25 +242,27 @@ bool CheckEventJSON(base::Event& event, const std::string& scaEventPath)
 {
     // CheckEvent conditions list
     const std::vector<field::conditionToCheck> listFieldConditions = {
-        {field::Name::ID, field::Type::INT, true},
-        {field::Name::POLICY, field::Type::STRING, true},
-        {field::Name::POLICY_ID, field::Type::STRING, true},
-        {field::Name::CHECK, field::Type::OBJECT, true},
-        {field::Name::CHECK_ID, field::Type::INT, true},
-        {field::Name::CHECK_TITLE, field::Type::STRING, true},
-        {field::Name::CHECK_DESCRIPTION, field::Type::STRING, false},
-        {field::Name::CHECK_RATIONALE, field::Type::STRING, false},
-        {field::Name::CHECK_REMEDIATION, field::Type::STRING, false},
-        {field::Name::CHECK_REFERENCES, field::Type::STRING, false},
-        {field::Name::CHECK_COMPLIANCE, field::Type::OBJECT, false},
-        {field::Name::CHECK_FILE, field::Type::STRING, false},
-        {field::Name::CHECK_RULES, field::Type::ARRAY, false},
-        {field::Name::CHECK_CONDITION, field::Type::STRING, false},
-        {field::Name::CHECK_DIRECTORY, field::Type::STRING, false},
-        {field::Name::CHECK_PROCESS, field::Type::STRING, false},
-        {field::Name::CHECK_REGISTRY, field::Type::STRING, false},
         {field::Name::CHECK_COMMAND, field::Type::STRING, false},
-        {field::Name::CHECK_RESULT, field::Type::STRING, false}};
+        {field::Name::CHECK_COMPLIANCE, field::Type::OBJECT, false},
+        {field::Name::CHECK_CONDITION, field::Type::STRING, false},
+        {field::Name::CHECK_DESCRIPTION, field::Type::STRING, false},
+        {field::Name::CHECK_DIRECTORY, field::Type::STRING, false},
+        {field::Name::CHECK_FILE, field::Type::STRING, false},
+        {field::Name::CHECK_ID, field::Type::INT, true},
+        {field::Name::CHECK_PROCESS, field::Type::STRING, false},
+        {field::Name::CHECK_RATIONALE, field::Type::STRING, false},
+        {field::Name::CHECK_REASON, field::Type::STRING, false},
+        {field::Name::CHECK_REFERENCES, field::Type::STRING, false},
+        {field::Name::CHECK_REGISTRY, field::Type::STRING, false},
+        {field::Name::CHECK_REMEDIATION, field::Type::STRING, false},
+        {field::Name::CHECK_RESULT, field::Type::STRING, false},
+        {field::Name::CHECK_RULES, field::Type::ARRAY, false},
+        {field::Name::CHECK_TITLE, field::Type::STRING, true},
+        {field::Name::CHECK, field::Type::OBJECT, true},
+        {field::Name::ID, field::Type::INT, true},
+        {field::Name::POLICY_ID, field::Type::STRING, true},
+        {field::Name::POLICY, field::Type::STRING, true}
+};
 
     if (!field::isValidEvent(event, scaEventPath, listFieldConditions))
     {
@@ -440,14 +434,13 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
     auto getOperationAndQuery =
         [&event, &agent_id, checkIDint, id, &wdb_response, &result, &status, &reason]()
     {
-        auto operation = DbOperation::ERROR;
+        auto operation = SearchResult::ERROR;
         std::string query {};
 
         if (std::strncmp(wdb_response.c_str(), "not found", 9) == 0)
         {
-            // It exists, update (SaveEventcheck)
-            operation = DbOperation::UPDATE;
-
+            operation = SearchResult::FOUND;
+            // It exists, update
             query = fmt::format("agent {} sca update {}|{}|{}|{}|{}",
                                 agent_id,
                                 checkIDint.value(),
@@ -458,12 +451,10 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
         }
         else if (std::strncmp(wdb_response.c_str(), "found", 5) == 0)
         {
-            // It not exists, insert
-            operation = DbOperation::INSERT;
-
+            operation = SearchResult::NOT_FOUND;
             // TODO CHANGE THIS, IT IS NOT THE RIGHT WAY TO DO IT
             auto event_original = event->getString("/event/original");
-
+            // It not exists, insert
             query =
                 fmt::format("agent {} sca insert {}", agent_id, event_original.value());
 
@@ -475,12 +466,12 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
 
     auto [operation, SaveEventQuery] = getOperationAndQuery();
 
-    if (DbOperation::ERROR == operation)
+    if (SearchResult::ERROR == operation)
     {
         return "Error querying policy monitoring database";
     }
     // TODO Delete this, it is not the right way to do it
-    if (DbOperation::UPDATE == operation)
+    if (SearchResult::FOUND == operation)
     {
         wdb_response = wdb_response.substr(6); // removing "found " if is a update
     }
@@ -496,7 +487,8 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
     {
         // case DbOperation::ERROR:
         //    return "Error querying policy monitoring database for agent";
-        case DbOperation::UPDATE:
+        // It exists, update
+        case SearchResult::FOUND:
         {
             bool doFillCheckInfo = result.empty()
                                        ? (wdb_response != result)
@@ -513,8 +505,8 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
             }
             return std::nullopt; // Success
         }
-
-        case DbOperation::INSERT:
+        // It not exists, insert
+        case SearchResult::NOT_FOUND:
         {
             bool doFillCheckInfo = result.empty()
                                        ? (wdb_response != result)
@@ -627,11 +619,13 @@ bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
         {field::Name::HASH, field::Type::STRING, true},
         {field::Name::HASH_FILE, field::Type::STRING, true},
         {field::Name::FILE, field::Type::STRING, true},
-        {field::Name::POLICY, field::Type::STRING, true},
-        //{field::Name::DESCRIPTION, field::Type::??, false},
-        //{field::Name::REFERENCES, field::Type::??, false},
-        //{field::Name::NAME, field::Type::??, false},
-        //{field::Name::FORCE_ALERT, field::Type::??, false},
+        {field::Name::DESCRIPTION, field::Type::STRING, false},
+        {field::Name::REFERENCES, field::Type::STRING, false},
+        {field::Name::NAME, field::Type::STRING, true},
+        // '/first_scan' field is a number (0/1) or not present on icoming event (sca module)
+        //{field::Name::FORCE_ALERT, field::Type::STRING, false},
+        // '/force_alert' field is "1" (string) or not present on icoming event (sca module)
+        //{field::Name::FIRST_SCAN, field::Type::INT, false},
 
     };
 
@@ -639,7 +633,7 @@ bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath)
 }
 
 // TODO: Change, No use parameter as output, returno tuple with optional
-std::tuple<int, std::string> findScanInfo(const std::string& agentId,
+std::tuple<SearchResult, std::string> findScanInfo(const std::string& agentId,
                                           const std::string& policyId,
                                           std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
@@ -651,84 +645,113 @@ std::tuple<int, std::string> findScanInfo(const std::string& agentId,
     {
         if (utils::string::startsWith(payload.value(), "found"))
         {
-            return {0, payload.value().substr(6)}; // removing found
+            return {SearchResult::FOUND, payload.value().substr(6)}; // removing "found "
         }
         else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            return {1, ""};
+            return {SearchResult::NOT_FOUND, ""};
         }
     }
-    return {-1, ""};
+    return {SearchResult::ERROR, ""};
 }
 
-int SaveScanInfo(base::Event& event, const std::string& agent_id, int update)
+// Returns true on success, false on error
+bool SaveScanInfo(base::Event& event,
+                  const std::string& scaEventPath,
+                  const std::string& agent_id,
+                  bool update,
+                  std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
     std::string SaveScanInfoQuery {};
 
-    // TODO Avoid copy, use auto&, std::string_view or other technique
-    std::string pm_start_scan = scanInfoKeyValues["/start_time"];
-    std::string pm_end_scan = scanInfoKeyValues["/end_time"];
-    std::string scan_id = scanInfoKeyValues["/id"];
-    std::string policy_id = scanInfoKeyValues["/policy_id"];
-    std::string pass = scanInfoKeyValues["/passed"];
-    std::string failed = scanInfoKeyValues["/failed"];
-    std::string invalid = scanInfoKeyValues["/invalid"];
-    std::string total_checks = scanInfoKeyValues["/total_checks"];
-    std::string score = scanInfoKeyValues["/score"];
-    std::string hash = scanInfoKeyValues["/hash"];
+    auto getInt = [&](field::Name field) -> int
+    {
+        return event->getInt(field::getEventPath(field, scaEventPath)).value();
+    };
+
+    auto getString = [&](field::Name field) -> int
+    {
+        return event->getInt(field::getEventPath(field, scaEventPath)).value();
+    };
+
+    const auto pm_start_scan = getInt(field::Name::START_TIME);
+    const auto pm_end_scan = getInt(field::Name::END_TIME);
+    const auto scan_id = getInt(field::Name::SCAN_ID);
+    const auto pass = getInt(field::Name::PASSED);
+    const auto failed = getInt(field::Name::FAILED);
+    const auto invalid = getInt(field::Name::INVALID);
+    const auto total_checks = getInt(field::Name::TOTAL_CHECKS);
+    const auto score = getInt(field::Name::SCORE);
+
+    const auto hash = getString(field::Name::HASH);
+    const auto policy_id = getString(field::Name::POLICY_ID);
+
     // TODO This is a int
     if (!update)
     {
-        SaveScanInfoQuery = std::string("agent ") + agent_id + " sca insert_scan_info "
-                            + pm_start_scan + "|" + pm_end_scan + "|" + scan_id + "|"
-                            + policy_id + "|" + pass + "|" + failed + "|" + invalid + "|"
-                            + total_checks + "|" + score + "|" + hash;
+        SaveScanInfoQuery =
+            fmt::format("agent {} sca insert_scan_info {}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                        agent_id,
+                        pm_start_scan,
+                        pm_end_scan,
+                        scan_id,
+                        policy_id,
+                        pass,
+                        failed,
+                        invalid,
+                        total_checks,
+                        score,
+                        hash);
     }
     else
     {
         SaveScanInfoQuery =
-            std::string("agent ") + agent_id + " sca update_scan_info_start " + policy_id
-            + "|" + pm_start_scan + "|" + pm_end_scan + "|" + scan_id + "|" + pass + "|"
-            + failed + "|" + invalid + "|" + total_checks + "|" + score + "|" + hash;
+            fmt::format("agent {} sca update_scan_info_start {}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                        agent_id,
+                        policy_id,
+                        pm_start_scan,
+                        pm_end_scan,
+                        scan_id,
+                        pass,
+                        failed,
+                        invalid,
+                        total_checks,
+                        score,
+                        hash);
     }
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto SaveScanInfoTuple = wdb.tryQueryAndParseResult(SaveScanInfoQuery);
-
-    int result_db = -1;
-    if (std::get<0>(SaveScanInfoTuple) == wazuhdb::QueryResultCodes::OK)
-    {
-        result_db = 0;
-    }
-    return result_db;
+    auto [queryResult, discartPayload]= wdb->tryQueryAndParseResult(SaveScanInfoQuery);
+    return queryResult == wazuhdb::QueryResultCodes::OK;
 }
 
-int FindPolicyInfo(base::Event& event, const std::string& agent_id)
+SearchResult findPolicyInfo(base::Event& event,
+                            const std::string& agent_id,
+                            const std::string& scaEventPath,
+                            std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Find policies IDs for policy '%s', agent id '%s'"
-    const auto FindPolicyInfoQuery = std::string("agent ") + agent_id
-                                     + " sca query_policy "
-                                     + scanInfoKeyValues["/policy_id"];
+    const auto query = fmt::format(
+        "agent {} sca query_policy {}",
+        agent_id,
+        event->getString(field::getEventPath(field::Name::POLICY_ID, scaEventPath)).value());
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto FindPolicyInfoTuple = wdb.tryQueryAndParseResult(FindPolicyInfoQuery);
+    auto [code, payload] = wdb->tryQueryAndParseResult(query);
 
-    int result_db = -1;
-    if (std::get<0>(FindPolicyInfoTuple) == wazuhdb::QueryResultCodes::OK
-        && std::get<1>(FindPolicyInfoTuple).has_value())
+    auto retval = SearchResult::ERROR;
+    if (wazuhdb::QueryResultCodes::OK == code && payload)
     {
-        const auto& FindPolicyInfoResponse = std::get<1>(FindPolicyInfoTuple).value();
-        if (std::strncmp(FindPolicyInfoResponse.c_str(), "not found", 9) == 0)
+        if (utils::string::startsWith(payload.value(), "found"))
         {
-            result_db = 1;
+            retval = SearchResult::FOUND;
         }
-        else if (std::strncmp(FindPolicyInfoResponse.c_str(), "found", 5) == 0)
+        else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            result_db = 0;
+            retval = SearchResult::NOT_FOUND;
         }
     }
-    return result_db;
+
+    return retval;
 }
 
 // TODO: check return value and implications if the operation fails
@@ -756,30 +779,37 @@ bool pushDumpRequest(const std::string& agentId,
     return result;
 }
 
-int SavePolicyInfo(const std::string& agent_id,
-                   std::string& description_db,
-                   std::string& references_db)
+// Returns true if the operation was successful, false otherwise
+bool SavePolicyInfo(base::Event& event,
+                   const std::string& agent_id,
+                   const std::string& scaEventPath,
+                   std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
-    // "Saving policy info for policy id '%s', agent id '%s'"
-    std::string policy_id = scanInfoKeyValues["/policy_id"];
-    std::string name = scanInfoKeyValues["/policy"];
-    std::string file = scanInfoKeyValues["/file"];
-    std::string hash_file = scanInfoKeyValues["/hash_file"];
-    std::string desc = description_db.empty() ? "NULL" : description_db;
-    std::string ref = references_db.empty() ? "NULL" : references_db;
-    std::string SavePolicyInfoTupleQuery =
-        std::string("agent ") + agent_id + " sca insert_policy " + name + "|" + file + "|"
-        + policy_id + "|" + desc + "|" + ref + "|" + hash_file;
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto SavePolicyInfoTuple = wdb.tryQueryAndParseResult(SavePolicyInfoTupleQuery);
-
-    int result_db = -1;
-    if (std::get<0>(SavePolicyInfoTuple) == wazuhdb::QueryResultCodes::OK)
+    auto getInt = [&](field::Name field) -> int
     {
-        result_db = 0;
-    }
-    return result_db;
+        return event->getInt(field::getEventPath(field, scaEventPath)).value();
+    };
+
+    auto getStringOrNULL = [&](field::Name field) -> std::string
+    {
+        return event->getString(field::getEventPath(field, scaEventPath))
+            .value_or("NULL");
+    };
+
+    auto query = fmt::format(
+        "agent {} sca insert_policy {}|{}|{}|{}|{}|{}",
+        agent_id,
+        getStringOrNULL(field::Name::NAME),
+        getStringOrNULL(field::Name::FILE),
+        getStringOrNULL(field::Name::POLICY_ID),
+        getStringOrNULL(field::Name::DESCRIPTION),
+        getStringOrNULL(field::Name::REFERENCES),
+        getStringOrNULL(field::Name::HASH_FILE));
+
+    auto [result, payload] = wdb->tryQueryAndParseResult(query);
+
+    return wazuhdb::QueryResultCodes::OK == result;
 }
 
 int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
@@ -931,138 +961,116 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                                           std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     int alert_data_fill = 0;
+    int result_event = 0;
+
+    // Validate the JSON ScanInfo Event
     if (!CheckScanInfoJSON(event, scaEventPath))
     {
         return "fail on CheckScanInfoJSON"; // Fail on check
     }
 
-    int result_event = 0;
-    std::string policyId; // TODO: Get policyId
+    // Get the policy ID and the hash from the database
+    std::string policyId =
+        event->getString(field::getEventPath(field::Name::POLICY_ID, scaEventPath))
+            .value();
+    std::string eventHash =
+        event->getString(field::getEventPath(field::Name::HASH, scaEventPath)).value();
+    // Check if should be a force alert and if is the first scan
+    bool force_alert =
+        event->exists(field::getEventPath(field::Name::FORCE_ALERT, scaEventPath));
+    bool first_scan =
+        event->exists(field::getEventPath(field::Name::FIRST_SCAN, scaEventPath));
+
+    // Get sha256 hash for policy id
     auto [result_db, hash_scan_info] = findScanInfo(agent_id, policyId, wdb);
 
     const auto& separated_hash = utils::string::split(hash_scan_info, ' ');
-
-    if (separated_hash.size() < 2)
-    {
-        // TODO: Whats is this?, why is commented?
-        // mdebug1("Retrieving sha256 hash for policy: '%s'", policy_id->valuestring);
-    }
-    // TODO, capture exception, stoi can throw exception (Also, at method)
-    auto scan_id_old = stoi(separated_hash.at(1));
-    auto hash_sha256 = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
-
-    std::string hash = scanInfoKeyValues["/hash"];
-    std::string first_scan;
-    std::string force_alert;
-
-    if (scanInfoKeyValues.find("/first_scan") != scanInfoKeyValues.end())
-    {
-        first_scan = scanInfoKeyValues["/first_scan"];
-    }
-    if (scanInfoKeyValues.find("/force_alert") != scanInfoKeyValues.end())
-    {
-        force_alert = scanInfoKeyValues["/force_alert"];
-    }
+    // If query fails or hash is not found, storedHash is empty
+    auto storedHash = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
 
     switch (result_db)
     {
-        case -1:
-            // merror("Error querying policy monitoring database for agent
+        case SearchResult::ERROR:
+            return "Error querying policy monitoring database for agent";
             break;
-        case 0:
-            // It exists, update
-            result_event = SaveScanInfo(event, agent_id, 1);
-            if (result_event < 0)
-            {
-                // TODO, why is commented?, what should be do?
-                // merror("Error updating scan policy monitoring database for agent
-            }
-            else
-            {
-                /* Compare hash with previous hash */
-                // TODO Can be only 1 condition for fillscaninfo
-                if (hash_sha256 == hash)
-                {
-                    if (first_scan.empty())
-                    {
-                        FillScanInfo(event, agent_id, scaEventPath);
-                        alert_data_fill = 1;
-                    }
-                }
-
-                if (!force_alert.empty() && !alert_data_fill)
-                {
-                    FillScanInfo(event, agent_id, scaEventPath);
-                }
-            }
-            break;
-        case 1:
-            // It not exists, insert
-            result_event = SaveScanInfo(event, agent_id, 0);
-            if (result_event < 0)
-            {
-                // TODO, why is commented?, what should be do?
-                // merror("Error storing scan policy monitoring information for
-            }
-            else
-            {
-                /* Compare hash with previous hash */
-                if (hash_sha256 == hash)
-                {
-                    if (first_scan.empty())
-                    {
-                        FillScanInfo(event, agent_id, scaEventPath);
-                        alert_data_fill = 1;
-                    }
-                    else
-                    {
-                        /* Request dump */
-                        pushDumpRequest(agent_id, policyId, 1);
-                    }
-                }
-
-                if (!force_alert.empty() && !alert_data_fill)
-                {
-                    FillScanInfo(event, agent_id, scaEventPath);
-                }
-            }
-
-            break;
-        default: break;
-    }
-
-    result_db = FindPolicyInfo(event, agent_id);
-
-    switch (result_db)
-    {
-        case -1:
-            // merror("Error querying policy monitoring database for agent
-            break;
-        case 1:
+        case SearchResult::FOUND:
         {
-            std::string references_db {};
-            std::string description_db {};
-            // It not exists, insert from event
-            if (scanInfoKeyValues.find("/references") != scanInfoKeyValues.end())
+            // Try to update the scan info
+            if (SaveScanInfo(event, scaEventPath, agent_id, true, wdb))
             {
-                // Double check value type
-                references_db = scanInfoKeyValues["/references"];
+                /* Compare hash with previous hash */
+                bool diferentHash = (storedHash != eventHash);
+                bool newHash = (diferentHash && !first_scan);
+                if (force_alert || newHash)
+                {
+                    FillScanInfo(event, agent_id, scaEventPath);
+                }
             }
-
-            if (scanInfoKeyValues.find("/description") != scanInfoKeyValues.end())
+            else
             {
-                // Double check value type
-                description_db = scanInfoKeyValues["/description"];
-            }
-
-            result_event = SavePolicyInfo(agent_id, description_db, references_db);
-            if (result_event < 0)
-            {
-                // merror("Error storing scan policy monitoring information for
+                return "Error updating policy monitoring database for agent {id}";
             }
         }
         break;
+        case SearchResult::NOT_FOUND:
         default:
+        {
+            // It not exists, insert
+            if (SaveScanInfo(event, scaEventPath, agent_id, false, wdb))
+            {
+                /* Compare hash with previous hash */
+                bool diferentHash = (storedHash != eventHash);
+                bool newHash = (diferentHash && !first_scan);
+
+                if (force_alert || newHash)
+                {
+                    FillScanInfo(event, agent_id, scaEventPath);
+                }
+
+                if (diferentHash && first_scan)
+                {
+                    pushDumpRequest(agent_id, policyId, 1);
+                }
+            }
+            else
+            {
+                return "Error inserting policy monitoring database for agent {id}";
+            }
+        }
+        break;
+    }
+
+    // TODO Changes name and type, shoul be `SearchResult::`
+    auto result_db3 = findPolicyInfo(event, agent_id, scaEventPath, wdb);
+
+    // Returns the string of field if exist or "NULL" string if not exist
+    auto getStringOrNullStr = [&](field::Name fild) -> std::string {
+        if (event->exists(field::getEventPath(fild, scaEventPath)))
+        {
+            return event->getString(field::getEventPath(fild, scaEventPath)).value();
+        }
+        else
+        {
+            return "NULL";
+        }
+
+    };
+
+    switch (result_db3)
+    {
+        case SearchResult::ERROR:
+            return "Error querying policy monitoring database for agent";
+            break;
+        case SearchResult::NOT_FOUND:
+        {
+            if (!SavePolicyInfo(event, agent_id, scaEventPath, wdb))
+            {
+                return "Error storing scan policy monitoring information for {}";
+            }
+        }
+        break;
+        case SearchResult::FOUND:
+        {
             std::string old_hash;
             if (!FindPolicySHA256(agent_id, old_hash))
             {
@@ -1086,7 +1094,9 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                     }
                 }
             }
-            break;
+
+        }
+        break;
     }
     // TODO: change result name
     auto [result_db2, wdb_response] = findCheckResults(agent_id, policyId, wdb);
@@ -1095,12 +1105,12 @@ std::optional<std::string> handleScanInfo(base::Event& event,
     {
         case 0:
             /* Integrity check */
-            if (wdb_response == hash)
+            if (wdb_response == eventHash)
             {
                 // mdebug1("Scan result integrity failed for policy '%s'. Hash from
                 // DB:'%s', hash from summary: '%s'. Requesting DB
                 // dump.",policy_id->valuestring, wdb_response, hash->valuestring);
-                if (first_scan.empty())
+                if (!first_scan)
                 {
                     pushDumpRequest(agent_id, policyId, 0);
                 }
@@ -1114,7 +1124,7 @@ std::optional<std::string> handleScanInfo(base::Event& event,
             /* Empty DB */
             // mdebug1("Check results DB empty for policy '%s'. Requesting DB
             // dump.",policy_id->valuestring);
-            if (first_scan.empty())
+            if (!first_scan)
             {
                 pushDumpRequest(agent_id, policyId, 0);
             }
@@ -1329,7 +1339,7 @@ std::optional<std::string> handleDumpEvent(base::Event& event,
         {
             // Retreive hash from summary
             auto [scanResultCode, hashScanInfo] = findScanInfo(agentId, policyId, wdb);
-            if (0 == scanResultCode && hashScanInfo.size() == 64)
+            if (SearchResult::FOUND == scanResultCode && hashScanInfo.size() == 64)
             {
                 if (hashCheckResults != hashScanInfo)
                 {
