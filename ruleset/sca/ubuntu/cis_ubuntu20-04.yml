@@ -2445,7 +2445,7 @@ checks:
     condition: all
     rules:
       - 'c:systemctl is-enabled cron -> enabled'
-      - 'c:systemctl status cron -> r:Active: active (running)'
+      - 'c:systemctl status cron -> r:Active: active \(running\)'
 
 # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
   - id: 19138
