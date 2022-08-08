@@ -718,7 +718,7 @@ class AWSBucket(WazuhIntegration):
                     accounts.append(account_id)
             return accounts
         except KeyError:
-            print(f"ERROR: No prefix named {self.get_base_prefix()} found . Check the provided prefix and the location of the logs "
+            print(f"ERROR: No prefix named {self.get_base_prefix()} found. Check the provided prefix and the location of the logs "
             sys.exit(18)
 
     def find_regions(self, account_id):
