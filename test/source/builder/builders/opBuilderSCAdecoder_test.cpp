@@ -31,6 +31,365 @@ const std::string targetField {"/wdb/result"};
 const std::string helperFunctionName {"sca_decoder"};
 const std::vector<std::string> commonArguments {"$event.original", "$agent.id"};
 
+// Result true, only mandatory fields present
+TEST(opBuilderSCAdecoder, CheckEventJSON_OnlyMandatoryFields)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "result": "failed"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_TRUE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result true, all fields present including not neccesary
+TEST(opBuilderSCAdecoder, CheckEventJSON_AllFields)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "description": "The cramfs filesystem type is ...",
+                    "rationale": "Removing support for unneeded filesystem...",
+                    "remediation": "Edit or create a file in the /etc/mod.d",
+                    "compliance":
+                    {
+                        "cis": "1.1.1.1",
+                        "cis_csc": "5.1",
+                        "pci_dss": "2.2.5",
+                        "tsc": "CC6.3"
+                    },
+                    "rules":
+                    [
+                        "c:modprobe -n -v cramfs -> r:install /bin/true|Module",
+                        "not c:lsmod -> r:cramfs"
+                    ],
+                    "condition": "all",
+                    "directory": "/etc/audit/rules.d",
+                    "process": "proc",
+                    "registry": "reg",
+                    "command": "modprobe -n -v cramfs",
+                    "status":"Not applicable",
+                    "result": "failed",
+                    "reason": "Could not open file '/boot/grub2/user.cfg'"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_TRUE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result false, status and result both not present
+TEST(opBuilderSCAdecoder, CheckEventJSON_FailedNotPresentStatusAndResult)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "reason": "Could not open file '/boot/grub2/user.cfg'"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result false, status present but reason not
+TEST(opBuilderSCAdecoder, CheckEventJSON_FailedtStatusPresentAndReasonNot)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "status":"Not applicable"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Result false, only mandatory fields but id is a string
+TEST(opBuilderSCAdecoder, CheckEventJSON_IdFieldString)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": "631388619",
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "result": "failed"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_FALSE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+//TODO: should we check an empty field?
+TEST(opBuilderSCAdecoder, CheckEventJSON_policyFieldEmpty)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "result": "failed"
+                }
+            }
+        }
+    })")};
+
+    ASSERT_TRUE(sca::CheckEventJSON(event,"/event/original"));
+}
+
+// Map only mandatory fields present
+TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFields)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "description": "The cramfs filesystem type is ...",
+                    "rationale": "Removing support for unneeded filesystem...",
+                    "remediation": "Edit or create a file in the /etc/mod.d",
+                    "compliance":
+                    {
+                        "cis": "1.1.1.1",
+                        "cis_csc": "5.1",
+                        "pci_dss": "2.2.5",
+                        "tsc": "CC6.3"
+                    },
+                    "references": "https://www.cisecurity.org/cis-benchmarks/",
+                    "status": "Not applicable",
+                    "reason": "Could not open file '/boot/grub2/user.cfg'"
+                }
+            }
+        }
+    })")};
+
+    sca::FillCheckEventInfo(event,{},"/event/original");
+
+    ASSERT_EQ(event->getInt("/sca/id").value(),631388619);
+    ASSERT_EQ(event->getInt("/sca/check/id").value(),6500);
+
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(),"check");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(),"CIS Benchmark for CentOS Linux 8");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(),"cis_centos8_linux");
+
+    ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(),"Ensure mounting of cramfs");
+    ASSERT_STREQ(event->getString("/sca/check/description").value().c_str(),"The cramfs filesystem type is ...");
+    ASSERT_STREQ(event->getString("/sca/check/rationale").value().c_str(),"Removing support for unneeded filesystem...");
+    ASSERT_STREQ(event->getString("/sca/check/remediation").value().c_str(),"Edit or create a file in the /etc/mod.d");
+    ASSERT_STREQ(event->getString("/sca/check/compliance/cis").value().c_str(),"1.1.1.1");
+    ASSERT_STREQ(event->getString("/sca/check/references").value().c_str(),"https://www.cisecurity.org/cis-benchmarks/");
+    ASSERT_STREQ(event->getString("/sca/check/status").value().c_str(),"Not applicable");
+    ASSERT_STREQ(event->getString("/sca/check/reason").value().c_str(),"Could not open file '/boot/grub2/user.cfg'");
+}
+
+// Map only mandatory fields present, result variation
+TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "description": "The cramfs filesystem type is ...",
+                    "rationale": "Removing support for unneeded filesystem...",
+                    "remediation": "Edit or create a file in the /etc/mod.d",
+                    "compliance":
+                    {
+                        "cis": "1.1.1.1",
+                        "cis_csc": "5.1",
+                        "pci_dss": "2.2.5",
+                        "tsc": "CC6.3"
+                    },
+                    "references": "https://www.cisecurity.org/cis-benchmarks/",
+                    "result": "failed"
+                }
+            }
+        }
+    })")};
+
+    sca::FillCheckEventInfo(event,{},"/event/original");
+
+    ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(),"failed");
+}
+
+// Map csv Fields To arrays
+//TODO: there's an issue on converting strings to arrays
+TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
+{
+    auto event {std::make_shared<json::Json>(
+    R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 631388619,
+                "policy": "CIS Benchmark for CentOS Linux 8",
+                "policy_id": "cis_centos8_linux",
+                "check":
+                {
+                    "id": 6500,
+                    "title": "Ensure mounting of cramfs",
+                    "description": "The cramfs filesystem type is ...",
+                    "rationale": "Removing support for unneeded filesystem...",
+                    "remediation": "Edit or create a file in the /etc/mod.d",
+                    "compliance":
+                    {
+                        "cis": "1.5.3",
+                        "cis_csc": "5.1",
+                        "pci_dss": "2.2.4",
+                        "nist_800_53": "CM.1",
+                        "tsc": "CC5.2"
+                    },
+                    "references": "https://www.cisecurity.org/cis-benchmarks/",
+                    "rules":
+                    [
+                        "f:/usr/lib/systemd/system/rescue.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue",
+                        "f:/usr/lib/systemd/system/emergency.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency"
+                    ],
+                    "file": "/usr/lib/systemd/system/rescue.service,/usr/lib/systemd/system/emergency.service",
+                    "directory": "/etc/audit/rules.d",
+                    "command":"sysctl net.ipv4.ip_forward,sysctl net.ipv6.conf.all.forwarding",
+                    "status": "Not applicable",
+                    "reason": "passed"
+                }
+            }
+        }
+    })")};
+
+    sca::FillCheckEventInfo(event,{},"/event/original");
+
+    ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),"/usr/lib/systemd/system/rescue.service");
+    ASSERT_STREQ(event->getString("/sca/check/command/0").value().c_str(),"sysctl net.ipv4.ip_forward");
+    ASSERT_STREQ(event->getString("/sca/check/command/1").value().c_str(),"sysctl net.ipv6.conf.all.forwarding");
+}
+
 TEST(opBuilderSCAdecoder, BuildSimplest)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
