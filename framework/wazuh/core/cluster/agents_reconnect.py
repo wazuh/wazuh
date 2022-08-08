@@ -234,7 +234,7 @@ class AgentsReconnect:
             total = 0
             for node in self.previous_nodes:
                 agent_query = WazuhDBQueryAgents(count=True, filters={"status": "active", "node_name": node},
-                                                 select={"id"})
+                                                 select={"id"}, query="id!=000")
                 agent_query._get_total_items(add_filters=True)
                 agents_count[node] = agent_query.total_items
                 total += agent_query.total_items
