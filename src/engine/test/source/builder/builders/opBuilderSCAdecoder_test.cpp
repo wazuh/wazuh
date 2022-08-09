@@ -447,7 +447,7 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
 //TODO: there's an issue on converting strings to arrays
 TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
 {
-    GTEST_SKIP();
+
     auto event {std::make_shared<json::Json>(
     R"({
         "agent":
@@ -496,6 +496,7 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
     sca::FillCheckEventInfo(event,{},"/event/original");
 
     ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),"/usr/lib/systemd/system/rescue.service");
+    ASSERT_STREQ(event->getString("/sca/check/file/1").value().c_str(),"/usr/lib/systemd/system/emergency.service");
     ASSERT_STREQ(event->getString("/sca/check/command/0").value().c_str(),"sysctl net.ipv4.ip_forward");
     ASSERT_STREQ(event->getString("/sca/check/command/1").value().c_str(),"sysctl net.ipv6.conf.all.forwarding");
 }
@@ -686,7 +687,7 @@ TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkFound)
     });
 
     auto [resultCode, hashCheckResults] = sca::findCheckResults("vm-centos8","cis_centos8_linux",wdb);
-    ASSERT_EQ(resultCode,0);
+    ASSERT_EQ(resultCode, sca::SearchResult::FOUND);
     ASSERT_STREQ(hashCheckResults.c_str(), "payload");
 
     t.join();
@@ -710,7 +711,7 @@ TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkNotFound)
     });
 
     auto [resultCode, hashCheckResults] = sca::findCheckResults("vm-centos8","cis_centos8_linux",wdb);
-    ASSERT_EQ(resultCode,1);
+    ASSERT_EQ(resultCode, sca::SearchResult::NOT_FOUND);
     ASSERT_STREQ(hashCheckResults.c_str(),"");
 
     t.join();
@@ -734,7 +735,7 @@ TEST(opBuilderSCAdecoder, FindCheckResults_ResultError)
     });
 
     auto [resultCode, hashCheckResults] = sca::findCheckResults("vm-centos8","cis_centos8_linux",wdb);
-    ASSERT_EQ(resultCode,-1);
+    ASSERT_EQ(resultCode, sca::SearchResult::ERROR);
     ASSERT_STREQ(hashCheckResults.c_str(),"");
 
     t.join();
@@ -1154,7 +1155,6 @@ TEST(opBuilderSCAdecoder, checkTypeNoCheckResultNorStatusField)
 
 TEST(opBuilderSCAdecoder, checkTypeFindEventcheckUnexpectedAnswer)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
