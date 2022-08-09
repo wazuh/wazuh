@@ -840,7 +840,7 @@ def offset_to_datetime(offset: str):
     if unit == 'h':
         return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=value)
     if unit == 'm':
-        return datetime.utcnow().replace(tzinfo=timezone.utcC) - timedelta(minutes=value)
+        return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=value)
     if unit == 'd':
         return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=value)
 
