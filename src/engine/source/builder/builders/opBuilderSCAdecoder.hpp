@@ -82,7 +82,7 @@ int deletePolicyCheck(const std::string& agent_id,
                       const std::string& policyId,
                       std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::tuple<int, std::string> findCheckResults(const std::string& agentId,
+std::tuple<SearchResult, std::string> findCheckResults(const std::string& agentId,
                                               const std::string& policyId,
                                               std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
