@@ -103,6 +103,7 @@ typedef struct _written_t {
 } written_t;
 
 typedef struct _analysisd_state_t {
+    uint64_t uptime;
     uint64_t received_bytes;
     uint64_t events_received;
     uint64_t events_processed;
@@ -112,6 +113,7 @@ typedef struct _analysisd_state_t {
 } analysisd_state_t;
 
 typedef struct _analysisd_agent_state_t {
+    uint64_t uptime;
     uint64_t events_processed;
     uint64_t alerts_written;
     uint64_t archives_written;

@@ -40,6 +40,7 @@ void w_remoted_clean_agents_state();
 /* setup/teardown */
 
 static int test_setup(void ** state) {
+    remoted_state.uptime = 123456789;
     remoted_state.tcp_sessions = 5;
     remoted_state.recv_bytes = 123456;
     remoted_state.sent_bytes = 234567;
@@ -57,7 +58,7 @@ static int test_setup(void ** state) {
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
     remoted_state.sent_breakdown.ar_count = 18;
-    remoted_state.sent_breakdown.cfga_count = 8;
+    remoted_state.sent_breakdown.sca_count = 8;
     remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
 
@@ -74,6 +75,7 @@ static int test_setup_agent(void ** state) {
     will_return(__wrap_time, 123456789);
     remoted_agents_state = __wrap_OSHash_Create();
 
+    test_data->agent_state->uptime = 123456789;
     test_data->agent_state->recv_evt_count = 12568;
     test_data->agent_state->recv_ctrl_count = 2568;
     test_data->agent_state->ctrl_breakdown.keepalive_count = 1234;
@@ -83,7 +85,7 @@ static int test_setup_agent(void ** state) {
     test_data->agent_state->sent_breakdown.ack_count = 2346;
     test_data->agent_state->sent_breakdown.shared_count = 235;
     test_data->agent_state->sent_breakdown.ar_count = 514;
-    test_data->agent_state->sent_breakdown.cfga_count = 134;
+    test_data->agent_state->sent_breakdown.sca_count = 134;
     test_data->agent_state->sent_breakdown.request_count = 153;
     test_data->agent_state->sent_breakdown.discarded_count = 235;
 
@@ -119,6 +121,8 @@ static int test_setup_empty_hash_table(void ** state) {
     os_calloc(1, sizeof(test_struct_t),test_data);
     os_calloc(1, sizeof(remoted_agent_state_t), test_data->agent_state);
 
+    test_data->agent_state->uptime = 123456789;
+
     test_mode = 0;
     will_return(__wrap_time, 123456789);
     remoted_agents_state = __wrap_OSHash_Create();
@@ -153,6 +157,8 @@ void test_rem_create_state_json(void ** state) {
     cJSON* state_json = rem_create_state_json();
 
     assert_non_null(state_json);
+
+    assert_int_equal(cJSON_GetObjectItem(state_json, "uptime")->valueint, 123456789);
 
     assert_non_null(cJSON_GetObjectItem(state_json, "metrics"));
     cJSON* metrics = cJSON_GetObjectItem(state_json, "metrics");
@@ -205,8 +211,8 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
     assert_non_null(cJSON_GetObjectItem(sent, "ar"));
     assert_int_equal(cJSON_GetObjectItem(sent, "ar")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(sent, "cfga"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "cfga")->valueint, 8);
+    assert_non_null(cJSON_GetObjectItem(sent, "sca"));
+    assert_int_equal(cJSON_GetObjectItem(sent, "sca")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(sent, "request"));
     assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
     assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
@@ -253,6 +259,7 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_non_null(cJSON_GetArrayItem(agents, 0));
     cJSON* agent = cJSON_GetArrayItem(agents, 0);
     assert_int_equal(cJSON_GetObjectItem(agent, "id")->valueint, 1);
+    assert_int_equal(cJSON_GetObjectItem(agent, "uptime")->valueint, 123456789);
 
     assert_non_null(cJSON_GetObjectItem(agent, "metrics"));
     cJSON* agent_metrics = cJSON_GetObjectItem(agent, "metrics");
@@ -280,7 +287,7 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack")->valueint, 2346);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared")->valueint, 235);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar")->valueint, 514);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "cfga")->valueint, 134);
+    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "sca")->valueint, 134);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request")->valueint, 153);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
 
@@ -295,6 +302,8 @@ void test_rem_get_node_new_node(void ** state) {
     expect_value(__wrap_OSHash_Get_ex, self, remoted_agents_state);
     expect_string(__wrap_OSHash_Get_ex, key, agent_id);
     will_return(__wrap_OSHash_Get_ex, NULL);
+
+    will_return(__wrap_time, 123456789);
 
     expect_value(__wrap_OSHash_Add_ex, self, remoted_agents_state);
     expect_string(__wrap_OSHash_Add_ex, key, agent_id);

@@ -87,6 +87,8 @@ OSDecoderInfo *NULL_Decoder;
 int num_rule_matching_threads;
 OSHash *analysisd_agents_state;
 
+extern analysisd_state_t analysisd_state;
+
 /* execd queue */
 static int execdq = 0;
 
@@ -965,6 +967,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     mdebug1("FTS_Init completed.");
+
+    /* Global stats uptime */
+    analysisd_state.uptime = time(NULL);
 
     /* Create OSHash for agents statistics */
     analysisd_agents_state = OSHash_Create();

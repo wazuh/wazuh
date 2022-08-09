@@ -38,6 +38,7 @@ void w_analysisd_clean_agents_state();
 /* setup/teardown */
 
 static int test_setup(void ** state) {
+    analysisd_state.uptime = 123456789;
     analysisd_state.received_bytes = 123654789;
     analysisd_state.events_received = 4589;
     analysisd_state.events_decoded_breakdown.agent = 1;
@@ -162,6 +163,7 @@ static int test_setup_agent(void ** state) {
     will_return(__wrap_time, 123456789);
     analysisd_agents_state = __wrap_OSHash_Create();
 
+    test_data->agent_state->uptime = 123456789;
     test_data->agent_state->events_processed = 1286;
     test_data->agent_state->alerts_written = 269;
     test_data->agent_state->archives_written = 1286;
@@ -259,6 +261,8 @@ static int test_setup_empty_hash_table(void ** state) {
     os_calloc(1, sizeof(test_struct_t),test_data);
     os_calloc(1, sizeof(analysisd_agent_state_t), test_data->agent_state);
 
+    test_data->agent_state->uptime = 123456789;
+
     test_mode = 0;
     will_return(__wrap_time, 123456789);
     analysisd_agents_state = __wrap_OSHash_Create();
@@ -291,6 +295,8 @@ void test_asys_create_state_json(void ** state) {
     cJSON* state_json = asys_create_state_json();
 
     assert_non_null(state_json);
+
+    assert_int_equal(cJSON_GetObjectItem(state_json, "uptime")->valueint, 123456789);
 
     assert_non_null(cJSON_GetObjectItem(state_json, "metrics"));
     cJSON* metrics = cJSON_GetObjectItem(state_json, "metrics");
@@ -577,6 +583,7 @@ void test_asys_create_agents_state_json(void ** state) {
     assert_non_null(cJSON_GetArrayItem(agents, 0));
     cJSON* agent = cJSON_GetArrayItem(agents, 0);
     assert_int_equal(cJSON_GetObjectItem(agent, "id")->valueint, 1);
+    assert_int_equal(cJSON_GetObjectItem(agent, "uptime")->valueint, 123456789);
 
     assert_non_null(cJSON_GetObjectItem(agent, "metrics"));
     cJSON* agent_metrics = cJSON_GetObjectItem(agent, "metrics");
@@ -648,6 +655,8 @@ void test_asys_get_node_new_node(void ** state) {
     expect_value(__wrap_OSHash_Get_ex, self, analysisd_agents_state);
     expect_string(__wrap_OSHash_Get_ex, key, agent_id);
     will_return(__wrap_OSHash_Get_ex, NULL);
+
+    will_return(__wrap_time, 123456789);
 
     expect_value(__wrap_OSHash_Add_ex, self, analysisd_agents_state);
     expect_string(__wrap_OSHash_Add_ex, key, agent_id);

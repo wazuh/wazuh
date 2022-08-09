@@ -46,7 +46,6 @@ static OSHash *invalid_files;
 
 /* Internal functions prototypes */
 
-static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
 
 /**

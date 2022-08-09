@@ -23,7 +23,7 @@
 #define STATIC static
 #endif
 
-analysisd_state_t analysisd_state;
+analysisd_state_t analysisd_state = {0};
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -522,6 +522,7 @@ STATIC analysisd_agent_state_t * get_node(const char *agent_id) {
         return agent_state;
     } else {
         os_calloc(1, sizeof(analysisd_agent_state_t), agent_state);
+        agent_state->uptime = time(NULL);
         OSHash_Add_ex(analysisd_agents_state, agent_id, agent_state);
         return agent_state;
     }
@@ -1383,6 +1384,7 @@ cJSON* asys_create_state_json() {
 
     cJSON *asys_state_json = cJSON_CreateObject();
 
+    cJSON_AddNumberToObject(asys_state_json, "uptime", state_cpy.uptime);
     cJSON_AddNumberToObject(asys_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(asys_state_json, "name", ARGV0);
 
@@ -1619,6 +1621,7 @@ cJSON* asys_create_agents_state_json(int* agents_ids) {
             if (agent_state = (analysisd_agent_state_t *) OSHash_Get_ex(analysisd_agents_state, agent_id), agent_state != NULL) {
                 cJSON *_item = cJSON_CreateObject();
 
+                cJSON_AddNumberToObject(_item, "uptime", agent_state->uptime);
                 cJSON_AddNumberToObject(_item, "id", agents_ids[i]);
 
                 cJSON *_metrics = cJSON_CreateObject();
