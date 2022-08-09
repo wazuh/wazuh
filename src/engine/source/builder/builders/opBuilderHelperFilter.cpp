@@ -809,20 +809,34 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && event->isNumber(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->isNumber(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -839,20 +853,34 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && !event->isNumber(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->isNumber(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -869,20 +897,34 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && event->isString(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->isString(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -899,20 +941,34 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && !event->isString(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->isString(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -929,20 +985,34 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && event->isBool(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->isBool(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -959,20 +1029,34 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && !event->isBool(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->isBool(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -989,20 +1073,34 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && event->isArray(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->isArray(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1019,20 +1117,34 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && !event->isArray(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->isArray(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1049,20 +1161,34 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && event->isObject(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->isObject(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1079,20 +1205,34 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && !event->isObject(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->isObject(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1109,20 +1249,34 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && event->isNull(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->isNull(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1139,20 +1293,34 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->exists(targetField) && !event->isNull(targetField))
+            base::result::Result<base::Event> result;
+
+            if (event->exists(targetField))
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->isNull(targetField))
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1169,21 +1337,34 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->getBool(targetField).has_value()
-                && event->getBool(targetField).value())
+            base::result::Result<base::Event> result;
+
+            if (event->getBool(targetField).has_value())
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (event->getBool(targetField).value())
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
@@ -1200,21 +1381,34 @@ base::Expression opBuilderHelperIsFalse(const std::any& definition)
 
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
+    const auto failureMissingValueTrace {
+        fmt::format("[{}] -> Failure, \"{}\" field not found", name, targetField)};
+
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (event->getBool(targetField).has_value()
-                && !event->getBool(targetField).value())
+            base::result::Result<base::Event> result;
+
+            if (event->getBool(targetField).has_value())
             {
-                return base::result::makeSuccess(event, successTrace);
+                if (!event->getBool(targetField).value())
+                {
+                    result = base::result::makeSuccess(event, successTrace);
+                }
+                else
+                {
+                    result = base::result::makeFailure(event, failureTrace);
+                }
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace);
+                result = base::result::makeFailure(event, failureMissingValueTrace);
             }
+
+            return result;
         });
 }
 
