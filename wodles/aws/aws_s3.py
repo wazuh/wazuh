@@ -68,7 +68,7 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 
 # Enable/disable debug mode
 debug_level = 0
-
+WARNING = "WARNING"
 
 ################################################################################
 # Classes
@@ -2479,8 +2479,18 @@ class AWSALBBucket(AWSLBBucket):
                 "request_creation_time", "action_executed", "redirect_url", "error_reason", "target_port_list",
                 "target_status_code_list", "classification", "classification_reason")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            tsv_file = [dict(x, source='alb') for x in tsv_file]
 
-            return [dict(x, source='alb') for x in tsv_file]
+            for log_entry in tsv_file:
+                try:
+                    log_entry["client_ip"], log_entry["client_port"] = log_entry["client_port"].split(":")
+                    log_entry["target_ip"], log_entry["target_port"] = log_entry["target_port"].split(":")
+                    log_entry["target_ip_list"], log_entry["target_port_list"] = log_entry["target_port_list"].split(":")
+                except ValueError:
+                    print(f"{WARNING}: Unable to process correctly malformed ABL log entry: {log_entry}.")
+
+            return tsv_file
+
 
 
 class AWSCLBBucket(AWSLBBucket):
