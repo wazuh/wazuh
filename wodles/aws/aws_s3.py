@@ -718,7 +718,7 @@ class AWSBucket(WazuhIntegration):
                     accounts.append(account_id)
             return accounts
         except KeyError:
-            print(f"ERROR: No prefix named {self.get_base_prefix()} found. Check the provided prefix and the location of the logs for the bucket "
+            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
                   f" type '{get_script_arguments().type.lower()}'")
             sys.exit(18)
 
