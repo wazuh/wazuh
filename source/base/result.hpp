@@ -16,6 +16,12 @@ private:
 
 public:
     /**
+     * @brief Construct a new Result object without parameters.
+     *
+     */
+    Result(){}
+
+    /**
      * @brief Construct a new Result object with parameters.
      *
      * @param payload Event.
