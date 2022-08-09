@@ -5,7 +5,7 @@
 @startuml sequence_diagram_db_fim
 database "<agent-id>.db" as agent.db
 actor "wazuh-manager" as manager
-participant syscheck_agent as fim
+actor "wazuh-agent" as fim
 participant os as os
 participant rsync
 participant dbsync
@@ -19,7 +19,7 @@ dbsync -> fdb -- : reset
 
 loop scan (each ""frequency"" seconds)
     group for each [directory]
-        fim -> os ++: get_file_data
+        fim -> os ++: get data
         fim <-- os --: info
         fim -> dbsync++ : update DB with new file data
         dbsync -> fdb : save data DB

@@ -153,7 +153,29 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
-## [v4.3.6]
+## [v4.3.7]
+
+### Manager
+
+#### Fixed
+
+- Fixed a bug in Analysisd that may make it crash when decoding regexes with more than 14 or-ed subpatterns. ([#13956](https://github.com/wazuh/wazuh/pull/113956))
+- Fixed a crash hazard in Vulnerability Detector when parsing OVAL feeds. ([#14366](https://github.com/wazuh/wazuh/pull/114366))
+- Fixed busy-looping in wazuh-maild when monitoring alerts.json. ([#14436](https://github.com/wazuh/wazuh/pull/114436))
+- Fixed a segmentation fault in wazuh-maild when parsing alerts exceeding the nesting limit. ([#14417](https://github.com/wazuh/wazuh/pull/114417))
+
+### Agent
+
+#### Changed
+
+- Improved Office365 integration module logs. ([#13958](https://github.com/wazuh/wazuh/pull/113958))
+
+#### Fixed
+
+- Fixed a code defect in the GitHub integration module reported by Coverity. ([#14368](https://github.com/wazuh/wazuh/pull/114368))
+
+
+## [v4.3.6] 2022-07-20
 
 - Added support for Ubuntu 22 (Jammy) in Vulnerability Detector. ([#14085](https://github.com/wazuh/wazuh/pull/14085))
 - Addded support for Red Hat 9 in Vulnerability Detector. ([#14117](https://github.com/wazuh/wazuh/pull/14117))

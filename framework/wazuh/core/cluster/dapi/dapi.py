@@ -226,7 +226,7 @@ class DistributedAPI:
             raise exception.WazuhError(1017, extra_message=extra_info)
 
     @staticmethod
-    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
+    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user, origin_module):
         """Run framework SDK function locally in another process."""
 
         def debug_log(logger, message):
@@ -240,6 +240,7 @@ class DistributedAPI:
         common.broadcast.set(broadcasting)
         common.cluster_nodes.set(nodes)
         common.current_user.set(current_user)
+        common.origin_module.set(origin_module)
         data = f(**f_kwargs)
         common.reset_context_cache()
         debug_log(logger, "Finished executing request locally")
@@ -269,7 +270,7 @@ class DistributedAPI:
             try:
                 if self.is_async:
                     task = self.run_local(self.f, self.f_kwargs, self.logger, self.rbac_permissions, self.broadcasting,
-                                          self.nodes, self.current_user)
+                                          self.nodes, self.current_user, self.origin_module)
 
                 else:
                     loop = asyncio.get_event_loop()
@@ -283,7 +284,7 @@ class DistributedAPI:
                     task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
                                                               self.logger, self.rbac_permissions,
                                                               self.broadcasting, self.nodes,
-                                                              self.current_user))
+                                                              self.current_user, self.origin_module))
                 try:
                     data = await asyncio.wait_for(task, timeout=timeout)
                 except asyncio.TimeoutError:

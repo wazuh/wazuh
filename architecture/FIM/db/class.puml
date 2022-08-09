@@ -1,4 +1,4 @@
-@startuml db_class
+@startuml DB class diagram
 
 package "fimCommonDefs" <<Folder>> #DDDDDD{
     interface callbacks{
@@ -15,6 +15,10 @@ package "fimCommonDefs" <<Folder>> #DDDDDD{
         callback_t,
         void*
     }
+    enum OSType {
+        OTHERS,
+        WINDOWS
+    }
 }
 package "item" <<Folder>> {
     abstract DBItem {
@@ -23,11 +27,12 @@ package "item" <<Folder>> {
         # time_t m_lastEvent
         # string m_checksum
         # enum m_mode
+        # bool m_oldData
 
         + DBItem()
         + ~DBItem()
         + {abstract} fim_entry toFimEntry()
-        + {abstract} nlohman::json toJson()
+        + {abstract} json toJSON()
         + bool state()
     }
 
@@ -46,14 +51,16 @@ package "item" <<Folder>> {
         - string m_sha256
         - unsigned long int m_dev
         - int m_options
-        - unique_ptr<fim_entry> m_fimEntry
-        - unique_ptr<nlohman::json> m_statementConf
+        - unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry
+        - unique_ptr<json> m_statementConf
+        - void createFimEntry()
+        - void createJSON()
 
-        + FileItem(fim_entry)
-        + FileItem(nlohman::json)
+        + FileItem(const fim_entry*, bool)
+        + FileItem(const json&)
         + ~FileItem()
         + fim_entry* toFIMEntry()
-        + nlohman::json* toJsonEntry()
+        + const json* toJSON() const
     }
     class "RegistryValue" {
         - int m_type
@@ -63,14 +70,17 @@ package "item" <<Folder>> {
         - string m_md5
         - string m_sha1
         - string m_sha256
-        - unique_ptr<fim_entry> m_fimEntry
-        - unique_ptr<nlohman::json> m_statementConf
+        - unique_ptr<fim_entry, FimRegistryValueDeleter> m_fimEntry
+        - unique_ptr<json> m_statementConf
+        - string m_hashpath
+        - void createFimEntry()
+        - void createJSON()
 
-        + RegistryValue(fim_entry)
-        + RegistryValue(nlohman::json)
+        + RegistryValue(fim_entry*, bool)
+        + RegistryValue(json&, bool)
         + ~RegistryValue()
-        + fim_entry toFIMEntry()
-        + json toJson()
+        + fim_entry* toFIMEntry()
+        + const json* toJSON() const
     }
     class "RegistryKey" {
         - string m_perm
@@ -80,14 +90,17 @@ package "item" <<Folder>> {
         - string m_groupname
         - time_t m_time
         - int m_arch
-        - unique_ptr<fim_entry> m_fimEntry
-        - unique_ptr<nlohman::json> m_statementConf
+        - unique_ptr<fim_entry, FimRegistryKeyDeleter> m_fimEntry
+        - unique_ptr<json> m_statementConf
+        - string m_hashpath
+        - void createFimEntry()
+        - void createJSON()
 
-        + RegistryKey(fim_entry)
-        + RegistryKey(nlohman::json)
+        + RegistryKey(const fim_entry*, bool)
+        + RegistryKey(const json&, bool)
         + ~RegistryKey()
-        + fim_entry toFIMEntry()
-        + json to_Json()
+        + fim_entry* toFIMEntry()
+        + const json* toJSON() const
     }
     DBItem <|-- FileItem
     DBItem <|-- RegistryValue
@@ -102,8 +115,8 @@ class "FimDB"  <<(S,#FF7700) Singleton>> {
     - condition_variable m_cv
     - shared_ptr<DBSync> m_dbsyncHandler
     - shared_ptr<RSync> m_rsyncHandler
-    - function<void(const std::string&)> m_syncFileMessageFunction
-    - function<void(const std::string&)> m_syncRegistryMessageFunction
+    - function<void(const string&)> m_syncFileMessageFunction
+    - function<void(const string&)> m_syncRegistryMessageFunction
     - function<void(modules_log_level_t, const string&)> m_loggingFunction
     - bool m_runIntegrity
     - thread m_integrityThread
@@ -145,22 +158,28 @@ package "db.hpp" <<Folder>> #DDDDDD{
         - ~DB()
         - DB(const DB&)
         - DB& operation=(const DB&)
-        - string CreateStatement
 
         + static DB& instance()
-        + void init(const int, const int, std::function<void(const std::string&)>, std::function<void(const std::string&)>, std::function<void(modules_log_level_t, const std::string&)>, int, int, bool)
+        + void init(const int, const int, const uint32_t, const uint32_t, function<void(const string&)>, function<void(const string&)>, function<void(modules_log_level_t, const string&)>, int, int, bool)
         + void runIntegrity()
         + void pushMessage(const string&)
         + DBSYNC_HANDLE DBSyncHandle()
-        + void removeFile(const std::string&)
-        + void getFile(const string&, std::function<void(const nlohmann::json&)>)
-        + int countFiles(const COUNT_SELECT_TYPE)
-        + bool updateFile(const nlohmann::json &)
-        + void searchFile(const SearchData&, std::function<void(const std::string &)>)
+        + void removeFile(const string&)
+        + json createJsonEvent(json&, json&, ReturnTypeCallback, create_json_event_ctc*)
+        + void getFile(const string&, function<void(const json&)>)
+        + int countEntries(const string&, const COUNT_SELECT_TYPE)
+        + bool updateFile(const json &)
+        + void searchFile(const SearchData&, function<void(const string &)>)
         + void teardown()
     }
-    interface SearchData{
-        tuple<FILE_SEARCH_TYPE, std::string, std::string, std::string>
+    class no_entry_found {
+        - std::runtime_error m_error
+
+        + const char* what()
+        + explicit no_entry_found(const string&)
+    }
+    interface SearchData {
+        tuple<FILE_SEARCH_TYPE, string, string, string>
     }
     enum COUNT_SELECT_TYPE {
         COUNT_ALL,
@@ -176,9 +195,9 @@ package "db.hpp" <<Folder>> #DDDDDD{
 }
 package "db.h" <<Folder>> #DDDDDD{
     interface db {
-        void fim_db_init(int, int, fim_sync_callback_t, logging_callback_t, int, int,bool)
-        void fim_run_integrity()
-        void fim_sync_push_msg(const char*)
+        FIMDBErrorCode fim_db_init(int, int, uint32_t, uint32_t, fim_sync_callback_t, logging_callback_t, int, int,bool)
+        FIMDBErrorCode fim_run_integrity()
+        FIMDBErrorCode fim_sync_push_msg(const char*)
         TXN_HANDLE fim_db_transaction_start(const char*, result_callback_t, void*)
         FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*)
         FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE, result_callback_t, void*)
@@ -190,17 +209,43 @@ package "db.h" <<Folder>> #DDDDDD{
         FIMDBErrorCode fim_db_remove_path(const char*)
         int fim_db_get_count_file_inode()
         int fim_db_get_count_file_entry()
-        FIMDBErrorCode fim_db_file_update(const fim_entry*, bool*)
+        FIMDBErrorCode fim_db_file_update(const fim_entry*, callback_context_t)
         FIMDBErrorCode fim_db_file_inode_search(const unsigned long, const unsigned long, callback_context_t)
+    }
+    interface registry {
+        int fim_db_get_count_registry_key()
+        int fim_db_get_count_registry_data()
+    }
+}
+package "fimDBSpecialization" <<Folder>> #DDDDDD {
+    class "FIMDBCreator<OSType osType>" {
+        + static void setLimits(shared_ptr<DBSync>, const unsigned int&, const unsigned int&)
+        + static string CreateStatement()
+        + static void registerRSync(shared_ptr<RemoteSync>, const DBSYNC_HANDLE&, function<void(const string&)>, function<void(const string&)>, const bool)
+        + static void sync(shared_ptr<RemoteSync>, const DBSYNC_HANDLE&, function<void(const string&)>, function<void(const string&)>)
+        + static void encodeString(string&)
+    }
+    class "RegistryTypes<OSType osType>" {
+        + static const string typeText(const int32_t)
+    }
+}
+package "fimDBSpecializationWindows" <<Folder>> #DDDDDD {
+    class WindowsSpecialization {
+        + static const string registryTypeToText(const int)
+        + static void encodeString(const string)
     }
 }
 
 circle FIM
 db.h => FIM
 fimCommonDefs => FIM
+no_entry_found => file
 db.h *-- db.hpp
 db.h *-- FimDB
 fimCommonDefs --o db.h
 fimCommonDefs --o item
 fimCommonDefs --o FimDB
+fimDBSpecialization => FimDB
+fimDBSpecialization => item
+fimDBSpecializationWindows => fimDBSpecialization
 @enduml

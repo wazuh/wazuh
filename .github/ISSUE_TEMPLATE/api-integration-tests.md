@@ -1,5 +1,5 @@
 ---
-name: API integration tests 
+name: Release Candidate - API integration tests 
 about: Report the results after running API integration tests.
 title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - API integration tests'
 labels: 'API, qa'

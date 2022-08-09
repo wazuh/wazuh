@@ -181,8 +181,8 @@
                     <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
                         <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
                     </Component>
-                    <Component Id="LIBGCC_S_SJLJ_1.DLL" DiskId="1" Guid="27BDCB9A-F89F-4009-A789-1F779EB05697">
-                        <File Id="LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" Source="libgcc_s_sjlj-1.dll" />
+                    <Component Id="LIBGCC_S_DW2_1.DLL" DiskId="1" Guid="EB7C893F-E5C8-4038-8FBA-EF33F8B72CB6">
+                        <File Id="LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" Source="libgcc_s_dw2-1.dll" />
                     </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
@@ -234,6 +234,7 @@
                         <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
+                        <RemoveFile Id="NSIS_LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
@@ -385,6 +386,10 @@
                             <Component Id="SCA_WIN2019" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C706">
                                 <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
                                 <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2022" DiskId="1" Guid="795CC5E6-C27A-47B5-945A-8026470F1B0D">
+                                <File Id="SCA_WIN2022" Name="cis_win2022.yml" Source="..\..\ruleset\sca\windows\cis_win2022.yml" />
+                                <Condition>BUILDVERSION &gt; 20000 AND MsiNTProductType &gt; 1</Condition>
                             </Component>
                         </Directory>
                     </Directory>
@@ -569,7 +574,7 @@
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
-            <ComponentRef Id="LIBGCC_S_SJLJ_1.DLL" />
+            <ComponentRef Id="LIBGCC_S_DW2_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
@@ -604,6 +609,7 @@
             <ComponentRef Id="SCA_WIN2012R2" />
             <ComponentRef Id="SCA_WIN2016" />
             <ComponentRef Id="SCA_WIN2019" />
+            <ComponentRef Id="SCA_WIN2022" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />

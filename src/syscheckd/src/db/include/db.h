@@ -63,7 +63,8 @@ FIMDBErrorCode fim_db_init(int storage,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t data);
+FIMDBErrorCode fim_db_get_path(const char* file_path,
+                               callback_context_t data);
 
 /**
  * @brief Find entries based on pattern search.
@@ -75,7 +76,8 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t data);
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t data);
+FIMDBErrorCode fim_db_file_pattern_search(const char* pattern,
+                                          callback_context_t data);
 
 /**
  * @brief Delete entry from the DB using file path.
@@ -110,7 +112,8 @@ int fim_db_get_count_file_entry();
  *
  * @return FIMDB_OK on success.
  */
-FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback);
+FIMDBErrorCode fim_db_file_update(fim_entry* data,
+                                  callback_context_t callback);
 
 /**
  * @brief Find entries using the inode.
@@ -121,7 +124,9 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback);
  *
  * @return FIMDB_OK on success.
  */
-FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode, unsigned long int dev, callback_context_t data);
+FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
+                                        unsigned long int dev,
+                                        callback_context_t data);
 
 /**
  * @brief Push a message to the syscheck queue
@@ -148,7 +153,9 @@ FIMDBErrorCode fim_run_integrity();
  *
  * @return TXN_HANDLE Transaction handler.
  */
-TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data);
+TXN_HANDLE fim_db_transaction_start(const char* table,
+                                    result_callback_t row_callback,
+                                    void *user_data);
 
 /**
  * @brief Function to perform a sync row operation (ADD OR REPLACE).
@@ -160,7 +167,8 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry);
+FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler,
+                                           const fim_entry* entry);
 
 /**
  * @brief Function to perform the deleted rows operation.
@@ -173,8 +181,8 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
  * @retval FIMDB_ERR on failure.
  */
 FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
-                                                result_callback_t callback,
-                                                void* txn_ctx);
+                                               result_callback_t callback,
+                                               void* txn_ctx);
 
 /**
  * @brief Turns off the services provided.
@@ -186,50 +194,6 @@ void fim_db_teardown();
 #ifdef WIN32
 
 // Registry functions.
-
-/**
- * @brief Get registry data using its key_id and name.
- *
- * @param key_id ID of the registry.
- * @param name Name of the registry value.
- *
- * @return FIM registry data struct on success, NULL on error.
- */
-fim_registry_value_data* fim_db_get_registry_data(unsigned int key_id, const char* name);
-
-/**
- * @brief Get a registry key using its path.
- *
- * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @param path Path to registry key.
- * @param arch Architecture of the registry
- *
- * @return FIM registry key struct on success, NULL on error.
-*/
-fim_registry_key* fim_db_get_registry_key(const char* path, unsigned int arch);
-
-
-/**
- * @brief Insert or update registry data.
- *
- * @param fim_sql FIM database struct.
- * @param data Registry data to be inserted.
- * @param key_id Registry key ID.
- * @param replace_entry 0 if a new registry_data entry is being inserted.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_insert_registry_data(fim_registry_value_data* data);
-
-/**
- * @brief Insert or update registry key.
- *
- * @param entry Registry key to be inserted.
- * @param rowid Row id of the registry.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_insert_registry_key(fim_registry_key* entry);
 
 /**
  * @brief Get count of all entries in registry data table.
@@ -244,31 +208,6 @@ int fim_db_get_count_registry_data();
  * @return Number of entries in registry data table.
  */
 int fim_db_get_count_registry_key();
-
-/**
- * @brief Delete registry using registry entry.
- *
- * @param entry Registry entry.
- */
-int fim_db_remove_registry_key(fim_registry_key* entry);
-
-/**
- * @brief Delete registry data using fim_registry_value_data entry.
- *
- * @param entry fim_registry_value_data entry.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_remove_registry_value_data(fim_registry_value_data* entry);
-
-/**
- * @brief Get a registry using it's id.
- *
- * @param key_id Id of the registry key
- *
- * @return fim_registry_key structure.
- */
-fim_registry_key* fim_db_get_registry_key_using_id(unsigned int key_id);
 
 #endif /* WIN32 */
 

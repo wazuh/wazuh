@@ -28,14 +28,22 @@ list(APPEND os_regex_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheck
                             -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND os_regex_flags " ")
-endif()
+list(APPEND os_regex_def " ")
+
+# OS_Regex execute, regex_matching
+list(APPEND os_regex_names "test_os_regex_execute")
+list(APPEND os_regex_flags " ")
+set(JSON_PATH_TEST "${CMAKE_CURRENT_SOURCE_DIR}/test_os_regex_execute.json")
+list(APPEND os_regex_def "JSON_PATH_TEST=\"${JSON_PATH_TEST}\"")
 
 # Compiling tests
 list(LENGTH os_regex_names count)
 math(EXPR count "${count} - 1")
+
 foreach(counter RANGE ${count})
     list(GET os_regex_names ${counter} test_name)
     list(GET os_regex_flags ${counter} test_flags)
+    list(GET os_regex_def ${counter} test_macro)
 
     add_executable(${test_name} ${test_name}.c)
 
@@ -46,6 +54,13 @@ foreach(counter RANGE ${count})
         OS_REGEX_O
         ${TEST_DEPS}
     )
+
+    if(NOT test_macro STREQUAL " ")
+    target_compile_definitions(
+        ${test_name} PRIVATE
+        ${test_macro}
+    )
+    endif()
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(

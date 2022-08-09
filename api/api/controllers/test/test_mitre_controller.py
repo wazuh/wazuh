@@ -170,8 +170,7 @@ async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies'],
-                                      api_timeout=15)
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'])
 
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
@@ -239,8 +238,7 @@ async def test_get_techniques(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies'],
-                                      api_timeout=30)
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'])
 
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)

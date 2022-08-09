@@ -33,6 +33,15 @@ TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
     EXPECT_TRUE(Utils::existsDir(R"(/usr)"));
 }
 
+TEST_F(FilesystemUtilsTest, FilesystemExistsRegular)
+{
+    // Check correct input
+    EXPECT_TRUE(Utils::existsRegular(R"(/etc/bash.bashrc)"));
+
+    // Check wrong input
+    EXPECT_FALSE(Utils::existsRegular(R"(/etc)"));
+}
+
 TEST_F(FilesystemUtilsTest, FilesystemEnumerateDir)
 {
     const auto items {Utils::enumerateDir(R"(/usr)")};

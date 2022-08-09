@@ -414,7 +414,7 @@ STATIC wm_github_fail* wm_github_get_fail_by_org_and_type(wm_github_fail *fails,
             continue;
         }
 
-        if (!strncmp(current->org_name, org_name, strlen(org_name)) && ((!event_type && !current->event_type) ||
+        if (!strncmp(current->org_name, org_name, strlen(org_name)) && (!current->event_type ||
             (event_type && current->event_type && !strncmp(current->event_type, event_type, strlen(event_type))))) {
             target_org = 1;
         } else {

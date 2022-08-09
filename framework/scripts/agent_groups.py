@@ -100,7 +100,9 @@ async def show_agents_with_group(group_id):
     group_id : str
         The group we would like to see the agents for.
     """
-    result = await cluster_utils.forward_function(func=agent.get_agents_in_group, f_kwargs={'group_list': [group_id]})
+    result = await cluster_utils.forward_function(func=agent.get_agents_in_group,
+                                                  f_kwargs={'group_list': [group_id], 'select': ['name'],
+                                                            'limit': None})
     check_if_exception(result)
 
     if result.total_affected_items == 0:
