@@ -34,8 +34,8 @@ STATIC uint64_t get_task_time(wdb_state_t state);
 
 STATIC uint64_t get_time_total(wdb_state_t state);
 
-pthread_mutex_t db_state_t_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_state_t wdb_state = {0};
+pthread_mutex_t db_state_t_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void w_inc_queries_total() {
     w_mutex_lock(&db_state_t_mutex);

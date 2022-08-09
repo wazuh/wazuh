@@ -194,7 +194,7 @@ int main(int argc, char ** argv)
                 strerror(errno), errno);
     }
 
-    // Stats uptime
+    // Global stats uptime
 
     wdb_state.uptime = time(NULL);
 

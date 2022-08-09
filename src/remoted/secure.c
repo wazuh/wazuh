@@ -33,6 +33,8 @@ size_t global_counter;
 
 OSHash *remoted_agents_state;
 
+extern remoted_state_t remoted_state;
+
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -86,6 +88,9 @@ void HandleSecure()
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
+
+    /* Global stats uptime */
+    remoted_state.uptime = time(NULL);
 
     /* Create OSHash for agents statistics */
     remoted_agents_state = OSHash_Create();

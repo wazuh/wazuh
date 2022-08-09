@@ -114,8 +114,6 @@ static void rem_inc_agents_send_request(const char *agent_id);
 static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
-    remoted_state.uptime = time(NULL);
-
     int interval = getDefine_Int("remoted", "state_interval", 0, 86400);
 
     if (!interval) {
@@ -337,7 +335,7 @@ static void rem_inc_agents_send_ar(const char *agent_id) {
 static void rem_inc_agents_send_cfga(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
-    agent_node->sent_breakdown.cfga_count++;
+    agent_node->sent_breakdown.sca_count++;
     w_mutex_unlock(&agents_state_mutex);
 }
 
@@ -495,7 +493,7 @@ void rem_inc_send_ar(const char *agent_id) {
 
 void rem_inc_send_cfga(const char *agent_id) {
     w_mutex_lock(&state_mutex);
-    remoted_state.sent_breakdown.cfga_count++;
+    remoted_state.sent_breakdown.sca_count++;
     w_mutex_unlock(&state_mutex);
 
     if (agent_id != NULL) {
@@ -582,7 +580,7 @@ cJSON* rem_create_state_json() {
 
     cJSON_AddNumberToObject(_sent_breakdown, "ack", state_cpy.sent_breakdown.ack_count);
     cJSON_AddNumberToObject(_sent_breakdown, "ar", state_cpy.sent_breakdown.ar_count);
-    cJSON_AddNumberToObject(_sent_breakdown, "sca", state_cpy.sent_breakdown.cfga_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "sca", state_cpy.sent_breakdown.sca_count);
     cJSON_AddNumberToObject(_sent_breakdown, "discarded", state_cpy.sent_breakdown.discarded_count);
     cJSON_AddNumberToObject(_sent_breakdown, "request", state_cpy.sent_breakdown.request_count);
     cJSON_AddNumberToObject(_sent_breakdown, "shared", state_cpy.sent_breakdown.shared_count);
@@ -650,7 +648,7 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
 
                 cJSON_AddNumberToObject(_sent_breakdown, "ack", agent_state->sent_breakdown.ack_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "ar", agent_state->sent_breakdown.ar_count);
-                cJSON_AddNumberToObject(_sent_breakdown, "sca", agent_state->sent_breakdown.cfga_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "sca", agent_state->sent_breakdown.sca_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "discarded", agent_state->sent_breakdown.discarded_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "request", agent_state->sent_breakdown.request_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "shared", agent_state->sent_breakdown.shared_count);

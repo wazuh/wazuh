@@ -24,7 +24,6 @@
 #endif
 
 analysisd_state_t analysisd_state = {0};
-
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -233,8 +232,6 @@ static void w_inc_agents_archives_written(const char *agent_id);
 static void w_inc_agents_firewall_written(const char *agent_id);
 
 void * w_analysisd_state_main() {
-    analysisd_state.uptime = time(NULL);
-
     interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
 
     if (!interval) {

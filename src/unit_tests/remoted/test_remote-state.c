@@ -58,7 +58,7 @@ static int test_setup(void ** state) {
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
     remoted_state.sent_breakdown.ar_count = 18;
-    remoted_state.sent_breakdown.cfga_count = 8;
+    remoted_state.sent_breakdown.sca_count = 8;
     remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
 
@@ -85,7 +85,7 @@ static int test_setup_agent(void ** state) {
     test_data->agent_state->sent_breakdown.ack_count = 2346;
     test_data->agent_state->sent_breakdown.shared_count = 235;
     test_data->agent_state->sent_breakdown.ar_count = 514;
-    test_data->agent_state->sent_breakdown.cfga_count = 134;
+    test_data->agent_state->sent_breakdown.sca_count = 134;
     test_data->agent_state->sent_breakdown.request_count = 153;
     test_data->agent_state->sent_breakdown.discarded_count = 235;
 
