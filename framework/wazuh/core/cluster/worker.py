@@ -743,6 +743,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # Path of the zip containing a JSON with metadata and files to be updated in this worker node.
         received_filename = self.sync_tasks[name].filename
 
+        # Get timestamp when the zip started to be compressed.
+        try:
+            compress_timestamp = float(received_filename.split('-')[-1].replace('.zip', ''))
+        except Exception as e:
+            logger.error(f'Timestamp could not be parsed from this zip path: {received_filename}')
+            compress_timestamp = time.time()
+
         try:
             self.integrity_sync_status['date_start'] = time.time()
             logger.info("Starting.")
@@ -764,7 +771,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Worker does not meet integrity checks. Actions required.")
                 logger.debug("Updating local files: Start.")
                 await cluster.run_in_pool(self.loop, self.manager.task_pool, self.update_master_files_in_worker,
-                                          ko_files, zip_path, self.cluster_items, self.task_loggers['Integrity sync'])
+                                          ko_files, zip_path, self.cluster_items, self.task_loggers['Integrity sync'],
+                                          compress_timestamp)
                 logger.debug("Updating local files: End.")
 
             # Send extra valid files to the master.
@@ -787,7 +795,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             zip_path and shutil.rmtree(zip_path)
 
     @staticmethod
-    def update_master_files_in_worker(ko_files: Dict, zip_path: str, cluster_items: Dict, logger):
+    def update_master_files_in_worker(ko_files: Dict, zip_path: str, cluster_items: Dict, logger,
+                                      compress_timestamp: float):
         """Iterate over received files and updates them locally.
 
         Parameters
@@ -800,6 +809,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Object containing cluster internal variables from the cluster.json file.
         logger : Logger object
             Logger to use.
+        compress_timestamp : float
+            Zip creation timestamp on master node.
         """
 
         def overwrite_or_create_files(filename: str, data: Dict):
@@ -834,6 +845,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
+
+                # If local file is newer than the zip timestamp, it could mean that the DAPI has updated it already.
+                if os.path.exists(full_filename_path) and os.path.getmtime(full_filename_path) > compress_timestamp:
+                    logger.warning(f"The compression date of this master's file is older than its modification "
+                                   f"date on the current node, so it will not be replaced: {full_filename_path}")
+                    return
+
                 # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
                 safe_move(os.path.join(zip_path, filename), full_filename_path,
                           permissions=cluster_items['files'][data['cluster_item_key']]['permissions'],
