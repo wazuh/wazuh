@@ -153,9 +153,8 @@ inline std::string getSCAPath(Name field)
  * @param event
  * @param scaEventPath
  */
-inline void copyIfExist(Name field,
-                 const base::Event& event,
-                 const std::string& scaEventPath)
+inline void
+copyIfExist(Name field, const base::Event& event, const std::string& scaEventPath)
 {
     const auto origin = getEventPath(field, scaEventPath);
     if (event->exists(origin))
@@ -317,21 +316,21 @@ void FillCheckEventInfo(base::Event& event,
                          field::getSCAPath(field::Name::CHECK_PREVIOUS_RESULT));
     }
 
-    // Convert cvs (string) from event if exist, to array in SCA
-    auto cvsStr2ArrayIfExist = [&event, &scaEventPath](field::Name field)
+    // Convert csv (string) from event if exist, to array in SCA
+    auto csvStr2ArrayIfExist = [&event, &scaEventPath](field::Name field)
     {
         if (event->exists(field::getEventPath(field, scaEventPath)))
         {
-            auto cvs = event->getString(field::getEventPath(field, scaEventPath));
-            if (cvs)
+            auto csv = event->getString(field::getEventPath(field, scaEventPath));
+            if (csv)
             {
                 const auto scaArrayPath = field::getSCAPath(field);
-                const auto cvaArray = utils::string::split(cvs.value().c_str(), ',');
+                const auto cvaArray = utils::string::split(csv.value().c_str(), ',');
 
                 event->setArray(scaArrayPath);
-                for (auto& cvsItem : cvaArray)
+                for (auto& csvItem : cvaArray)
                 {
-                    event->appendString(scaArrayPath);
+                    event->appendString(csvItem, scaArrayPath);
                 }
             }
         }
@@ -350,12 +349,12 @@ void FillCheckEventInfo(base::Event& event,
     field::copyIfExist(field::Name::CHECK_REFERENCES, event, scaEventPath);
     // field::copyIfExist(field::Name::CHECK_RULES);  TODO: Why not copy this?
 
-    // Optional fields with cvs
-    cvsStr2ArrayIfExist(field::Name::CHECK_FILE);
-    cvsStr2ArrayIfExist(field::Name::CHECK_DIRECTORY);
-    cvsStr2ArrayIfExist(field::Name::CHECK_REGISTRY);
-    cvsStr2ArrayIfExist(field::Name::CHECK_PROCESS);
-    cvsStr2ArrayIfExist(field::Name::CHECK_COMMAND);
+    // Optional fields with csv
+    csvStr2ArrayIfExist(field::Name::CHECK_FILE);
+    csvStr2ArrayIfExist(field::Name::CHECK_DIRECTORY);
+    csvStr2ArrayIfExist(field::Name::CHECK_REGISTRY);
+    csvStr2ArrayIfExist(field::Name::CHECK_PROCESS);
+    csvStr2ArrayIfExist(field::Name::CHECK_COMMAND);
 
     if (event->exists(field::getEventPath(field::Name::CHECK_RESULT, scaEventPath)))
     {
@@ -389,7 +388,7 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
 
     /* Find the sca event in the wazuhdb */
     // Prepare the query
-    const auto id = event->getInt(field::getEventPath(field::Name::ID, scaEventPath));
+    const auto id = event->getInt(field::getEventPath(field::Name::CHECK_ID, scaEventPath));
     const auto scaQuery = fmt::format("agent {} sca query {}", agent_id, id.value());
 
     // Query the wazuhdb
@@ -443,7 +442,7 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
         auto operation = SearchResult::ERROR;
         std::string query {};
 
-        if (std::strncmp(wdb_response.c_str(), "not found", 9) == 0)
+        if (utils::string::startsWith(wdb_response, "found"))
         {
             operation = SearchResult::FOUND;
             // It exists, update
@@ -455,7 +454,7 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
                                 reason,
                                 id.value());
         }
-        else if (std::strncmp(wdb_response.c_str(), "found", 5) == 0)
+        else if (utils::string::startsWith(wdb_response, "not found"))
         {
             operation = SearchResult::NOT_FOUND;
             // TODO CHANGE THIS, IT IS NOT THE RIGHT WAY TO DO IT
@@ -820,31 +819,33 @@ bool SavePolicyInfo(base::Event& event,
     return wazuhdb::QueryResultCodes::OK == result;
 }
 
-int FindPolicySHA256(const std::string& agent_id, std::string& old_hash)
+std::tuple<SearchResult, std::string>
+FindPolicySHA256(base::Event& event,
+                 const std::string& agent_id,
+                 const std::string& scaEventPath,
+                 std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
+
     // "Find sha256 for policy X, agent id Y"
-    std::string FindPolicySHA256Query = std::string("agent ") + agent_id
-                                        + " sca query_policy_sha256 "
-                                        + scanInfoKeyValues["/policy_id"];
+    std::string query = fmt::format(
+        "agent {} sca query_policy_sha256 {}",
+        agent_id,
+        event->getString(field::getEventPath(field::Name::POLICY_ID, scaEventPath))
+            .value());
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
-    auto FindPolicySHA256Tuple = wdb.tryQueryAndParseResult(FindPolicySHA256Query);
-
-    int result_db = -1;
-    if (std::get<0>(FindPolicySHA256Tuple) == wazuhdb::QueryResultCodes::OK)
+    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
+    if (wazuhdb::QueryResultCodes::OK == resultCode && payload)
     {
-        std::string FindPolicySHA256Response = std::get<1>(FindPolicySHA256Tuple).value();
-        if (std::strncmp(FindPolicySHA256Response.c_str(), "not found", 9) == 0)
+        if (utils::string::startsWith(payload.value(), "found"))
         {
-            result_db = 1;
+            return {SearchResult::FOUND, payload.value().substr(6)}; // removing "found "
         }
-        else if (std::strncmp(FindPolicySHA256Response.c_str(), "found", 5) == 0)
+        else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            old_hash = FindPolicySHA256Response.substr(5); // removing found
-            result_db = 0;
+            return {SearchResult::NOT_FOUND, ""};
         }
     }
-    return result_db;
+    return {SearchResult::ERROR, ""};
 }
 
 int deletePolicy(const std::string& agent_id,
@@ -889,9 +890,10 @@ int deletePolicyCheck(const std::string& agent_id,
     return -1;
 }
 
-std::tuple<int, std::string> findCheckResults(const std::string& agentId,
-                                              const std::string& policyId,
-                                              std::shared_ptr<wazuhdb::WazuhDB> wdb)
+std::tuple<SearchResult, std::string>
+findCheckResults(const std::string& agentId,
+                 const std::string& policyId,
+                 std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Find check results for policy id: %s"
     std::string query = fmt::format("agent {} sca query_results {}", agentId, policyId);
@@ -901,15 +903,15 @@ std::tuple<int, std::string> findCheckResults(const std::string& agentId,
     {
         if (utils::string::startsWith(payload.value(), "found"))
         {
-            return {0, payload.value().substr(6)}; // removing found
+            return {SearchResult::FOUND, payload.value().substr(6)}; // removing found
         }
         else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            return {1, ""};
+            return {SearchResult::NOT_FOUND, ""};
         }
     }
 
-    return {-1, ""};
+    return {SearchResult::ERROR, ""};
 }
 
 void FillScanInfo(base::Event& event,
@@ -922,7 +924,6 @@ void FillScanInfo(base::Event& event,
 
     field::copyIfExist(field::Name::SCAN_ID, event, scaEventPath);
     // The /name field is renamed to /policy
-    // field::copyIfExist(field::Name::NAME, event, scaEventPath);
     event->set(field::getSCAPath(field::Name::POLICY),
                field::getEventPath(field::Name::NAME, scaEventPath));
 
@@ -934,7 +935,6 @@ void FillScanInfo(base::Event& event,
     field::copyIfExist(field::Name::TOTAL_CHECKS, event, scaEventPath);
     field::copyIfExist(field::Name::SCORE, event, scaEventPath);
     field::copyIfExist(field::Name::FILE, event, scaEventPath);
-
 }
 
 // - Scan Info Handling - //
@@ -1055,40 +1055,39 @@ std::optional<std::string> handleScanInfo(base::Event& event,
         break;
         case SearchResult::FOUND:
         {
-            std::string old_hash;
-            if (!FindPolicySHA256(agent_id, old_hash))
+            const auto [rescode, oldHashFile] =
+                FindPolicySHA256(event, agent_id, scaEventPath, wdb);
+
+            if (SearchResult::FOUND == rescode)
             {
-                std::string hash_file = scanInfoKeyValues["/hash_file"];
-                if (hash_file == old_hash)
+                const auto eventHashFile = event
+                                               ->getString(field::getEventPath(
+                                                   field::Name::HASH_FILE, scaEventPath))
+                                               .value();
+                if (oldHashFile != eventHashFile)
                 {
-                    int delete_status = deletePolicy(agent_id, policyId, wdb);
-                    switch (delete_status)
+                    if (deletePolicy(agent_id, policyId, wdb) == 0)
                     {
-                        case 0:
-                            /* Delete checks */
-                            deletePolicyCheck(agent_id, policyId, wdb);
-                            pushDumpRequest(agent_id, policyId, 1);
-                            // minfo("Policy '%s' information for agent '%s' is
-                            // TODO Check debug and handle error
-                            // outdated.Requested latest scan results.",
-                            break;
-                        default:
-                            // merror("Unable to purge DB content for policy
-                            break;
+                        deletePolicyCheck(agent_id, policyId, wdb);
+                        pushDumpRequest(agent_id, policyId, 1);
                     }
+                    // else
+                    // {
+                    //     debug "Unable to purge DB content for policy '%s'"
+                    // }
                 }
             }
         }
         break;
     }
     // TODO: change result name
-    auto [result_db2, wdb_response] = findCheckResults(agent_id, policyId, wdb);
+    auto [result_db2, oldEventHash] = findCheckResults(agent_id, policyId, wdb);
 
     switch (result_db2)
     {
-        case 0:
+        case SearchResult::FOUND:
             /* Integrity check */
-            if (wdb_response == eventHash)
+            if (oldEventHash != eventHash)
             {
                 // mdebug1("Scan result integrity failed for policy '%s'. Hash from
                 // DB:'%s', hash from summary: '%s'. Requesting DB
@@ -1103,7 +1102,7 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                 }
             }
             break;
-        case 1:
+        case SearchResult::NOT_FOUND:
             /* Empty DB */
             // mdebug1("Check results DB empty for policy '%s'. Requesting DB
             // dump.",policy_id->valuestring);
@@ -1296,7 +1295,7 @@ std::optional<std::string> handleDumpEvent(base::Event& event,
 
         // Retreive hash from db
         auto [resultCode, hashCheckResults] = findCheckResults(agentId, policyId, wdb);
-        if (0 == resultCode)
+        if (SearchResult::FOUND == resultCode)
         {
             // Retreive hash from summary
             auto [scanResultCode, hashScanInfo] = findScanInfo(agentId, policyId, wdb);
@@ -1366,14 +1365,15 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
          name = std::string {name},
          targetField = std::move(targetField),
          scaEventPath = parameters[0].m_value,
-         agentId = parameters[1].m_value,
+         agentIdPath = parameters[1].m_value,
          wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
         {
             std::optional<std::string> error;
 
             // TODO: this should be checked in the decoder
-            if (event->exists(scaEventPath))
+            if (event->exists(scaEventPath) && event->exists(agentIdPath) && event->isString(agentIdPath))
             {
+                auto agentId = event->getString(agentIdPath).value();
                 // TODO: Field type is mandatory and should be checked in the decoder
                 auto type = event->getString(scaEventPath + "/type");
                 if (!type)
