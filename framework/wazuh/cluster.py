@@ -4,7 +4,7 @@
 from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.control import get_health, get_nodes
+from wazuh.core.cluster.control import get_health, get_nodes, get_ruleset_integrity
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -75,6 +75,35 @@ async def get_health_nodes(lc: local_client.LocalClient, filter_node=None):
     result.affected_items = sorted(result.affected_items, key=lambda i: i['info']['name'])
     result.total_affected_items = len(result.affected_items)
 
+    return result
+
+
+@expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
+async def get_ruleset_sync(lc: local_client.LocalClient, filter_node=None, master_integrity={}):
+    """ Wrapper for get_health """
+    result = AffectedItemsWazuhResult(all_msg='All selected nodes ruleset are synced',
+                                      some_msg='Some nodes ruleset are not synced',
+                                      none_msg='No ruleset synced'
+                                      )
+
+    local_ruleset_integrity = await get_ruleset_integrity(lc)
+    synced = False
+
+    for file_path, file_info in master_integrity.items():
+        if file_path not in local_ruleset_integrity or file_info['md5'] != local_ruleset_integrity[file_path]['md5']:
+            break
+    else:
+        synced = True
+
+    # result.affected_items.append()
+
+
+    # for v in data['nodes'].values():
+    #     result.affected_items.append(v)
+    #
+    # result.affected_items = sorted(result.affected_items, key=lambda i: i['info']['name'])
+    # result.total_affected_items = len(result.affected_items)
+    #
     return result
 
 
