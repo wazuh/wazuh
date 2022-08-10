@@ -271,6 +271,15 @@ public:
      */
     std::string str() const;
 
+    /**
+     * @brief Get Json string from an object.
+     *
+     * @param path The path to the object.
+     * @return std::string The Json string or nothing if the path not found.
+     * @throws std::runtime_error If the path is invalid.
+     */
+    std::optional<std::string> str(std::string_view path) const;
+
     friend std::ostream& operator<<(std::ostream& os, const Json& json);
 
     /************************************************************************************/
