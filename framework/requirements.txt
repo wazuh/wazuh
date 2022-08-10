@@ -32,7 +32,7 @@ Flask==1.1.2
 frozenlist==1.2.0
 future==0.17.1
 google-api-core==1.30.0
-googleapis-common-protos==1.51.0
+googleapis-common-protos==1.56.4
 google-auth==1.28.0
 google-cloud-core==1.7.1
 google-cloud-pubsub==2.7.1
