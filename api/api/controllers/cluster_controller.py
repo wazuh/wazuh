@@ -117,6 +117,57 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, nodes_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def get_ruleset_sync_status(request, pretty=False, wait_for_complete=False, nodes_list="*"):
+    """Get cluster ruleset synchronization status.
+
+    Returns cluster ruleset synchronization status for all nodes or a list of them.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param nodes_list: List of node ids
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    nodes_list : list
+        Node IDs.
+
+    Returns
+    -------
+    ApiResponse
+        Nodes ruleset synchronization statuses.
+    """
+    master_dapi = DistributedAPI(f=GET_MD5,
+                          request_type='local_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          local_client_arg='lc',
+                          )
+    master_md5 = raise_if_exc(await master_dapi.distribute_function())
+
+    nodes = raise_if_exc(await get_system_nodes())
+
+    f_kwargs = {'node_list': nodes_list, 'master_md5': master_md5}
+    dapi = DistributedAPI(f=COMPARE_MD5,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type="distributed_master",
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          local_client_arg="lc",
+                          broadcasting=nodes_list == "*",
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_status(request, pretty=False, wait_for_complete=False):
     """Get cluster status
 
