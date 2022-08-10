@@ -388,7 +388,8 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
 
     /* Find the sca event in the wazuhdb */
     // Prepare the query
-    const auto id = event->getInt(field::getEventPath(field::Name::CHECK_ID, scaEventPath));
+    const auto id =
+        event->getInt(field::getEventPath(field::Name::CHECK_ID, scaEventPath));
     const auto scaQuery = fmt::format("agent {} sca query {}", agent_id, id.value());
 
     // Query the wazuhdb
@@ -436,8 +437,15 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
 
     // Process result, check if the event exists in the wazuhdb, then update it or insert
     // it
-    auto getOperationAndQuery =
-        [&event, &agent_id, checkIDint, id, &wdb_response, &result, &status, &reason]()
+    auto getOperationAndQuery = [&event,
+                                 &agent_id,
+                                 checkIDint,
+                                 id,
+                                 &wdb_response,
+                                 &result,
+                                 &status,
+                                 &reason,
+                                 &scaEventPath]()
     {
         auto operation = SearchResult::ERROR;
         std::string query {};
@@ -458,10 +466,9 @@ std::optional<std::string> HandleCheckEvent(base::Event& event,
         {
             operation = SearchResult::NOT_FOUND;
             // TODO CHANGE THIS, IT IS NOT THE RIGHT WAY TO DO IT
-            auto event_original = event->getString("/event/original");
+            const auto event_original = event->str(scaEventPath).value_or("");
             // It not exists, insert
-            query =
-                fmt::format("agent {} sca insert {}", agent_id, event_original.value());
+            query = fmt::format("agent {} sca insert {}", agent_id, event_original);
 
             // wdb_response = response.substr(5); // removing "found "
         }
@@ -1371,7 +1378,8 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
             std::optional<std::string> error;
 
             // TODO: this should be checked in the decoder
-            if (event->exists(scaEventPath) && event->exists(agentIdPath) && event->isString(agentIdPath))
+            if (event->exists(scaEventPath) && event->exists(agentIdPath)
+                && event->isString(agentIdPath))
             {
                 auto agentId = event->getString(agentIdPath).value();
                 // TODO: Field type is mandatory and should be checked in the decoder
