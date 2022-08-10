@@ -364,12 +364,14 @@ def testFileTransactions(readResultFiles, configLogging, readFileTxnInputs):
                     testCase=testCase)
 
     for operation in resultTransactions:
+        assert "DB_ERROR" != operation['Operation type'],\
+               "Something has gone wrong with the test tool"
         if "INSERTED" in operation['Operation type']:
             checkTransactionOp(result=operation,
                                configLogging=configLogging,
                                testCase=testCase,
                                inputJSONs=inputJSONs)
-        if "DELETED" in operation['Operation type']:
+        elif "DELETED" in operation['Operation type']:
             assert operation['value']['path'] == "/tmp/test_1.txt"
             logger.info("{0:>20} {1:>20}\t\t\t\t{2}"
                         .format(testCase,
@@ -411,6 +413,8 @@ def testRegistryKeytransactions(readResultFiles,
                     testCase=testCase)
 
     for operation in resultTransactions:
+        assert "DB_ERROR" != operation['Operation type'],\
+               "Something has gone wrong with the test tool"
         if "INSERTED" in operation['Operation type']:
             checkTransactionOp(result=operation,
                                configLogging=configLogging,
@@ -459,6 +463,8 @@ def testRegistryDatatransactions(readResultFiles,
                     testCase=testCase)
 
     for operation in resultTransactions:
+        assert "DB_ERROR" != operation['Operation type'],\
+               "Something has gone wrong with the test tool"
         if "INSERTED" in operation['Operation type']:
             checkTransactionOp(result=operation,
                                configLogging=configLogging,
