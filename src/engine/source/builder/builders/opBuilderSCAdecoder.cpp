@@ -59,6 +59,7 @@ enum class Name
     CHECK,                 ///< checkEvent
     DESCRIPTION,           ///< scaninfo
     END_TIME,              ///< scaninfo
+    ELEMENTS_SENT,         ///< DumpEvent
     FAILED,                ///< scaninfo
     FILE,                  ///< scaninfo
     FIRST_SCAN,            ///< scaninfo
@@ -71,6 +72,7 @@ enum class Name
     PASSED,                ///< scaninfo
     POLICY_ID,             ///< scaninfo, checkEvent
     POLICY,                ///< checkEvent
+    POLICIES,              ///< Policies
     REFERENCES,            ///< scaninfo
     SCAN_ID,               ///< scaninfo
     SCORE,                 ///< scaninfo
@@ -111,6 +113,7 @@ const std::string getRawPath(Name field)
         case Name::FORCE_ALERT: return "/force_alert";
         case Name::POLICY: return "/policy";
         case Name::POLICY_ID: return "/policy_id";
+        case Name::POLICIES: return "/policies";
         case Name::CHECK: return "/check";
         case Name::CHECK_ID: return "/check/id";
         case Name::CHECK_TITLE: return "/check/title";
@@ -129,6 +132,7 @@ const std::string getRawPath(Name field)
         case Name::CHECK_REASON: return "/check/reason";
         case Name::CHECK_RESULT: return "/check/result";
         case Name::CHECK_FILE: return "/check/file";
+        case Name::ELEMENTS_SENT: return "/elements_sent";
         case Name::TYPE: return "/type";
         case Name::CHECK_PREVIOUS_RESULT: return "/check/previous_result";
         default: return "";
@@ -975,10 +979,6 @@ std::optional<std::string> handleScanInfo(base::Event& event,
     // Get sha256 hash for policy id
     auto [result_db, hash_scan_info] = findScanInfo(agent_id, policyId, wdb);
 
-    const auto& separated_hash = utils::string::split(hash_scan_info, ' ');
-    // If query fails or hash is not found, storedHash is empty
-    auto storedHash = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
-
     switch (result_db)
     {
         case SearchResult::ERROR:
@@ -986,6 +986,9 @@ std::optional<std::string> handleScanInfo(base::Event& event,
             break;
         case SearchResult::FOUND:
         {
+            const auto separated_hash = utils::string::split(hash_scan_info, ' ');
+            // If query fails or hash is not found, storedHash is empty
+            const auto& storedHash = separated_hash.at(0); // Should I chek qtty of chars? (%64s)
             // Try to update the scan info
             if (SaveScanInfo(event, scaEventPath, agent_id, true, wdb))
             {
@@ -1009,16 +1012,8 @@ std::optional<std::string> handleScanInfo(base::Event& event,
             // It not exists, insert
             if (SaveScanInfo(event, scaEventPath, agent_id, false, wdb))
             {
-                /* Compare hash with previous hash */
-                bool diferentHash = (storedHash != eventHash);
-                bool newHash = (diferentHash && !first_scan);
-
-                if (force_alert || newHash)
-                {
-                    FillScanInfo(event, agent_id, scaEventPath);
-                }
-
-                if (diferentHash && first_scan)
+                FillScanInfo(event, agent_id, scaEventPath);
+                if (first_scan)
                 {
                     pushDumpRequest(agent_id, policyId, 1);
                 }
@@ -1133,7 +1128,7 @@ std::optional<std::string> handleScanInfo(base::Event& event,
 
 /// Policies Functions ///
 
-std::tuple<int, std::string> findPoliciesIds(const std::string& agentId,
+std::tuple<SearchResult, std::string> findPoliciesIds(const std::string& agentId,
                                              std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Find policies IDs for agent id: %s"
@@ -1147,14 +1142,14 @@ std::tuple<int, std::string> findPoliciesIds(const std::string& agentId,
     {
         if (utils::string::startsWith(payload.value(), "found"))
         {
-            return {0, payload.value().substr(6)}; // removing found
+            return {SearchResult::FOUND, payload.value().substr(6)}; // removing found
         }
         else if (utils::string::startsWith(payload.value(), "not found"))
         {
-            return {1, ""};
+            return {SearchResult::NOT_FOUND, ""};
         }
     }
-    return {-1, ""};
+    return {SearchResult::ERROR, ""};
 }
 
 // - Policies Handling - //
@@ -1164,19 +1159,19 @@ std::optional<std::string> handlePoliciesInfo(base::Event& event,
                                               const std::string& scaEventPath,
                                               std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
-    // TODO: policies not found in examples, check it
-    if (!event->exists(scaEventPath + "/policies")
-        || !event->isArray(scaEventPath + "/policies"))
+    const auto policiesPath = field::getEventPath(field::Name::POLICIES, scaEventPath);
+    // Check policies JSON
+    if (!event->exists(policiesPath) || !event->isArray(policiesPath))
     {
         return "Error: policies array not found";
     }
     // TODO: add proper Json method to check if array contains value/s
     // This is needed only to check aboved.
-    auto policies = event->getArray(scaEventPath + "/policies").value();
+    auto policies = event->getArray(policiesPath).value();
 
     // "Retrieving policies from database."
     auto [resultDb, policiesIds] = findPoliciesIds(agentId, wdb);
-    if (-1 == resultDb)
+    if (SearchResult::ERROR == resultDb)
     {
         return "Error querying policy monitoring database for agent";
     }
@@ -1219,30 +1214,21 @@ std::tuple<std::optional<std::string>, std::string, std::string>
 checkDumpJSON(const base::Event& event, const std::string& scaEventPath)
 {
 
-    std::string policyId {};
-    std::string scanId {};
+     // ScanInfo conditions list
+    const std::vector<field::conditionToCheck> conditions = {
+        {field::Name::ELEMENTS_SENT, field::Type::INT, true},
+        {field::Name::POLICY_ID, field::Type::STRING, true},
+        {field::Name::SCAN_ID, field::Type::STRING, true},
+    };
 
-    if (!event->exists(scaEventPath + "/elements_sent")
-        || !event->isInt(scaEventPath + "/elements_sent"))
-    {
-        return {"Error: elements_sent not found", policyId, scanId};
+
+    if (!field::isValidEvent(event, scaEventPath, conditions)) {
+        return {"Malformed JSON", "", ""};
     }
+    auto policyId = event->getString(getEventPath(field::Name::POLICY_ID, scaEventPath)).value_or("");
+    auto scanId = event->getString(getEventPath(field::Name::SCAN_ID, scaEventPath)).value();
+    return {std::nullopt, std::move(policyId), std::move(scanId)};
 
-    if (!event->exists(scaEventPath + "/policy_id")
-        || !event->isString(scaEventPath + "/policy_id"))
-    {
-        return {"Error: policy_id not found", policyId, scanId};
-    }
-    policyId = event->getString(scaEventPath + "/policy_id").value();
-
-    if (!event->exists(scaEventPath + "/scan_id")
-        || !event->isString(scaEventPath + "/scan_id"))
-    {
-        return {"Error: scan_id not found", policyId, scanId};
-    }
-    scanId = event->getString(scaEventPath + "/scan_id").value();
-
-    return {std::nullopt, policyId, scanId};
 }
 
 bool deletePolicyCheckDistinct(const std::string& agentId,
@@ -1284,21 +1270,8 @@ std::optional<std::string> handleDumpEvent(base::Event& event,
     {
         // "Deleting check distinct policy id , agent id "
         // Continue always, if rare error log error
-        if (!deletePolicyCheckDistinct(agentId, policyId, scanId, wdb))
-        {
-            // DUE,    ///< Command processed successfully with pending data
-            // IGNORE, ///< Command ignored
-            // UNKNOWN ///< Unknown status / Unknown protocol
-            // Abort
-
-            // In the c code it logs the error and continues
-            // return "Error: unknown, due or ignored error when deleting policy check "
-            //        "distint wdb";
-        }
-
-        // OK,     ///< Command processed successfully
-        // ERROR,  ///< An error occurred
-        // Deleted succesfully or not, we dont know here so we try to find checks in wdb
+        // In the c code it logs the error and continues
+        deletePolicyCheckDistinct(agentId, policyId, scanId, wdb);
 
         // Retreive hash from db
         auto [resultCode, hashCheckResults] = findCheckResults(agentId, policyId, wdb);
