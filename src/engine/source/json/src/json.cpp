@@ -379,6 +379,36 @@ std::string Json::str() const
     return buffer.GetString();
 }
 
+std::optional<std::string> Json::str(std::string_view path) const
+{
+
+    std::optional<std::string> retval = std::nullopt;
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto& value = pp.Get(m_document);
+        if (value)
+        {
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer,
+                              rapidjson::Document::EncodingType,
+                              rapidjson::ASCII<>>
+                writer(buffer);
+            value->Accept(writer);
+            retval = std::string {buffer.GetString()};
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+
+    return retval;
+}
+
 std::ostream& operator<<(std::ostream& os, const Json& json)
 {
     os << json.str();
