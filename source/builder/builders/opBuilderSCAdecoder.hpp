@@ -31,24 +31,54 @@ constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 namespace sca
 {
 
+/**
+ * @brief Value for a SCA Find Query Operation
+ */
 enum class SearchResult
 {
-    ERROR = -1,
-    NOT_FOUND,
-    FOUND
+    ERROR = -1, ///< Error on wdb or unexpected result
+    NOT_FOUND,  ///< Not found
+    FOUND       ///< Found
 };
 
-static std::unordered_map<std::string, std::string> scanInfoKeyValues {{"/policy_id", ""},
-                                                                       {"/hash", ""},
-                                                                       {"/hash_file", ""},
-                                                                       {"/file", ""},
-                                                                       {"/policy", ""}};
+/**
+ * @brief Store all decoder information for processing the SCA Event
+ */
+struct InfoEventDecode
+{
+    base::Event& event;              ///< Event to be processed
+    const std::string& agentID;      ///< Agent ID of the agent that generated the event
+    const std::string& scaEventPath; ///< Path to the SCA Event in the incoming event
+    std::shared_ptr<wazuhdb::WazuhDB> wdb; ///< WazuhDB instance
+};
+/****************************************************************************************
+                                 Check Event
+*****************************************************************************************/
 
-bool CheckEventJSON(base::Event& event, const std::string& scaEventPath);
+/**
+ * @brief Check if the event is a valid check event type
+ *
+ * @param event The event to check
+ * @param scaEventPath The path to sca incomming event (in event)
+ * @return true If the event is a valid check event type
+ * @return false If the event is not a valid check event type
+ */
+bool isValidCheckEvent(base::Event& event, const std::string& scaEventPath);
 
-void FillCheckEventInfo(base::Event& event,
+/**
+ * @brief Fill the /sca object with the check event info
+ *
+ * @param event The event to get the info from
+ * @param previousResult The previous result of scan
+ * @param scaEventPath The path to sca incomming event (in event)
+ */
+void fillCheckEvent(base::Event& event,
                         const std::string& response,
                         const std::string& scaEventPath);
+
+/****************************************************************************************
+                                  Scan Event
+*****************************************************************************************/
 
 bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath);
 
@@ -97,9 +127,7 @@ bool deletePolicyCheckDistinct(const std::string& agentId,
                                const std::string& scanId,
                                std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::optional<std::string> HandleCheckEvent(base::Event& event,
-                                            const std::string& agent_id,
-                                            const std::string& scaEventPath);
+std::optional<std::string> handleCheckEvent(InfoEventDecode& infoDec);
 
 std::optional<std::string> handleScanInfo(base::Event& event,
                                           const std::string& agent_id,
