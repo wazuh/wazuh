@@ -39,11 +39,10 @@
 
 #ifdef WIN32
 static DWORD WINAPI wm_osquery_monitor_main(void *arg);
-static DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor);
 #else
 static void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
-static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
 #endif
+static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
 static int wm_osquery_check_logfile(const char * path, FILE * fp);
 static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
 static char * wm_osquery_already_running(char * text);
@@ -54,7 +53,7 @@ static volatile int active = 1;
 const wm_context WM_OSQUERYMONITOR_CONTEXT = {
     "osquery",
     (wm_routine)wm_osquery_monitor_main,
-    (wm_routine)(void *)wm_osquery_monitor_destroy,
+    (void(*)(void *))wm_osquery_monitor_destroy,
     (cJSON * (*)(const void *))wm_osquery_dump,
     NULL,
     NULL
@@ -667,12 +666,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery) {
 #endif
 }
 
-#ifdef WIN32
-DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor_ptr) {
-    wm_osquery_monitor_t *osquery_monitor = (wm_osquery_monitor_t *)osquery_monitor_ptr;
-#else
 void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor) {
-#endif
     int i;
 
     if (osquery_monitor)
@@ -690,9 +684,6 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor) {
         free(osquery_monitor->packs);
         free(osquery_monitor);
     }
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 // Get read data

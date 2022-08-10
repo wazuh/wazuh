@@ -37,11 +37,10 @@ static char* event_types[] = {
 
 #ifdef WIN32
 STATIC DWORD WINAPI wm_github_main(void* arg);              // Module main function. It won't return
-STATIC DWORD WINAPI wm_github_destroy(void* github_config);
 #else
 STATIC void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
-STATIC void wm_github_destroy(wm_github* github_config);
 #endif
+STATIC void wm_github_destroy(wm_github* github_config);
 STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
 STATIC void wm_github_fail_destroy(wm_github_fail* github_fails);
 cJSON *wm_github_dump(const wm_github* github_config);
@@ -76,7 +75,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 const wm_context WM_GITHUB_CONTEXT = {
     GITHUB_WM_NAME,
     (wm_routine)wm_github_main,
-    (wm_routine)(void *)wm_github_destroy,
+    (void(*)(void *))wm_github_destroy,
     (cJSON * (*)(const void *))wm_github_dump,
     NULL,
     NULL
@@ -125,20 +124,12 @@ void * wm_github_main(wm_github* github_config) {
 #endif
 }
 
-#ifdef WIN32
-STATIC DWORD WINAPI wm_github_destroy(void* ptr_github_config) {
-    wm_github *github_config = (wm_github *)ptr_github_config;
-#else
 void wm_github_destroy(wm_github* github_config) {
-#endif
     mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished.");
     wm_github_auth_destroy(github_config->auth);
     wm_github_fail_destroy(github_config->fails);
     os_free(github_config->event_type);
     os_free(github_config);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 void wm_github_auth_destroy(wm_github_auth* github_auth)

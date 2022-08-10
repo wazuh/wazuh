@@ -13,11 +13,10 @@
 
 #ifdef WIN32
 static DWORD WINAPI wm_command_main(void *arg);             // Module main function. It won't return
-static DWORD WINAPI wm_command_destroy(void *command);      // Destroy data
 #else
 static void * wm_command_main(wm_command_t * command);    // Module main function. It won't return
-static void wm_command_destroy(wm_command_t * command);   // Destroy data
 #endif
+static void wm_command_destroy(wm_command_t * command);   // Destroy data
 cJSON *wm_command_dump(const wm_command_t * command);
 
 // Command module context definition
@@ -25,7 +24,7 @@ cJSON *wm_command_dump(const wm_command_t * command);
 const wm_context WM_COMMAND_CONTEXT = {
     "command",
     (wm_routine)wm_command_main,
-    (wm_routine)(void *)wm_command_destroy,
+    (void(*)(void *))wm_command_destroy,
     (cJSON * (*)(const void *))wm_command_dump,
     NULL,
     NULL
@@ -265,17 +264,9 @@ cJSON *wm_command_dump(const wm_command_t * command) {
 
 
 // Destroy data
-#ifdef WIN32
-DWORD WINAPI wm_command_destroy(void *ptr_command) {
-    wm_command_t * command = (wm_command_t *)ptr_command;
-#else
 void wm_command_destroy(wm_command_t * command) {
-#endif
     free(command->tag);
     free(command->command);
     free(command->full_command);
     free(command);
-    #ifdef WIN32
-    return 0;
-    #endif
 }

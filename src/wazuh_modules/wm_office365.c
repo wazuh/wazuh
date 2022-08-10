@@ -32,11 +32,10 @@
 
 #ifdef WIN32
 STATIC DWORD WINAPI wm_office365_main(void *arg);                   // Module main function. It won't return
-STATIC DWORD WINAPI wm_office365_destroy(void *office365_config);
 #else
 STATIC void* wm_office365_main(wm_office365* office365_config);    // Module main function. It won't return
-STATIC void wm_office365_destroy(wm_office365* office365_config);
 #endif
+STATIC void wm_office365_destroy(wm_office365* office365_config);
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
 STATIC void wm_office365_subscription_destroy(wm_office365_subscription* office365_subscription);
 STATIC void wm_office365_fail_destroy(wm_office365_fail* office365_fails);
@@ -116,7 +115,7 @@ STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, 
 const wm_context WM_OFFICE365_CONTEXT = {
     OFFICE365_WM_NAME,
     (wm_routine)wm_office365_main,
-    (wm_routine)(void *)wm_office365_destroy,
+    (void(*)(void *))wm_office365_destroy,
     (cJSON * (*)(const void *))wm_office365_dump,
     NULL,
     NULL
@@ -161,20 +160,12 @@ void * wm_office365_main(wm_office365* office365_config) {
 #endif
 }
 
-#ifdef WIN32
-STATIC DWORD WINAPI wm_office365_destroy(void *office365_config_ptr) {
-    wm_office365 *office365_config = (wm_office365 *)office365_config_ptr;
-#else
 void wm_office365_destroy(wm_office365* office365_config) {
-#endif
     mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
     wm_office365_auth_destroy(office365_config->auth);
     wm_office365_subscription_destroy(office365_config->subscription);
     wm_office365_fail_destroy(office365_config->fails);
     os_free(office365_config);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 void wm_office365_auth_destroy(wm_office365_auth* office365_auth) {
