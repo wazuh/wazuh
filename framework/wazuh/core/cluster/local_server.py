@@ -63,6 +63,8 @@ class LocalServerHandler(server.AbstractServerHandler):
             return self.get_nodes(data)
         elif command == b'get_health':
             return self.get_health(data)
+        elif command == b'ruleset_md5':
+            return self.get_ruleset_status()
         elif command == b'send_file':
             path, node_name = data.decode().split(' ')
             return self.send_file_request(path, node_name)
@@ -120,6 +122,18 @@ class LocalServerHandler(server.AbstractServerHandler):
             If the method is not implemented.
         """
         raise NotImplementedError
+
+    def get_ruleset_status(self):
+        """Obtain local ruleset paths and MD5 hash.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            JSON containing local file paths and their MD5 hash.
+        """
+        return b'ok', json.dumps(self.server.node.get_ruleset_status()).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.
