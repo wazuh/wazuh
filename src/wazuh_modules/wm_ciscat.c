@@ -20,11 +20,10 @@ static int queue_fd;                                // Output queue file descrip
 
 #ifdef WIN32
 static DWORD WINAPI wm_ciscat_main(void *arg);                  // Module main function. It won't return
-static DWORD WINAPI wm_ciscat_destroy(void *ciscat);            // Destroy data
 #else
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
-static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 #endif
+static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_path, const char *ciscat_binary);      // Run a CIS-CAT policy
@@ -49,7 +48,7 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
-    (wm_routine)(void *)wm_ciscat_destroy,
+    (void(*)(void *))wm_ciscat_destroy,
     (cJSON * (*)(const void *))wm_ciscat_dump,
     NULL,
     NULL
@@ -1575,12 +1574,7 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 }
 
 // Destroy data
-#ifdef WIN32
-DWORD WINAPI wm_ciscat_destroy(void *ptr_ciscat) {
-    wm_ciscat *ciscat = (wm_ciscat *)ptr_ciscat;
-#else
 void wm_ciscat_destroy(wm_ciscat *ciscat) {
-#endif
     wm_ciscat_eval *cur_eval;
     wm_ciscat_eval *next_eval;
     // Delete evals
@@ -1597,8 +1591,5 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
     free(ciscat->ciscat_path);
     free(ciscat->ciscat_binary);
     free(ciscat);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 #endif

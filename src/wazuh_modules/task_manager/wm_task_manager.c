@@ -33,18 +33,17 @@ extern void mock_assert(const int result, const char* const expression,
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
 #ifdef WIN32
 STATIC DWORD WINAPI wm_task_manager_main(void *arg);
-STATIC DWORD WINAPI wm_task_manager_destroy(void* task_config);
 #else
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
-STATIC void wm_task_manager_destroy(wm_task_manager* task_config);
 #endif
+STATIC void wm_task_manager_destroy(wm_task_manager* task_config);
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 
 /* Context definition */
 const wm_context WM_TASK_MANAGER_CONTEXT = {
     TASK_MANAGER_WM_NAME,
     (wm_routine)wm_task_manager_main,
-    (wm_routine)(void *)wm_task_manager_destroy,
+    (void (*)(void *))wm_task_manager_destroy,
     (cJSON * (*)(const void *))wm_task_manager_dump,
     NULL,
     NULL
@@ -219,16 +218,9 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
 #endif
 }
 
-#ifdef WIN32
-STATIC DWORD WINAPI wm_task_manager_destroy(void* task_config) {
-#else
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {
-#endif
     mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
     os_free(task_config);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
