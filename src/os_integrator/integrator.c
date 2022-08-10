@@ -84,7 +84,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(!integrator_config[s]->hookurl)
             {
                 integrator_config[s]->enabled = 0;
-                merror("Unable to enable integration for: '%s'. Missing ID chat.", integrator_config[s]->name);
+                merror("Unable to enable integration for: '%s'. Missing Telegram Chat ID.", integrator_config[s]->name);
                 s++;
                 continue;
             }
