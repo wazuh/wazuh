@@ -12,12 +12,14 @@
 #include "sqlite_wrapper.h"
 #include "db_exception.h"
 #include "makeUnique.h"
+#include "customDeleter.hpp"
 #include <iostream>
 #include <chrono>
 
 constexpr auto DB_DEFAULT_PATH {"temp.db"};
 
 using namespace SQLite;
+using ExpandedSQLPtr = std::unique_ptr<char, CustomDeleter<decltype(&sqlite3_free), sqlite3_free>>;
 
 static void checkSqliteResult(const int result,
                               const std::string& exceptionString)
@@ -232,10 +234,7 @@ void Statement::bind(const int32_t index, const double_t value)
 
 std::string Statement::expand()
 {
-    auto pExpandedSQL{ sqlite3_expanded_sql(m_stmt.get()) };
-    std::string expandedSQLString{ pExpandedSQL };
-    sqlite3_free(pExpandedSQL);
-    return expandedSQLString;
+    return ExpandedSQLPtr(sqlite3_expanded_sql(m_stmt.get())).get();
 }
 
 std::unique_ptr<IColumn> Statement::column(const int32_t index)
