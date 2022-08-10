@@ -86,7 +86,7 @@ std::tuple<SearchResult, std::string> findCheckResults(const std::string& agentI
                                               const std::string& policyId,
                                               std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::tuple<int, std::string> findPoliciesIds(const std::string& agentId,
+std::tuple<SearchResult, std::string> findPoliciesIds(const std::string& agentId,
                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::tuple<std::optional<std::string>, std::string, std::string>
