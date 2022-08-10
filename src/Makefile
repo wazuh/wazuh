@@ -1174,7 +1174,7 @@ ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
 	ifeq (${cpu_arch},ppc64le)
 		PRECOMPILED_ARCH := /ppc64le
 	else
-    ifneq (,$(filter ${cpu_arch},ia64 9000/712))
+    ifneq (,$(filter ${cpu_arch},ia64))
 		PRECOMPILED_ARCH := /ia64
 	else
 		PRECOMPILED_ARCH := /${uname_P}
