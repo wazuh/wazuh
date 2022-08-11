@@ -876,7 +876,6 @@ TEST(opBuilderSCAdecoder, checkNoParams)
 
 TEST(opBuilderSCAdecoder, gettingEmptyReference)
 {
-    GTEST_SKIP();
 
     const std::vector<string> arguments {"$_event_json", "$agent.id"};
 
@@ -889,7 +888,8 @@ TEST(opBuilderSCAdecoder, gettingEmptyReference)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
-    ASSERT_FALSE(result.payload().get()->exists("/wdb/result"));
+    ASSERT_TRUE(result.payload().get()->exists("/wdb/result"));
+    ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
 }
 
 TEST(opBuilderSCAdecoder, gettingNonExistingReference)
@@ -1241,7 +1241,6 @@ TEST(opBuilderSCAdecoder, checkTypeFindEventcheckUnexpectedAnswer)
 
 TEST(opBuilderSCAdecoder, FindEventcheckOkFoundWithoutComplianceNorRules)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1287,7 +1286,7 @@ TEST(opBuilderSCAdecoder, FindEventcheckOkFoundWithoutComplianceNorRules)
         clientRemoteFD = testAcceptConnection(serverSocketFD);
         ASSERT_GT(clientRemoteFD, 0);
         clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||69");
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
         testSendMsg(clientRemoteFD, "This answer is always ignored.");
         close(clientRemoteFD);
     });
@@ -1302,7 +1301,6 @@ TEST(opBuilderSCAdecoder, FindEventcheckOkFoundWithoutComplianceNorRules)
 
 TEST(opBuilderSCAdecoder, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1348,10 +1346,9 @@ TEST(opBuilderSCAdecoder, FindEventcheckOkNotFoundWithoutComplianceNorRules)
         clientRemoteFD = testAcceptConnection(serverSocketFD);
         ASSERT_GT(clientRemoteFD, 0);
         clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        // FIXME
-        // string insertQuery{string {"agent 007 sca insert "} +
-        // event->prettyStr().replace("\n", "").replace(" ", "")};
-        // ASSERT_STREQ(clientMessage.data(), insertQuery.data());
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                           + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
         testSendMsg(clientRemoteFD, "This answer is always ignored.");
         close(clientRemoteFD);
     });
@@ -1955,7 +1952,6 @@ static inline void ignoreCodeSection(const FuncName function,
 
 TEST(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 {
-    //GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1985,12 +1981,13 @@ TEST(summaryTypeDecoderSCA, AllUnexpectedAnswers)
     t.join();
     close(serverSocketFD);
 
-    ASSERT_FALSE(result); // TODO: When is it true, when is it false?
+    // TODO How log the errors of wdb
+    ASSERT_TRUE(result); // TODO: When is it true, when is it false?
+    ASSERT_TRUE(event->getBool("/wdb/result").value()); // TODO: When is it true, when is it false?
 }
 
 TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2042,7 +2039,6 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
 
 TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2072,7 +2068,7 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
         ASSERT_STREQ(clientMessage.data(),
                      "agent 007 sca insert_scan_info "
                      "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
+        testSendMsg(clientRemoteFD, "ok This answer is always ignored.");
         close(clientRemoteFD);
 
         // FindPolicyInfo
@@ -2091,8 +2087,8 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     result::Result<Event> result {op(event)};
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM).c_str()};
-    ASSERT_STREQ(receivedMessage, "007:sca-dump:some_policy_id:1");
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
     unlink(CFGARQUEUE);
 
@@ -2104,7 +2100,6 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 
 TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2156,7 +2151,6 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2191,7 +2185,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
             "agent 007 sca insert_policy some_name|some_file|some_policy_id|Some "
             "description|Some references|some_hash_file";
         ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
+        testSendMsg(clientRemoteFD, "ok This answer is always ignored.");
         close(clientRemoteFD);
 
         // FindCheckResults
@@ -2209,7 +2203,6 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswer)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2260,7 +2253,6 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswe
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2311,7 +2303,6 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHashFile)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2363,7 +2354,6 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHash
 TEST(summaryTypeDecoderSCA,
      FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2423,7 +2413,6 @@ TEST(summaryTypeDecoderSCA,
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyErr)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2483,7 +2472,6 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyOk)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2549,8 +2537,8 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
     result::Result<Event> result {op(event)};
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM).c_str()};
-    ASSERT_STREQ(receivedMessage, "007:sca-dump:some_policy_id:1");
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
     unlink(CFGARQUEUE);
 
@@ -2562,7 +2550,6 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2604,7 +2591,6 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2643,8 +2629,8 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
     result::Result<Event> result {op(event)};
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM).c_str()};
-    ASSERT_STREQ(receivedMessage, "007:sca-dump:some_policy_id:1");
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
     unlink(CFGARQUEUE);
 
@@ -2656,7 +2642,6 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2695,8 +2680,8 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
     result::Result<Event> result {op(event)};
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM).c_str()};
-    ASSERT_STREQ(receivedMessage, "007:sca-dump:some_policy_id:0");
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
     unlink(CFGARQUEUE);
 
@@ -2708,7 +2693,6 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2750,7 +2734,6 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2789,8 +2772,8 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
     result::Result<Event> result {op(event)};
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM).c_str()};
-    ASSERT_STREQ(receivedMessage, "007:sca-dump:some_policy_id:1");
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
     unlink(CFGARQUEUE);
 
@@ -2802,7 +2785,6 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 {
-    GTEST_SKIP();
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2841,8 +2823,8 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
     result::Result<Event> result {op(event)};
 
     // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM).c_str()};
-    ASSERT_STREQ(receivedMessage, "007:sca-dump:some_policy_id:0");
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
     unlink(CFGARQUEUE);
 
