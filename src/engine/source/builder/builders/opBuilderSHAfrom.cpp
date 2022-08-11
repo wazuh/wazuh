@@ -19,7 +19,8 @@
 namespace
 {
 
-constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2); // Sha1 digest len (20) * 2 (hex chars per byte)
+constexpr int OS_SHA1_HEXDIGEST_SIZE =
+    (SHA_DIGEST_LENGTH * 2); // Sha1 digest len (20) * 2 (hex chars per byte)
 constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
 
 std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& input)
@@ -33,13 +34,13 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
     EVP_MD_CTX* ctx = EVP_MD_CTX_create();
     if (!ctx)
     {
-        //Failed during hash context creation
+        // Failed during hash context creation
         return std::nullopt;
     }
 
     if (1 != EVP_DigestInit(ctx, EVP_sha1()))
     {
-        //Failed during hash context initialization
+        // Failed during hash context initialization
         EVP_MD_CTX_destroy(ctx);
         return std::nullopt;
     }
@@ -48,7 +49,7 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
     {
         if (1 != EVP_DigestUpdate(ctx, word.c_str(), word.length()))
         {
-            //Failed during hash context update
+            // Failed during hash context update
             return std::nullopt;
         }
     }
@@ -86,26 +87,25 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace1 = fmt::format("[{}] -> Failure: Argument shouldn't "
-        "be empty", name);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure: Invalid Parameter "
-        "Type", name);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure: Couldn't create "
-        "HASH and write it in the JSON", name);
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: Argument shouldn't be empty", name);
+    const auto failureTrace2 =
+        fmt::format("[{}] -> Failure: Invalid Parameter Type", name);
+    const auto failureTrace3 = fmt::format(
+        "[{}] -> Failure: Couldn't create HASH and write it in the JSON", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField),
-            parameters = std::move(parameters)](
-            base::Event event) -> base::result::Result<base::Event> {
-
+        [=, targetField = std::move(targetField), parameters = std::move(parameters)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
             std::vector<std::string> resolvedParameter;
             // Check parameters
             for (auto& param : parameters)
             {
                 // Getting array field name
-                if (param.m_type == helper::base::Parameter::Type::REFERENCE )
+                if (param.m_type == helper::base::Parameter::Type::REFERENCE)
                 {
                     const auto s_paramValue {event->getString(param.m_value)};
                     if (!s_paramValue.has_value())
@@ -114,7 +114,7 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                     }
                     resolvedParameter.emplace_back(s_paramValue.value());
                 }
-                else if(param.m_type == helper::base::Parameter::Type::VALUE)
+                else if (param.m_type == helper::base::Parameter::Type::VALUE)
                 {
                     resolvedParameter.emplace_back(param.m_value);
                 }
@@ -122,7 +122,6 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                 {
                     return base::result::makeFailure(event, failureTrace2);
                 }
-
             }
 
             if (resolvedParameter.empty())
