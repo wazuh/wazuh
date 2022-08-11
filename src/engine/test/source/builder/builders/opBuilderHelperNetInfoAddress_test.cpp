@@ -26,16 +26,43 @@ TEST(opBuilderHelperNetInfoTest, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agentID","$scanId","$name","$array"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperSaveNetInfoIPv4(tuple));
+}
+
+TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"saveNetInfoIPv6"},
+                                 std::vector<std::string> {"parameter","agentID","scanId","name"});
+
+    ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
+}
+
+TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_reference)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"saveNetInfoIPv6"},
+                                 std::vector<std::string> {"$agentID","$scanId","$name","array"});
+
+    ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
+}
+
+TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"saveNetInfoIPv6"},
+                                 std::vector<std::string> {"$agentID","$scanId","$name","$array","$array2"});
+
+    ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv4"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15","192.168.11.16"],"netmask":["255.255.255.0","255.255.255.0"],"broadcast":["192.168.10.255","192.168.11.255"]}}}}})");
@@ -46,12 +73,12 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.10.15|255.255.255.0|192.168.10.255");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
         const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.11.16|255.255.255.0|192.168.11.255");
         testSendMsg(SecondclientRemote, "ok");
         close(SecondclientRemote);
     });
@@ -69,7 +96,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv4"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15"],"netmask":["255.255.255.0"],"broadcast":["192.168.10.255"]}}}}})");
@@ -80,7 +107,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.10.15|255.255.255.0|192.168.10.255");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
     });
@@ -98,7 +125,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv4"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15","192.168.11.16"],"netmask":["255.255.255.0","255.255.255.0"],"broadcast":["192.168.10.255","192.168.11.255"]}}}}})");
@@ -109,7 +136,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.10.15|255.255.255.0|192.168.10.255");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
@@ -130,7 +157,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv6"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv6"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv6":{"address":["192.168.10.15"],"netmask":["255.255.255.0"],"broadcast":["192.168.10.255"]}}}}})");
@@ -141,7 +168,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|1|192.168.10.15|255.255.255.0|192.168.10.255");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
     });
@@ -155,20 +182,11 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
     close(serverSocketFD);
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter)
-{
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv6"},
-                                 std::vector<std::string> {"parameter"});
-
-    ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
-}
-
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_others)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv4"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15","192.168.11.16","192.168.100.16"],"netmask":[],"broadcast":[]}}}}})");
@@ -179,15 +197,17 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_othe
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.10.15|NULL|NULL");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
         const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
+        ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.11.16|NULL|NULL");
         testSendMsg(SecondclientRemote, "ok");
         close(SecondclientRemote);
 
         const int ThirdclientRemote {testAcceptConnection(serverSocketFD)};
+        ASSERT_STREQ(testRecvString(ThirdclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.100.16|NULL|NULL");
         testSendMsg(ThirdclientRemote, "ok");
         close(ThirdclientRemote);
     });
@@ -204,7 +224,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv4"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15","192.168.11.16","192.168.100.16"],"netmask":[],"broadcast":[1,2,3]}}}}})");
@@ -215,15 +235,17 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.10.15|NULL|NULL");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
         const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
+        ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.11.16|NULL|NULL");
         testSendMsg(SecondclientRemote, "ok");
         close(SecondclientRemote);
 
         const int ThirdclientRemote {testAcceptConnection(serverSocketFD)};
+        ASSERT_STREQ(testRecvString(ThirdclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.100.16|NULL|NULL");
         testSendMsg(ThirdclientRemote, "ok");
         close(ThirdclientRemote);
     });
@@ -240,7 +262,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv4"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv4":{"address":["192.168.10.15","192.168.11.16","192.168.100.16"]}}}}})");
@@ -251,15 +273,17 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
 
     std::thread t([&]() {
         const int clientRemote {testAcceptConnection(serverSocketFD)};
-        testRecvString(clientRemote, SOCK_STREAM);
+        ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.10.15|NULL|NULL");
         testSendMsg(clientRemote, "ok");
         close(clientRemote);
 
         const int SecondclientRemote {testAcceptConnection(serverSocketFD)};
+        ASSERT_STREQ(testRecvString(SecondclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.11.16|NULL|NULL");
         testSendMsg(SecondclientRemote, "ok");
         close(SecondclientRemote);
 
         const int ThirdclientRemote {testAcceptConnection(serverSocketFD)};
+        ASSERT_STREQ(testRecvString(ThirdclientRemote, SOCK_STREAM).c_str(),"agent 021 netaddr save 123456|iface_name|0|192.168.100.16|NULL|NULL");
         testSendMsg(ThirdclientRemote, "ok");
         close(ThirdclientRemote);
     });
@@ -276,7 +300,7 @@ TEST(opBuilderHelperNetInfoTest, False_result_when_no_address)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv6"},
-                                 std::vector<std::string> {});
+                                 std::vector<std::string> {"$agent.id","$event.original.ID","$event.original.iface.name","$event.original.iface.IPv6"});
 
     auto event1 = std::make_shared<json::Json>(
         R"({"agent":{"id":"021"},"event":{"original":{"ID":"123456","iface":{"name":"iface_name","IPv6":{"netmask":[],"broadcast":[]}}}}})");
