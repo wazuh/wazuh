@@ -7952,7 +7952,7 @@ paths:
       summary: "Get cluster nodes ruleset synchronization status"
       description: "Return ruleset synchronization status for all nodes or a list of them. This synchronization only
       covers the user custom ruleset"
-      operationId: api.controllers.cluster_controller.get_ruleset_sync_status
+      operationId: api.controllers.cluster_controller.get_nodes_ruleset_sync_status
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:

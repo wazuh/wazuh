@@ -9,6 +9,7 @@ from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
+import wazuh.core.cluster.cluster as core_cluster
 import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
@@ -117,7 +118,7 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, nodes_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_ruleset_sync_status(request, pretty=False, wait_for_complete=False, nodes_list="*"):
+async def get_nodes_ruleset_sync_status(request, pretty=False, wait_for_complete=False, nodes_list="*"):
     """Get cluster ruleset synchronization status.
 
     Returns cluster ruleset synchronization status for all nodes or a list of them.
@@ -140,25 +141,24 @@ async def get_ruleset_sync_status(request, pretty=False, wait_for_complete=False
     ApiResponse
         Nodes ruleset synchronization statuses.
     """
-    master_dapi = DistributedAPI(f=GET_MD5,
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          local_client_arg='lc',
-                          )
-    master_md5 = raise_if_exc(await master_dapi.distribute_function())
-
     nodes = raise_if_exc(await get_system_nodes())
 
+    master_dapi = DistributedAPI(f=core_cluster.get_node_ruleset_integrity,
+                                 request_type='local_master',
+                                 is_async=True,
+                                 wait_for_complete=wait_for_complete,
+                                 logger=logger,
+                                 local_client_arg='lc',
+                                 )
+    master_md5 = raise_if_exc(await master_dapi.distribute_function()).dikt
+
     f_kwargs = {'node_list': nodes_list, 'master_md5': master_md5}
-    dapi = DistributedAPI(f=COMPARE_MD5,
+    dapi = DistributedAPI(f=cluster.get_ruleset_sync_status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type="distributed_master",
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          local_client_arg="lc",
                           broadcasting=nodes_list == "*",
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
