@@ -31,6 +31,57 @@ constexpr const char* CFGARQUEUE {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
 namespace sca
 {
 
+namespace field
+{
+
+enum class Name
+{
+    A_BEGIN,                 ///< Not a field, only for iterate purposes
+    CHECK_COMMAND = A_BEGIN, ///< checkEvent
+    CHECK_COMPLIANCE,        ///< checkEvent
+    CHECK_CONDITION,         ///< checkEvent
+    CHECK_DESCRIPTION,       ///< checkEvent
+    CHECK_DIRECTORY,         ///< checkEvent
+    CHECK_FILE,              ///< checkEvent
+    CHECK_ID,                ///< checkEvent
+    CHECK_PREVIOUS_RESULT,   ///< checkEvent
+    CHECK_PROCESS,           ///< checkEvent
+    CHECK_RATIONALE,         ///< checkEvent
+    CHECK_REASON,            ///< checkEvent
+    CHECK_REFERENCES,        ///< checkEvent
+    CHECK_REGISTRY,          ///< checkEvent
+    CHECK_REMEDIATION,       ///< checkEvent
+    CHECK_RESULT,            ///< checkEvent
+    CHECK_RULES,             ///< checkEvent
+    CHECK_STATUS,            ///< checkEvent
+    CHECK_TITLE,             ///< checkEvent
+    CHECK,                   ///< checkEvent
+    DESCRIPTION,             ///< scaninfo
+    END_TIME,                ///< scaninfo
+    ELEMENTS_SENT,           ///< DumpEvent
+    FAILED,                  ///< scaninfo
+    FILE,                    ///< scaninfo
+    FIRST_SCAN,              ///< scaninfo
+    FORCE_ALERT,             ///< scaninfo
+    HASH_FILE,               ///< scaninfo
+    HASH,                    ///< scaninfo
+    ID,                      ///< checkEvent
+    INVALID,                 ///< scaninfo
+    NAME,                    ///< scaninfo
+    PASSED,                  ///< scaninfo
+    POLICY_ID,               ///< scaninfo, checkEvent
+    POLICY,                  ///< checkEvent
+    POLICIES,                ///< Policies
+    REFERENCES,              ///< scaninfo
+    SCAN_ID,                 ///< scaninfo
+    SCORE,                   ///< scaninfo
+    START_TIME,              ///< scaninfo
+    TOTAL_CHECKS,            ///< scaninfo
+    TYPE,                    ///< checkEvent
+    A_END                   ///< Not a field, only for iterate purposes
+};
+} // namespace field
+
 /**
  * @brief Value for a SCA Find Query Operation
  */
@@ -46,10 +97,22 @@ enum class SearchResult
  */
 struct InfoEventDecode
 {
+    // TODO Changes names
     base::Event& event;              ///< Event to be processed
     const std::string& agentID;      ///< Agent ID of the agent that generated the event
-    const std::string& scaEventPath; ///< Path to the SCA Event in the incoming event
+    const std::string& sourceSCApath; ///< Path to the SCA Event in the incoming event
     std::shared_ptr<wazuhdb::WazuhDB> wdb; ///< WazuhDB instance
+    const std::unordered_map<sca::field::Name, std::string>& fieldSource;
+    const std::unordered_map<sca::field::Name, std::string>& fieldDest;
+
+    std::optional<int> getIntFromSrc(sca::field::Name field) const
+    {
+        return event->getInt(fieldSource.at(field));
+    };
+    std::optional<std::string> getStrFromSrc(sca::field::Name field) const
+    {
+        return event->getString(fieldSource.at(field));
+    };
 };
 /****************************************************************************************
                                  Check Event
@@ -59,28 +122,26 @@ struct InfoEventDecode
  * @brief Check if the event is a valid check event type
  *
  * @param event The event to check
- * @param scaEventPath The path to sca incomming event (in event)
+ * @param sourceSCApath The path to sca incomming event (in event)
  * @return true If the event is a valid check event type
  * @return false If the event is not a valid check event type
  */
-bool isValidCheckEvent(base::Event& event, const std::string& scaEventPath);
+bool isValidCheckEvent(const InfoEventDecode& infoDec);
 
 /**
  * @brief Fill the /sca object with the check event info
  *
  * @param event The event to get the info from
  * @param previousResult The previous result of scan
- * @param scaEventPath The path to sca incomming event (in event)
+ * @param sourceSCApath The path to sca incomming event (in event)
  */
-void fillCheckEvent(base::Event& event,
-                        const std::string& response,
-                        const std::string& scaEventPath);
+void fillCheckEvent(const InfoEventDecode& infoDec, const std::string& previousResult);
 
 /****************************************************************************************
                                   Scan Event
 *****************************************************************************************/
 
-bool CheckScanInfoJSON(base::Event& event, const std::string& scaEventPath);
+bool CheckScanInfoJSON(base::Event& event, const std::string& sourceSCApath);
 
 std::tuple<SearchResult, std::string> findScanInfo(const std::string& agentId,
                                                    const std::string& policyId,
@@ -90,7 +151,7 @@ int SaveScanInfo(base::Event& event, const std::string& agent_id, int update);
 
 SearchResult findPolicyInfo(base::Event& event,
                             const std::string& agent_id,
-                            const std::string& scaEventPath,
+                            const std::string& sourceSCApath,
                             std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 bool pushDumpRequest(const std::string& agentId,
@@ -99,7 +160,7 @@ bool pushDumpRequest(const std::string& agentId,
 
 bool SavePolicyInfo(base::Event& event,
                     const std::string& agent_id,
-                    const std::string& scaEventPath,
+                    const std::string& sourceSCApath,
                     std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 int FindPolicySHA256(const std::string& agent_id, std::string& old_hash);
@@ -120,29 +181,23 @@ std::tuple<SearchResult, std::string> findPoliciesIds(const std::string& agentId
                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::tuple<std::optional<std::string>, std::string, std::string>
-checkDumpJSON(const base::Event& event, const std::string& scaEventPath);
+checkDumpJSON(const base::Event& event, const std::string& sourceSCApath);
 
 bool deletePolicyCheckDistinct(const std::string& agentId,
                                const std::string& policyId,
                                const std::string& scanId,
                                std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::optional<std::string> handleCheckEvent(InfoEventDecode& infoDec);
+std::optional<std::string> handleCheckEvent(const InfoEventDecode& infoDec);
 
-std::optional<std::string> handleScanInfo(base::Event& event,
-                                          const std::string& agent_id,
-                                          const std::string& scaEventPath,
-                                          std::shared_ptr<wazuhdb::WazuhDB> wdb);
+std::optional<std::string> handleScanInfo(const InfoEventDecode& infoDec);
 
 std::optional<std::string> handlePoliciesInfo(base::Event& event,
                                               const std::string& agentId,
-                                              const std::string& scaEventPath,
+                                              const std::string& sourceSCApath,
                                               std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::optional<std::string> handleDumpEvent(base::Event& event,
-                                           const std::string& agentId,
-                                           const std::string& scaEventPath,
-                                           std::shared_ptr<wazuhdb::WazuhDB> wdb);
+std::optional<std::string> handleDumpEvent(const InfoEventDecode& infoDec);
 
 } // namespace sca
 
