@@ -649,9 +649,9 @@ bool SaveScanInfo(base::Event& event,
         return event->getInt(field::getEventPath(field, scaEventPath)).value();
     };
 
-    auto getString = [&](field::Name field) -> int
+    auto getString = [&](field::Name field) -> std::string
     {
-        return event->getInt(field::getEventPath(field, scaEventPath)).value();
+        return event->getString(field::getEventPath(field, scaEventPath)).value();
     };
 
     const auto pm_start_scan = getInt(field::Name::START_TIME);
@@ -963,12 +963,11 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                     FillScanInfo(event, agent_id, scaEventPath);
                 }
             }
-            else
-            {
-                return "Error updating policy monitoring database for agent {id}";
-            }
+            /*  TODO Log error
+            else return "Error updating policy monitoring database for agent {id}";
+            */
+           break;
         }
-        break;
         case SearchResult::NOT_FOUND:
         default:
         {
@@ -981,12 +980,11 @@ std::optional<std::string> handleScanInfo(base::Event& event,
                     pushDumpRequest(agent_id, policyId, 1);
                 }
             }
-            else
-            {
-                return "Error inserting policy monitoring database for agent {id}";
-            }
+            /*  TODO Log error
+            else return "Error inserting policy monitoring database for agent {id}";
+            */
+           break;
         }
-        break;
     }
 
     // TODO Changes name and type, shoul be `SearchResult::`
