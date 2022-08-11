@@ -20,8 +20,9 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringFromArray, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"s_from_array"}, std::vector<std::string> {"begin", "$t"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_from_array"},
+                                 std::vector<std::string> {"begin", "$t"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringFromArray(tuple));
 }
@@ -52,9 +53,11 @@ TEST(opBuilderHelperStringFromArray, Executes_with_string_from_array_success)
                                  std::string {"s_from_array"},
                                  std::vector<std::string> {"-", "$arrayField"});
 
-    auto event1 = std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
+    auto event1 =
+        std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
 
-    auto op = bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -71,7 +74,8 @@ TEST(opBuilderHelperStringFromArray, Failed_parameter_is_not_array)
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": "A"})");
 
-    auto op = bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -86,7 +90,8 @@ TEST(opBuilderHelperStringFromArray, Failed_array_without_strings)
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": [1,150]})");
 
-    auto op = bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -101,7 +106,8 @@ TEST(opBuilderHelperStringFromArray, Failed_empty_array)
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": []})");
 
-    auto op = bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -116,7 +122,8 @@ TEST(opBuilderHelperStringFromArray, Success_with_multi_level_assignment)
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": ["A","B"]})");
 
-    auto op = bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringFromArray(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
