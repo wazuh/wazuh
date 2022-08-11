@@ -30,4 +30,4 @@ normalize:
   - check:
       - event.original.iface.IPv6.address: +exists
     map:
-      _result_saveNetInfoIPv6: +saveNetInfoIPv6
+      _result_saveNetInfoIPv6: +saveNetInfoIPv6/$event.original.agent.id/$event.original.ID/$event.original.iface.name/$event.original.iface.IPv6
