@@ -62,6 +62,9 @@ if sys.version_info[0] == 3:
 # Constants
 ################################################################################
 
+AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html"
+
+
 # Enable/disable debug mode
 debug_level = 0
 
@@ -232,6 +235,9 @@ class WazuhIntegration:
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
+            print("Deprecated authentication method found at module 'aws-s3'. This method was deprecated in 4.4. "
+                  f"Please, use a different authentication method. Check {AUTHENTICATION_OPTIONS_URL} "
+                  "for more information.")
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
 
@@ -3438,8 +3444,16 @@ def get_script_arguments():
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
-    parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
-    parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secret key credential', default=None)
+    parser.add_argument('-a', '--access_key', dest='access_key', default=None,
+                        help='S3 Access key credential. This option was deprecated in 4.4. Please use another '
+                             'authentication method instead. Check '
+                             'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html '
+                             'for more information.')
+    parser.add_argument('-k', '--secret_key', dest='secret_key', default=None,
+                        help='S3 Access key credential. This option was deprecated in 4.4. Please use another '
+                             'authentication method instead. Check '
+                             'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html '
+                             'for more information.')
     # Beware, once you delete history it's gone.
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)

@@ -48,6 +48,8 @@ static void wm_clean_request(wm_azure_request_t * request);
 static void wm_clean_storage(wm_azure_storage_t * storage);
 static void wm_clean_container(wm_azure_container_t * container);
 
+static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html";
+
 // Parse XML
 
 int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
@@ -237,9 +239,11 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
 
         } else if (!strcmp(nodes[i]->element, XML_APP_ID)) {
             if (*nodes[i]->content != '\0')
+                mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", nodes[i]->element, WM_AZURE_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
                 os_strdup(nodes[i]->content, api_config->application_id);
         } else if (!strcmp(nodes[i]->element, XML_APP_KEY)) {
             if (*nodes[i]->content != '\0')
+                mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", nodes[i]->element, WM_AZURE_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
                 os_strdup(nodes[i]->content, api_config->application_key);
         } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
             if (*nodes[i]->content != '\0')
@@ -469,8 +473,10 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
 
         } else if (nodes[i]->content != NULL && *nodes[i]->content != '\0') {
             if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
+                mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", nodes[i]->element, WM_AZURE_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
                 os_strdup(nodes[i]->content, storage->account_name);
             } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
+                mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", nodes[i]->element, WM_AZURE_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
                 os_strdup(nodes[i]->content, storage->account_key);
             } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
                 os_strdup(nodes[i]->content, storage->auth_path);
