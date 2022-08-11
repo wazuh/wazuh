@@ -98,7 +98,7 @@ add_adress_block() {
         echo "    <server>" >> ${TMP_SERVER}
         echo "      <address>$i</address>" >> ${TMP_SERVER}
         echo "      <port>1514</port>" >> ${TMP_SERVER}
-        echo "      <protocol>tcp</protocol>" >> ${TMP_SERVER}
+        echo "      <protocol>udp</protocol>" >> ${TMP_SERVER}
         echo "    </server>" >> ${TMP_SERVER}
     done
 
