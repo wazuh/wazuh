@@ -270,7 +270,7 @@ def get_files_status(previous_status=None, get_md5=True):
 
 
 def get_ruleset_status(previous_status):
-    """Get MD5 of custom ruleset files.
+    """Get hash of custom ruleset files.
 
     Parameters
     ----------
@@ -280,7 +280,7 @@ def get_ruleset_status(previous_status):
     Returns
     -------
     Dict
-        Relative path and MD5 of local ruleset files.
+        Relative path and hash of local ruleset files.
     """
     final_items = {}
     cluster_items = get_cluster_items()
