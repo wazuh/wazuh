@@ -9,6 +9,7 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <optional>
 #include <string>
 #include <variant>
@@ -488,24 +489,20 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         });
 }
 
-// field: +s_fromArray/<separator>|<separatorRef>/<array_reference1>
+// field: +s_fromArray/<separator>/<array_reference1>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
-    if (parameters.empty())
-    {
-        throw std::runtime_error(fmt::format("[s_fromArray] parameter can not be empty"));
-    }
+    helper::base::checkParametersSize(parameters, 2);
 
-    if (parameters.size() != 2
-        && parameters.at(1).m_type != helper::base::Parameter::Type::REFERENCE)
-    {
-        throw std::runtime_error(fmt::format("[s_fromArray] should have 2 parameter and "
-                                             "the seccond should be a reference"));
-    }
-    auto arrayName = parameters.at(1);
-    auto separator = parameters.at(0);
+    //Check separator parameter
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
+    const auto separator = parameters.at(0);
+
+    //Check Array reference parameter
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::REFERENCE);
+    const auto arrayName = parameters.at(1);
 
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
@@ -515,92 +512,58 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
         fmt::format("[{}] -> Failure: [{}] param should be a string", name, targetField);
     const auto failureTrace2 = fmt::format(
         "[{}] -> Failure: parameter should be a non empty string array", name);
-    const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
+    const auto failureTrace3 = fmt::format(
+        "[{}] -> Failure: array parameter with invalid json path", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
-            base::Event event) -> base::result::Result<base::Event> {
-            // Getting separator field name
-            std::optional<std::string> resolvedSeparator;
-            switch (separator.m_type)
-            {
-                case helper::base::Parameter::Type::REFERENCE:
-                {
-                    if (!event->isString(separator.m_value))
-                    {
-                        return base::result::makeFailure(event, failureTrace2);
-                    }
+        [=, targetField = std::move(targetField),
+        separator = std::move(separator),
+        arrayName = std::move(arrayName)](base::Event event) -> base::result::Result<base::Event> {
 
-                    resolvedSeparator = event->getString(separator.m_value);
-                    if (!resolvedSeparator.has_value())
-                    {
-                        return base::result::makeFailure(event, failureTrace2);
-                    }
-                    break;
-                }
-                case helper::base::Parameter::Type::VALUE:
-                {
-                    resolvedSeparator = separator.m_value;
-                    break;
-                }
-                default:
-                    return base::result::makeFailure(event, failureTrace3);
-            }
+            // Getting separator field name
+            const std::string resolvedSeparator = separator.m_value;
 
             // Getting array field, must be a reference
-            std::optional<std::vector<json::Json>> resolvedParameter;
-            switch (arrayName.m_type)
+            std::optional<std::vector<json::Json>> stringJsonArray;
+            try
             {
-                case helper::base::Parameter::Type::REFERENCE:
+                stringJsonArray = event->getArray(arrayName.m_value);
+                if (!stringJsonArray.has_value() || stringJsonArray.value().size() == 0)
                 {
-                    if (!event->isArray(arrayName.m_value))
-                    {
-                        return base::result::makeFailure(event, failureTrace2);
-                    }
-
-                    resolvedParameter = event->getArray(arrayName.m_value);
-                    if (!resolvedParameter.has_value())
-                    {
-                        return base::result::makeFailure(event, failureTrace2);
-                    }
-                    break;
+                    return base::result::makeFailure(event, failureTrace2);
                 }
-                default:
-                    return base::result::makeFailure(event, failureTrace3);
+            }
+            catch (const std::runtime_error& e)
+            {
+                return base::result::makeFailure(event, failureTrace3);
             }
 
-            std::string composedValue {};
-            if (resolvedParameter.has_value() && resolvedParameter.value().size() > 0)
+            //TODO: avoid dumping JsonArray to a string one
+            std::vector<std::string> stringArray;
+            for (const auto& s_param : stringJsonArray.value())
             {
-                // Getting first element in order to avoid starting with separator
-                if (!resolvedParameter.value().at(0).isString())
+                if (s_param.isString())
+                {
+                    stringArray.emplace_back(s_param.getString().value());
+                }
+                else
                 {
                     return base::result::makeFailure(event, failureTrace1);
                 }
-                composedValue = resolvedParameter.value().at(0).getString().value();
-                resolvedParameter.value().erase(resolvedParameter.value().begin());
-
-                for (const auto& s_param : resolvedParameter.value())
-                {
-                    if (s_param.isString())
-                    {
-                        composedValue = composedValue + resolvedSeparator.value()
-                                        + s_param.getString().value();
-                    }
-                    else
-                    {
-                        return base::result::makeFailure(event, failureTrace1);
-                    }
-                }
             }
-            else
+
+            // lambda expression for accumulate concatenation
+            auto concatPlusSeparator = [&](std::string a, std::string b)
             {
-                return base::result::makeFailure(event, failureTrace2);
-            }
+                return std::move(a) + resolvedSeparator + std::move(b);
+            };
 
-            event->setString(composedValue, targetField);
+            // accumulated concation without trailing indexes
+            std::string composedValueString = std::accumulate(std::next(stringArray.begin()), stringArray.end(), stringArray[0], concatPlusSeparator);
+
+            event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);
         });
 }

@@ -8,15 +8,19 @@
 #include <json/json.hpp>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <openssl/sha.h>
 
-#include "baseTypes.hpp"
 #include "syntax.hpp"
 
+#include "baseTypes.hpp"
 #include <baseHelper.hpp>
 #include <utils/stringUtils.hpp>
 
 namespace
 {
+
+constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2); // Sha1 digest len (20) * 2 (hex chars per byte)
+constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
 
 std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& input)
 {
@@ -25,25 +29,27 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
     unsigned int digest_size;
 
     std::string hexdigest {};
-    constexpr int SHA_DIGEST_LENGTH = 20;
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_create();
     if (!ctx)
     {
-        throw std::runtime_error("Failed during hash context creation");
+        //Failed during hash context creation
+        return std::nullopt;
     }
 
     if (1 != EVP_DigestInit(ctx, EVP_sha1()))
     {
+        //Failed during hash context initialization
         EVP_MD_CTX_destroy(ctx);
-        throw std::runtime_error("Failed during hash context initialization");
+        return std::nullopt;
     }
 
     for (const auto& word : input)
     {
         if (1 != EVP_DigestUpdate(ctx, word.c_str(), word.length()))
         {
-            throw std::runtime_error("Failed during hash context update");
+            //Failed during hash context update
+            return std::nullopt;
         }
     }
 
@@ -51,14 +57,13 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
     EVP_MD_CTX_destroy(ctx);
 
     // OS_SHA1_Hexdigest(digest, hexdigest);
-    typedef char os_sha1[41];
-    char output[41];
+    char output[OS_SHA1_ARRAY_SIZE_LEN];
     for (size_t n = 0; n < SHA_DIGEST_LENGTH; n++)
     {
         sprintf(&output[n * 2], "%02x", digest[n]);
     }
 
-    std::string finalResult(output, 41);
+    std::string finalResult(output, OS_SHA1_ARRAY_SIZE_LEN);
 
     return finalResult;
 }
@@ -68,94 +73,69 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
 namespace builder::internals::builders
 {
 
-using builder::internals::syntax::REFERENCE_ANCHOR;
-
 // field: +sha1_from/<string1>|<string_reference1>/<string2>|<string_reference2>
 base::Expression opBuilderSHAfrom(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
-    if (parameters.empty())
-    {
-        throw std::runtime_error(
-            fmt::format("[opBuilderSHAfrom] parameter can not be empty"));
-    }
 
-    if (parameters.size() < 1)
-    {
-        throw std::runtime_error(
-            fmt::format("[opBuilderSHAfrom] should have at least one parameter"));
-    }
-
+    // Assert expected minimun number of parameters
+    helper::base::checkParametersMinSize(parameters, 1);
+    // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: parameter list shouldn't be empty", name);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: Invalid Parameter Type", name);
-    const auto failureTrace3 = fmt::format(
-        "[{}] -> Failure: Couldn't create HASH and write it in the JSON", name);
+    const auto failureTrace1 = fmt::format("[{}] -> Failure: Argument shouldn't "
+        "be empty", name);
+    const auto failureTrace2 = fmt::format("[{}] -> Failure: Invalid Parameter "
+        "Type", name);
+    const auto failureTrace3 = fmt::format("[{}] -> Failure: Couldn't create "
+        "HASH and write it in the JSON", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
+        [=, targetField = std::move(targetField),
+            parameters = std::move(parameters)](
             base::Event event) -> base::result::Result<base::Event> {
-            std::vector<std::string> resolvedParameter;
 
+            std::vector<std::string> resolvedParameter;
             // Check parameters
             for (auto& param : parameters)
             {
                 // Getting array field name
-                switch (param.m_type)
+                if (param.m_type == helper::base::Parameter::Type::REFERENCE )
                 {
-                    case helper::base::Parameter::Type::REFERENCE:
+                    const auto s_paramValue {event->getString(param.m_value)};
+                    if (!s_paramValue.has_value())
                     {
-                        if (!event->isString(param.m_value))
-                        {
-                            return base::result::makeFailure(event, failureTrace1);
-                        }
-
-                        auto s_paramValue = event->getString(param.m_value);
-                        if (!s_paramValue.has_value())
-                        {
-                            return base::result::makeFailure(event, failureTrace1);
-                        }
-
-                        resolvedParameter.emplace_back(s_paramValue.value());
-                        break;
+                        return base::result::makeFailure(event, failureTrace1);
                     }
-                    case helper::base::Parameter::Type::VALUE:
-                    {
-                        resolvedParameter.emplace_back(param.m_value);
-                        break;
-                    }
-                    default: return base::result::makeFailure(event, failureTrace2);
+                    resolvedParameter.emplace_back(s_paramValue.value());
                 }
+                else if(param.m_type == helper::base::Parameter::Type::VALUE)
+                {
+                    resolvedParameter.emplace_back(param.m_value);
+                }
+                else
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
+
             }
 
-            std::string composedValue {};
-            if (!resolvedParameter.size())
+            if (resolvedParameter.empty())
             {
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            try
-            {
-                auto resultHash = wdbi_strings_hash(resolvedParameter);
-                if (!resultHash.has_value())
-                {
-                    return base::result::makeFailure(event, failureTrace3);
-                }
-                event->setString(resultHash.value(), targetField);
-            }
-            catch (const std::exception& e)
+            auto resultHash = wdbi_strings_hash(resolvedParameter);
+            if (!resultHash.has_value())
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
-
+            event->setString(resultHash.value(), targetField);
             return base::result::makeSuccess(event, successTrace);
         });
 }

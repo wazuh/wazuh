@@ -87,6 +87,17 @@ void checkParametersSize(const std::vector<Parameter>& parameters, size_t size)
     }
 }
 
+void checkParametersMinSize(const std::vector<Parameter>& parameters, size_t minSize)
+{
+    if (parameters.size() < minSize)
+    {
+        throw std::runtime_error(fmt::format("[builders::assertParametersSize] "
+                                             "Expected at least [{}] parameters, got [{}]",
+                                             minSize,
+                                             parameters.size()));
+    }
+}
+
 void checkParameterType(const Parameter& parameter, Parameter::Type type)
 {
     if (parameter.m_type != type)

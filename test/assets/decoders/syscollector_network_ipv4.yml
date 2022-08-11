@@ -30,4 +30,4 @@ normalize:
   - check:
       - event.original.iface.IPv4.address: +exists
     map:
-      _result_saveNetInfoIPv4: +saveNetInfoIPv4
+      _result_saveNetInfoIPv4: +saveNetInfoIPv4/$event.original.agent.id/$event.original.ID/$event.original.iface.name/$event.original.iface.IPv4
