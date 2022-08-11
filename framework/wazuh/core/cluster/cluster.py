@@ -724,12 +724,12 @@ async def get_node_ruleset_integrity(lc: LocalClient) -> dict:
     dict
         Dictionary with results
     """
-    response = await lc.execute(command=b'ruleset_md5', data=b'', wait_for_complete=False)
+    response = await lc.execute(command=b"get_hash", data=b"", wait_for_complete=False)
 
     try:
         result = json.loads(response, object_hook=as_wazuh_object)
     except json.JSONDecodeError as e:
-        raise WazuhClusterError(3020) if 'timeout' in response else e
+        raise WazuhClusterError(3020) if "timeout" in response else e
 
     if isinstance(result, Exception):
         raise result
