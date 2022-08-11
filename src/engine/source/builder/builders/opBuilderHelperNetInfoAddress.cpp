@@ -47,12 +47,12 @@ constexpr std::string_view getPath(Name field)
 // agent <agent_id> netaddr save <scan_ID>|<name>|isIPv6=false|add[i]|netm[i]|broad[i]
 // agent 0001 netaddr save 1234|name|0|add0|netm0|broad0
 bool sysNetAddresTableFill(base::Event event,
-                            const std::string& agentId,
-                            const std::string& scan_id,
-                            const std::string& name,
-                            const std::string& ipObjectPath,
-                            std::shared_ptr<wazuhdb::WazuhDB> wdb,
-                            bool isIPv6)
+                           const std::string& agentId,
+                           const std::string& scan_id,
+                           const std::string& name,
+                           const std::string& ipObjectPath,
+                           std::shared_ptr<wazuhdb::WazuhDB> wdb,
+                           bool isIPv6)
 {
     // Cheking if AddresArray exists
     std::optional<std::vector<json::Json>> address_ar;
@@ -65,7 +65,7 @@ bool sysNetAddresTableFill(base::Event event,
         return false;
     }
 
-    if(!address_ar.has_value())
+    if (!address_ar.has_value())
     {
         return false;
     }
@@ -75,9 +75,10 @@ bool sysNetAddresTableFill(base::Event event,
     std::optional<std::vector<json::Json>> netmaskI;
     try
     {
-        netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data()).value_or(std::vector<json::Json>());
+        netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
+                       .value_or(std::vector<json::Json>());
     }
-    catch(const std::runtime_error& e)
+    catch (const std::runtime_error& e)
     {
         netmaskI = std::nullopt;
     }
@@ -85,16 +86,17 @@ bool sysNetAddresTableFill(base::Event event,
     std::optional<std::vector<json::Json>> broadcastI;
     try
     {
-        broadcastI = event->getArray(ipObjectPath + getPath(Name::BROADCAST).data()).value_or(std::vector<json::Json>());
+        broadcastI = event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
+                         .value_or(std::vector<json::Json>());
     }
-    catch(const std::runtime_error& e)
+    catch (const std::runtime_error& e)
     {
         broadcastI = std::nullopt;
     }
 
     for (size_t i = 0; i != address_ar.value().size(); ++i)
     {
-        std::optional<std::string> addressIValue{};
+        std::optional<std::string> addressIValue {};
         std::optional<std::string> netmaskIValue {"NULL"};
         std::optional<std::string> broadcastIValue {"NULL"};
 
@@ -102,7 +104,7 @@ bool sysNetAddresTableFill(base::Event event,
         {
             addressIValue = address_ar.value().at(i).getString();
         }
-        catch(const std::out_of_range& e)
+        catch (const std::out_of_range& e)
         {
             return false;
         }
@@ -113,7 +115,7 @@ bool sysNetAddresTableFill(base::Event event,
             {
                 netmaskIValue = netmaskI.value().at(i).getString();
             }
-            catch(const std::out_of_range& e)
+            catch (const std::out_of_range& e)
             {
                 netmaskIValue = "NULL";
             }
@@ -125,7 +127,7 @@ bool sysNetAddresTableFill(base::Event event,
             {
                 broadcastIValue = broadcastI.value().at(i).getString().value_or("NULL");
             }
-            catch(const std::out_of_range& e)
+            catch (const std::out_of_range& e)
             {
                 broadcastIValue = "NULL";
             }
@@ -133,13 +135,13 @@ bool sysNetAddresTableFill(base::Event event,
 
         // We should still check if it's empty because value_or only checks nullopt
         std::string msg = fmt::format("agent {} netaddr save {}|{}|{}|{}|{}|{}",
-                                    agentId,
-                                    scan_id,
-                                    name,
-                                    isIPv6 ? "1" : "0",
-                                    addressIValue.value(),
-                                    netmaskIValue.value(),
-                                    broadcastIValue.value());
+                                      agentId,
+                                      scan_id,
+                                      name,
+                                      isIPv6 ? "1" : "0",
+                                      addressIValue.value(),
+                                      netmaskIValue.value(),
+                                      broadcastIValue.value());
 
         auto findEventResponse = wdb->tryQueryAndParseResult(msg);
         if (std::get<0>(findEventResponse) != wazuhdb::QueryResultCodes::OK)
@@ -176,9 +178,12 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace = fmt::format("[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", name);
-    const auto failureTrace1 = fmt::format("[{}] -> Failure: [{}] sysNetAddressTableFill error", name, targetField);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure: [{}] couldn't assign result value", name, targetField);
+    const auto failureTrace = fmt::format(
+        "[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", name);
+    const auto failureTrace1 = fmt::format(
+        "[{}] -> Failure: [{}] sysNetAddressTableFill error", name, targetField);
+    const auto failureTrace2 = fmt::format(
+        "[{}] -> Failure: [{}] couldn't assign result value", name, targetField);
 
     // EventPaths and mappedPaths can be set in buildtime
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
@@ -186,32 +191,32 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField),
-            agent_id_path = parameters[0].m_value,
-            scan_id_path = parameters[1].m_value,
-            name_path = parameters[2].m_value,
-            ipObject_path = parameters[3].m_value,
-            wdb = std::move(wdb)](
-            base::Event event) -> base::result::Result<base::Event> {
-
+        [=,
+         targetField = std::move(targetField),
+         agent_id_path = parameters[0].m_value,
+         scan_id_path = parameters[1].m_value,
+         name_path = parameters[2].m_value,
+         ipObject_path = parameters[3].m_value,
+         wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
+        {
             // Checking values and saving them
             if (!event->exists(agent_id_path) || !event->isString(agent_id_path))
             {
                 return base::result::makeFailure(event, failureTrace + agent_id_path);
             }
-            const auto &agent_id = event->getString(agent_id_path).value_or("NULL");
+            const auto& agent_id = event->getString(agent_id_path).value_or("NULL");
 
             if (!event->exists(scan_id_path) || !event->isString(scan_id_path))
             {
                 return base::result::makeFailure(event, failureTrace + scan_id_path);
             }
-            const auto &scan_id = event->getString(scan_id_path).value_or("NULL");
+            const auto& scan_id = event->getString(scan_id_path).value_or("NULL");
 
             if (!event->exists(name_path) || !event->isString(name_path))
             {
                 return base::result::makeFailure(event, failureTrace + name);
             }
-            const auto &name = event->getString(name_path).value_or("NULL");
+            const auto& name = event->getString(name_path).value_or("NULL");
 
             // Cheking base object existence
             if (!event->exists(ipObject_path))
@@ -219,7 +224,8 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
                 return base::result::makeFailure(event, failureTrace + ipObject_path);
             }
 
-            auto resultExecution = sysNetAddresTableFill(event, agent_id, scan_id, name, ipObject_path, wdb, isIPv6);
+            auto resultExecution = sysNetAddresTableFill(
+                event, agent_id, scan_id, name, ipObject_path, wdb, isIPv6);
 
             if (!resultExecution)
             {
