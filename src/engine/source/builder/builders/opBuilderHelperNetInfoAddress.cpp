@@ -27,9 +27,6 @@ constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
 
 enum class Name
 {
-    ID,
-    IFACE,
-    IFACE_NAME,
     ADDRESS,
     NETMASK,
     BROADCAST
@@ -39,9 +36,6 @@ constexpr std::string_view getPath(Name field)
 {
     switch (field)
     {
-        case Name::ID: return "/ID";
-        case Name::IFACE: return "/iface";
-        case Name::IFACE_NAME: return "/iface/name";
         case Name::ADDRESS: return "/address";
         case Name::NETMASK: return "/netmask";
         case Name::BROADCAST: return "/broadcast";
@@ -52,27 +46,21 @@ constexpr std::string_view getPath(Name field)
 // when isIPv6 == true the third field will be set to 0, otherwise 1 for IPv4
 // agent <agent_id> netaddr save <scan_ID>|<name>|isIPv6=false|add[i]|netm[i]|broad[i]
 // agent 0001 netaddr save 1234|name|0|add0|netm0|broad0
-std::optional<bool> sysNetAddresTableFill(base::Event event, bool isIPv6)
+bool sysNetAddresTableFill(base::Event event,
+                            const std::string& agentId,
+                            const std::string& scan_id,
+                            const std::string& name,
+                            const std::string& ipObjectPath,
+                            std::shared_ptr<wazuhdb::WazuhDB> wdb,
+                            bool isIPv6)
 {
-    // this fields presence is checked before in the yml
-    const auto& agent_id = event->getString(engineserver::EVENT_AGENT_ID);
-    const auto& scan_id =
-        event->getString(std::string(engineserver::EVENT_LOG) + getPath(Name::ID).data());
-    const auto& name = event->getString(std::string(engineserver::EVENT_LOG)
-                                        + getPath(Name::IFACE_NAME).data());
-
-    std::string middleFieldName = isIPv6 ? "IPv6" : "IPv4";
-    std::string msg {"agent " + agent_id.value() + " netaddr save"};
-
     // Cheking if AddresArray exists
     std::optional<std::vector<json::Json>> address_ar;
     try
     {
-        address_ar = event->getArray(std::string(engineserver::EVENT_LOG)
-                                     + getPath(Name::IFACE).data() + "/" + middleFieldName
-                                     + getPath(Name::ADDRESS).data());
+        address_ar = event->getArray(ipObjectPath + getPath(Name::ADDRESS).data());
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
         return false;
     }
@@ -82,108 +70,82 @@ std::optional<bool> sysNetAddresTableFill(base::Event event, bool isIPv6)
         return false;
     }
 
-    auto wdb = wazuhdb::WazuhDB(STREAM_SOCK_PATH);
+    std::string middleFieldName = isIPv6 ? "IPv6" : "IPv4";
 
-    if (!scan_id.has_value())
+    std::optional<std::vector<json::Json>> netmaskI;
+    try
     {
-        msg += " NULL";
+        netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data()).value_or(std::vector<json::Json>());
     }
-    else
+    catch(const std::runtime_error& e)
     {
-        msg += " " + scan_id.value();
-    }
-    if (!name.has_value())
-    {
-        msg += "|NULL";
-    }
-    else
-    {
-        msg += "|" + name.value();
+        netmaskI = std::nullopt;
     }
 
-    // Information about an IPv4(0) or IPv6(1) address
-    msg += "|" + std::string(isIPv6 ? "1" : "0");
-
-    // TODO: can we avoid using rapidjson directly here?
-    rapidjson::SizeType i = 0;
-    for (auto const& address : address_ar.value())
+    std::optional<std::vector<json::Json>> broadcastI;
+    try
     {
-        std::string addresesMessage {};
-        if (address.isString())
+        broadcastI = event->getArray(ipObjectPath + getPath(Name::BROADCAST).data()).value_or(std::vector<json::Json>());
+    }
+    catch(const std::runtime_error& e)
+    {
+        broadcastI = std::nullopt;
+    }
+
+    for (size_t i = 0; i != address_ar.value().size(); ++i)
+    {
+        std::optional<std::string> addressIValue{};
+        std::optional<std::string> netmaskIValue {"NULL"};
+        std::optional<std::string> broadcastIValue {"NULL"};
+
+        try
         {
-            addresesMessage = msg + "|" + address.getString().value();
+            addressIValue = address_ar.value().at(i).getString();
         }
-        else
+        catch(const std::out_of_range& e)
         {
             return false;
         }
 
-        //TODO: is there a fastest way of checking each json array items?
-        // if netmask items dosen't exists or has a wrong type then append NULL
-        if (!event->exists(std::string(engineserver::EVENT_LOG)
-                           + getPath(Name::IFACE).data() + "/" + middleFieldName
-                           + getPath(Name::NETMASK).data() + "/" + std::to_string(i)))
-        {
-            addresesMessage += "|NULL";
-        }
-        else
+        if (netmaskI.has_value())
         {
             try
             {
-                const auto& netmasks_ar = event->getArray(
-                    std::string(engineserver::EVENT_LOG) + getPath(Name::IFACE).data()
-                    + "/" + middleFieldName + getPath(Name::NETMASK).data());
-                if (!netmasks_ar.value()[i].isString())
-                {
-                    addresesMessage += "|NULL";
-                }
-                else
-                {
-                    addresesMessage += "|" + netmasks_ar.value()[i].getString().value();
-                }
+                netmaskIValue = netmaskI.value().at(i).getString();
             }
-            catch (const std::exception& e)
+            catch(const std::out_of_range& e)
             {
-                addresesMessage += "|NULL";
+                netmaskIValue = "NULL";
             }
         }
 
-        // if netmask items dosen't exists or has a wrong type then append NULL
-        if (!event->exists(std::string(engineserver::EVENT_LOG)
-                           + +getPath(Name::IFACE).data() + "/" + middleFieldName
-                           + getPath(Name::BROADCAST).data() + "/" + std::to_string(i)))
-        {
-            addresesMessage += "|NULL";
-        }
-        else
+        if (broadcastI.has_value())
         {
             try
             {
-                const auto& broadcast_ar = event->getArray(
-                    std::string(engineserver::EVENT_LOG) + getPath(Name::IFACE).data()
-                    + "/" + middleFieldName + getPath(Name::BROADCAST).data());
-                if (!broadcast_ar.value()[i].isString())
-                {
-                    addresesMessage += "|NULL";
-                }
-                else
-                {
-                    addresesMessage += "|" + broadcast_ar.value()[i].getString().value();
-                }
+                broadcastIValue = broadcastI.value().at(i).getString().value_or("NULL");
             }
-            catch (const std::exception& e)
+            catch(const std::out_of_range& e)
             {
-                addresesMessage += "|NULL";
+                broadcastIValue = "NULL";
             }
         }
 
-        auto findEventResponse = wdb.tryQueryAndParseResult(addresesMessage);
+        // We should still check if it's empty because value_or only checks nullopt
+        std::string msg = fmt::format("agent {} netaddr save {}|{}|{}|{}|{}|{}",
+                                    agentId,
+                                    scan_id,
+                                    name,
+                                    isIPv6 ? "1" : "0",
+                                    addressIValue.value(),
+                                    netmaskIValue.value(),
+                                    broadcastIValue.value());
+
+        auto findEventResponse = wdb->tryQueryAndParseResult(msg);
         if (std::get<0>(findEventResponse) != wazuhdb::QueryResultCodes::OK)
         {
             return false;
         }
-
-        i++;
     }
 
     return true;
@@ -193,37 +155,80 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
-    if (!parameters.empty())
-    {
-        throw std::runtime_error(fmt::format("[{}] parameter should be empty", name));
-    }
+
+    // Assert expected number of parameters
+    helper::base::checkParametersSize(parameters, 4);
+    // Parameter type check
+    // Agent_id
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
+    // scan_id
+    helper::base::checkParameterType(parameters[1],
+                                     helper::base::Parameter::Type::REFERENCE);
+    // name
+    helper::base::checkParameterType(parameters[2],
+                                     helper::base::Parameter::Type::REFERENCE);
+    // array (IPv4 or IPv6)
+    helper::base::checkParameterType(parameters[3],
+                                     helper::base::Parameter::Type::REFERENCE);
 
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace =
-        fmt::format("[{}] -> Failure, wrong type of parameter reference", name);
-    const auto failureTrace1 = fmt::format(
-        "[{}] -> Failure: [{}] sysNetAddressTableFill error", name, targetField);
-    const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: [{}] couldn't assign result value", name, targetField);
+    const auto failureTrace = fmt::format("[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", name);
+    const auto failureTrace1 = fmt::format("[{}] -> Failure: [{}] sysNetAddressTableFill error", name, targetField);
+    const auto failureTrace2 = fmt::format("[{}] -> Failure: [{}] couldn't assign result value", name, targetField);
+
+    // EventPaths and mappedPaths can be set in buildtime
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
+        [=, targetField = std::move(targetField),
+            agent_id_path = parameters[0].m_value,
+            scan_id_path = parameters[1].m_value,
+            name_path = parameters[2].m_value,
+            ipObject_path = parameters[3].m_value,
+            wdb = std::move(wdb)](
             base::Event event) -> base::result::Result<base::Event> {
-            auto resultExecution = sysNetAddresTableFill(event, isIPv6);
 
-            if (!resultExecution.has_value() || !resultExecution.value())
+            // Checking values and saving them
+            if (!event->exists(agent_id_path) || !event->isString(agent_id_path))
+            {
+                return base::result::makeFailure(event, failureTrace + agent_id_path);
+            }
+            const auto &agent_id = event->getString(agent_id_path).value_or("NULL");
+
+            if (!event->exists(scan_id_path) || !event->isString(scan_id_path))
+            {
+                return base::result::makeFailure(event, failureTrace + scan_id_path);
+            }
+            const auto &scan_id = event->getString(scan_id_path).value_or("NULL");
+
+            if (!event->exists(name_path) || !event->isString(name_path))
+            {
+                return base::result::makeFailure(event, failureTrace + name);
+            }
+            const auto &name = event->getString(name_path).value_or("NULL");
+
+            // Cheking base object existence
+            if (!event->exists(ipObject_path))
+            {
+                return base::result::makeFailure(event, failureTrace + ipObject_path);
+            }
+
+            auto resultExecution = sysNetAddresTableFill(event, agent_id, scan_id, name, ipObject_path, wdb, isIPv6);
+
+            if (!resultExecution)
             {
                 return base::result::makeFailure(event, failureTrace1);
             }
 
             try
             {
-                event->setBool(resultExecution.value(), targetField);
+                event->setBool(resultExecution, targetField);
             }
             catch (const std::exception& e)
             {

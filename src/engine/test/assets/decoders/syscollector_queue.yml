@@ -1,4 +1,4 @@
-name: decoder_syscollector
+name: syscollector_queue
 
 check:
   - wazuh.queue: +i_eq/64 #SYSCOLLECTOR_MQ
@@ -11,14 +11,3 @@ parse:
 normalize:
   map:
     event.original: $labels
-
----
-
-name: decoder_syscollector_base
-
-parents:
-  - decoder_syscollector
-
-check:
-  - event.original.type: +exists
-  - event.original.type: +is_string
