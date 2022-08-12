@@ -254,7 +254,9 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "(1135): Could not chown object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
+
+    const char * error_msg = "(1135): Could not chown object 'var/db/agents/001-agent1.db' due to";
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -299,7 +301,9 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
     will_return(__wrap_chmod, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
+
+    const char * error_msg = "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to";
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -2177,12 +2181,16 @@ void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
     will_return(__wrap_remove, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to [(0)-(error)].");
+
+    const char * error_shm = "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to";
+    expect_memory(__wrap__mdebug2, formatted_msg, error_shm, strlen(error_shm));
 
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
     will_return(__wrap_remove, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to [(0)-(error)].");
+
+    const char * error_wal = "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to";
+    expect_memory(__wrap__mdebug2, formatted_msg, error_wal, strlen(error_wal));
 
     ret = wdb_remove_agent_db(id, name);
 
