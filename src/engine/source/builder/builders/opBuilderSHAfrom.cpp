@@ -1,26 +1,21 @@
 #include "opBuilderSHAfrom.hpp"
 
-#include <iomanip>
 #include <optional>
 #include <string>
 
 #include <fmt/format.h>
 #include <json/json.hpp>
-#include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
-#include "syntax.hpp"
-
 #include "baseTypes.hpp"
 #include <baseHelper.hpp>
-#include <utils/stringUtils.hpp>
 
 namespace
 {
 
-constexpr int OS_SHA1_HEXDIGEST_SIZE =
-    (SHA_DIGEST_LENGTH * 2); // Sha1 digest len (20) * 2 (hex chars per byte)
+// Sha1 digest len (20) * 2 (hex chars per byte)
+constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2);
 constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
 
 std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& input)
@@ -28,8 +23,6 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
     char* parameter = NULL;
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_size;
-
-    std::string hexdigest {};
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_create();
     if (!ctx)
@@ -64,9 +57,7 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
         sprintf(&output[n * 2], "%02x", digest[n]);
     }
 
-    std::string finalResult(output, OS_SHA1_ARRAY_SIZE_LEN);
-
-    return finalResult;
+    return {output};
 }
 
 } // namespace
@@ -122,11 +113,6 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                 {
                     return base::result::makeFailure(event, failureTrace2);
                 }
-            }
-
-            if (resolvedParameter.empty())
-            {
-                return base::result::makeFailure(event, failureTrace1);
             }
 
             auto resultHash = wdbi_strings_hash(resolvedParameter);

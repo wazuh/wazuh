@@ -12,9 +12,6 @@
 #include <string>
 #include <variant>
 
-#include "syntax.hpp"
-
-#include "protocolHandler.hpp"
 #include <baseHelper.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <wdb/wdb.hpp>

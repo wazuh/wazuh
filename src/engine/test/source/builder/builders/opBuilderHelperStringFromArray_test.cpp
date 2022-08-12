@@ -98,7 +98,7 @@ TEST(opBuilderHelperStringFromArray, Failed_array_without_strings)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringFromArray, Failed_empty_array)
+TEST(opBuilderHelperStringFromArray, Empty_string_from_empty_array)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"s_from_array"},
@@ -111,7 +111,8 @@ TEST(opBuilderHelperStringFromArray, Failed_empty_array)
 
     result::Result<Event> result = op(event1);
 
-    ASSERT_FALSE(result);
+    ASSERT_TRUE(result);
+    ASSERT_EQ("", result.payload()->getString("/field2check").value());
 }
 
 TEST(opBuilderHelperStringFromArray, Success_with_multi_level_assignment)
