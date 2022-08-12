@@ -21,7 +21,10 @@ from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents
+from wazuh.core.cluster.common import as_wazuh_object
+from wazuh.core.cluster.local_client import LocalClient
 from wazuh.core.cluster.utils import get_cluster_items, read_config
+from wazuh.core.exception import WazuhClusterError
 from wazuh.core.utils import md5, mkdir_with_mode, to_relative_path
 
 logger = logging.getLogger('wazuh')
@@ -706,3 +709,29 @@ async def run_in_pool(loop, pool, f, *args, **kwargs):
         return await wait_for(task, timeout=None)
     else:
         return f(*args, **kwargs)
+
+
+async def get_node_ruleset_integrity(lc: LocalClient) -> dict:
+    """Retrieve custom ruleset integrity.
+
+    Parameters
+    ----------
+    lc : LocalClient
+        LocalClient instance.
+
+    Returns
+    -------
+    dict
+        Dictionary with results
+    """
+    response = await lc.execute(command=b"get_hash", data=b"", wait_for_complete=False)
+
+    try:
+        result = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if "timeout" in response else e
+
+    if isinstance(result, Exception):
+        raise result
+
+    return result
