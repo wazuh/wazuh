@@ -521,44 +521,36 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
     const auto failureTrace1 =
         fmt::format("[{}] -> Failure: [{}] param should be a string", name, targetField);
     const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: parameter should be a non empty string array", name);
+        "[{}] -> Failure: parameter should be a string array", name);
     const auto failureTrace3 =
         fmt::format("[{}] -> Failure: array parameter with invalid json path", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=,
-         targetField = std::move(targetField),
-         separator = std::move(separator),
-         arrayName = std::move(arrayName)](
+        [=, targetField = std::move(targetField),
+            separator = std::move(separator.m_value),
+            arrayName = std::move(arrayName.m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            // Getting separator field name
-            const std::string resolvedSeparator = separator.m_value;
-
             // Getting array field, must be a reference
-            std::optional<std::vector<json::Json>> stringJsonArray;
-            try
+            auto stringJsonArray = event->getArray(arrayName);
+            if (!stringJsonArray.has_value() )
             {
-                stringJsonArray = event->getArray(arrayName.m_value);
-                if (!stringJsonArray.has_value() || stringJsonArray.value().size() == 0)
-                {
-                    return base::result::makeFailure(event, failureTrace2);
-                }
-            }
-            catch (const std::runtime_error& e)
-            {
-                return base::result::makeFailure(event, failureTrace3);
+                return base::result::makeFailure(event, failureTrace2);
             }
 
-            // TODO: avoid dumping JsonArray to a string one
             std::vector<std::string> stringArray;
+            ssize_t resultSize = 1;
+            // accumulated concation without trailing indexes
+            std::string composedValueString {};
             for (const auto& s_param : stringJsonArray.value())
             {
                 if (s_param.isString())
                 {
-                    stringArray.emplace_back(s_param.getString().value());
+                    auto strVal = s_param.getString().value();
+                    resultSize += strVal.size() + separator.size();
+                    stringArray.emplace_back(std::move(strVal));
                 }
                 else
                 {
@@ -566,17 +558,13 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
                 }
             }
 
-            // lambda expression for accumulate concatenation
-            auto concatPlusSeparator = [&](std::string a, std::string b) {
-                return std::move(a) + resolvedSeparator + std::move(b);
-            };
+            composedValueString.reserve(resultSize);
 
-            // accumulated concation without trailing indexes
-            std::string composedValueString =
-                std::accumulate(std::next(stringArray.begin()),
-                                stringArray.end(),
-                                stringArray[0],
-                                concatPlusSeparator);
+            for (ssize_t i = 0; i < stringArray.size(); ++i)
+            {
+                composedValueString.append(i==0 ? "" : separator);
+                composedValueString.append(stringArray.at(i));
+            }
 
             event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);
