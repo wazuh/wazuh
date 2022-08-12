@@ -326,35 +326,34 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     configPath = os.path.join(utils.currentPath(),
                               "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-    ### Uncomment after close https://github.com/wazuh/wazuh/issues/11025
-    # if target == "winagent":
-    #     build_tools.cleanAll()
-    #     build_tools.cleanExternals()
-    #     build_tools.makeDeps(targetName="agent", srcOnly=False)
-    #     build_tools.makeTarget(targetName="agent", tests=False, debug=True)
-    #     build_tools.cleanFolder(moduleName=moduleName,
-    #                             additionalFolder="build")
+    if target == "winagent":
+        build_tools.cleanAll()
+        build_tools.cleanExternals()
+        build_tools.makeDeps(targetName="agent", srcOnly=False)
+        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
+        build_tools.cleanFolder(moduleName=moduleName,
+                                additionalFolder="build")
     if moduleName != "shared_modules/utils":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
-    ### Uncomment after close https://github.com/wazuh/wazuh/issues/11025
-    # if moduleName == "syscheckd":
-    #     runTestToolForWindows(moduleName=moduleName,
-    #                           testToolConfig=smokeTestConfig)
-    #     runTestToolCheck(moduleName=moduleName)
-    # if moduleName != "syscheckd":
-    #     build_tools.cleanAll()
-    #     build_tools.cleanExternals()
-    # if target != "winagent":
-    #     utils.printHeader(moduleName=moduleName,
-    #                       headerKey="winagentTests")
-    #     build_tools.makeDeps(targetName="winagent",
-    #                          srcOnly=False)
-    #     build_tools.makeTarget(targetName="winagent",
-    #                            tests=True,
-    #                            debug=True)
-    #     runTests(moduleName=moduleName)
+    if moduleName == "syscheckd":
+        runTestToolForWindows(moduleName=moduleName,
+                              testToolConfig=smokeTestConfig)
+        runTestToolCheck(moduleName=moduleName)
+    if moduleName != "syscheckd":
+        build_tools.cleanAll()
+        build_tools.cleanExternals()
+    if target != "winagent":
+        utils.printHeader(moduleName=moduleName,
+                          headerKey="winagentTests")
+        build_tools.makeDeps(targetName="winagent",
+                             srcOnly=False)
+        build_tools.makeTarget(targetName="winagent",
+                               tests=True,
+                               debug=True)
+        runTests(moduleName=moduleName)
     if clean:
+        os.chdir(os.path.join(utils.rootPath(), moduleName))
         utils.deleteLogs(moduleName=moduleName)
     utils.printGreen(msg="[RTR: PASSED]",
                      module=moduleName)
@@ -494,14 +493,14 @@ def runTestToolForWindows(moduleName, testToolConfig):
     rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
                             "bin")
     if moduleName == "syscheckd":
-        libgcc = utils.findFile(name="libgcc_s_sjlj-1.dll",
+        libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
                                 path=utils.rootPath())
         rsync = utils.findFile(name="rsync.dll",
                                path=utils.rootPath())
         dbsync = utils.findFile(name="dbsync.dll",
                                 path=utils.rootPath())
         shutil.copyfile(libgcc,
-                        os.path.join(rootPath, "libgcc_s_sjlj-1.dll"))
+                        os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
         shutil.copyfile(rsync,
                         os.path.join(rootPath, "rsync.dll"))
         shutil.copyfile(dbsync,

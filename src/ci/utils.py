@@ -76,9 +76,10 @@ def deleteLogs(moduleName):
                 headerKey="deletelogs")
     deleteFolderDic = build_tools.deleteFolderDic()
     for folder in deleteFolderDic[moduleName]:
-        build_tools.cleanFolder(moduleName,
-                                folder,
-                                folder)
+        if (os.path.exists(folder)):
+            build_tools.cleanFolder(moduleName,
+                                    folder,
+                                    folder)
     pytestResultsPath = os.path.join(CURRENT_DIR,
                                      "tests/results")
     out = subprocess.run("rm -rf {}".format(pytestResultsPath),
