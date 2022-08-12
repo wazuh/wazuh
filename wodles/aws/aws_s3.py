@@ -176,21 +176,13 @@ class WazuhIntegration:
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
         self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
-    def migrate_from_38(self, **kwargs):
-        self.db_maintenance(**kwargs)
-        self.db_connector.commit()
-
     def migrate(self, **kwargs):
         regex_version = re.compile(r'^v?(\d.\d){1}')
         old_version = re.search(regex_version, self.old_version).group(1).replace('.', '')
         current_version = re.search(regex_version, self.wazuh_version).group(1).replace('.', '')
         if old_version < current_version:
-            migration_method_name = 'migrate_from_{}'.format(old_version)
-            if hasattr(self, migration_method_name):
-                migration_method = getattr(self, migration_method_name)
-                # do migration from 3.8 version
-                if old_version == '38':
-                    migration_method(**kwargs)
+            self.db_maintenance(**kwargs)
+            self.db_connector.commit()
 
     def check_metadata_version(self):
         try:
