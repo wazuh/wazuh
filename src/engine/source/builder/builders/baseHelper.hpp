@@ -83,12 +83,14 @@ namespace helper::base
     /**
      * @brief Check that the number of parameters is equal or bigger than
      * minimum and throw otherwise.
-     * @param parameters
-     * @param size
+     *
+     * @param parameters vector of parameters to check
+     * @param size minimum size of parameters
      *
      * @throws std::runtime_error if the number of parameters is not correct.
      */
-    void checkParametersMinSize(const std::vector<Parameter>& parameters, size_t min_size);
+    void checkParametersMinSize(const std::vector<Parameter>& parameters,
+                                size_t min_size);
     /**
      * @brief Check that the paremeter is of Parameter::Type and throw otherwise.
      *
