@@ -297,7 +297,7 @@ def checkTransactionOp(result, configLogging, testCase, inputJSONs):
     """
     logger = configLogging
     for inputData in inputJSONs:
-        if result['value'] == inputData['body']['data']:
+        if result['value'] == inputData['body']['data'][0]:
             assert True
             break
     else:
@@ -365,7 +365,9 @@ def testFileTransactions(readResultFiles, configLogging, readFileTxnInputs):
 
     for operation in resultTransactions:
         assert "DB_ERROR" != operation['Operation type'],\
-               "Something has gone wrong with the test tool"
+               "Something has gone wrong with the test tool\
+               \n {}".format(operation['value']['exception'])
+
         if "INSERTED" in operation['Operation type']:
             checkTransactionOp(result=operation,
                                configLogging=configLogging,
@@ -414,7 +416,9 @@ def testRegistryKeytransactions(readResultFiles,
 
     for operation in resultTransactions:
         assert "DB_ERROR" != operation['Operation type'],\
-               "Something has gone wrong with the test tool"
+               "Something has gone wrong with the test tool\
+               \n {}".format(operation['value']['exception'])
+
         if "INSERTED" in operation['Operation type']:
             checkTransactionOp(result=operation,
                                configLogging=configLogging,
@@ -464,7 +468,8 @@ def testRegistryDatatransactions(readResultFiles,
 
     for operation in resultTransactions:
         assert "DB_ERROR" != operation['Operation type'],\
-               "Something has gone wrong with the test tool"
+               "Something has gone wrong with the test tool\
+               \n {}".format(operation['value']['exception'])
         if "INSERTED" in operation['Operation type']:
             checkTransactionOp(result=operation,
                                configLogging=configLogging,

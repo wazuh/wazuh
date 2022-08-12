@@ -17,7 +17,8 @@
                 "perm": "-rw-rw-r--",
                 "scanned": 1,
                 "uid": 0,
-                "user_name": "fakeUser"
+                "user_name": "fakeUser",
+                "hash_full_path": "c26e28e20da25627fb939c9c67b04ef9d1c89f12"
             }
         ]
     }
