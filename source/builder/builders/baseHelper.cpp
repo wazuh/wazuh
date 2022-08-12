@@ -91,10 +91,11 @@ void checkParametersMinSize(const std::vector<Parameter>& parameters, size_t min
 {
     if (parameters.size() < minSize)
     {
-        throw std::runtime_error(fmt::format("[builders::assertParametersSize] "
-                                             "Expected at least [{}] parameters, got [{}]",
-                                             minSize,
-                                             parameters.size()));
+        throw std::runtime_error(
+            fmt::format("[builders::assertParametersSize] "
+                        "Expected at least [{}] parameters, got [{}]",
+                        minSize,
+                        parameters.size()));
     }
 }
 
