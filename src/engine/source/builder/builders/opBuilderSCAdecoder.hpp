@@ -13,8 +13,8 @@
 #include <any>
 #include <memory>
 
-#include <wdb/wdb.hpp>
 #include <json/json.hpp>
+#include <wdb/wdb.hpp>
 
 #include "base/baseTypes.hpp"
 #include "expression.hpp"
@@ -40,50 +40,50 @@ namespace field
  */
 enum class Name
 {
-    A_BEGIN,                 ///< Not a field, only for iterate purposes
-    ROOT = A_BEGIN,          ///< Root field
-    CHECK_COMMAND,           ///< checkEvent
-    CHECK_COMPLIANCE,        ///< checkEvent
-    CHECK_CONDITION,         ///< checkEvent
-    CHECK_DESCRIPTION,       ///< checkEvent
-    CHECK_DIRECTORY,         ///< checkEvent
-    CHECK_FILE,              ///< checkEvent
-    CHECK_ID,                ///< checkEvent
-    CHECK_PREVIOUS_RESULT,   ///< checkEvent
-    CHECK_PROCESS,           ///< checkEvent
-    CHECK_RATIONALE,         ///< checkEvent
-    CHECK_REASON,            ///< checkEvent
-    CHECK_REFERENCES,        ///< checkEvent
-    CHECK_REGISTRY,          ///< checkEvent
-    CHECK_REMEDIATION,       ///< checkEvent
-    CHECK_RESULT,            ///< checkEvent
-    CHECK_RULES,             ///< checkEvent
-    CHECK_STATUS,            ///< checkEvent
-    CHECK_TITLE,             ///< checkEvent
-    CHECK,                   ///< checkEvent
-    DESCRIPTION,             ///< scaninfo
-    END_TIME,                ///< scaninfo
-    ELEMENTS_SENT,           ///< DumpEvent
-    FAILED,                  ///< scaninfo
-    FILE,                    ///< scaninfo
-    FIRST_SCAN,              ///< scaninfo
-    FORCE_ALERT,             ///< scaninfo
-    HASH_FILE,               ///< scaninfo
-    HASH,                    ///< scaninfo
-    ID,                      ///< checkEvent
-    INVALID,                 ///< scaninfo
-    NAME,                    ///< scaninfo
-    PASSED,                  ///< scaninfo
-    POLICY_ID,               ///< scaninfo, checkEvent
-    POLICY,                  ///< checkEvent
-    POLICIES,                ///< Policies
-    REFERENCES,              ///< scaninfo
-    SCAN_ID,                 ///< scaninfo
-    SCORE,                   ///< scaninfo
-    START_TIME,              ///< scaninfo
-    TOTAL_CHECKS,            ///< scaninfo
-    TYPE,                    ///< checkEvent
-    A_END                   ///< Not a field, only for iterate purposes
+    A_BEGIN,               ///< Not a field, only for iterate purposes
+    ROOT = A_BEGIN,        ///< Root field
+    CHECK_COMMAND,         ///< checkEvent
+    CHECK_COMPLIANCE,      ///< checkEvent
+    CHECK_CONDITION,       ///< checkEvent
+    CHECK_DESCRIPTION,     ///< checkEvent
+    CHECK_DIRECTORY,       ///< checkEvent
+    CHECK_FILE,            ///< checkEvent
+    CHECK_ID,              ///< checkEvent
+    CHECK_PREVIOUS_RESULT, ///< checkEvent
+    CHECK_PROCESS,         ///< checkEvent
+    CHECK_RATIONALE,       ///< checkEvent
+    CHECK_REASON,          ///< checkEvent
+    CHECK_REFERENCES,      ///< checkEvent
+    CHECK_REGISTRY,        ///< checkEvent
+    CHECK_REMEDIATION,     ///< checkEvent
+    CHECK_RESULT,          ///< checkEvent
+    CHECK_RULES,           ///< checkEvent
+    CHECK_STATUS,          ///< checkEvent
+    CHECK_TITLE,           ///< checkEvent
+    CHECK,                 ///< checkEvent
+    DESCRIPTION,           ///< scaninfo
+    END_TIME,              ///< scaninfo
+    ELEMENTS_SENT,         ///< DumpEvent
+    FAILED,                ///< scaninfo
+    FILE,                  ///< scaninfo
+    FIRST_SCAN,            ///< scaninfo
+    FORCE_ALERT,           ///< scaninfo
+    HASH_FILE,             ///< scaninfo
+    HASH,                  ///< scaninfo
+    ID,                    ///< checkEvent
+    INVALID,               ///< scaninfo
+    NAME,                  ///< scaninfo
+    PASSED,                ///< scaninfo
+    POLICY_ID,             ///< scaninfo, checkEvent
+    POLICY,                ///< checkEvent
+    POLICIES,              ///< Policies
+    REFERENCES,            ///< scaninfo
+    SCAN_ID,               ///< scaninfo
+    SCORE,                 ///< scaninfo
+    START_TIME,            ///< scaninfo
+    TOTAL_CHECKS,          ///< scaninfo
+    TYPE,                  ///< checkEvent
+    A_END                  ///< Not a field, only for iterate purposes
 };
 
 /**
@@ -117,8 +117,8 @@ enum class SearchResult
 struct InfoEventDecode
 {
     // TODO Changes names
-    base::Event& event;              ///< Event to be processed
-    const std::string& agentID;      ///< Agent ID of the agent that generated the event
+    base::Event& event;               ///< Event to be processed
+    const std::string& agentID;       ///< Agent ID of the agent that generated the event
     const std::string& sourceSCApath; ///< Path to the SCA Event in the incoming event
     std::shared_ptr<wazuhdb::WazuhDB> wdb; ///< WazuhDB instance
     const std::unordered_map<sca::field::Name, std::string>& fieldSource;
@@ -145,7 +145,8 @@ struct InfoEventDecode
         return event->getArray(fieldSource.at(field));
     };
 
-    bool existsFromSrc(sca::field::Name field) const {
+    bool existsFromSrc(sca::field::Name field) const
+    {
         return event->exists(fieldSource.at(field));
     }
 };
@@ -182,48 +183,30 @@ bool SaveScanInfo(const InfoEventDecode& ctx, bool update);
 
 SearchResult findPolicyInfo(const InfoEventDecode& ctx);
 
-bool pushDumpRequest(const std::string& agentId,
+void pushDumpRequest(const std::string& agentId,
                      const std::string& policyId,
                      bool firstScan);
 
-bool SavePolicyInfo(base::Event& event,
-                    const std::string& agent_id,
-                    const std::string& sourceSCApath,
-                    std::shared_ptr<wazuhdb::WazuhDB> wdb);
+void savePolicyInfo(const InfoEventDecode& ctx);
 
-int FindPolicySHA256(const std::string& agent_id, std::string& old_hash);
+bool deletePolicyAndCheck(const InfoEventDecode& ctx, const std::string& policyId);
 
-int deletePolicy(const std::string& agent_id,
-                 const std::string& policyId,
-                 std::shared_ptr<wazuhdb::WazuhDB> wdb);
-
-int deletePolicyCheck(const std::string& agent_id,
-                      const std::string& policyId,
-                      std::shared_ptr<wazuhdb::WazuhDB> wdb);
-
-std::tuple<SearchResult, std::string> findCheckResults(const std::string& agentId,
-                                              const std::string& policyId,
-                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
-
-std::tuple<SearchResult, std::string> findPoliciesIds(const std::string& agentId,
-                                             std::shared_ptr<wazuhdb::WazuhDB> wdb);
+std::tuple<SearchResult, std::string> findCheckResults(const InfoEventDecode& ctx,
+                                                       const std::string& policyId);
 
 std::tuple<std::optional<std::string>, std::string, int>
-checkDumpJSON(const base::Event& event, const std::string& sourceSCApath);
+checkDumpJSON(const InfoEventDecode& ctx);
 
 bool deletePolicyCheckDistinct(const std::string& agentId,
                                const std::string& policyId,
-                               const int& scanId,
+                               const int scanId,
                                std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx);
 
 std::optional<std::string> handleScanInfo(const InfoEventDecode& ctx);
 
-std::optional<std::string> handlePoliciesInfo(base::Event& event,
-                                              const std::string& agentId,
-                                              const std::string& sourceSCApath,
-                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
+std::optional<std::string> handlePoliciesInfo(const InfoEventDecode& ctx);
 
 std::optional<std::string> handleDumpEvent(const InfoEventDecode& ctx);
 
