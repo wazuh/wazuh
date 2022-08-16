@@ -1084,7 +1084,7 @@ std::optional<std::string> handlePoliciesInfo(base::Event& event,
 
 /// Dump Functions ///
 
-std::tuple<std::optional<std::string>, std::string, std::string>
+std::tuple<std::optional<std::string>, std::string, int>
 checkDumpJSON(const InfoEventDecode& ctx)
 {
 
@@ -1092,23 +1092,23 @@ checkDumpJSON(const InfoEventDecode& ctx)
     const std::vector<field::conditionToCheck> conditions = {
         {field::Name::ELEMENTS_SENT, field::Type::INT, true},
         {field::Name::POLICY_ID, field::Type::STRING, true},
-        {field::Name::SCAN_ID, field::Type::STRING, true},
+        {field::Name::SCAN_ID, field::Type::INT, true},
     };
 
     if (!field::isValidEvent(ctx, conditions))
     {
-        return {"Malformed JSON", "", ""};
+        return {"Malformed JSON", "", -1};
     }
 
     auto policyId = ctx.getStrFromSrc(field::Name::POLICY_ID).value();
-    auto scanId = ctx.getStrFromSrc(field::Name::SCAN_ID).value();
+    auto scanId = ctx.getIntFromSrc(field::Name::SCAN_ID).value();
 
     return {std::nullopt, std::move(policyId), std::move(scanId)};
 }
 
 bool deletePolicyCheckDistinct(const std::string& agentId,
                                const std::string& policyId,
-                               const std::string& scanId,
+                               const int& scanId,
                                std::shared_ptr<wazuhdb::WazuhDB> wdb)
 {
     // "Deleting check distinct policy id , agent id "
