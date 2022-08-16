@@ -1974,7 +1974,7 @@ librootcheck.a: ${rootcheck_o_lib}
 
 #### FIM ######
 
-wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB}
+wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB} build_shared_modules
 	cd syscheckd && mkdir -p build && cd build && cmake ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
 
 #### Monitor #######
