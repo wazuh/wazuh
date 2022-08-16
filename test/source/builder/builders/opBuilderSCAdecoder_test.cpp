@@ -1338,7 +1338,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
         testSendMsg(clientRemoteFD, "ok not found");
         close(clientRemoteFD);
 
-        // SaveEventcheck update (exists)
+        // SaveEventcheck insert (not exists)
         clientRemoteFD = testAcceptConnection(serverSocketFD);
         ASSERT_GT(clientRemoteFD, 0);
         clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
@@ -1357,7 +1357,907 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
     ASSERT_TRUE(result);
 }
 
-// TODO: add tests with rules, compliance and both (SaveCompliance() and SaveRules())
+TEST(checkTypeDecoderSCA, SaveACompliance)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "compliance":
+                        {
+                            "keyI": "valueI"
+                        }
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveCompliance
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_compliance 911|keyI|valueI");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveCompliances)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "compliance":
+                        {
+                            "keyI": "valueI",
+                            "keyII": "2",
+                            "keyIII": "3.0"
+                        }
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveCompliance
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_compliance 911|keyI|valueI");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveCompliance
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyII|2");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveCompliance
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_compliance 911|keyIII|3.0");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveFileRule)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "f:some_file_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|file|f:some_file_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveDirectoryRule)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "d:some_directory_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveRegistryRule)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "r:some_registry_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveCommandRule)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "c:some_command_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|command|c:some_command_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveProcessRule)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "p:some_process_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|process|p:some_process_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveNumericRule)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "n:some_numeric_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, InvalidRules)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "a:invalid_rule",
+                            "b:invalid_rule",
+                            "e:invalid_rule",
+                            "g:invalid_rule",
+                            "h:invalid_rule",
+                            "i:invalid_rule",
+                            "j:invalid_rule",
+                            "k:invalid_rule",
+                            "l:invalid_rule",
+                            "m:invalid_rule",
+                            "o:invalid_rule",
+                            "q:invalid_rule",
+                            "s:invalid_rule",
+                            "t:invalid_rule",
+                            "u:invalid_rule",
+                            "v:invalid_rule",
+                            "w:invalid_rule",
+                            "x:invalid_rule",
+                            "y:invalid_rule",
+                            "z:invalid_rule",
+                            "a:invalid_rule",
+                            "b:invalid_rule",
+                            "e:invalid_rule",
+                            "g:invalid_rule",
+                            "h:invalid_rule",
+                            "i:invalid_rule",
+                            "j:invalid_rule",
+                            "k:invalid_rule",
+                            "l:invalid_rule",
+                            "m:invalid_rule",
+                            "o:invalid_rule",
+                            "q:invalid_rule",
+                            "s:invalid_rule",
+                            "t:invalid_rule",
+                            "u:invalid_rule",
+                            "v:invalid_rule",
+                            "w:invalid_rule",
+                            "x:invalid_rule",
+                            "y:invalid_rule",
+                            "z:invalid_rule",
+                            "A:invalid_rule",
+                            "B:invalid_rule",
+                            "E:invalid_rule",
+                            "G:invalid_rule",
+                            "H:invalid_rule",
+                            "I:invalid_rule",
+                            "J:invalid_rule",
+                            "K:invalid_rule",
+                            "L:invalid_rule",
+                            "M:invalid_rule",
+                            "O:invalid_rule",
+                            "Q:invalid_rule",
+                            "S:invalid_rule",
+                            "T:invalid_rule",
+                            "U:invalid_rule",
+                            "V:invalid_rule",
+                            "W:invalid_rule",
+                            "X:invalid_rule",
+                            "Y:invalid_rule",
+                            "Z:invalid_rule",
+                            "0:invalid_rule",
+                            "1:invalid_rule",
+                            "2:invalid_rule",
+                            "3:invalid_rule",
+                            "4:invalid_rule",
+                            "5:invalid_rule",
+                            "6:invalid_rule",
+                            "7:invalid_rule",
+                            "8:invalid_rule",
+                            "9:invalid_rule",
+                            "0:invalid_rule",
+                            " :invalid_rule",
+                            "!:invalid_rule",
+                            "#:invalid_rule",
+                            "$:invalid_rule",
+                            "%:invalid_rule",
+                            "&:invalid_rule",
+                            "':invalid_rule",
+                            "*:invalid_rule",
+                            "+:invalid_rule",
+                            ",:invalid_rule",
+                            "-:invalid_rule",
+                            ".:invalid_rule",
+                            "/:invalid_rule",
+                            "::invalid_rule",
+                            ";:invalid_rule",
+                            "<:invalid_rule",
+                            "=:invalid_rule",
+                            ">:invalid_rule",
+                            "?:invalid_rule",
+                            "[:invalid_rule",
+                            "]:invalid_rule",
+                            "^:invalid_rule",
+                            "_:invalid_rule",
+                            "`:invalid_rule",
+                            "|:invalid_rule",
+                            "(:invalid_rule",
+                            "):invalid_rule",
+                            "{:invalid_rule",
+                            "}:invalid_rule",
+                            "\":invalid_rule",
+                            "\\:invalid_rule",
+                            "~:invalid_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
+
+TEST(checkTypeDecoderSCA, SaveRules)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "check",
+                    "id": 404,
+                    "policy": "Some Policy",
+                    "policy_id": "some_Policy_ID",
+                    "check":
+                    {
+                        "id": 911,
+                        "title": "Some Title",
+                        "result": "Some Result",
+                        "rules":
+                        [
+                            "f:some_file_rule",
+                            "d:some_directory_rule",
+                            "r:some_registry_rule",
+                            "c:some_command_rule",
+                            "p:some_process_rule",
+                            "n:some_numeric_rule"
+                        ]
+                    }
+                }
+            }
+        })")};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+        close(clientRemoteFD);
+
+        // SaveEventcheck insert (not exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        auto expectedQuery = std::string {"agent 007 sca insert "}
+                             + event->str("/event/original").value_or("error");
+        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+        testSendMsg(clientRemoteFD, "this answer is always ignored");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|file|f:some_file_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|command|c:some_command_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|process|p:some_process_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+
+        // SaveRule
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
+        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+}
 
 /* ************************************************************************************ */
 //  Type: "summary"
