@@ -37,11 +37,10 @@ static char* event_types[] = {
 
 #ifdef WIN32
 STATIC DWORD WINAPI wm_github_main(void* arg);              // Module main function. It won't return
-STATIC DWORD WINAPI wm_github_destroy(void* github_config);
 #else
 STATIC void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
-STATIC void wm_github_destroy(wm_github* github_config);
 #endif
+STATIC void wm_github_destroy(wm_github* github_config);
 STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
 STATIC void wm_github_fail_destroy(wm_github_fail* github_fails);
 cJSON *wm_github_dump(const wm_github* github_config);
@@ -76,7 +75,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 const wm_context WM_GITHUB_CONTEXT = {
     GITHUB_WM_NAME,
     (wm_routine)wm_github_main,
-    (wm_routine)(void *)wm_github_destroy,
+    (void(*)(void *))wm_github_destroy,
     (cJSON * (*)(const void *))wm_github_dump,
     NULL,
     NULL
@@ -125,20 +124,12 @@ void * wm_github_main(wm_github* github_config) {
 #endif
 }
 
-#ifdef WIN32
-STATIC DWORD WINAPI wm_github_destroy(void* ptr_github_config) {
-    wm_github *github_config = (wm_github *)ptr_github_config;
-#else
 void wm_github_destroy(wm_github* github_config) {
-#endif
     mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished.");
     wm_github_auth_destroy(github_config->auth);
     wm_github_fail_destroy(github_config->fails);
     os_free(github_config->event_type);
     os_free(github_config);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 void wm_github_auth_destroy(wm_github_auth* github_auth)
@@ -385,8 +376,10 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             new_scan_time_str, current->org_name, event_types[event_types_it], github_config->interval);
                     }
 
-                    org_fail = wm_github_get_fail_by_org_and_type(github_config->fails, current->org_name, event_types[event_types_it]);
-                    if (org_fail != NULL) {
+                    if (org_fail = wm_github_get_fail_by_org_and_type(github_config->fails,
+                        current->org_name, event_types[event_types_it]), org_fail && org_fail->fails) {
+                        mtinfo(WM_GITHUB_LOGTAG, "Github organization '%s' and event type '%s', connected successfully.",
+                            current->org_name, event_types[event_types_it]);
                         org_fail->fails = 0;
                     }
                 }
@@ -412,7 +405,7 @@ STATIC wm_github_fail* wm_github_get_fail_by_org_and_type(wm_github_fail *fails,
             continue;
         }
 
-        if (!strncmp(current->org_name, org_name, strlen(org_name)) && ((!event_type && !current->event_type) ||
+        if (!strncmp(current->org_name, org_name, strlen(org_name)) && (!current->event_type ||
             (event_type && current->event_type && !strncmp(current->event_type, event_type, strlen(event_type))))) {
             target_org = 1;
         } else {
@@ -452,7 +445,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
         org_fail->fails = 1;
     } else {
-        org_fail->fails = org_fail->fails + 1;
+        org_fail->fails++;
 
         if (org_fail->fails == RETRIES_TO_SEND_ERROR) {
             // Send fail message

@@ -239,24 +239,27 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
             last_scan(['001'])
 
 
-@pytest.mark.parametrize('agent_id, select, filters, distinct', [
-    (['001'], None, None, None),
-    (['002'], ['file', 'size', 'mtime'], None, False),
-    (['003'], None, {'inode': '15470536'}, True),
-    (['004'], ['file', 'size'], {'hash': '15470536'}, False),
-    (['005'], None, {'date': '2019-05-21 12:10:20'}, True),
-    (['006'], None, {'type': 'registry_key'}, True),
-    (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True),
-    (['008'], ['file', 'value.name'], None, True),
-    (['009'], ['value.name'], None, True),
-    (['000'], ['attributes'], None, True),
+@pytest.mark.parametrize('agent_id, select, filters, distinct, q', [
+    (['001'], None, None, None, None),
+    (['002'], ['file', 'size', 'mtime'], None, False, None),
+    (['003'], None, {'inode': '15470536'}, True, None),
+    (['004'], ['file', 'size'], {'hash': '15470536'}, False, None),
+    (['005'], None, {'date': '2019-05-21 12:10:20'}, True, None),
+    (['006'], None, {'type': 'registry_key'}, True, None),
+    (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True, None),
+    (['008'], ['file', 'value.name'], None, True, None),
+    (['009'], ['value.name'], None, True, None),
+    (['000'], ['attributes'], None, True, None),
     (['000'], None,
-     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
+     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True,
+     None),
+    (['000'], None, None, False, "file=HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\Tcpip\\Parameters"
+                                 "\\Interfaces\\{4473f692-67de-480d-a481-6de3e4a2813b};(type=file,type=registry_key)")
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
-def test_syscheck_files(socket_mock, exists_mock, agent_id, select, filters, distinct):
+def test_syscheck_files(socket_mock, exists_mock, agent_id, select, filters, distinct, q):
     """Test function `files` from syscheck module.
 
     Parameters
@@ -277,7 +280,7 @@ def test_syscheck_files(socket_mock, exists_mock, agent_id, select, filters, dis
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
         select = select if select else select_list
-        result = files(agent_id, select=select, filters=filters)
+        result = files(agent_id, select=select, filters=filters, q=q)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert isinstance(result.affected_items, list)
         # Use flag for min_select_field, if file not in select, len(item.keys()) = len(select) + 1

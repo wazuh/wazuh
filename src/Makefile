@@ -752,7 +752,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll win32/libgcc_s_sjlj-1.dll
+winagent: external win32/libwinpthread-1.dll win32/libgcc_s_dw2-1.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -785,7 +785,7 @@ win32/syscollector: win32/shared_modules win32/sysinfo
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
 
-win32/libgcc_s_sjlj-1.dll: $(wildcard /usr/lib/gcc/i686-w64-mingw32/*-posix/libgcc_s_sjlj-1.dll)
+win32/libgcc_s_dw2-1.dll: $(wildcard /usr/lib/gcc/i686-w64-mingw32/*-posix/libgcc_s_dw2-1.dll)
 	cp $< $@
 
 ####################

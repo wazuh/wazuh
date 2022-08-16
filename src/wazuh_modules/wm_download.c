@@ -36,7 +36,7 @@ static void wm_download_dispatch(char * buffer);
 const wm_context WM_DOWNLOAD_CONTEXT = {
     "download",
     (wm_routine)wm_download_main,
-    (wm_routine)(void *)wm_download_destroy,
+    (void (*)(void *))wm_download_destroy,
     (cJSON * (*)(const void *))wm_download_dump,
     NULL,
     NULL

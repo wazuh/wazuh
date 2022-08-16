@@ -1,7 +1,7 @@
 *:*src/sysInfoLinux.cpp:206
 *:*src/sysInfoLinux.cpp:210
 *:*src/sysInfoLinux.cpp:304
-*:*src/packages/pkgWrapper.h:130
+*:*src/packages/pkgWrapper.h:134
 *:*src/packages/packagesWindowsParserHelper.h:54
 *:*src/packages/packagesWindowsParserHelper.h:182
 *:*src/packages/packagesWindowsParserHelper.h:197
