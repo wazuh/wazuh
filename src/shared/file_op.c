@@ -841,19 +841,19 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     size_t n = 0;
     long files_size = 0;
     char buf[2048 + 1];
-    FILE *fp;
-    FILE *finalfp;
+    FILE *fp = NULL;
+    FILE *finalfp = NULL;
 
     /* Create a new entry */
 
     if (files == NULL) {
         finalfp = fopen(finalpath, "w");
-        if (!finalfp) {
+        if (finalfp == NULL) {
             merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
             return (0);
         }
 
-        if (tag) {
+        if (tag != NULL) {
             fprintf(finalfp, "#%s\n", tag);
         }
 
@@ -884,28 +884,38 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     }
 
     finalfp = fopen(finalpath, "a");
-    if (!finalfp) {
+    if (finalfp == NULL) {
         merror("Unable to append merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
     }
 
     fp = fopen(files, "r");
-
-    if (!fp) {
-        merror("Unable to merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
+    if (fp == NULL || (fseek(fp, 0, SEEK_END) != 0)) {
+        merror("Unable to append merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
         fclose(finalfp);
+        if (fp != NULL) {
+            fclose(fp);
+        }
         return (0);
     }
 
-    fseek(fp, 0, SEEK_END);
     files_size = ftell(fp);
+    if (files_size == 0) {
+        mwarn("file '%s' size 0.", files);
+    }
 
-    if (tag) {
+    if (tag != NULL) {
         fprintf(finalfp, "#%s\n", tag);
     }
 
     fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
-    fseek(fp, 0, SEEK_SET);
+
+    if (fseek(fp, 0, SEEK_SET) != 0) {
+        merror("Unable to append merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
+        fclose(finalfp);
+        fclose(fp);
+        return (0);
+    }
 
     while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
         buf[n] = '\0';
@@ -961,64 +971,6 @@ int checkBinaryFile(const char *f_name) {
     }
     fclose(fp);
     return 0;
-}
-
-
-int MergeFiles(const char *finalpath, char **files, const char *tag)
-{
-    int i = 0, ret = 1;
-    size_t n = 0;
-    long files_size = 0;
-
-    char *tmpfile;
-    char buf[2048 + 1];
-    FILE *fp;
-    FILE *finalfp;
-
-    finalfp = fopen(finalpath, "w");
-    if (!finalfp) {
-        merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
-        return (0);
-    }
-
-    if (tag) {
-        fprintf(finalfp, "#%s\n", tag);
-    }
-
-    while (files[i]) {
-        fp = fopen(files[i], "r");
-        if (!fp) {
-            merror("Unable to merge file '%s' due to [(%d)-(%s)].", files[i], errno, strerror(errno));
-            i++;
-            ret = 0;
-            continue;
-        }
-
-        fseek(fp, 0, SEEK_END);
-        files_size = ftell(fp);
-
-        /* Remove last entry */
-        tmpfile = strrchr(files[i], '/');
-        if (tmpfile) {
-            tmpfile++;
-        } else {
-            tmpfile = files[i];
-        }
-
-        fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
-
-        fseek(fp, 0, SEEK_SET);
-        while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-            buf[n] = '\0';
-            fwrite(buf, n, 1, finalfp);
-        }
-
-        fclose(fp);
-        i++;
-    }
-
-    fclose(finalfp);
-    return (ret);
 }
 
 
@@ -2646,7 +2598,7 @@ long get_fp_size(FILE * fp) {
 
     // Move to end
 
-    if (fseek(fp, 0, SEEK_END) < 0) {
+    if (fseek(fp, 0, SEEK_END) != 0) {
         return -1;
     }
 
@@ -2658,7 +2610,7 @@ long get_fp_size(FILE * fp) {
 
     // Restore original offset
 
-    if (fseek(fp, offset, SEEK_SET) < 0) {
+    if (fseek(fp, offset, SEEK_SET) != 0) {
         return -1;
     }
 
@@ -2959,7 +2911,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
 
         /* Check for UTF-8 BOM */
         if (b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
-            if (fseek(fp, -1, SEEK_CUR) < 0) {
+            if (fseek(fp, -1, SEEK_CUR) != 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
             goto next;
@@ -2967,7 +2919,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
 
         /* Valid ASCII */
         if (b[0] == 0x09 || b[0] == 0x0A || b[0] == 0x0D || (0x20 <= b[0] && b[0] <= 0x7E)) {
-            if (fseek(fp, -nbytes + 1, SEEK_CUR) < 0) {
+            if (fseek(fp, -nbytes + 1, SEEK_CUR) != 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
             goto next;
@@ -2976,7 +2928,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
         /* Two bytes UTF-8 */
         if (b[0] >= 0xC2 && b[0] <= 0xDF) {
             if (b[1] >= 0x80 && b[1] <= 0xBF) {
-                if (fseek(fp, -2, SEEK_CUR) < 0) {
+                if (fseek(fp, -2, SEEK_CUR) != 0) {
                     merror(FSEEK_ERROR, file, errno, strerror(errno));
                 }
                 goto next;
@@ -2987,7 +2939,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
         if ( b[0] == 0xE0 ) {
             if ( b[1] >= 0xA0 && b[1] <= 0xBF) {
                 if ( b[2] >= 0x80 && b[2] <= 0xBF ) {
-                    if (fseek(fp, -1, SEEK_CUR) < 0 ) {
+                    if (fseek(fp, -1, SEEK_CUR) != 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
                     goto next;
@@ -2999,7 +2951,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
         if ((b[0] >= 0xE1 && b[0] <= 0xEC) || b[0] == 0xEE || b[0] == 0xEF) {
             if (b[1] >= 0x80 && b[1] <= 0xBF) {
                 if (b[2] >= 0x80 && b[2] <= 0xBF) {
-                    if (fseek(fp, -1, SEEK_CUR) < 0 ) {
+                    if (fseek(fp, -1, SEEK_CUR) != 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
                     goto next;
@@ -3011,7 +2963,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
         if (b[0] == 0xED) {
             if ( b[1] >= 0x80 && b[1] <= 0x9F) {
                 if ( b[2] >= 0x80 && b[2] <= 0xBF) {
-                    if (fseek(fp, -1, SEEK_CUR) < 0 ) {
+                    if (fseek(fp, -1, SEEK_CUR) != 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
                     goto next;
