@@ -1,77 +1,148 @@
 #!/usr/bin/env python
+# Description: This is the source code to help forward the information from wazuh to telegram
+# Author: vouu <contact@manhtuong.net>
+# Configuration of this software please see detailed instructions: https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/integration.html
+# License: This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License (version 2) as published by the FSF - Free Software Foundation.
 
 import sys
 import json
 import requests
-import logging
-import urllib
-import urllib2
-from requests.auth import HTTPBasicAuth
-reload(sys)
-sys.setdefaultencoding('utf8')
-# If you need to remove any notices about the rule, enable them
-# BLACK_LIST= ["sca","vulnerability-detector"]
-# BLACK_RULE= ["2902","2904","550","202","203"]
-def send_telegram_message(token, chat_id, text):
-    url = 'https://api.telegram.org/bot%s/sendMessage' % (token)
-    data = urllib.urlencode({'chat_id':chat_id, 'text':text, 'parse_mode':'Markdown'})
+import os
+import time
+
+try:
+    import requests
+    from requests.auth import HTTPBasicAuth
+except Exception as e:
+    print("No module 'requests' found. Install: pip install requests")
+    sys.exit(1)
+
+# ossec.conf configuration for example:
+#  <integration>
+#      <name>telegram</name>
+#      <hook_url>{ Chat ID of Telegram Group, Channel or Personal}</hook_url>
+#      <api_key>{Token Bot Telegram}</api_key>
+#      <alert_format>json</alert_format>
+#  </integration>
+
+# Global vars
+
+debug_enabled = False
+pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+json_alert = {}
+now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
+
+# Set paths
+log_file = '{0}/logs/integrations.log'.format(pwd)
+
+def main(args):
+    debug("# Starting")
+
+    # Read args
+    alert_file_location = args[1]
+    token = args[2]
+    chat_id = args[3]
+
+    debug("# Telegram token")
+    debug(token)
+
+    debug("# Telegram Chat ID")
+    debug(chat_id)
+
+    debug("# File location")
+    debug(alert_file_location)
+
+    # Load alert. Parse JSON object.
+    with open(alert_file_location) as alert_file:
+        json_alert = json.load(alert_file)
+    debug("# Processing alert")
+    debug(json_alert)
+
+    debug("# Generating message")
+    msg = generate_msg(json_alert, chat_id)
+    debug(msg)
+
+    debug("# Sending message")
+    send_msg(token, msg)
+
+
+def debug(msg):
+    if debug_enabled:
+        msg = "{0}: {1}\n".format(now, msg)
+        print(msg)
+        f = open(log_file, "a")
+        f.write(msg)
+        f.close()
+
+
+def generate_msg(alert_json, chat_id):
+    # Get alert information
+    title = alert_json['rule']['description'] if 'description' in alert_json['rule'] else ''
+    description = alert_json['full_log'] if 'full_log' in alert_json else ''
+    description.replace("\\n", "\n")
+    alert_level = alert_json['rule']['level'] if 'level' in alert_json['rule'] else ''
+    groups = ', '.join(alert_json['rule']['groups']) if 'groups' in alert_json['rule'] else ''
+    rule_id = alert_json['rule']['id'] if 'rule' in alert_json else ''
+    agent_name = alert_json['agent']['name'] if 'name' in alert_json['agent'] else ''
+    agent_id = alert_json['agent']['id'] if 'id' in alert_json['agent'] else ''
+
+    # Format message with markdown
+    msg_content = f'*{title}*\n\n'
+    msg_content += f'_{description}_\n'
+    msg_content += f'*Groups:* {groups}\n' if len(groups) > 0 else ''
+    msg_content += f'*Rule:* {rule_id} (Level {alert_level})\n'
+    msg_content += f'*Agent:* {agent_name} ({agent_id})\n' if len(agent_name) > 0 else ''
+
+    msg_data = {}
+    msg_data['chat_id'] = chat_id
+    msg_data['text'] = msg_content
+    msg_data['parse_mode'] = 'markdown'
+
+    return json.dumps(msg_data)
+
+
+def send_msg(token, msg):
+    url = "https://api.telegram.org/bot" + token + "/sendMessage"
+    headers = {
+        'Content-Type': 'application/json',
+    }
     try:
-        urllib2.urlopen(url, data).read()
+        res = requests.post(url, headers=headers, data=msg)
+        debug(res)
     except Exception as e:
-        LOGGER.warn('Cannot send Telegram message: HTTP-Error: %s\n' % (e))
-# Set logging
-APP_NAME="WAZUH-TELEGRAM"
-LOG_FILE="/var/ossec/logs/integrations.log"
-LOGGER = logging.getLogger(APP_NAME)
-hdlr = logging.FileHandler(LOG_FILE)
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-LOGGER.addHandler(hdlr)
-LOGGER.setLevel(logging.INFO)
-LOGGER.info("Receiving msg")
-# Read configuration parameters
-alert_file = open(sys.argv[1])
-#user = sys.argv[2].split(':')[0]
-#api_key = sys.argv[2].split(':')[1]
-token = sys.argv[2]
-chat_id = sys.argv[3]
+        print( 'Exception >> ' + type(e).__name__ )
+        return 'Internal error sending msg to Telegram.'
 
-# Read the alert file
-alert_json = json.loads(alert_file.read())
-alert_file.close()
-LOGGER.info(alert_json)
-# Extract issue fields
-rule = alert_json['rule']['id']
-if 'full_log' in alert_json:
-    full_log = alert_json['full_log']
-else:
-    full_log = alert_json['data']
-description = alert_json['rule']['description']
-ipcheck = alert_json['data']['srcip']
 
-if not ipcheck:
-    ipcl = alert_json['agent']['name']
-else:
-    ipcl = alert_json['data']['srcip']
+if __name__ == "__main__":
+    try:
+        # Read arguments
+        bad_arguments = False
+        if len(sys.argv) >= 4:
+            msg = '{0} {1} {2} {3} {4}'.format(
+                now,
+                sys.argv[1],
+                sys.argv[2],
+                sys.argv[3],
+                sys.argv[4] if len(sys.argv) > 4 else '',
+            )
+            debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
+        else:
+            msg = '{0} Wrong arguments'.format(now)
+            bad_arguments = True
 
-hostname = alert_json['agent']['name']
-if 'ip' in alert_json['agent']:
-    ip = alert_json['agent']['ip']
-else:
-    ip = ""
-timestamp = alert_json['timestamp']
-location = alert_json['location']
-level = alert_json['rule']['level']
-text = """*Wazuh: (%s) %s -> %s*
-```
-Rule: %s
-Level:%s
-IP_client: %s
-Time: %s
-Description: %s
-%s```""" %(hostname,ip,location,rule,level,ipcl,timestamp,description,full_log)
-LOGGER.info(text)
-# If you need to remove any notices about the rule, enable them
-# if location not in BLACK_LIST and rule not in BLACK_RULE and "ignore this message" not in description:
-send_telegram_message(token, chat_id, text)
-sys.exit(0)
+        # Logging the call
+        f = open(log_file, 'a')
+        f.write(msg + '\n')
+        f.close()
+
+        if bad_arguments:
+            debug("# Exiting: Bad arguments.")
+            sys.exit(1)
+
+        # Main function
+        main(sys.argv)
+
+    except Exception as e:
+        debug(str(e))
+        raise
