@@ -145,15 +145,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-    set_target_properties(sysinfo PROPERTIES
-      LINK_FLAGS "-static-libstdc++")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    # Do nothing for HP-UX
-  else()
-    set_target_properties(sysinfo PROPERTIES
-      LINK_FLAGS "-static-libgcc -static-libstdc++")
-  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")

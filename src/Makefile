@@ -14,6 +14,32 @@ uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
+
+ifeq (${TARGET}, winagent)
+WAZUH_LIB_OUTPUT_PATH := win32/
+STRIP_TOOL := i686-w64-mingw32-strip
+libstdc++_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libstdc++-6.dll 2>/dev/null || echo not')
+LIBSTDCPP_NAME := libstdc++-6.dll
+libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
+LIBGCC_S_NAME := libgcc_s_dw2-1.dll
+ifneq (,$(filter ${libgcc_s_path}, not ${LIBGCC_S_NAME}))
+libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_sjlj-1.dll 2>/dev/null || echo not')
+LIBGCC_S_NAME := libgcc_s_sjlj-1.dll
+endif
+else
+libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
+libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
+LIBSTDCPP_NAME := libstdc++.so.6
+LIBGCC_S_NAME := libgcc_s.so.1
+STRIP_TOOL := strip
+endif
+
+ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
+ifeq (, $(filter ${libgcc_s_path}, not ${LIBGCC_S_NAME}))
+CPPLIBDEPS := ${LIBSTDCPP_NAME} ${LIBGCC_S_NAME}
+endif
+endif
+
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -690,12 +716,6 @@ BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
 
-ifeq (${uname_S},SunOS)
-ifeq ($(uname_R),5.10)
-	BUILD_AGENT+=libgcc_s.so.1
-endif
-endif
-
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -704,36 +724,39 @@ BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
 endif
 
+${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
+	cp $< $@ || :
+	${STRIP_TOOL} -x $@ || :
+
+${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
+	cp $< $@ || :
+	${STRIP_TOOL} -x $@ || :
 
 .PHONY: server local hybrid agent selinux
 
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: external
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
+server: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
-local: external
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
+local: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
-hybrid: external
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
+hybrid: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
-agent: external
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_AGENT}
+agent: external ${CPPLIBDEPS}
+	${MAKE} ${BUILD_AGENT} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
 server local hybrid agent: selinux
@@ -755,7 +778,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll win32/libgcc_s_dw2-1.dll
+winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_LIBS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lfimdb"
@@ -805,8 +828,6 @@ win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
 
-win32/libgcc_s_dw2-1.dll: $(wildcard /usr/lib/gcc/i686-w64-mingw32/*-posix/libgcc_s_dw2-1.dll)
-	cp $< $@
 
 ####################
 #### External ######
@@ -1694,13 +1715,6 @@ endif
 endif
 endif
 
-
-### libgcc_s #########
-
-LIBGCC := $(realpath $(dir $(shell which gcc))../lib/libgcc_s.so.1)
-libgcc_s.so.1: $(LIBGCC)
-	cp $< $@
-
 #### os_mail #########
 
 os_maild_c := $(wildcard os_maild/*.c)
@@ -2450,7 +2464,8 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
 	rm -rf libwazuhext
-	rm -f libgcc_s.so.1
+	rm -rf libstdc++.so.6
+	rm -rf libgcc_s.so.1
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
@@ -2523,6 +2538,9 @@ clean-windows:
 	rm -f win32/libwinpthread-1.dll
 	rm -f win32/VERSION
 	rm -f win32/REVISION
+	rm -f win32/libstdc++-6.dll
+	rm -f win32/libgcc_s_dw2-1.dll
+	rm -f win32/libgcc_s_sjlj-1.dll
 
 clean-config:
 	rm -f ../etc/ossec.mc
