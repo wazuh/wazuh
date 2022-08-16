@@ -12,6 +12,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <variant>
 
 #include <re2/re2.h>
@@ -519,11 +520,11 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
     const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] param should be a string", name, targetField);
+        fmt::format("[{}] -> Failure: [{}] parameter should be a string", name, targetField);
     const auto failureTrace2 = fmt::format(
         "[{}] -> Failure: parameter should be a string array", name);
     const auto failureTrace3 =
-        fmt::format("[{}] -> Failure: array parameter with invalid json path", name);
+        fmt::format("[{}] -> Failure: array parameter has invalid json path", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -541,15 +542,11 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             }
 
             std::vector<std::string> stringArray;
-            ssize_t resultSize = 1;
-            // accumulated concation without trailing indexes
-            std::string composedValueString {};
             for (const auto& s_param : stringJsonArray.value())
             {
                 if (s_param.isString())
                 {
                     auto strVal = s_param.getString().value();
-                    resultSize += strVal.size() + separator.size();
                     stringArray.emplace_back(std::move(strVal));
                 }
                 else
@@ -558,13 +555,8 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
                 }
             }
 
-            composedValueString.reserve(resultSize);
-
-            for (ssize_t i = 0; i < stringArray.size(); ++i)
-            {
-                composedValueString.append(i==0 ? "" : separator);
-                composedValueString.append(stringArray.at(i));
-            }
+            // accumulated concation without trailing indexes
+            std::string composedValueString {utils::string::join(stringArray, separator)};
 
             event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);

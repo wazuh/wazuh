@@ -34,4 +34,17 @@ std::vector<std::string> split(std::string_view str, char delimiter)
     return ret;
 }
 
+std::string join(std::vector<std::string> strVector,
+                 std::string_view separator,
+                 bool startsWithSeparator)
+{
+    std::string strResult {};
+    for (ssize_t i = 0; i < strVector.size(); ++i)
+    {
+        strResult.append((!startsWithSeparator && i == 0) ? "" : separator);
+        strResult.append(strVector.at(i));
+    }
+
+    return strResult;
+}
 } // namespace utils::string
