@@ -208,12 +208,12 @@ std::tuple<SearchResult, std::string> findCheckResults(const std::string& agentI
 std::tuple<SearchResult, std::string> findPoliciesIds(const std::string& agentId,
                                              std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
-std::tuple<std::optional<std::string>, std::string, std::string>
+std::tuple<std::optional<std::string>, std::string, int>
 checkDumpJSON(const base::Event& event, const std::string& sourceSCApath);
 
 bool deletePolicyCheckDistinct(const std::string& agentId,
                                const std::string& policyId,
-                               const std::string& scanId,
+                               const int& scanId,
                                std::shared_ptr<wazuhdb::WazuhDB> wdb);
 
 std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx);
