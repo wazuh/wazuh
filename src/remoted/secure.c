@@ -443,6 +443,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
+    char *agentid_str = NULL;
     char *tmp_msg;
     size_t msg_length;
     char ip_found = 0;
@@ -520,8 +521,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             rem_inc_recv_unknown();
             return;
         } else if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
-            key_unlock();
             mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+            key_unlock();
 
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
@@ -555,6 +557,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
         if (agentid < 0) {
             key_unlock();
+
             mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
@@ -566,8 +569,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             rem_inc_recv_unknown();
             return;
         } else if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
-            key_unlock();
             mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+            key_unlock();
 
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
@@ -648,7 +652,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
         // The critical section for readers closes within this function
         save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
-        rem_inc_recv_ctrl(keys.keyentries[agentid]->id);
+        rem_inc_recv_ctrl(key->id);
 
         OS_FreeKey(key);
         return;
@@ -659,13 +663,14 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
+    os_strdup(keys.keyentries[agentid]->id, agentid_str);
+
     key_unlock();
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg,
-                SECURE_MQ) < 0) {
+    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         // Try to reconnect infinitely
@@ -677,11 +682,13 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             // Something went wrong sending a message after an immediate reconnection...
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         } else {
-            rem_inc_recv_evt(keys.keyentries[agentid]->id);
+            rem_inc_recv_evt(agentid_str);
         }
     } else {
-        rem_inc_recv_evt(keys.keyentries[agentid]->id);
+        rem_inc_recv_evt(agentid_str);
     }
+
+    os_free(agentid_str);
 }
 
 // Close and remove socket from keystore

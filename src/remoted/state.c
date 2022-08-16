@@ -580,9 +580,9 @@ cJSON* rem_create_state_json() {
 
     cJSON_AddNumberToObject(_sent_breakdown, "ack", state_cpy.sent_breakdown.ack_count);
     cJSON_AddNumberToObject(_sent_breakdown, "ar", state_cpy.sent_breakdown.ar_count);
-    cJSON_AddNumberToObject(_sent_breakdown, "sca", state_cpy.sent_breakdown.sca_count);
     cJSON_AddNumberToObject(_sent_breakdown, "discarded", state_cpy.sent_breakdown.discarded_count);
     cJSON_AddNumberToObject(_sent_breakdown, "request", state_cpy.sent_breakdown.request_count);
+    cJSON_AddNumberToObject(_sent_breakdown, "sca", state_cpy.sent_breakdown.sca_count);
     cJSON_AddNumberToObject(_sent_breakdown, "shared", state_cpy.sent_breakdown.shared_count);
 
     cJSON *_queues = cJSON_CreateObject();
@@ -648,9 +648,9 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
 
                 cJSON_AddNumberToObject(_sent_breakdown, "ack", agent_state->sent_breakdown.ack_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "ar", agent_state->sent_breakdown.ar_count);
-                cJSON_AddNumberToObject(_sent_breakdown, "sca", agent_state->sent_breakdown.sca_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "discarded", agent_state->sent_breakdown.discarded_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "request", agent_state->sent_breakdown.request_count);
+                cJSON_AddNumberToObject(_sent_breakdown, "sca", agent_state->sent_breakdown.sca_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "shared", agent_state->sent_breakdown.shared_count);
 
                 cJSON_AddItemToArray(_array, _item);
