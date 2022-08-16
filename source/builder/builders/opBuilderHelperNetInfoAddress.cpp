@@ -52,15 +52,7 @@ bool sysNetAddresTableFill(base::Event event,
                            bool isIPv6)
 {
     // Cheking if AddresArray exists
-    std::optional<std::vector<json::Json>> address_ar;
-    try
-    {
-        address_ar = event->getArray(ipObjectPath + getPath(Name::ADDRESS).data());
-    }
-    catch (const std::runtime_error& e)
-    {
-        return false;
-    }
+    auto address_ar = event->getArray(ipObjectPath + getPath(Name::ADDRESS).data());
 
     if (!address_ar.has_value())
     {
@@ -69,27 +61,11 @@ bool sysNetAddresTableFill(base::Event event,
 
     std::string middleFieldName = isIPv6 ? "IPv6" : "IPv4";
 
-    std::optional<std::vector<json::Json>> netmaskI;
-    try
-    {
-        netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
-                       .value_or(std::vector<json::Json>());
-    }
-    catch (const std::runtime_error& e)
-    {
-        netmaskI = std::nullopt;
-    }
+    auto netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
+                        .value_or(std::vector<json::Json>());
 
-    std::optional<std::vector<json::Json>> broadcastI;
-    try
-    {
-        broadcastI = event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
-                         .value_or(std::vector<json::Json>());
-    }
-    catch (const std::runtime_error& e)
-    {
-        broadcastI = std::nullopt;
-    }
+    auto broadcastI = event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
+                          .value_or(std::vector<json::Json>());
 
     for (size_t i = 0; i != address_ar.value().size(); ++i)
     {
@@ -106,28 +82,22 @@ bool sysNetAddresTableFill(base::Event event,
             return false;
         }
 
-        if (netmaskI.has_value())
+        try
         {
-            try
-            {
-                netmaskIValue = netmaskI.value().at(i).getString();
-            }
-            catch (const std::out_of_range& e)
-            {
-                netmaskIValue = "NULL";
-            }
+            netmaskIValue = netmaskI.at(i).getString();
+        }
+        catch (const std::out_of_range& e)
+        {
+            netmaskIValue = "NULL";
         }
 
-        if (broadcastI.has_value())
+        try
         {
-            try
-            {
-                broadcastIValue = broadcastI.value().at(i).getString().value_or("NULL");
-            }
-            catch (const std::out_of_range& e)
-            {
-                broadcastIValue = "NULL";
-            }
+            broadcastIValue = broadcastI.at(i).getString().value_or("NULL");
+        }
+        catch (const std::out_of_range& e)
+        {
+            broadcastIValue = "NULL";
         }
 
         // We should still check if it's empty because value_or only checks nullopt
