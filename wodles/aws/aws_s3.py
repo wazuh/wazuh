@@ -68,7 +68,6 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 
 # Enable/disable debug mode
 debug_level = 0
-WARNING = "WARNING"
 
 ################################################################################
 # Classes
@@ -2481,13 +2480,19 @@ class AWSALBBucket(AWSLBBucket):
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             tsv_file = [dict(x, source='alb') for x in tsv_file]
 
+            fields_to_process_map = {
+                "client_port": "client_ip",
+                "target_port": "target_ip",
+                "target_port_list": "target_ip_list"
+            }
+
             for log_entry in tsv_file:
-                try:
-                    log_entry["client_ip"], log_entry["client_port"] = log_entry["client_port"].split(":")
-                    log_entry["target_ip"], log_entry["target_port"] = log_entry["target_port"].split(":")
-                    log_entry["target_ip_list"], log_entry["target_port_list"] = log_entry["target_port_list"].split(":")
-                except ValueError:
-                    print(f"{WARNING}: Unable to process correctly malformed ABL log entry: {log_entry}.")
+                for field_to_process, ip_field in fields_to_process_map.items():
+                    try:
+                        log_entry[ip_field], log_entry[field_to_process] = log_entry[field_to_process].split(":")
+                    except ValueError:
+                        debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
+                        debug(f"Log Entry: {log_entry}", msg_level=2)
 
             return tsv_file
 
