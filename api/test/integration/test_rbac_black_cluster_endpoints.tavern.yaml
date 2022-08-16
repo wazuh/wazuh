@@ -75,6 +75,67 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /cluster/ruleset/synchronization
+
+stages:
+
+  - name: Get cluster ruleset synchronization status (partial response, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'worker1'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get cluster ruleset synchronization status (permission denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+    response:
+      <<: *permission_denied
+
+  - name: Get cluster ruleset synchronization status (partial response, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node,worker1"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - name: 'worker1'
+              synced: !anybool
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - "master-node"
+          total_affected_items: 1
+          total_failed_items: 1
+
+---
 test_name: GET /cluster/local/info
 
 stages:

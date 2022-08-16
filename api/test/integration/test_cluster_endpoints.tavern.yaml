@@ -110,6 +110,78 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /cluster/ruleset/synchronization
+
+stages:
+
+  - name: Get cluster ruleset synchronization status
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'master-node'
+              synced: !anybool
+            - name: 'worker1'
+              synced: !anybool
+            - name: 'worker2'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Get cluster ruleset synchronization status (specific node)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'master-node'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get cluster ruleset synchronization status (node does not exist)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "not-exists"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "not-exists"
+          total_affected_items: 0
+          total_failed_items: 1
+
+---
 test_name: GET /cluster/local/info
 
 marks:
