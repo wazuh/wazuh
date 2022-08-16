@@ -670,7 +670,7 @@ TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultOk)
     });
 
     ASSERT_TRUE(sca::deletePolicyCheckDistinct(
-        "vm-centos8", "cis_centos8_linux", "4602802", wdb));
+        "vm-centos8", "cis_centos8_linux", 4602802, wdb));
 
     t.join();
     close(serverSocketFD);
@@ -695,7 +695,7 @@ TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
     });
 
     ASSERT_TRUE(sca::deletePolicyCheckDistinct(
-        "vm-centos7", "cis_centos7_linux", "4602802", wdb));
+        "vm-centos7", "cis_centos7_linux", 4602802, wdb));
 
     t.join();
     close(serverSocketFD);
@@ -720,7 +720,7 @@ TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
     });
 
     ASSERT_FALSE(sca::deletePolicyCheckDistinct(
-        "vm-centos7", "cis_centos7_linux", "4602802", wdb));
+        "vm-centos7", "cis_centos7_linux", 4602802, wdb));
 
     t.join();
     close(serverSocketFD);
@@ -4292,7 +4292,7 @@ const auto dumpEndTypeEvent {
     R"({
             "agent":
             {
-                id: "007"
+                "id": "007"
             },
             "event":
             {
@@ -4403,8 +4403,6 @@ TEST(dumpEndTypeDecoderSCA, missingScanIDField)
 TEST(dumpEndTypeDecoderSCA,
      DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4446,8 +4444,6 @@ TEST(dumpEndTypeDecoderSCA,
 TEST(dumpEndTypeDecoderSCA,
      DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4488,8 +4484,6 @@ TEST(dumpEndTypeDecoderSCA,
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFound)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4530,8 +4524,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFou
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpectedAnswer)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4572,8 +4564,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpecte
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFound)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4615,8 +4605,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFoun
 TEST(dumpEndTypeDecoderSCA,
      DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4666,8 +4654,6 @@ TEST(dumpEndTypeDecoderSCA,
 TEST(dumpEndTypeDecoderSCA,
      DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4716,8 +4702,6 @@ TEST(dumpEndTypeDecoderSCA,
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAnswer)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4766,8 +4750,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAn
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4816,8 +4798,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4866,8 +4846,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAnswer)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4916,8 +4894,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAns
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZero)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -4966,8 +4942,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZer
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -5016,8 +4990,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 
 TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 {
-    GTEST_SKIP();
-
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
