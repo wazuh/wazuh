@@ -33,8 +33,35 @@ const string targetField {"/wdb/result"};
 const string helperFunctionName {"sca_decoder"};
 const std::vector<string> commonArguments {"$event.original", "$agent.id"};
 
+class opBuilderSCAdecoder_Functions : public ::testing::Test
+{
+    protected:
+        std::shared_ptr<wazuhdb::WazuhDB> wdb {};
+        std::unordered_map<sca::field::Name, std::string> fieldSource {};
+        std::unordered_map<sca::field::Name, std::string> fieldDest {};
+
+    void SetUp() override
+    {
+        wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+
+        for (sca::field::Name field = sca::field::Name::A_BEGIN;
+            field != sca::field::Name::A_END;
+            ++field)
+        {
+            fieldSource.insert(
+                {field, "/event/original" + sca::field::getRawPath(field)});
+            fieldDest.insert({field, std::string {"/sca"} + sca::field::getRawPath(field)});
+        }
+    }
+
+    void TearDown() override
+    {
+
+    }
+};
+
 // Result true, only mandatory fields present
-TEST(opBuilderSCAdecoder, CheckEventJSON_OnlyMandatoryFields)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_OnlyMandatoryFields)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -59,13 +86,15 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_OnlyMandatoryFields)
             }
         }
     })")};
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_TRUE(sca::isValidCheckEvent(event, "/event/original"));
+
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
 
 // Result false, not containing policy_id fields
-TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryFieldPolicyId)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryFieldPolicyId)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -90,13 +119,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryFieldPolicyId)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // Result false, not containing check_id field
-TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryFieldCheckId)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryFieldCheckId)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -121,13 +151,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryFieldCheckId)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // Result false, not containing check field
-TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryCheckField)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryCheckField)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -146,13 +177,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryCheckField)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // Result false, not containing result fields
-TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryResultPolicyId)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryResultPolicyId)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -176,13 +208,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_NotContainingMandatoryResultPolicyId)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // Result true, all fields present including not neccesary
-TEST(opBuilderSCAdecoder, CheckEventJSON_AllFields)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_AllFields)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -230,13 +263,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_AllFields)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_TRUE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
 
 // Result false, status and result both not present
-TEST(opBuilderSCAdecoder, CheckEventJSON_FailedNotPresentStatusAndResult)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedNotPresentStatusAndResult)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -262,13 +296,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_FailedNotPresentStatusAndResult)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // Result false, status present but reason not
-TEST(opBuilderSCAdecoder, CheckEventJSON_FailedtStatusPresentAndReasonNot)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReasonNot)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -294,13 +329,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_FailedtStatusPresentAndReasonNot)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // Result false, only mandatory fields but id is a string
-TEST(opBuilderSCAdecoder, CheckEventJSON_IdFieldString)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_IdFieldString)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -326,13 +362,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_IdFieldString)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_FALSE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
 
 // TODO: should we check an empty field?
-TEST(opBuilderSCAdecoder, CheckEventJSON_policyFieldEmpty)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_policyFieldEmpty)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -358,13 +395,14 @@ TEST(opBuilderSCAdecoder, CheckEventJSON_policyFieldEmpty)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // ASSERT_TRUE(sca::isValidCheckEvent(event, "/event/original"));
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
 
 // Map only mandatory fields present
-TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFields)
+TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -402,9 +440,10 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFields)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // sca::fillCheckEvent(event, {}, "/event/original");
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+
+    sca::fillCheckEvent(state,"Applicable");
 
     ASSERT_EQ(event->getInt("/sca/id").value(), 631388619);
     ASSERT_EQ(event->getInt("/sca/check/id").value(), 6500);
@@ -432,7 +471,7 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFields)
 }
 
 // Map only mandatory fields present, result variation
-TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
+TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -469,16 +508,16 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // sca::fillCheckEvent(event, {}, "/event/original");
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    sca::fillCheckEvent(state,"Applicable");
 
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "failed");
 }
 
 // Map csv Fields To arrays
 // TODO: there's an issue on converting strings to arrays
-TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
+TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_CsvFields)
 {
 
     auto event {std::make_shared<json::Json>(
@@ -526,9 +565,9 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // sca::fillCheckEvent(event, {}, "/event/original");
+    auto state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    sca::fillCheckEvent(state,"Applicable");
 
     ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),
                  "/usr/lib/systemd/system/rescue.service");
@@ -541,7 +580,7 @@ TEST(opBuilderSCAdecoder, FillCheckEventJSON_CsvFields)
 }
 
 // Result true, checks mandatory fields present
-TEST(opBuilderSCAdecoder, CheckDumpJSON_MandatoryField)
+TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_MandatoryField)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -556,22 +595,22 @@ TEST(opBuilderSCAdecoder, CheckDumpJSON_MandatoryField)
                 "type": "dump_end",
                 "elements_sent": 2,
                 "policy_id": "cis_centos8_linux",
-                "scan_id": "4602802"
+                "scan_id": 4602802
             }
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // auto [checkError, policyId, scanId] = sca::checkDumpJSON(event, "/event/original");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(state);
 
-    // ASSERT_FALSE(checkError.has_value());
-    // ASSERT_STREQ(policyId.c_str(), "cis_centos8_linux");
-    // ASSERT_STREQ(scanId.c_str(), "4602802");
+    ASSERT_FALSE(checkError.has_value());
+    ASSERT_STREQ(policyId.c_str(), "cis_centos8_linux");
+    ASSERT_EQ(scanId, 4602802);
 }
 
 // Result false, not containing scan_id mandatory fields present
-TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldScan_id)
+TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldScan_id)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -590,15 +629,16 @@ TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldScan_id)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // auto [checkError, policyId, scanId] = sca::checkDumpJSON(event, "/event/original");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
 
-    // ASSERT_TRUE(checkError.has_value());
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(state);
+
+    ASSERT_TRUE(checkError.has_value());
 }
 
 // Result false, not containing elements_sent mandatory fields present
-TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldElementsSent)
+TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldElementsSent)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -617,15 +657,15 @@ TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldElementsSent)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // auto [checkError, policyId, scanId] = sca::checkDumpJSON(event, "/event/original");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(state);
 
-    // ASSERT_TRUE(checkError.has_value());
+    ASSERT_TRUE(checkError.has_value());
 }
 
 // Result false, not containing policy_id mandatory fields present
-TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldPolicy_id)
+TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_id)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -644,15 +684,15 @@ TEST(opBuilderSCAdecoder, CheckDumpJSON_FailedMandatoryFieldPolicy_id)
         }
     })")};
 
-    // TODO FIX THIS TEST
-    GTEST_SKIP();
-    // auto [checkError, policyId, scanId] = sca::checkDumpJSON(event, "/event/original");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    auto [checkError, policyId, scanId] = sca::checkDumpJSON(state);
 
-    // ASSERT_TRUE(checkError.has_value());
+    ASSERT_TRUE(checkError.has_value());
 }
 
 // Result true, Executes Query and responds OK
-TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultOk)
+TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 {
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
@@ -677,7 +717,7 @@ TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultOk)
 }
 
 // Result true, Executes Query and responds Err
-TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
+TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
 {
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
@@ -702,7 +742,7 @@ TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
 }
 
 // Result false, Executes Query and responds with anything besides regular options
-TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
+TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 {
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
@@ -727,10 +767,25 @@ TEST(opBuilderSCAdecoder, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 }
 
 // Result true, Executes Query and responds OK found paylod
-TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkFound)
+TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
 {
-    GTEST_SKIP();
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "policy_id": "cis_centos8_linux",
+                "elements_sent": 2,
+                "scan_id": "4602802"
+            }
+        }
+    })")};
 
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
@@ -744,20 +799,38 @@ TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkFound)
         close(clientRemoteFD);
     });
 
-    // auto [resultCode, hashCheckResults] =
-    //     sca::findCheckResults("vm-centos8", "cis_centos8_linux", wdb);
-    // ASSERT_EQ(resultCode, sca::SearchResult::FOUND);
-    // ASSERT_STREQ(hashCheckResults.c_str(), "payload");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    auto [resultCode, hashCheckResults] =
+        sca::findCheckResults(state, "cis_centos8_linux");
+
+    ASSERT_EQ(resultCode, sca::SearchResult::FOUND);
+    ASSERT_STREQ(hashCheckResults.c_str(), "payload");
 
     t.join();
     close(serverSocketFD);
 }
 
 // Result false, Executes Query and responds OK not found
-TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkNotFound)
+TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
 {
-    GTEST_SKIP();
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "policy_id": "cis_centos8_linux",
+                "elements_sent": 2,
+                "scan_id": "4602802"
+            }
+        }
+    })")};
 
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
@@ -771,20 +844,38 @@ TEST(opBuilderSCAdecoder, FindCheckResults_ResultOkNotFound)
         close(clientRemoteFD);
     });
 
-    // auto [resultCode, hashCheckResults] =
-    //     sca::findCheckResults("vm-centos8", "cis_centos8_linux", wdb);
-    // ASSERT_EQ(resultCode, sca::SearchResult::NOT_FOUND);
-    // ASSERT_STREQ(hashCheckResults.c_str(), "");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    auto [resultCode, hashCheckResults] =
+        sca::findCheckResults(state, "cis_centos8_linux");
+
+    ASSERT_EQ(resultCode, sca::SearchResult::NOT_FOUND);
+    ASSERT_STREQ(hashCheckResults.c_str(), "");
 
     t.join();
     close(serverSocketFD);
 }
 
 // Result false, Executes Query and responds anything else outside available options
-TEST(opBuilderSCAdecoder, FindCheckResults_ResultError)
+TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
 {
-    GTEST_SKIP();
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "agent":
+        {
+            "id":"vm-centos8"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "dump_end",
+                "policy_id": "cis_centos8_linux",
+                "elements_sent": 2,
+                "scan_id": "4602802"
+            }
+        }
+    })")};
 
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
@@ -798,96 +889,13 @@ TEST(opBuilderSCAdecoder, FindCheckResults_ResultError)
         close(clientRemoteFD);
     });
 
-    // auto [resultCode, hashCheckResults] =
-    //     sca::findCheckResults("vm-centos8", "cis_centos8_linux", wdb);
-    // ASSERT_EQ(resultCode, sca::SearchResult::ERROR);
-    // ASSERT_STREQ(hashCheckResults.c_str(), "");
+    const sca::InfoEventDecode &state = sca::InfoEventDecode {
+        event, "vm-centos8", "/event/original", wdb, fieldSource, fieldDest};
+    auto [resultCode, hashCheckResults] =
+        sca::findCheckResults(state, "cis_centos8_linux");
 
-    t.join();
-    close(serverSocketFD);
-}
-
-// Result true, Executes Query and responds OK found paylod
-TEST(opBuilderSCAdecoder, FindScanInfo_ResultOkFound)
-{
-    GTEST_SKIP();
-    // FIXME
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent vm-centos8 sca query_scan cis_centos8_linux");
-        testSendMsg(clientRemoteFD, "ok found payload");
-        close(clientRemoteFD);
-    });
-
-    // auto [scanResultCode, hashScanInfo] =
-    //     sca::findScanInfo("vm-centos8", "cis_centos8_linux", wdb);
-    // ASSERT_EQ(scanResultCode, sca::SearchResult::FOUND);
-    // ASSERT_STREQ(hashScanInfo.c_str(), "payload");
-
-    t.join();
-    close(serverSocketFD);
-}
-
-// Result true, Executes Query and responds OK not found
-TEST(opBuilderSCAdecoder, FindScanInfo_ResultOkNotFound)
-{
-    GTEST_SKIP();
-    // FIXME
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent vm-centos8 sca query_scan cis_centos8_linux");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
-
-    GTEST_SKIP();
-
-    // auto [scanResultCode, hashScanInfo] =
-    //    sca::findScanInfo("vm-centos8", "cis_centos8_linux", wdb);
-    // ASSERT_EQ(scanResultCode, sca::SearchResult::NOT_FOUND);
-    // ASSERT_STREQ(hashScanInfo.c_str(), "");
-
-    // t.join();
-    // close(serverSocketFD);
-}
-
-// Result true, Executes Query and responds err
-TEST(opBuilderSCAdecoder, FindScanInfo_ResultErr)
-{
-    GTEST_SKIP();
-    // FIXME
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent vm-centos8 sca query_scan cis_centos8_linux");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
-    });
-
-    // auto [scanResultCode, hashScanInfo] =
-    //    sca::findScanInfo("vm-centos8", "cis_centos8_linux", wdb);
-    // ASSERT_EQ(scanResultCode, sca::SearchResult::ERROR);
-    // ASSERT_STREQ(hashScanInfo.c_str(), "");
+    ASSERT_EQ(resultCode, sca::SearchResult::ERROR);
+    ASSERT_STREQ(hashCheckResults.c_str(), "");
 
     t.join();
     close(serverSocketFD);
