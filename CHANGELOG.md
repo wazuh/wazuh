@@ -157,22 +157,53 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added cluster command to obtain custom ruleset files and their hash. ([#14540](https://github.com/wazuh/wazuh/pull/14540))
+
 #### Fixed
 
-- Fixed a bug in Analysisd that may make it crash when decoding regexes with more than 14 or-ed subpatterns. ([#13956](https://github.com/wazuh/wazuh/pull/113956))
-- Fixed a crash hazard in Vulnerability Detector when parsing OVAL feeds. ([#14366](https://github.com/wazuh/wazuh/pull/114366))
-- Fixed busy-looping in wazuh-maild when monitoring alerts.json. ([#14436](https://github.com/wazuh/wazuh/pull/114436))
-- Fixed a segmentation fault in wazuh-maild when parsing alerts exceeding the nesting limit. ([#14417](https://github.com/wazuh/wazuh/pull/114417))
+- Fixed a bug in Analysisd that may make it crash when decoding regexes with more than 14 or-ed subpatterns. ([#13956](https://github.com/wazuh/wazuh/pull/13956))
+- Fixed a crash hazard in Vulnerability Detector when parsing OVAL feeds. ([#14366](https://github.com/wazuh/wazuh/pull/14366))
+- Fixed busy-looping in wazuh-maild when monitoring alerts.json. ([#14436](https://github.com/wazuh/wazuh/pull/14436))
+- Fixed a segmentation fault in wazuh-maild when parsing alerts exceeding the nesting limit. ([#14417](https://github.com/wazuh/wazuh/pull/14417))
 
 ### Agent
 
 #### Changed
 
-- Improved Office365 integration module logs. ([#13958](https://github.com/wazuh/wazuh/pull/113958))
+- Improved Office365 integration module logs. ([#13958](https://github.com/wazuh/wazuh/pull/13958))
 
 #### Fixed
 
-- Fixed a code defect in the GitHub integration module reported by Coverity. ([#14368](https://github.com/wazuh/wazuh/pull/114368))
+- Fixed a code defect in the GitHub integration module reported by Coverity. ([#14368](https://github.com/wazuh/wazuh/pull/14368))
+- Fixed an undefined behavior in the agent unit tests. ([#14518](https://github.com/wazuh/wazuh/pull/14518))
+
+### RESTful API
+
+#### Added
+
+- Added endpoint GET /cluster/ruleset/synchronization to check ruleset synchronization status in a cluster. ([#14551](https://github.com/wazuh/wazuh/pull/14551))
+
+#### Changed
+
+- Improved performance for MITRE API endpoints. ([#14208](https://github.com/wazuh/wazuh/pull/14208)
+
+### Ruleset
+
+#### Added
+
+- Added SCA Policy for CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0. ([#13087](https://github.com/wazuh/wazuh/issues/13087))
+- Added SCA Policy for CIS Microsoft Windows 10 Enterprise Release 21H2 Benchmark v1.12.0. ([#13191](https://github.com/wazuh/wazuh/issues/13191))
+- Added SCA policy for Red Hat Enterprise Linux 9 (RHEL9). ([#13756](https://github.com/wazuh/wazuh/issues/13756))
+- Added SCA policy for CIS Microsoft Windows Server 2022 Benchmark 1.0.0. ([#13895](https://github.com/wazuh/wazuh/issues/13895))
+
+#### Fixed
+
+- Fixed rule regular expression bug on Ubuntu 20.04 Linux SCA policy control ID 19137. ([#14235](https://github.com/wazuh/wazuh/issues/14235))
+- Fixed AWS Amazon Linux SCA policy. Fixed bug when wazuh-agent tries to run the policy. ([#14258](https://github.com/wazuh/wazuh/issues/14258))
+- Fixed AWS Amazon Linux 2 SCA policy. Limit journalctl to kernel events and only since boot. ([#13949](https://github.com/wazuh/wazuh/issues/13949))
+- Added missing SCA files during Wazuh-manager installation. ([#](https://github.com/wazuh/wazuh/issues/14481))
 
 
 ## [v4.3.6] 2022-07-20

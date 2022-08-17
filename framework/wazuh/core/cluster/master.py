@@ -7,7 +7,6 @@ import json
 import operator
 import os
 import shutil
-import time
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
@@ -828,9 +827,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exc_info
 
                 # Send zip file to the worker into chunks.
-                time_to_send = time.perf_counter()
+                time_to_send = perf_counter()
                 sent_size = await self.send_file(compressed_data, task_id)
-                time_to_send = time.perf_counter() - time_to_send
+                time_to_send = perf_counter() - time_to_send
                 logger.debug("Zip with files to be synced sent to worker.")
 
                 # Notify what is the zip path for the current taskID.

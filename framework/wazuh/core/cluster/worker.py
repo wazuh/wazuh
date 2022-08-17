@@ -205,7 +205,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Worker")
-        self.integrity_control = {}
         # The self.client_data will be sent to the master when doing a hello request.
         self.client_data = f"{self.name} {cluster_name} {node_type} {version}".encode()
 
@@ -611,10 +610,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     if self.check_integrity_free and await integrity_check.request_permission():
                         logger.info("Starting.")
                         self.integrity_check_status['date_start'] = start_time
-                        self.integrity_control = await cluster.run_in_pool(self.loop, self.server.task_pool,
+                        self.server.integrity_control = await cluster.run_in_pool(self.loop, self.server.task_pool,
                                                                            cluster.get_files_status,
-                                                                           self.integrity_control)
-                        await integrity_check.sync(files_metadata=self.integrity_control, files_to_sync={})
+                                                                           self.server.integrity_control)
+                        await integrity_check.sync(files_metadata=self.server.integrity_control, files_to_sync={})
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
                 logger.error(f"Error synchronizing integrity: {e}")
@@ -960,6 +959,7 @@ class Worker(client.AbstractClientManager):
         self.handler_class = WorkerHandler
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
+        self.integrity_control = {}
 
     def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.

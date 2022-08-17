@@ -23,7 +23,7 @@ cJSON *wm_control_dump();
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
     (wm_routine)wm_control_main,
-    (wm_routine)(void *)wm_control_destroy,
+    (void(*)(void *))wm_control_destroy,
     (cJSON * (*)(const void *))wm_control_dump,
     NULL,
     NULL

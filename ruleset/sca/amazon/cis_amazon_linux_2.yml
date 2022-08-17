@@ -559,7 +559,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sh -c "journalctl | grep \"protection: \" | tail -1" -> r:protection: active'
+      - 'c:sh -c "journalctl -k --boot | grep \"protection: \" | tail -1" -> r:protection: active'
       - 'not c:sh -c "[[ -n $(grep noexec[0-9]*=off /proc/cmdline) || -z $(grep -E -i \" (pae|nx) \" /proc/cpuinfo) || -n $(grep \"\\sNX\\s.*\\sprotection:\\s\" /var/log/dmesg | grep -v active) ]] && echo \"NX Protection is not active\"" -> r:^NX Protection is not active$'
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled.
