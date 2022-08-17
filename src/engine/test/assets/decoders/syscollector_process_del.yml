@@ -4,10 +4,10 @@ parent:
   - syscollector_process
 
 check:
-  - event.original.process: +not_exists
-  - event.original.type: +s_eq/process_end
+  - _syscollectorEventOriginal.process: +not_exists
+  - _syscollectorEventOriginal.type: +s_eq/process_end
 
 normalize:
   - map:
-      _query: +s_concat/agent /$event.original.agent.id/ process del /$event.original.ID
+      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ process del /$_syscollectorEventOriginal.ID
       _process_del_result: +wdb_update/$_query
