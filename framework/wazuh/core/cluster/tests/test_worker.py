@@ -714,6 +714,7 @@ async def test_worker_handler_sync_integrity(request_permission_mock, run_in_poo
 
     worker_handler.check_integrity_free = True
     worker_handler.server = ManagerMock()
+    worker_handler.server.integrity_control = {}
 
     # Test the try
     with patch.object(logging.getLogger("wazuh.Integrity check"), "info") as logger_info_mock:
