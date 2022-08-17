@@ -88,5 +88,5 @@ normalize:
       event.original.iface.rx_dropped: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id /netinfo save /$event.original.ID/|/$event.original.timestamp/|/$event.original.iface.name/|/$event.original.iface.adapter/|/$event.original.iface.type/|/$event.original.iface.state/|/$event.original.iface.MTU/|/$event.original.iface.MAC/|/$event.original.iface.tx_packets/|/$event.original.iface.rx_packets/|/$event.original.iface.tx_bytes/|/$event.original.iface.rx_bytes/|/$event.original.iface.tx_errors/|/$event.original.iface.rx_errors/|/$event.original.iface.tx_dropped/|/$event.original.iface.rx_dropped
+      _query: +s_concat/agent /$event.original.agent.id/ netinfo save /$event.original.ID/|/$event.original.timestamp/|/$event.original.iface.name/|/$event.original.iface.adapter/|/$event.original.iface.type/|/$event.original.iface.state/|/$event.original.iface.MTU/|/$event.original.iface.MAC/|/$event.original.iface.tx_packets/|/$event.original.iface.rx_packets/|/$event.original.iface.tx_bytes/|/$event.original.iface.rx_bytes/|/$event.original.iface.tx_errors/|/$event.original.iface.rx_errors/|/$event.original.iface.tx_dropped/|/$event.original.iface.rx_dropped
       _iface_save_response: +wdb_update/$_query
