@@ -6,8 +6,4 @@ check:
 
 parse:
   logql:
-    - event.original: <labels>
-
-normalize:
-  map:
-    event.original: $labels
+    - event.original: <_syscollectorEventOriginal/json>

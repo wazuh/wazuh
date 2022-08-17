@@ -5,29 +5,29 @@ parents:
 
 check:
   - _iface_save_response: +is_true
-  - event.original.iface.IPv4: +exists
+  - _syscollectorEventOriginal.iface.IPv4: +exists
 
 normalize:
   - check:
-      - event.original.iface.IPv4.gateway: +not_exists
+      - _syscollectorEventOriginal.iface.IPv4.gateway: +not_exists
     map:
-      event.original.iface.IPv4.gateway: "NULL"
+      _syscollectorEventOriginal.iface.IPv4.gateway: "NULL"
 
   - check:
-      - event.original.iface.IPv4.dhcp: +not_exists
+      - _syscollectorEventOriginal.iface.IPv4.dhcp: +not_exists
     map:
-      event.original.iface.IPv4.dhcp: "NULL"
+      _syscollectorEventOriginal.iface.IPv4.dhcp: "NULL"
 
   - check:
-      - event.original.iface.IPv4.metric: +not_exists
+      - _syscollectorEventOriginal.iface.IPv4.metric: +not_exists
     map:
-      event.original.iface.IPv4.metric: "NULL"
+      _syscollectorEventOriginal.iface.IPv4.metric: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id/ netproto save /$event.original.ID/|/$event.original.iface.name/|0|/$event.original.iface.IPv4.gateway/|/$event.original.iface.IPv4.dhcp/|/$event.original.iface.IPv4.metric
+      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ netproto save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.iface.name/|0|/$_syscollectorEventOriginal.iface.IPv4.gateway/|/$_syscollectorEventOriginal.iface.IPv4.dhcp/|/$_syscollectorEventOriginal.iface.IPv4.metric
       _result_netproto_save: +wdb_update/$_query
 
   - check:
-      - event.original.iface.IPv4.address: +exists
+      - _syscollectorEventOriginal.iface.IPv4.address: +exists
     map:
-      _result_saveNetInfoIPv4: +saveNetInfoIPv4/$event.original.agent.id/$event.original.ID/$event.original.iface.name/$event.original.iface.IPv4
+      _result_saveNetInfoIPv4: +saveNetInfoIPv4/$_syscollectorEventOriginal.agent.id/$_syscollectorEventOriginal.ID/$_syscollectorEventOriginal.iface.name/$_syscollectorEventOriginal.iface.IPv4
