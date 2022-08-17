@@ -4,5 +4,4 @@ parents:
   - syscollector_queue
 
 check:
-  - event.original.type: +exists
   - event.original.type: +is_string
