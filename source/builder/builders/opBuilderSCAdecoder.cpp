@@ -20,7 +20,6 @@
 #include "baseTypes.hpp"
 #include <baseHelper.hpp>
 #include <logging/logging.hpp>
-#include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/stringUtils.hpp>
 #include <wdb/wdb.hpp>
 
@@ -29,12 +28,11 @@ namespace builder::internals::builders
 
 namespace sca
 {
-constexpr auto TYPE_CHECK = "check";       ///< Check
-constexpr auto TYPE_SUMMARY = "summary";   ///< Scan info
-constexpr auto TYPE_POLICIES = "policies"; ///<
-constexpr auto TYPE_DUMP_END = "dump_end"; ///<
+constexpr auto TYPE_CHECK = "check";       ///< Check Event type
+constexpr auto TYPE_SUMMARY = "summary";   ///< Scan info Event type
+constexpr auto TYPE_POLICIES = "policies"; ///< Policies Event type
+constexpr auto TYPE_DUMP_END = "dump_end"; ///< Dump end Event type
 
-// SCA event json fields
 namespace field
 {
 
@@ -66,7 +64,7 @@ enum class Type
     OBJECT
 };
 
-std::string getRawPath(Name field)
+std::string getRealtivePath(Name field)
 {
     switch (field)
     {
@@ -114,47 +112,41 @@ std::string getRawPath(Name field)
         case Name::CHECK_PREVIOUS_RESULT: return "/check/previous_result";
         default:
             throw std::logic_error(
-                "getRawPath: unknown field: "
+                "getRealtivePath: unknown field: "
                 + std::to_string(static_cast<std::underlying_type<Name>::type>(field)));
     }
 }
 
-// TODO Delete this function
-inline std::string getEventPath(Name field, const std::string& sourceSCApath)
-{
-    return std::string {sourceSCApath + getRawPath(field)};
-}
-
 /**
- * @brief Copy field from original event to sca event if exist
+ * @brief Copy field from original event to sca event if exist.
  *
- * @param ctx Context, decode info status.
+ * @param ctx The decoder context, decode info status.
  * @param field Field to copy
  */
-inline void copyIfExist(const InfoEventDecode& ctx, Name field)
+inline void copyIfExist(const DecodeCxt& ctx, Name field)
 {
-    const auto origin = ctx.fieldSource.at(field);
+    const auto origin = ctx.sourcePath.at(field);
     if (ctx.event->exists(origin))
     {
-        ctx.event->set(ctx.fieldDest.at(field), origin);
+        ctx.event->set(ctx.destinationPath.at(field), origin);
     }
 };
 
 /**
- * @brief Transform a field from original event to array in sca event
+ * @brief Transform a field from original event to array in sca event if exist.
  *
  * Transform a string field with a list of values separated by ',' to an array
  * of strings and set it in the sca event.
- * @param ctx Context, decode info status.
- * @param field Field to transform
+ * @param ctx The decoder context, decode info status.
+ * @param field Field to transform.
  */
-inline void csvStr2ArrayIfExist(const InfoEventDecode& ctx, Name field)
+inline void csvStr2ArrayIfExist(const DecodeCxt& ctx, Name field)
 {
 
-    auto csv = ctx.getStrFromSrc(field);
+    auto csv = ctx.getSrcStr(field);
     if (csv)
     {
-        const auto scaArrayPath = ctx.fieldDest.at(field);
+        const auto scaArrayPath = ctx.destinationPath.at(field);
         const auto cvaArray = utils::string::split(csv.value().c_str(), ',');
 
         ctx.event->setArray(scaArrayPath);
@@ -175,17 +167,17 @@ inline void csvStr2ArrayIfExist(const InfoEventDecode& ctx, Name field)
 using conditionToCheck = std::tuple<field::Name, field::Type, bool>;
 
 /**
- * @brief Check array of conditions against a given event
+ * @brief Check array of conditions against a given event.
  *
  * Check the types of fields and if they are present when they are mandatory.
  * The conditions are checked against the event in the order they are given.
  * If any condition is not met, the event is not valid and returns false.
- * @param ctx Context, decode info status.
+ * @param ctx The decoder context, decode info status.
  * @param conditions The array of conditions to check against the event.
- * @return true If all conditions are met
- * @return false If any condition is not met
+ * @return true If all conditions are met.
+ * @return false If any condition is not met.
  */
-inline bool isValidEvent(const InfoEventDecode& ctx,
+inline bool isValidEvent(const DecodeCxt& ctx,
                          const std::vector<conditionToCheck>& conditions)
 {
     // Check types and mandatory fields if is necessary. Return false on fail.
@@ -213,7 +205,7 @@ inline bool isValidEvent(const InfoEventDecode& ctx,
 
     for (const auto& [field, type, mandatory] : conditions)
     {
-        const auto path = ctx.fieldSource.at(field);
+        const auto path = ctx.sourcePath.at(field);
         if (!isValidCondition(type, path, mandatory))
         {
             return false; // Some condition is not met.
@@ -226,10 +218,10 @@ inline bool isValidEvent(const InfoEventDecode& ctx,
 } // namespace field
 
 /**
- * @brief Get the Rule String from de code rule
+ * @brief Get the Rule String from de code rule.
  *
- * @param ruleChar The code rule
- * @return std::optional<std::string> The rule string
+ * @param ruleChar The code rule.
+ * @return std::optional<std::string> The rule string.
  */
 inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
 {
@@ -251,12 +243,12 @@ inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
  * Perform a query on wdb and expect a result like:
  * - "not found"
  * - "found ${utilPayload}"
- * @param query The query to perform
- * @param wdb The database to query
- * @param payload parse paryload after found
- * @return <SearchResult::FOUND, ${utilPayload}> if "found XXX" result received
- * @return <SearchResult::NOT_FOUND, ""> if "not found" result received
- * @return <SearchResult::ERROR, ""> otherwise
+ * @param query The query to perform.
+ * @param wdb The database to query.
+ * @param payload parse paryload after found.
+ * @return <SearchResult::FOUND, ${utilPayload}> if "found XXX" result received.
+ * @return <SearchResult::NOT_FOUND, ""> if "not found" result received.
+ * @return <SearchResult::ERROR, ""> otherwise.
  */
 std::tuple<SearchResult, std::string> searchAndParse(
     const std::string& query, std::shared_ptr<wazuhdb::WazuhDB> wdb, bool parse = true)
@@ -275,8 +267,7 @@ std::tuple<SearchResult, std::string> searchAndParse(
             {
                 if (parse)
                 {
-                    // Remove "found " from the beginning
-                    retStr = payload.value().substr(6);
+                    retStr = payload.value().substr(6); // Remove "found "
                 }
                 else
                 {
@@ -285,9 +276,10 @@ std::tuple<SearchResult, std::string> searchAndParse(
             }
             catch (const std::out_of_range& e)
             {
-                WAZUH_LOG_WARN("[{}] Error parsing result: '{}', cannot remove 'found '",
-                               __func__,
-                               payload.value());
+                WAZUH_LOG_WARN("[SCA] Error parsing result: '{}', cannot remove 'found ' "
+                               "of query: '{}'",
+                               payload.value(),
+                               query);
                 retCode = SearchResult::ERROR;
             }
         }
@@ -304,7 +296,7 @@ std::tuple<SearchResult, std::string> searchAndParse(
                                  Check Event info (type 'check')
 *****************************************************************************************/
 
-bool isValidCheckEvent(const InfoEventDecode& ctx)
+bool isValidCheckEvent(const DecodeCxt& ctx)
 {
     // CheckEvent conditions list
     const std::vector<field::conditionToCheck> listFieldConditions = {
@@ -336,9 +328,9 @@ bool isValidCheckEvent(const InfoEventDecode& ctx)
 
     /* If status is present then reason should be present
      If result is not present then status should be present */
-    bool existResult = ctx.existsFromSrc(field::Name::CHECK_RESULT);
-    bool existReason = ctx.existsFromSrc(field::Name::CHECK_REASON);
-    bool existStatus = ctx.existsFromSrc(field::Name::CHECK_STATUS);
+    bool existResult = ctx.existsSrc(field::Name::CHECK_RESULT);
+    bool existReason = ctx.existsSrc(field::Name::CHECK_REASON);
+    bool existStatus = ctx.existsSrc(field::Name::CHECK_STATUS);
 
     if ((!existResult && !existStatus) || (existStatus && !existReason))
     {
@@ -348,16 +340,16 @@ bool isValidCheckEvent(const InfoEventDecode& ctx)
     return true;
 }
 
-void fillCheckEvent(const InfoEventDecode& ctx, const std::string& previousResult)
+void fillCheckEvent(const DecodeCxt& ctx, const std::string& previousResult)
 {
 
-    ctx.event->setString("check", ctx.fieldDest.at(field::Name::TYPE));
+    ctx.event->setString("check", ctx.destinationPath.at(field::Name::TYPE));
 
     // Save the previous result
     if (!previousResult.empty())
     {
         ctx.event->setString(previousResult.c_str(),
-                             ctx.fieldDest.at(field::Name::CHECK_PREVIOUS_RESULT));
+                             ctx.destinationPath.at(field::Name::CHECK_PREVIOUS_RESULT));
     }
 
     field::copyIfExist(ctx, field::Name::ID);
@@ -380,10 +372,10 @@ void fillCheckEvent(const InfoEventDecode& ctx, const std::string& previousResul
     field::csvStr2ArrayIfExist(ctx, field::Name::CHECK_PROCESS);
     field::csvStr2ArrayIfExist(ctx, field::Name::CHECK_COMMAND);
 
-    if (ctx.existsFromSrc(field::Name::CHECK_RESULT))
+    if (ctx.existsSrc(field::Name::CHECK_RESULT))
     {
-        ctx.event->set(ctx.fieldDest.at(field::Name::CHECK_RESULT),
-                       ctx.fieldSource.at(field::Name::CHECK_RESULT));
+        ctx.event->set(ctx.destinationPath.at(field::Name::CHECK_RESULT),
+                       ctx.sourcePath.at(field::Name::CHECK_RESULT));
     }
     else
     {
@@ -392,10 +384,9 @@ void fillCheckEvent(const InfoEventDecode& ctx, const std::string& previousResul
     }
 }
 
-// TODO Add header
-void insertCompliance(const InfoEventDecode& ctx, const int checkID)
+void insertCompliance(const DecodeCxt& ctx, const int checkID)
 {
-    const auto& compliance = ctx.getObjectFromSrc(field::Name::CHECK_COMPLIANCE);
+    const auto& compliance = ctx.getSrcObject(field::Name::CHECK_COMPLIANCE);
 
     if (!compliance.has_value())
     {
@@ -407,7 +398,7 @@ void insertCompliance(const InfoEventDecode& ctx, const int checkID)
         auto value = jsonValue.getString();
         if (!value.has_value())
         {
-            WAZUH_LOG_WARN("Error: Expected string for compliance item '{}'",
+            WAZUH_LOG_WARN("[SCA] Expected string for compliance item '{}'",
                            jsonValue.str());
             continue;
         }
@@ -421,18 +412,17 @@ void insertCompliance(const InfoEventDecode& ctx, const int checkID)
         const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
         if (wazuhdb::QueryResultCodes::OK != res)
         {
-            WAZUH_LOG_ERROR("Error: Failed to insert compliance '{}' for check '{}'",
-                            value.value(),
-                            checkID);
+            WAZUH_LOG_WARN("[SCA] Failed to insert compliance '{}' for check '{}'",
+                           value.value(),
+                           checkID);
         }
     }
 }
 
-// TODO Add header
-void insertRules(const InfoEventDecode& ctx, const int checkID)
+void insertRules(const DecodeCxt& ctx, const int checkID)
 {
     // Save rules
-    const auto rules = ctx.getArrayFromSrc(field::Name::CHECK_RULES);
+    const auto rules = ctx.getSrcArray(field::Name::CHECK_RULES);
 
     if (!rules.has_value())
     {
@@ -445,7 +435,7 @@ void insertRules(const InfoEventDecode& ctx, const int checkID)
         auto rule = jsonRule.getString();
         if (!rule.has_value())
         {
-            WAZUH_LOG_WARN("Error: Expected string for rule '{}'", jsonRule.str());
+            WAZUH_LOG_WARN("[SCA] Expected string for rule '{}'", jsonRule.str());
             continue;
         }
 
@@ -461,35 +451,36 @@ void insertRules(const InfoEventDecode& ctx, const int checkID)
             const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
             if (wazuhdb::QueryResultCodes::OK != res)
             {
-                WAZUH_LOG_ERROR("Error: Failed to insert rule '{}' for check '{}'",
-                                rule.value(),
-                                checkID);
+                WAZUH_LOG_WARN("[SCA] Failed to insert rule '{}' for check '{}'",
+                               rule.value(),
+                               checkID);
             }
         }
         else
         {
-            WAZUH_LOG_WARN("[{}] Error: Invalid rule type '{}'", __func__, rule.value());
+            WAZUH_LOG_WARN("[SCA] Invalid rule type '{}'", rule.value());
         }
     }
 }
 
-std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx)
+std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
 {
 
     // Check types of fields and if they are mandatory
     if (!isValidCheckEvent(ctx))
     {
         // TODO: Check this message. exit error
-        return "Mandatory fields missing in event";
+        WAZUH_LOG_WARN("[SCA] Invalid check event, discarding..");
+        return "Invalid check event,";
     }
 
     // Get the necesary fields for the query
-    const auto checkID = ctx.getIntFromSrc(field::Name::CHECK_ID).value_or(-1);
-    const auto result = ctx.getStrFromSrc(field::Name::CHECK_RESULT).value_or("");
-    const auto status = ctx.getStrFromSrc(field::Name::CHECK_STATUS).value_or("");
-    const auto reason = ctx.getStrFromSrc(field::Name::CHECK_REASON).value_or("");
+    const auto checkID = ctx.getSrcInt(field::Name::CHECK_ID).value();
+    const auto result = ctx.getSrcStr(field::Name::CHECK_RESULT).value_or("");
+    const auto status = ctx.getSrcStr(field::Name::CHECK_STATUS).value_or("");
+    const auto reason = ctx.getSrcStr(field::Name::CHECK_REASON).value_or("");
 
-    // Prepare and execute the policy monitoring and perform query
+    // Prepare and execute the policy monitoring
     const auto scaQuery = fmt::format("agent {} sca query {}", ctx.agentID, checkID);
     const auto [resPreviosResult, previousResult] = searchAndParse(scaQuery, ctx.wdb);
 
@@ -500,7 +491,7 @@ std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx)
         case SearchResult::FOUND:
         {
             // There is a previous result, update it
-            const auto id = ctx.getIntFromSrc(field::Name::ID).value_or(-1);
+            const auto id = ctx.getSrcInt(field::Name::ID).value_or(-1);
 
             saveQuery = fmt::format("agent {} sca update {}|{}|{}|{}|{}",
                                     ctx.agentID,
@@ -514,7 +505,7 @@ std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx)
         case SearchResult::NOT_FOUND:
         {
             // There is no previous result, save it
-            const auto rootPath = ctx.fieldSource.at(field::Name::ROOT);
+            const auto rootPath = ctx.sourcePath.at(field::Name::ROOT);
             const auto root = ctx.event->str(rootPath).value_or("{}");
 
             saveQuery = fmt::format("agent {} sca insert {}", ctx.agentID, root);
@@ -524,9 +515,23 @@ std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx)
         case SearchResult::ERROR:
         default:
             // if query fails, no sense to continue
-            WAZUH_LOG_WARN("Error querying policy monitoring database for agent '{}'",
-                           ctx.agentID);
+            WAZUH_LOG_WARN(
+                "[SCA] Error querying policy monitoring database for agent '{}'",
+                ctx.agentID);
             return "Error querying policy monitoring database for agent '{}";
+    }
+    // Save or update the policy monitoring
+    const auto [resSavePolicy, empty] = ctx.wdb->tryQueryAndParseResult(saveQuery);
+    if (wazuhdb::QueryResultCodes::OK != resSavePolicy)
+    {
+        WAZUH_LOG_WARN("Error saving policy monitoring for agent '{}'", ctx.agentID);
+    }
+
+    // If policies are new, then save the rules and compliance
+    if (resPreviosResult == SearchResult::NOT_FOUND)
+    {
+        insertCompliance(ctx, checkID);
+        insertRules(ctx, checkID);
     }
 
     // Normalize the SCA event and add the previous result if exists
@@ -538,20 +543,6 @@ std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx)
         fillCheckEvent(ctx, previousResult);
     }
 
-    // Save the policy monitoring
-    const auto [resSavePolicy, empty] = ctx.wdb->tryQueryAndParseResult(saveQuery);
-
-    // If policies are new, then save the rules and compliance
-    if (resPreviosResult == SearchResult::NOT_FOUND)
-    {
-        insertCompliance(ctx, checkID);
-        insertRules(ctx, checkID);
-    }
-    else if (wazuhdb::QueryResultCodes::OK != resSavePolicy)
-    {
-        WAZUH_LOG_WARN("Error saving policy monitoring for agent '{}'", ctx.agentID);
-    }
-
     return std::nullopt; // Success
 }
 
@@ -560,20 +551,20 @@ std::optional<std::string> handleCheckEvent(const InfoEventDecode& ctx)
                                 SCAN Info (type Summary)
 *****************************************************************************************/
 
-bool CheckScanInfoJSON(const InfoEventDecode& ctx)
+bool isValidScanInfoEvent(const DecodeCxt& ctx)
 {
 
     // ScanInfo conditions list
     const std::vector<field::conditionToCheck> conditions = {
         {field::Name::POLICY_ID, field::Type::STRING, true},
         {field::Name::SCAN_ID, field::Type::INT, true},
-        {field::Name::START_TIME, field::Type::INT, true},   // C dont check this
-        {field::Name::END_TIME, field::Type::INT, true},     // C dont check this
-        {field::Name::PASSED, field::Type::INT, true},       // C dont check this
-        {field::Name::FAILED, field::Type::INT, true},       // C dont check this
-        {field::Name::INVALID, field::Type::INT, true},      // C dont check this
-        {field::Name::TOTAL_CHECKS, field::Type::INT, true}, // C dont check this
-        {field::Name::SCORE, field::Type::INT, true},        // C dont check this
+        {field::Name::START_TIME, field::Type::INT, true},
+        {field::Name::END_TIME, field::Type::INT, true},
+        {field::Name::PASSED, field::Type::INT, true},
+        {field::Name::FAILED, field::Type::INT, true},
+        {field::Name::INVALID, field::Type::INT, true},
+        {field::Name::TOTAL_CHECKS, field::Type::INT, true},
+        {field::Name::SCORE, field::Type::INT, true},
         {field::Name::HASH, field::Type::STRING, true},
         {field::Name::HASH_FILE, field::Type::STRING, true},
         {field::Name::FILE, field::Type::STRING, true},
@@ -583,7 +574,7 @@ bool CheckScanInfoJSON(const InfoEventDecode& ctx)
         /*
         '/force_alert' field is "1" (string) or not present on icoming event
         {field::Name::FORCE_ALERT, field::Type::STRING, false},
-        '/first_scan' field is a number (0/1) or not present on icoming event
+        '/first_scan' field is a number or not present on icoming event
         {field::Name::FIRST_SCAN, field::Type::INT, false},
         */
     };
@@ -591,24 +582,64 @@ bool CheckScanInfoJSON(const InfoEventDecode& ctx)
     return field::isValidEvent(ctx, conditions);
 }
 
-// Returns true on success, false on error
-bool SaveScanInfo(const InfoEventDecode& ctx, bool update)
+void pushDumpRequest(const DecodeCxt& ctx, const std::string& policyId, bool firstScan)
+{
+
+    if (!ctx.forwarderSocket->isConnected())
+    {
+        try
+        {
+            ctx.forwarderSocket->socketConnect();
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_WARN("[SCA] Error connecting to forwarder socket: {}", e.what());
+            return;
+        }
+    }
+
+    const auto msg =
+        fmt::format("{}:sca-dump:{}:{}", ctx.agentID, policyId, firstScan ? "1" : "0");
+
+    // Send the message to the forwarder, can fail but no throw exception,
+    // becouse it is connected to the forwarder socket
+    const auto sendStatus = ctx.forwarderSocket->sendMsg(msg);
+    switch (sendStatus)
+    {
+        case base::utils::socketInterface::SendRetval::SUCCESS: break;
+        case base::utils::socketInterface::SendRetval::SIZE_TOO_LONG:
+            WAZUH_LOG_WARN(
+                "[SCA] Error sending message to forwarder: message too long: {}", msg);
+            break;
+        case base::utils::socketInterface::SendRetval::SOCKET_ERROR:
+        default:
+            WAZUH_LOG_WARN("[SCA] Error database dump request for agent '{}'. {} ({})",
+                           ctx.agentID,
+                           strerror(errno),
+                           errno);
+            ctx.forwarderSocket->socketDisconnect(); // Try to reconnect the next time
+            break;
+    }
+
+    return;
+}
+
+bool SaveScanInfo(const DecodeCxt& ctx, bool update)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
     std::string query {};
 
     // All mandatory fields are present
-    const auto pmStartScan = ctx.getIntFromSrc(field::Name::START_TIME).value();
-    const auto pmEndScan = ctx.getIntFromSrc(field::Name::END_TIME).value();
-    const auto scanID = ctx.getIntFromSrc(field::Name::SCAN_ID).value();
-    const auto pass = ctx.getIntFromSrc(field::Name::PASSED).value();
-    const auto failed = ctx.getIntFromSrc(field::Name::FAILED).value();
-    const auto invalid = ctx.getIntFromSrc(field::Name::INVALID).value();
-    const auto totalChecks = ctx.getIntFromSrc(field::Name::TOTAL_CHECKS).value();
-    const auto score = ctx.getIntFromSrc(field::Name::SCORE).value();
-
-    const auto hash = ctx.getStrFromSrc(field::Name::HASH).value();
-    const auto policyID = ctx.getStrFromSrc(field::Name::POLICY_ID).value();
+    const auto pmStartScan = ctx.getSrcInt(field::Name::START_TIME).value();
+    const auto pmEndScan = ctx.getSrcInt(field::Name::END_TIME).value();
+    const auto scanID = ctx.getSrcInt(field::Name::SCAN_ID).value();
+    const auto pass = ctx.getSrcInt(field::Name::PASSED).value();
+    const auto failed = ctx.getSrcInt(field::Name::FAILED).value();
+    const auto invalid = ctx.getSrcInt(field::Name::INVALID).value();
+    const auto totalChecks = ctx.getSrcInt(field::Name::TOTAL_CHECKS).value();
+    const auto score = ctx.getSrcInt(field::Name::SCORE).value();
+    const auto hash = ctx.getSrcStr(field::Name::HASH).value();
+    const auto policyID = ctx.getSrcStr(field::Name::POLICY_ID).value();
 
     // TODO This is a int
     if (update)
@@ -647,67 +678,25 @@ bool SaveScanInfo(const InfoEventDecode& ctx, bool update)
 
     if (wazuhdb::QueryResultCodes::OK != queryResult)
     {
-        WAZUH_LOG_WARN("Error saving scan info for agent '{}'", ctx.agentID);
+        WAZUH_LOG_WARN("[SCA] Error saving scan info for agent '{}'", ctx.agentID);
         return false;
     }
 
     return true;
 }
 
-// TODO: check return value and implications if the operation fails
-void pushDumpRequest(const std::string& agentId,
-                     const std::string& policyId,
-                     bool firstScan)
-{
-    namespace sockInt = base::utils::socketInterface;
-    sockInt::unixDatagram socketCFFGA(CFGARQUEUE);
-
-    const auto msg =
-        fmt::format("{}:sca-dump:{}:{}", agentId, policyId, firstScan ? "1" : "0");
-
-    try
-    {
-        auto sendStatus = socketCFFGA.sendMsg(msg);
-        switch (sendStatus)
-        {
-            case sockInt::SendRetval::SUCCESS: break;
-            case sockInt::SendRetval::SOCKET_ERROR:
-                WAZUH_LOG_WARN(
-                    "[SCA] Error database dump request for agent '{}'. {} ({})",
-                    agentId,
-                    strerror(errno),
-                    errno);
-                break;
-            default:
-                WAZUH_LOG_WARN(
-                    "[SCA] Error database dump request for agent '{}'. Size error: '{}'",
-                    agentId,
-                    msg);
-                break;
-        }
-    }
-    catch (const std::runtime_error& exception)
-    {
-        WAZUH_LOG_WARN("[SCA] Error database dump request for agent '{}' fail: {}",
-                       agentId,
-                       exception.what());
-    }
-
-    return;
-}
-
-void savePolicyInfo(const InfoEventDecode& ctx)
+void insertPolicyInfo(const DecodeCxt& ctx)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
     const auto query =
         fmt::format("agent {} sca insert_policy {}|{}|{}|{}|{}|{}",
                     ctx.agentID,
-                    ctx.getStrFromSrc(field::Name::NAME).value_or("NULL"),
-                    ctx.getStrFromSrc(field::Name::FILE).value_or("NULL"),
-                    ctx.getStrFromSrc(field::Name::POLICY_ID).value_or("NULL"),
-                    ctx.getStrFromSrc(field::Name::DESCRIPTION).value_or("NULL"),
-                    ctx.getStrFromSrc(field::Name::REFERENCES).value_or("NULL"),
-                    ctx.getStrFromSrc(field::Name::HASH_FILE).value_or("NULL"));
+                    ctx.getSrcStr(field::Name::NAME).value_or("NULL"),
+                    ctx.getSrcStr(field::Name::FILE).value_or("NULL"),
+                    ctx.getSrcStr(field::Name::POLICY_ID).value_or("NULL"),
+                    ctx.getSrcStr(field::Name::DESCRIPTION).value_or("NULL"),
+                    ctx.getSrcStr(field::Name::REFERENCES).value_or("NULL"),
+                    ctx.getSrcStr(field::Name::HASH_FILE).value_or("NULL"));
 
     auto [result, payload] = ctx.wdb->tryQueryAndParseResult(query);
 
@@ -718,7 +707,7 @@ void savePolicyInfo(const InfoEventDecode& ctx)
     return;
 }
 
-void updatePolicy(const InfoEventDecode& ctx, const std::string& policyId)
+void updatePolicyInfo(const DecodeCxt& ctx, const std::string& policyId)
 {
     // findPolicySHA256
     const auto query =
@@ -730,13 +719,13 @@ void updatePolicy(const InfoEventDecode& ctx, const std::string& policyId)
     {
         case SearchResult::FOUND:
         {
-            const auto eventHashFile = ctx.getStrFromSrc(field::Name::HASH_FILE).value();
+            const auto eventHashFile = ctx.getSrcStr(field::Name::HASH_FILE).value();
 
             if (oldHashFile != eventHashFile)
             {
                 if (deletePolicyAndCheck(ctx, policyId))
                 {
-                    pushDumpRequest(ctx.agentID, policyId, true);
+                    pushDumpRequest(ctx, policyId, true);
                 }
             }
             else
@@ -755,8 +744,8 @@ void updatePolicy(const InfoEventDecode& ctx, const std::string& policyId)
     }
 }
 
-// TODO Doc me
-void checkResultsAndDump(const InfoEventDecode& ctx,
+
+void checkResultsAndDump(const DecodeCxt& ctx,
                          const std::string& policyId,
                          bool isFirstScan,
                          const std::string& eventHash)
@@ -771,19 +760,21 @@ void checkResultsAndDump(const InfoEventDecode& ctx,
             if (oldEventHash != eventHash)
             {
                 doPushDumpRequest = true;
-                WAZUH_LOG_DEBUG("Scan result integrity failed for policy '%s'. Hash from "
-                                "DB: '%s', hash from summary: '%s'. Requesting DB dump.",
-                                policyId,
-                                oldEventHash,
-                                eventHash);
+                WAZUH_LOG_DEBUG(
+                    "[SCA] Scan result integrity failed for policy '%s'. Hash from "
+                    "DB: '%s', hash from summary: '%s'. Requesting DB dump.",
+                    policyId,
+                    oldEventHash,
+                    eventHash);
             }
 
             break;
         case SearchResult::NOT_FOUND:
             /* Empty DB */
             doPushDumpRequest = true;
-            WAZUH_LOG_DEBUG("Check results DB empty for policy '%s'. Requesting DB dump.",
-                            policyId);
+            WAZUH_LOG_DEBUG(
+                "[SCA] Check results DB empty for policy '%s'. Requesting DB dump.",
+                policyId);
             break;
         default:
             WAZUH_LOG_WARN("[SCA] Error querying check results database for agent: {}",
@@ -793,13 +784,13 @@ void checkResultsAndDump(const InfoEventDecode& ctx,
 
     if (doPushDumpRequest)
     {
-        pushDumpRequest(ctx.agentID, policyId, isFirstScan);
+        pushDumpRequest(ctx, policyId, isFirstScan);
     }
 
     return;
 }
 
-bool deletePolicyAndCheck(const InfoEventDecode& ctx, const std::string& policyId)
+bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
 {
     // "Deleting policy '%s', agent id '%s'"
     auto query = fmt::format("agent {} sca delete_policy {}", ctx.agentID, policyId);
@@ -808,7 +799,7 @@ bool deletePolicyAndCheck(const InfoEventDecode& ctx, const std::string& policyI
     if (wazuhdb::QueryResultCodes::OK != resultCode)
     {
         WAZUH_LOG_WARN(
-            "Error deleting policy '{}' for agent '{}'.", policyId, ctx.agentID);
+            "[SCA] Error deleting policy '{}' for agent '{}'.", policyId, ctx.agentID);
         return false;
     }
 
@@ -819,7 +810,7 @@ bool deletePolicyAndCheck(const InfoEventDecode& ctx, const std::string& policyI
 
     if (wazuhdb::QueryResultCodes::OK != resultCode1)
     {
-        WAZUH_LOG_WARN("Error deleting check for policy '{}' for agent '{}'.",
+        WAZUH_LOG_WARN("[SCA] Error deleting check for policy '{}' for agent '{}'.",
                        policyId,
                        ctx.agentID);
         // return false;
@@ -828,7 +819,7 @@ bool deletePolicyAndCheck(const InfoEventDecode& ctx, const std::string& policyI
     return true;
 }
 
-std::tuple<SearchResult, std::string> findCheckResults(const InfoEventDecode& ctx,
+std::tuple<SearchResult, std::string> findCheckResults(const DecodeCxt& ctx,
                                                        const std::string& policyId)
 {
     // "Find check results for policy id: %s"
@@ -837,13 +828,13 @@ std::tuple<SearchResult, std::string> findCheckResults(const InfoEventDecode& ct
     return searchAndParse(query, ctx.wdb);
 }
 
-void FillScanInfo(const InfoEventDecode& ctx)
+void FillScanInfo(const DecodeCxt& ctx)
 {
-    ctx.event->setString("summary", ctx.fieldDest.at(field::Name::TYPE));
+    ctx.event->setString("summary", ctx.destinationPath.at(field::Name::TYPE));
 
     // The /name field is renamed to /policy
-    ctx.event->set(ctx.fieldDest.at(field::Name::POLICY),
-                   ctx.fieldSource.at(field::Name::NAME));
+    ctx.event->set(ctx.destinationPath.at(field::Name::POLICY),
+                   ctx.sourcePath.at(field::Name::NAME));
 
     // Copy if exists
     field::copyIfExist(ctx, field::Name::SCAN_ID);
@@ -857,18 +848,18 @@ void FillScanInfo(const InfoEventDecode& ctx)
     field::copyIfExist(ctx, field::Name::FILE);
 }
 
-std::optional<std::string> handleScanInfo(const InfoEventDecode& ctx)
+std::optional<std::string> handleScanInfo(const DecodeCxt& ctx)
 {
     // Validate the JSON ScanInfo Event
-    if (!CheckScanInfoJSON(ctx))
+    if (!isValidScanInfoEvent(ctx))
     {
-        return "fail on CheckScanInfoJSON"; // Fail on check
+        return "fail on isValidScanInfoEvent"; // Fail on check
     }
 
     // Get basic info from Event
-    const auto policyId = ctx.getStrFromSrc(field::Name::POLICY_ID).value();
-    const auto eventHash = ctx.getStrFromSrc(field::Name::HASH).value();
-    const bool isFirstScan = ctx.existsFromSrc(field::Name::FIRST_SCAN);
+    const auto policyId = ctx.getSrcStr(field::Name::POLICY_ID).value();
+    const auto eventHash = ctx.getSrcStr(field::Name::HASH).value();
+    const bool isFirstScan = ctx.existsSrc(field::Name::FIRST_SCAN);
 
     // Check de policy in the DB
     bool normalize = false;
@@ -887,7 +878,7 @@ std::optional<std::string> handleScanInfo(const InfoEventDecode& ctx)
             const bool diferentHash = (storedHash != eventHash);
             const bool newHash = (diferentHash && !isFirstScan);
 
-            const bool force_alert = ctx.existsFromSrc(field::Name::FORCE_ALERT);
+            const bool force_alert = ctx.existsSrc(field::Name::FORCE_ALERT);
 
             normalize = (newHash || force_alert);
 
@@ -917,7 +908,7 @@ std::optional<std::string> handleScanInfo(const InfoEventDecode& ctx)
 
         if (!scanInfoUpdate && isFirstScan)
         {
-            pushDumpRequest(ctx.agentID, policyId, isFirstScan);
+            pushDumpRequest(ctx, policyId, isFirstScan);
         }
     }
 
@@ -931,12 +922,12 @@ std::optional<std::string> handleScanInfo(const InfoEventDecode& ctx)
     {
         case SearchResult::FOUND:
             // If exists, then sync
-            updatePolicy(ctx, policyId);
+            updatePolicyInfo(ctx, policyId);
             break;
 
         case SearchResult::NOT_FOUND:
             // If not exists, then insert
-            savePolicyInfo(ctx);
+            insertPolicyInfo(ctx);
             break;
 
         case SearchResult::ERROR:
@@ -954,9 +945,9 @@ std::optional<std::string> handleScanInfo(const InfoEventDecode& ctx)
 
 /****************************************************************************************
                                 END HANDLE SCAN INFO
-                                Policies
+                                     POLICIES
 *****************************************************************************************/
-std::optional<std::string> handlePoliciesInfo(const InfoEventDecode& ctx)
+std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
 {
 
     // Check policies JSON
@@ -965,7 +956,7 @@ std::optional<std::string> handlePoliciesInfo(const InfoEventDecode& ctx)
         return "Error: policies array not found";
     }
 
-    const auto policiesEvent = ctx.getArrayFromSrc(field::Name::POLICIES).value();
+    const auto policiesEvent = ctx.getSrcArray(field::Name::POLICIES).value();
     if (policiesEvent.empty())
     {
         WAZUH_LOG_DEBUG("[SCA] No policies found for agent: {}", ctx.agentID);
@@ -974,17 +965,17 @@ std::optional<std::string> handlePoliciesInfo(const InfoEventDecode& ctx)
 
     // "Retrieving policies from database."
     const auto policiesIdQuery = fmt::format("agent {} sca query_policies ", ctx.agentID);
-    auto [resPoliciesIds, policiesIds] = searchAndParse(policiesIdQuery, ctx.wdb);
+    auto [resPoliciesIds, policiesDB] = searchAndParse(policiesIdQuery, ctx.wdb);
 
     if (SearchResult::ERROR == resPoliciesIds)
     {
         WAZUH_LOG_WARN("[SCA] Error retrieving policies from database for agent: {}",
-                        ctx.agentID);
+                       ctx.agentID);
         return std::nullopt;
     }
 
     /* For each policy id, look if we have scanned it */
-    const auto& policiesList = utils::string::split(policiesIds, ',');
+    const auto& policiesList = utils::string::split(policiesDB, ',');
 
     for (auto& pId : policiesList)
     {
@@ -1006,10 +997,13 @@ std::optional<std::string> handlePoliciesInfo(const InfoEventDecode& ctx)
     return std::nullopt;
 }
 
-/// Dump Functions ///
+/****************************************************************************************
+                                END POLICIES
+                                    DUMP
+*****************************************************************************************/
 
 std::tuple<std::optional<std::string>, std::string, int>
-checkDumpJSON(const InfoEventDecode& ctx)
+isValidDumpEvent(const DecodeCxt& ctx)
 {
 
     // ScanInfo conditions list
@@ -1024,75 +1018,82 @@ checkDumpJSON(const InfoEventDecode& ctx)
         return {"Malformed JSON", "", -1};
     }
 
-    auto policyId = ctx.getStrFromSrc(field::Name::POLICY_ID).value();
-    auto scanId = ctx.getIntFromSrc(field::Name::SCAN_ID).value();
+    auto policyId = ctx.getSrcStr(field::Name::POLICY_ID).value();
+    auto scanId = ctx.getSrcInt(field::Name::SCAN_ID).value();
 
     return {std::nullopt, std::move(policyId), scanId};
 }
 
-bool deletePolicyCheckDistinct(const std::string& agentId,
+void deletePolicyCheckDistinct(const DecodeCxt& ctx,
                                const std::string& policyId,
-                               const int scanId,
-                               std::shared_ptr<wazuhdb::WazuhDB> wdb)
+                               const int scanId)
 {
     // "Deleting check distinct policy id , agent id "
     auto query = fmt::format(
-        "agent {} sca delete_check_distinct {}|{}", agentId, policyId, scanId);
+        "agent {} sca delete_check_distinct {}|{}", ctx.agentID, policyId, scanId);
 
-    auto [resultCode, payload] = wdb->tryQueryAndParseResult(query);
-    switch (resultCode)
+    auto [resultCode, payload] = ctx.wdb->tryQueryAndParseResult(query);
+    if (wazuhdb::QueryResultCodes::OK != resultCode)
     {
-        // If deleted or error we return true
-        case wazuhdb::QueryResultCodes::OK:
-        case wazuhdb::QueryResultCodes::ERROR: return true;
-        // If other result we return false why?
-        default: return false;
+        WAZUH_LOG_WARN("[SCA] Error deleting check distinct policy id: {} agent id: {}",
+                       policyId,
+                       ctx.agentID);
     }
+
+    return;
 }
 
 // - Dump Handling - //
 
-std::optional<std::string> handleDumpEvent(const InfoEventDecode& ctx)
+std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx)
 {
-    std::optional<std::string> error;
 
     // Check dump event JSON fields
-    // If all the fields are ok continue, if not do nothing
-    auto [checkError, policyId, scanId] = checkDumpJSON(ctx);
-    if (!checkError)
+    auto [checkError, policyId, scanId] = isValidDumpEvent(ctx);
+
+    if (checkError)
     {
-        // "Deleting check distinct policy id , agent id "
-        // Continue always, if rare error log error
-        // In the c code it logs the error and continues
-        deletePolicyCheckDistinct(ctx.agentID, policyId, scanId, ctx.wdb);
+        return checkError;
+    }
 
-        // Retreive hash from db
-        auto [resultCode, hashCheckResults] = findCheckResults(ctx, policyId);
-        if (SearchResult::FOUND == resultCode)
+    // "Deleting check distinct policy id , agent id "
+    // Continue always, if rare error log error
+    deletePolicyCheckDistinct(ctx, policyId, scanId);
+
+    // Retreive hash from db
+    auto [resCheckResult, hashCheckResults] = findCheckResults(ctx, policyId);
+    if (SearchResult::FOUND == resCheckResult)
+    {
+        // Retreive hash from summary
+        const auto hashScanQuery =
+            fmt::format("agent {} sca query_scan {}", ctx.agentID, policyId);
+        auto [resScanInfo, hashScanInfo] = searchAndParse(hashScanQuery, ctx.wdb);
+
+        if (SearchResult::FOUND == resScanInfo)
         {
-            // Retreive hash from summary
-            const auto hashScanQuery =
-                fmt::format("agent {} sca query_scan {}", ctx.agentID, policyId);
-            auto [scanResultCode, hashScanInfo] = searchAndParse(hashScanQuery, ctx.wdb);
-
-            if (SearchResult::FOUND == scanResultCode && hashScanInfo.size() == 64)
+            if (hashCheckResults != hashScanInfo)
             {
-                if (hashCheckResults != hashScanInfo)
-                {
-                    // C Here logs error
-                    //                     mdebug1("Scan result integrity failed for
-                    //                     policy '%s'. Hash from DB: '%s' hash from
-                    //                     summary: '%s'. Requesting DB dump.",
-                    pushDumpRequest(ctx.agentID, policyId, false);
-                    return fmt::format(
-                        "Scan result integrity failed for policy '{}'. Hash from DB: "
-                        "'{}' hash from summary: '{}'. Requesting DB dump.",
-                        policyId,
-                        hashCheckResults,
-                        hashScanInfo);
-                }
+                pushDumpRequest(ctx, policyId, false);
+                WAZUH_LOG_DEBUG(
+                    "[SCA] Scan result integrity failed for policy '{}'. Hash from DB: "
+                    "'{}' hash from summary: '{}'. Requesting DB dump.",
+                    policyId,
+                    hashCheckResults,
+                    hashScanInfo);
             }
         }
+        else if (SearchResult::ERROR == resScanInfo)
+        {
+            WAZUH_LOG_WARN("[SCA] Error querying summary for policy: {} agent: {}",
+                           policyId,
+                           ctx.agentID);
+        }
+    }
+    else if (SearchResult::ERROR == resCheckResult)
+    {
+        WAZUH_LOG_WARN("[SCA] Error querying check results for policy: {} agent: {}",
+                       policyId,
+                       ctx.agentID);
     }
 
     // If error do nothing
@@ -1125,27 +1126,26 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
-    const auto failureTrace2 {fmt::format(
-        "[{}] -> Failure: [{}] is empty or is not an object", name, targetField)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure: ", name)};
+        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[0].m_value)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] is empty or is not an string",
+                    name,
+                    parameters[0].m_value + "/type")};
+    const auto failureTrace3 {fmt::format(
+        "[{}] -> Failure: [{}] unknown type", name, parameters[0].m_value + "/type")};
 
-    // TODO: we are not doing nothing on buildtime, wazuhdb initializer has 11 refs...
-    // EventPaths and mappedPaths can be set in buildtime
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+    /* Create the context for SCA decoder */
+    namespace SF = sca::field;
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
+    auto cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(CFG_AR_PATH);
+    /*  Maps of paths. Contains the orginal path and the mapped path for each field */
+    std::unordered_map<SF::Name, std::string> fieldSource {};
+    std::unordered_map<SF::Name, std::string> fieldDest {};
 
-    /*  Create maps of paths.
-        Contains the orginal path and the mapped path for each field */
-    std::unordered_map<sca::field::Name, std::string> fieldSource {};
-    std::unordered_map<sca::field::Name, std::string> fieldDest {};
-
-    for (sca::field::Name field = sca::field::Name::A_BEGIN;
-         field != sca::field::Name::A_END;
-         ++field)
+    for (SF::Name field = SF::Name::A_BEGIN; field != SF::Name::A_END; ++field)
     {
-        fieldSource.insert(
-            {field, parameters[0].m_value + sca::field::getRawPath(field)});
-        fieldDest.insert({field, std::string {"/sca"} + sca::field::getRawPath(field)});
+        fieldSource.insert({field, parameters[0].m_value + SF::getRealtivePath(field)});
+        fieldDest.insert({field, std::string {"/sca"} + SF::getRealtivePath(field)});
     }
 
     // Return Term
@@ -1156,8 +1156,9 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
          targetField = std::move(targetField),
          sourceSCApath = parameters[0].m_value,
          agentIdPath = parameters[1].m_value,
-         fieldSource = std::move(fieldSource),
-         fieldDest = std::move(fieldDest),
+         fieldSrc = std::move(fieldSource),
+         fieldDst = std::move(fieldDest),
+         cfg = std::move(cfg),
          wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
         {
             std::optional<std::string> error;
@@ -1167,8 +1168,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
                 && event->isString(agentIdPath))
             {
                 auto agentId = event->getString(agentIdPath).value();
-                auto state = sca::InfoEventDecode {
-                    event, agentId, sourceSCApath, wdb, fieldSource, fieldDest};
+                auto cxt = sca::DecodeCxt {event, agentId, wdb, cfg, fieldSrc, fieldDst};
 
                 // TODO: Field type is mandatory and should be checked in the decoder
                 auto type = event->getString(sourceSCApath + "/type");
@@ -1180,25 +1180,24 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
                 // Proccess event with the appropriate handler
                 else if (sca::TYPE_CHECK == type.value())
                 {
-                    error = sca::handleCheckEvent(state);
+                    error = sca::handleCheckEvent(cxt);
                 }
                 else if (sca::TYPE_SUMMARY == type.value())
                 {
-                    error = sca::handleScanInfo(state);
+                    error = sca::handleScanInfo(cxt);
                 }
                 else if (sca::TYPE_POLICIES == type.value())
                 {
-                    error = sca::handlePoliciesInfo(state);
+                    error = sca::handlePoliciesInfo(cxt);
                 }
                 else if (sca::TYPE_DUMP_END == type.value())
                 {
-                    error = sca::handleDumpEvent(state);
+                    error = sca::handleDumpEvent(cxt);
                 }
-                // Unknown type value
                 else
                 {
-                    // TODO: Change trace message
-                    error = failureTrace2;
+                    // Unknown type value
+                    error = failureTrace3;
                 }
             }
             else
@@ -1209,8 +1208,6 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
             // Event is processed, return base::Result accordingly
             // Error is nullopt if no error occurred, otherwise it contains the error
             // message
-            // TODO: Is realy needed to set targetField bool? makes more sense that
-            // targetField is the sca field, that is where we are mapping the fields
             if (error)
             {
                 event->setBool(false, targetField);
