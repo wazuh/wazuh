@@ -50,7 +50,7 @@ normalize:
   - check:
       - event.original.process.argvs: +exists
     map:
-      _argvs_csv_str: +s_fromArray/,/event.original.process.argvs
+      _argvs_csv_str: +s_fromArray/,/$event.original.process.argvs
 
   - check:
       - event.original.process.argvs: +not_exists
@@ -158,5 +158,5 @@ normalize:
       event.original.process.processor: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id /process save /$event.original.ID /|/$event.original.process.timestamp/|/$event.original.process.pid/|/$event.original.process.name/|/$event.original.process.state/|/$event.original.process.ppid/|/$event.original.process.utime/|/$event.original.process.stime/|/$event.original.process.cmd/|/$_argvs_csv_str/|/$event.original.process.euser/|/$event.original.process.ruser/|/$event.original.process.suser/|/$event.original.process.egroup/|/$event.original.process.rgroup/|/$event.original.process.sgroup/|/$event.original.process.fgroup/|/$event.original.process.priority/|/$event.original.process.nice/|/$event.original.process.size/|/$event.original.process.vm_size/|/$event.original.process.resident/|/$event.original.process.share/|/$event.original.process.start_time/|/$event.original.process.pgrp/|/$event.original.process.session/|/$event.original.process.nlwp/|/$event.original.process.tgid/|/$event.original.process.tty/|/$event.original.process.processor
+      _query: +s_concat/agent /$event.original.agent.id/ process save /$event.original.ID /|/$event.original.process.timestamp/|/$event.original.process.pid/|/$event.original.process.name/|/$event.original.process.state/|/$event.original.process.ppid/|/$event.original.process.utime/|/$event.original.process.stime/|/$event.original.process.cmd/|/$_argvs_csv_str/|/$event.original.process.euser/|/$event.original.process.ruser/|/$event.original.process.suser/|/$event.original.process.egroup/|/$event.original.process.rgroup/|/$event.original.process.sgroup/|/$event.original.process.fgroup/|/$event.original.process.priority/|/$event.original.process.nice/|/$event.original.process.size/|/$event.original.process.vm_size/|/$event.original.process.resident/|/$event.original.process.share/|/$event.original.process.start_time/|/$event.original.process.pgrp/|/$event.original.process.session/|/$event.original.process.nlwp/|/$event.original.process.tgid/|/$event.original.process.tty/|/$event.original.process.processor
       _process_save_result: +wdb_update/$_query

@@ -49,5 +49,5 @@ normalize:
       event.original.inventory.ram_usage: "NULL"
 
   - map:
-      _query_save: +s_concat/agent /$event.original.agent.id /hardware save /$event.original.ID/|/$event.original.timestamp/|/$event.original.inventory.board_serial/|/$event.original.inventory.cpu_name/|/$event.original.inventory.cpu_cores/|/$event.original.inventory.cpu_mhz/|/$event.original.inventory.ram_total/|/$event.original.inventory.ram_free/|/$event.original.inventory.ram_usage
-      _hardware_save_response: +wdb_update/$_query_save
+      _query: +s_concat/agent /$event.original.agent.id/ hardware save /$event.original.ID/|/$event.original.timestamp/|/$event.original.inventory.board_serial/|/$event.original.inventory.cpu_name/|/$event.original.inventory.cpu_cores/|/$event.original.inventory.cpu_mhz/|/$event.original.inventory.ram_total/|/$event.original.inventory.ram_free/|/$event.original.inventory.ram_usage
+      _hardware_save_response: +wdb_update/$_query

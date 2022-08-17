@@ -85,6 +85,8 @@ normalize:
     map:
       _hexDigest: +sha1_from/$event.original.program.name/$event.original.program.version/$event.original.program.architecture
 
-  - map:
-      _query: +s_concat/agent /$event.original.agent.id /package save /$event.original.ID/|/$event.original.timestamp/|/$event.original.format/|/$event.original.name/|/$event.original.priority/|/$event.original.group/|/$event.original.size/|/$event.original.vendor/|/$event.original.install_time/|/$event.original.version/|/$event.original.architecture/|/$event.original.multi-arch/|/$event.original.source/|/$event.original.description/|/$event.original.location/|/$_hexDigest
+  - check:
+      _hexDigest: +is_string
+    map:
+      _query: +s_concat/agent /$event.original.agent.id/ package save /$event.original.ID/|/$event.original.timestamp/|/$event.original.format/|/$event.original.name/|/$event.original.priority/|/$event.original.group/|/$event.original.size/|/$event.original.vendor/|/$event.original.install_time/|/$event.original.version/|/$event.original.architecture/|/$event.original.multi-arch/|/$event.original.source/|/$event.original.description/|/$event.original.location/|/$_hexDigest
       _package_save_result: +wdb_update/$_query

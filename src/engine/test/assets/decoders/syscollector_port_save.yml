@@ -68,5 +68,5 @@ normalize:
       event.original.port.process: "NULL"
 
   - map:
-    _query: +s_concat/agent /$event.original.agent.id /port save /$event.original.ID/|/$event.original.timestamp/|/$event.original.port.protocol/|/$event.original.port.local_ip/|/$event.original.port.local_port/|/$event.original.port.remote_ip/|/$event.original.port.remote_port/|/$event.original.port.tx_queue/|/$event.original.port.rx_queue/|/$event.original.port.inode/|/$event.original.port.state/|/$event.original.port.PID/|/$event.original.port.process
+    _query: +s_concat/agent /$event.original.agent.id/ port save /$event.original.ID/|/$event.original.timestamp/|/$event.original.port.protocol/|/$event.original.port.local_ip/|/$event.original.port.local_port/|/$event.original.port.remote_ip/|/$event.original.port.remote_port/|/$event.original.port.tx_queue/|/$event.original.port.rx_queue/|/$event.original.port.inode/|/$event.original.port.state/|/$event.original.port.PID/|/$event.original.port.process
     _port_save_result: +wdb_update/$_query
