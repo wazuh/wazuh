@@ -4,69 +4,69 @@ parents:
   - syscollector_port
 
 check:
-  - event.original.port: +exist
+  - _syscollectorEventOriginal.port: +exist
 
 normalize:
   - check:
-      - event.original.timestamp: +not_exists
+      - _syscollectorEventOriginal.timestamp: +not_exists
     map:
-      event.original.timestamp: "NULL"
+      _syscollectorEventOriginal.timestamp: "NULL"
 
   - check:
-      - event.original.port.protocol: +not_exists
+      - _syscollectorEventOriginal.port.protocol: +not_exists
     map:
-      event.original.port.protocol: "NULL"
+      _syscollectorEventOriginal.port.protocol: "NULL"
 
   - check:
-      - event.original.port.local_ip: +not_exists
+      - _syscollectorEventOriginal.port.local_ip: +not_exists
     map:
-      event.original.port.local_ip: "NULL"
+      _syscollectorEventOriginal.port.local_ip: "NULL"
 
   - check:
-      - event.original.port.local_port: +not_exists
+      - _syscollectorEventOriginal.port.local_port: +not_exists
     map:
-      event.original.port.local_port: "NULL"
+      _syscollectorEventOriginal.port.local_port: "NULL"
 
   - check:
-      - event.original.port.remote_ip: +not_exists
+      - _syscollectorEventOriginal.port.remote_ip: +not_exists
     map:
-      event.original.port.remote_ip: "NULL"
+      _syscollectorEventOriginal.port.remote_ip: "NULL"
 
   - check:
-      - event.original.port.remote_port: +not_exists
+      - _syscollectorEventOriginal.port.remote_port: +not_exists
     map:
-      event.original.port.remote_port: "NULL"
+      _syscollectorEventOriginal.port.remote_port: "NULL"
 
   - check:
-      - event.original.port.tx_queue: +not_exists
+      - _syscollectorEventOriginal.port.tx_queue: +not_exists
     map:
-      event.original.port.tx_queue: "NULL"
+      _syscollectorEventOriginal.port.tx_queue: "NULL"
 
   - check:
-      - event.original.port.rx_queue: +not_exists
+      - _syscollectorEventOriginal.port.rx_queue: +not_exists
     map:
-      event.original.port.rx_queue: "NULL"
+      _syscollectorEventOriginal.port.rx_queue: "NULL"
 
   - check:
-      - event.original.port.inode: +not_exists
+      - _syscollectorEventOriginal.port.inode: +not_exists
     map:
-      event.original.port.inode: "NULL"
+      _syscollectorEventOriginal.port.inode: "NULL"
 
   - check:
-      - event.original.port.state: +not_exists
+      - _syscollectorEventOriginal.port.state: +not_exists
     map:
-      event.original.port.state: "NULL"
+      _syscollectorEventOriginal.port.state: "NULL"
 
   - check:
-      - event.original.port.PID: +not_exists
+      - _syscollectorEventOriginal.port.PID: +not_exists
     map:
-      event.original.port.PID: "NULL"
+      _syscollectorEventOriginal.port.PID: "NULL"
 
   - check:
-      - event.original.port.process: +not_exists
+      - _syscollectorEventOriginal.port.process: +not_exists
     map:
-      event.original.port.process: "NULL"
+      _syscollectorEventOriginal.port.process: "NULL"
 
   - map:
-    _query: +s_concat/agent /$event.original.agent.id/ port save /$event.original.ID/|/$event.original.timestamp/|/$event.original.port.protocol/|/$event.original.port.local_ip/|/$event.original.port.local_port/|/$event.original.port.remote_ip/|/$event.original.port.remote_port/|/$event.original.port.tx_queue/|/$event.original.port.rx_queue/|/$event.original.port.inode/|/$event.original.port.state/|/$event.original.port.PID/|/$event.original.port.process
+    _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ port save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.port.protocol/|/$_syscollectorEventOriginal.port.local_ip/|/$_syscollectorEventOriginal.port.local_port/|/$_syscollectorEventOriginal.port.remote_ip/|/$_syscollectorEventOriginal.port.remote_port/|/$_syscollectorEventOriginal.port.tx_queue/|/$_syscollectorEventOriginal.port.rx_queue/|/$_syscollectorEventOriginal.port.inode/|/$_syscollectorEventOriginal.port.state/|/$_syscollectorEventOriginal.port.PID/|/$_syscollectorEventOriginal.port.process
     _port_save_result: +wdb_update/$_query

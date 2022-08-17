@@ -4,89 +4,89 @@ parents:
   - syscollector_netinfo
 
 check:
-  - event.original.iface: +exists
+  - _syscollectorEventOriginal.iface: +exists
 
 normalize:
   - check:
-      - event.original.ID: +not_exists
+      - _syscollectorEventOriginal.ID: +not_exists
     map:
-      event.original.ID: "NULL"
+      _syscollectorEventOriginal.ID: "NULL"
 
   - check:
-      - event.original.timestamp: +not_exists
+      - _syscollectorEventOriginal.timestamp: +not_exists
     map:
-      event.original.timestamp: "NULL"
+      _syscollectorEventOriginal.timestamp: "NULL"
 
   - check:
-      - event.original.iface.name: +not_exists
+      - _syscollectorEventOriginal.iface.name: +not_exists
     map:
-      event.original.iface.name: "NULL"
+      _syscollectorEventOriginal.iface.name: "NULL"
 
   - check:
-      - event.original.iface.adapter: +not_exists
+      - _syscollectorEventOriginal.iface.adapter: +not_exists
     map:
-      event.original.iface.adapter: "NULL"
+      _syscollectorEventOriginal.iface.adapter: "NULL"
 
   - check:
-      - event.original.iface.type: +not_exists
+      - _syscollectorEventOriginal.iface.type: +not_exists
     map:
-      event.original.iface.type: "NULL"
+      _syscollectorEventOriginal.iface.type: "NULL"
 
   - check:
-      - event.original.iface.state: +not_exists
+      - _syscollectorEventOriginal.iface.state: +not_exists
     map:
-      event.original.iface.state: "NULL"
+      _syscollectorEventOriginal.iface.state: "NULL"
 
   - check:
-      - event.original.iface.MTU: +not_exists
+      - _syscollectorEventOriginal.iface.MTU: +not_exists
     map:
-      event.original.iface.MTU: "NULL"
+      _syscollectorEventOriginal.iface.MTU: "NULL"
 
   - check:
-      - event.original.iface.MAC: +not_exists
+      - _syscollectorEventOriginal.iface.MAC: +not_exists
     map:
-      event.original.iface.MAC: "NULL"
+      _syscollectorEventOriginal.iface.MAC: "NULL"
 
   - check:
-      - event.original.iface.tx_packets: +not_exists
+      - _syscollectorEventOriginal.iface.tx_packets: +not_exists
     map:
-      event.original.iface.tx_packets: "NULL"
+      _syscollectorEventOriginal.iface.tx_packets: "NULL"
 
   - check:
-      - event.original.iface.rx_packets: +not_exists
+      - _syscollectorEventOriginal.iface.rx_packets: +not_exists
     map:
-      event.original.iface.rx_packets: "NULL"
+      _syscollectorEventOriginal.iface.rx_packets: "NULL"
 
   - check:
-      - event.original.iface.tx_bytes: +not_exists
+      - _syscollectorEventOriginal.iface.tx_bytes: +not_exists
     map:
-      event.original.iface.tx_bytes: "NULL"
+      _syscollectorEventOriginal.iface.tx_bytes: "NULL"
 
   - check:
-      - event.original.iface.rx_bytes: +not_exists
+      - _syscollectorEventOriginal.iface.rx_bytes: +not_exists
     map:
-      event.original.iface.rx_bytes: "NULL"
+      _syscollectorEventOriginal.iface.rx_bytes: "NULL"
 
   - check:
-      - event.original.iface.tx_errors: +not_exists
+      - _syscollectorEventOriginal.iface.tx_errors: +not_exists
     map:
-      event.original.iface.tx_errors: "NULL"
+      _syscollectorEventOriginal.iface.tx_errors: "NULL"
 
   - check:
-      - event.original.iface.rx_errors: +not_exists
+      - _syscollectorEventOriginal.iface.rx_errors: +not_exists
     map:
-      event.original.iface.rx_errors: "NULL"
+      _syscollectorEventOriginal.iface.rx_errors: "NULL"
 
   - check:
-      - event.original.iface.tx_dropped: +not_exists
+      - _syscollectorEventOriginal.iface.tx_dropped: +not_exists
     map:
-      event.original.iface.tx_dropped: "NULL"
+      _syscollectorEventOriginal.iface.tx_dropped: "NULL"
 
   - check:
-      - event.original.iface.rx_dropped: +not_exists
+      - _syscollectorEventOriginal.iface.rx_dropped: +not_exists
     map:
-      event.original.iface.rx_dropped: "NULL"
+      _syscollectorEventOriginal.iface.rx_dropped: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id/ netinfo save /$event.original.ID/|/$event.original.timestamp/|/$event.original.iface.name/|/$event.original.iface.adapter/|/$event.original.iface.type/|/$event.original.iface.state/|/$event.original.iface.MTU/|/$event.original.iface.MAC/|/$event.original.iface.tx_packets/|/$event.original.iface.rx_packets/|/$event.original.iface.tx_bytes/|/$event.original.iface.rx_bytes/|/$event.original.iface.tx_errors/|/$event.original.iface.rx_errors/|/$event.original.iface.tx_dropped/|/$event.original.iface.rx_dropped
+      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ netinfo save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.iface.name/|/$_syscollectorEventOriginal.iface.adapter/|/$_syscollectorEventOriginal.iface.type/|/$_syscollectorEventOriginal.iface.state/|/$_syscollectorEventOriginal.iface.MTU/|/$_syscollectorEventOriginal.iface.MAC/|/$_syscollectorEventOriginal.iface.tx_packets/|/$_syscollectorEventOriginal.iface.rx_packets/|/$_syscollectorEventOriginal.iface.tx_bytes/|/$_syscollectorEventOriginal.iface.rx_bytes/|/$_syscollectorEventOriginal.iface.tx_errors/|/$_syscollectorEventOriginal.iface.rx_errors/|/$_syscollectorEventOriginal.iface.tx_dropped/|/$_syscollectorEventOriginal.iface.rx_dropped
       _iface_save_response: +wdb_update/$_query

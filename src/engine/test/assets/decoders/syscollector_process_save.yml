@@ -4,159 +4,159 @@ parent:
   - syscollector_process
 
 check:
-  - event.original.process: +exists
+  - _syscollectorEventOriginal.process: +exists
 
 normalize:
   - check:
-      - event.original.timestamp: +not_exists
+      - _syscollectorEventOriginal.timestamp: +not_exists
     map:
-      event.original.timestamp: "NULL"
+      _syscollectorEventOriginal.timestamp: "NULL"
 
   - check:
-      - event.original.process.pid: +not_exists
+      - _syscollectorEventOriginal.process.pid: +not_exists
     map:
-      event.original.process.pid: "NULL"
+      _syscollectorEventOriginal.process.pid: "NULL"
 
   - check:
-      - event.original.process.name: +not_exists
+      - _syscollectorEventOriginal.process.name: +not_exists
     map:
-      event.original.process.name: "NULL"
+      _syscollectorEventOriginal.process.name: "NULL"
 
   - check:
-    - event.original.process.state: +not_exists
+    - _syscollectorEventOriginal.process.state: +not_exists
     map:
-      event.original.process.state: "NULL"
+      _syscollectorEventOriginal.process.state: "NULL"
 
   - check:
-      - event.original.process.ppid: +not_exists
+      - _syscollectorEventOriginal.process.ppid: +not_exists
     map:
-      event.original.process.ppid: "NULL"
+      _syscollectorEventOriginal.process.ppid: "NULL"
 
   - check:
-      - event.original.process.utime: +not_exists
+      - _syscollectorEventOriginal.process.utime: +not_exists
     map:
-      event.original.process.utime: "NULL"
+      _syscollectorEventOriginal.process.utime: "NULL"
 
   - check:
-      - event.original.process.stime: +not_exists
+      - _syscollectorEventOriginal.process.stime: +not_exists
     map:
-      event.original.process.stime: "NULL"
+      _syscollectorEventOriginal.process.stime: "NULL"
 
   - check:
-      - event.original.process.cmd: +not_exists
+      - _syscollectorEventOriginal.process.cmd: +not_exists
     map:
-      event.original.process.cmd: "NULL"
+      _syscollectorEventOriginal.process.cmd: "NULL"
 
   - check:
-      - event.original.process.argvs: +exists
+      - _syscollectorEventOriginal.process.argvs: +exists
     map:
-      _argvs_csv_str: +s_fromArray/,/$event.original.process.argvs
+      _argvs_csv_str: +s_fromArray/,/$_syscollectorEventOriginal.process.argvs
 
   - check:
-      - event.original.process.argvs: +not_exists
+      - _syscollectorEventOriginal.process.argvs: +not_exists
     map:
       _argvs_csv_str: "NULL"
 
   - check:
-      - event.original.process.euser: +not_exists
+      - _syscollectorEventOriginal.process.euser: +not_exists
     map:
-      event.original.process.euser: "NULL"
+      _syscollectorEventOriginal.process.euser: "NULL"
 
   - check:
-      - event.original.process.ruser: +not_exists
+      - _syscollectorEventOriginal.process.ruser: +not_exists
     map:
-      event.original.process.ruser: "NULL"
+      _syscollectorEventOriginal.process.ruser: "NULL"
 
   - check:
-      - event.original.process.suser: +not_exists
+      - _syscollectorEventOriginal.process.suser: +not_exists
     map:
-      event.original.process.suser: "NULL"
+      _syscollectorEventOriginal.process.suser: "NULL"
 
   - check:
-      - event.original.process.egroup: +not_exists
+      - _syscollectorEventOriginal.process.egroup: +not_exists
     map:
-      event.original.process.egroup: "NULL"
+      _syscollectorEventOriginal.process.egroup: "NULL"
 
   - check:
-      - event.original.process.rgroup: +not_exists
+      - _syscollectorEventOriginal.process.rgroup: +not_exists
     map:
-      event.original.process.rgroup: "NULL"
+      _syscollectorEventOriginal.process.rgroup: "NULL"
 
   - check:
-      - event.original.process.sgroup: +not_exists
+      - _syscollectorEventOriginal.process.sgroup: +not_exists
     map:
-      event.original.process.sgroup: "NULL"
+      _syscollectorEventOriginal.process.sgroup: "NULL"
 
   - check:
-      - event.original.process.fgroup: +not_exists
+      - _syscollectorEventOriginal.process.fgroup: +not_exists
     map:
-      event.original.process.fgroup: "NULL"
+      _syscollectorEventOriginal.process.fgroup: "NULL"
 
   - check:
-      - event.original.process.priority: +not_exists
+      - _syscollectorEventOriginal.process.priority: +not_exists
     map:
-      event.original.process.priority: "NULL"
+      _syscollectorEventOriginal.process.priority: "NULL"
 
   - check:
-      - event.original.process.nice: +not_exists
+      - _syscollectorEventOriginal.process.nice: +not_exists
     map:
-      event.original.process.nice: "NULL"
+      _syscollectorEventOriginal.process.nice: "NULL"
 
   - check:
-      - event.original.process.size: +not_exists
+      - _syscollectorEventOriginal.process.size: +not_exists
     map:
-      event.original.process.size: "NULL"
+      _syscollectorEventOriginal.process.size: "NULL"
 
   - check:
-      - event.original.process.vm_size: +not_exists
+      - _syscollectorEventOriginal.process.vm_size: +not_exists
     map:
-      event.original.process.vm_size: "NULL"
+      _syscollectorEventOriginal.process.vm_size: "NULL"
 
   - check:
-      - event.original.process.resident: +not_exists
+      - _syscollectorEventOriginal.process.resident: +not_exists
     map:
-      event.original.process.resident: "NULL"
+      _syscollectorEventOriginal.process.resident: "NULL"
 
   - check:
-      - event.original.process.share: +not_exists
+      - _syscollectorEventOriginal.process.share: +not_exists
     map:
-      event.original.process.share: "NULL"
+      _syscollectorEventOriginal.process.share: "NULL"
 
   - check:
-      - event.original.process.start_time: +not_exists
+      - _syscollectorEventOriginal.process.start_time: +not_exists
     map:
-      event.original.process.start_time: "NULL"
+      _syscollectorEventOriginal.process.start_time: "NULL"
 
   - check:
-      - event.original.process.pgrp: +not_exists
+      - _syscollectorEventOriginal.process.pgrp: +not_exists
     map:
-      event.original.process.pgrp: "NULL"
+      _syscollectorEventOriginal.process.pgrp: "NULL"
 
   - check:
-      - event.original.process.session: +not_exists
+      - _syscollectorEventOriginal.process.session: +not_exists
     map:
-      event.original.process.session: "NULL"
+      _syscollectorEventOriginal.process.session: "NULL"
 
   - check:
-      - event.original.process.nlwp: +not_exists
+      - _syscollectorEventOriginal.process.nlwp: +not_exists
     map:
-      event.original.process.nlwp: "NULL"
+      _syscollectorEventOriginal.process.nlwp: "NULL"
 
   - check:
-      - event.original.process.tgid: +not_exists
+      - _syscollectorEventOriginal.process.tgid: +not_exists
     map:
-      event.original.process.tgid: "NULL"
+      _syscollectorEventOriginal.process.tgid: "NULL"
 
   - check:
-      - event.original.process.tty: +not_exists
+      - _syscollectorEventOriginal.process.tty: +not_exists
     map:
-      event.original.process.tty: "NULL"
+      _syscollectorEventOriginal.process.tty: "NULL"
 
   - check:
-      - event.original.process.processor: +not_exists
+      - _syscollectorEventOriginal.process.processor: +not_exists
     map:
-      event.original.process.processor: "NULL"
+      _syscollectorEventOriginal.process.processor: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id/ process save /$event.original.ID /|/$event.original.process.timestamp/|/$event.original.process.pid/|/$event.original.process.name/|/$event.original.process.state/|/$event.original.process.ppid/|/$event.original.process.utime/|/$event.original.process.stime/|/$event.original.process.cmd/|/$_argvs_csv_str/|/$event.original.process.euser/|/$event.original.process.ruser/|/$event.original.process.suser/|/$event.original.process.egroup/|/$event.original.process.rgroup/|/$event.original.process.sgroup/|/$event.original.process.fgroup/|/$event.original.process.priority/|/$event.original.process.nice/|/$event.original.process.size/|/$event.original.process.vm_size/|/$event.original.process.resident/|/$event.original.process.share/|/$event.original.process.start_time/|/$event.original.process.pgrp/|/$event.original.process.session/|/$event.original.process.nlwp/|/$event.original.process.tgid/|/$event.original.process.tty/|/$event.original.process.processor
+      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ process save /$_syscollectorEventOriginal.ID /|/$_syscollectorEventOriginal.process.timestamp/|/$_syscollectorEventOriginal.process.pid/|/$_syscollectorEventOriginal.process.name/|/$_syscollectorEventOriginal.process.state/|/$_syscollectorEventOriginal.process.ppid/|/$_syscollectorEventOriginal.process.utime/|/$_syscollectorEventOriginal.process.stime/|/$_syscollectorEventOriginal.process.cmd/|/$_argvs_csv_str/|/$_syscollectorEventOriginal.process.euser/|/$_syscollectorEventOriginal.process.ruser/|/$_syscollectorEventOriginal.process.suser/|/$_syscollectorEventOriginal.process.egroup/|/$_syscollectorEventOriginal.process.rgroup/|/$_syscollectorEventOriginal.process.sgroup/|/$_syscollectorEventOriginal.process.fgroup/|/$_syscollectorEventOriginal.process.priority/|/$_syscollectorEventOriginal.process.nice/|/$_syscollectorEventOriginal.process.size/|/$_syscollectorEventOriginal.process.vm_size/|/$_syscollectorEventOriginal.process.resident/|/$_syscollectorEventOriginal.process.share/|/$_syscollectorEventOriginal.process.start_time/|/$_syscollectorEventOriginal.process.pgrp/|/$_syscollectorEventOriginal.process.session/|/$_syscollectorEventOriginal.process.nlwp/|/$_syscollectorEventOriginal.process.tgid/|/$_syscollectorEventOriginal.process.tty/|/$_syscollectorEventOriginal.process.processor
       _process_save_result: +wdb_update/$_query

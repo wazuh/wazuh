@@ -4,5 +4,5 @@ parents:
   - syscollector_base
 
 check:
-  - event.original.type: +s_starts/port
-  - event.original.ID: +exists
+  - _syscollectorEventOriginal.type: +s_starts/port
+  - _syscollectorEventOriginal.ID: +exists
