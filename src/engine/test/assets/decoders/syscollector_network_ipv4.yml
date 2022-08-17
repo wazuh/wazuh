@@ -24,7 +24,7 @@ normalize:
       event.original.iface.IPv4.metric: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id /netproto save /$event.original.ID/|/$event.original.iface.name/|0/|/$event.original.iface.IPv4.gateway/|/$event.original.iface.IPv4.dhcp/|/$event.original.iface.IPv4.metric
+      _query: +s_concat/agent /$event.original.agent.id/ netproto save /$event.original.ID/|/$event.original.iface.name/|0|/$event.original.iface.IPv4.gateway/|/$event.original.iface.IPv4.dhcp/|/$event.original.iface.IPv4.metric
       _result_netproto_save: +wdb_update/$_query
 
   - check:
