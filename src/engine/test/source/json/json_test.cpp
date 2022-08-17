@@ -551,6 +551,106 @@ TEST(JsonRuntime, Str)
     ASSERT_EQ(expected, doc.str());
 }
 
+// Checking basic functionality of str from path method
+TEST(JsonRuntime, strFromPath)
+{
+    std::string expected =
+        R"({
+            "field": "value",
+            "nested": {
+                "object": {
+                    "key": "value"
+                },
+                "array": [
+                    "value1",
+                    "value2",
+                    "value3",
+                    "value4"
+                ],
+                "int": 123,
+                "float": 123.456,
+                "boolT": true,
+                "boolF": false,
+                "null": null
+            }
+        })";
+
+    Json doc {expected.c_str()};
+
+    ASSERT_EQ(doc.str("/field"), "\"value\"");
+    ASSERT_EQ(doc.str("/nested/object"), "{\"key\":\"value\"}");
+    ASSERT_EQ(doc.str("/nested/array"), "[\"value1\",\"value2\",\"value3\",\"value4\"]");
+    ASSERT_EQ(doc.str("/nested/int"), "123");
+    ASSERT_EQ(doc.str("/nested/float"), "123.456");
+    ASSERT_EQ(doc.str("/nested/boolT"), "true");
+    ASSERT_EQ(doc.str("/nested/boolF"), "false");
+    ASSERT_EQ(doc.str("/nested/null"), "null");
+}
+
+// Cheking that returns nullopt when no present but correct field format
+TEST(JsonRuntime, strFromPathNotPresentField)
+{
+    std::string expected =
+        R"({
+            "NotSearchedField": "value",
+            "nested":
+            {
+                "object": {"SearchedField": "value"},
+                "array": ["SearchedField"]
+            }
+        })";
+
+    Json doc {expected.c_str()};
+
+    ASSERT_EQ(doc.str("/SearchedField"), std::nullopt);
+    ASSERT_EQ(doc.str("/nested/object/SearchedField"), "\"value\"");
+}
+
+// Cheking that throws runtime_error when no valid pointer
+TEST(JsonRuntime, strFromPathNotCorrectPointer)
+{
+    std::string expected =
+        R"({
+            "Field": "value"
+        })";
+
+    Json doc {expected.c_str()};
+
+    ASSERT_THROW(doc.str("Field"), std::runtime_error);
+    ASSERT_THROW(doc.str("-/Field"), std::runtime_error);
+    ASSERT_THROW(doc.str("-Field"), std::runtime_error);
+    ASSERT_EQ(doc.str("/Field"), "\"value\"");
+}
+
+//return various stages of nested objects
+TEST(JsonRuntime, strFromPathNestedObjects)
+{
+    std::string expected =
+        R"({
+            "A":
+            {
+                "B":
+                {
+                    "C":
+                    {
+                        "D":
+                        {
+                            "key": "value"
+                        }
+                    }
+                }
+            }
+        })";
+
+    Json doc {expected.c_str()};
+
+    ASSERT_EQ(doc.str("/A"), "{\"B\":{\"C\":{\"D\":{\"key\":\"value\"}}}}");
+    ASSERT_EQ(doc.str("/A/B"), "{\"C\":{\"D\":{\"key\":\"value\"}}}");
+    ASSERT_EQ(doc.str("/A/B/C"), "{\"D\":{\"key\":\"value\"}}");
+    ASSERT_EQ(doc.str("/A/B/C/D"), "{\"key\":\"value\"}");
+    ASSERT_EQ(doc.str("/D"), std::nullopt);
+}
+
 /****************************************************************************************/
 // GETTERS
 /****************************************************************************************/
