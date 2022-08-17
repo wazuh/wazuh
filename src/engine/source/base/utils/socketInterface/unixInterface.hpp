@@ -88,6 +88,10 @@ protected:
     unixInterface(std::string_view path,
                   const Protocol protocol,
                   const uint32_t maxMsgSize);
+
+    /**
+     * @brief Close the socket and destroy the object.
+     */
     virtual ~unixInterface();
 
 public:
