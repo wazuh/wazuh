@@ -9,5 +9,5 @@ check:
 
 normalize:
   - map:
-      _query: +s_concat/agent /$event.original.agent.id /process del /$event.original.ID
+      _query: +s_concat/agent /$event.original.agent.id/ process del /$event.original.ID
       _process_del_result: +wdb_update/$_query
