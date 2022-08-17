@@ -22,10 +22,6 @@ libstdc++_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=li
 LIBSTDCPP_NAME := libstdc++-6.dll
 libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
 LIBGCC_S_NAME := libgcc_s_dw2-1.dll
-ifneq (,$(filter ${libgcc_s_path}, not ${LIBGCC_S_NAME}))
-libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_sjlj-1.dll 2>/dev/null || echo not')
-LIBGCC_S_NAME := libgcc_s_sjlj-1.dll
-endif
 else
 libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
 libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
