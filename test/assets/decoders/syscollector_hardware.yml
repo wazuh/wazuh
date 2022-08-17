@@ -4,50 +4,50 @@ parents:
   - syscollector_base
 
 check:
-  - event.original.type: +s_eq/hardware
-  - event.original.inventory: +exists
+  - _syscollectorEventOriginal.type: +s_eq/hardware
+  - _syscollectorEventOriginal.inventory: +exists
 
 normalize:
   - check:
-      - event.original.timestamp: +not_exists
+      - _syscollectorEventOriginal.timestamp: +not_exists
     map:
-      event.original.timestamp: "NULL"
+      _syscollectorEventOriginal.timestamp: "NULL"
 
   - check:
-      - event.original.inventory.board_serial: +not_exists
+      - _syscollectorEventOriginal.inventory.board_serial: +not_exists
     map:
-      event.original.inventory.board_serial: "NULL"
+      _syscollectorEventOriginal.inventory.board_serial: "NULL"
 
   - check:
-      - event.original.inventory.cpu_name: +not_exists
+      - _syscollectorEventOriginal.inventory.cpu_name: +not_exists
     map:
-      event.original.inventory.cpu_name: "NULL"
+      _syscollectorEventOriginal.inventory.cpu_name: "NULL"
 
   - check:
-      - event.original.inventory.cpu_cores: +not_exists
+      - _syscollectorEventOriginal.inventory.cpu_cores: +not_exists
     map:
-      event.original.inventory.cpu_cores: "NULL"
+      _syscollectorEventOriginal.inventory.cpu_cores: "NULL"
 
   - check:
-      - event.original.inventory.cpu_mhz: +not_exists
+      - _syscollectorEventOriginal.inventory.cpu_mhz: +not_exists
     map:
-      event.original.inventory.cpu_mhz: "NULL"
+      _syscollectorEventOriginal.inventory.cpu_mhz: "NULL"
 
   - check:
-      - event.original.inventory.ram_total: +not_exists
+      - _syscollectorEventOriginal.inventory.ram_total: +not_exists
     map:
-      event.original.inventory.ram_total: "NULL"
+      _syscollectorEventOriginal.inventory.ram_total: "NULL"
 
   - check:
-      - event.original.inventory.ram_free: +not_exists
+      - _syscollectorEventOriginal.inventory.ram_free: +not_exists
     map:
-      event.original.inventory.ram_free: "NULL"
+      _syscollectorEventOriginal.inventory.ram_free: "NULL"
 
   - check:
-      - event.original.inventory.ram_usage: +not_exists
+      - _syscollectorEventOriginal.inventory.ram_usage: +not_exists
     map:
-      event.original.inventory.ram_usage: "NULL"
+      _syscollectorEventOriginal.inventory.ram_usage: "NULL"
 
   - map:
-      _query: +s_concat/agent /$event.original.agent.id/ hardware save /$event.original.ID/|/$event.original.timestamp/|/$event.original.inventory.board_serial/|/$event.original.inventory.cpu_name/|/$event.original.inventory.cpu_cores/|/$event.original.inventory.cpu_mhz/|/$event.original.inventory.ram_total/|/$event.original.inventory.ram_free/|/$event.original.inventory.ram_usage
+      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ hardware save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.board_serial/|/$_syscollectorEventOriginal.inventory.cpu_name/|/$_syscollectorEventOriginal.inventory.cpu_cores/|/$_syscollectorEventOriginal.inventory.cpu_mhz/|/$_syscollectorEventOriginal.inventory.ram_total/|/$_syscollectorEventOriginal.inventory.ram_free/|/$_syscollectorEventOriginal.inventory.ram_usage
       _hardware_save_response: +wdb_update/$_query
