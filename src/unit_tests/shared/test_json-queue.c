@@ -189,13 +189,55 @@ void test_jqueue_parse_json_fgets_fail_and_retry(void ** state) {
     assert_int_equal(queue->flags, CRALERT_READ_FAILED);
 }
 
+void test_jqueue_parse_json_stat_fail_and_retry(void ** state) {
+    file_queue * queue = *state;
+    int64_t current_pos = 0;
+    cJSON * object = NULL;
+    struct stat st = { .st_dev = 0 };
+
+    snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
+
+    expect_function_call(__wrap_clearerr);
+    expect_value(__wrap_clearerr, __stream, 1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 0);
+
+    expect_value(__wrap_fgets, __stream, queue->fp);
+    will_return(__wrap_fgets, NULL);
+
+    errno = ENOENT;
+
+    expect_string(__wrap_stat, __file, "/home/test");
+    will_return(__wrap_stat, &st);
+    will_return(__wrap_stat, -1);
+
+    expect_value(__wrap_sleep, seconds, 1);
+
+    expect_string(__wrap_stat, __file, "/home/test");
+    will_return(__wrap_stat, &st);
+    will_return(__wrap_stat, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(1118): Could not retrieve information of file '/home/test' due to [(2)-(No such file or directory)].");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return_always(__wrap_fclose, 0);
+
+    object = jqueue_next(queue);
+
+    assert_null(object);
+    assert_null(queue->fp);
+    assert_int_equal(queue->flags, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_valid, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_invalid, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_overlong_alert, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail, setup_queue, teardown_queue),
-            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail_and_retry, setup_queue, teardown_queue)
+            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail_and_retry, setup_queue, teardown_queue),
+            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_stat_fail_and_retry, setup_queue, teardown_queue),
 
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

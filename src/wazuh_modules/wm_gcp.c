@@ -44,18 +44,6 @@ static DWORD WINAPI wm_gcp_pubsub_main(void *arg);                     // Module
  * @param gcp_config Module configuration structure
  */
 static DWORD WINAPI wm_gcp_bucket_main(void *arg);                     // Module main function. It won't return
-
-/**
- * @brief Free configuration structure for Google Cloud Pub/Sub
- * @param gcp_config Module configuration structure
- */
-static DWORD WINAPI wm_gcp_pubsub_destroy(void *gcp_config);           // Destroy data
-
-/**
- * @brief Free configuration structure for Google Cloud bucket
- * @param gcp_config Module configuration structure
- */
-static DWORD WINAPI wm_gcp_bucket_destroy(void *gcp_config);           // Destroy data
 #else
 /**
  * @brief Main function for Google Cloud Pub/Sub
@@ -68,6 +56,7 @@ static void* wm_gcp_pubsub_main(wm_gcp_pubsub *gcp_config);          // Module m
  * @param gcp_config Module configuration structure
  */
 static void* wm_gcp_bucket_main(wm_gcp_bucket_base *gcp_config);          // Module main function. It won't return
+#endif
 
 /**
  * @brief Free configuration structure for Google Cloud Pub/Sub
@@ -80,7 +69,7 @@ static void wm_gcp_pubsub_destroy(wm_gcp_pubsub *gcp_config);        // Destroy 
  * @param gcp_config Module configuration structure
  */
 static void wm_gcp_bucket_destroy(wm_gcp_bucket_base *gcp_config);        // Destroy data
-#endif
+
 /**
  * @brief Run module function for Google Cloud bucket
  * @param exec_bucket Bucket configuration structure
@@ -108,7 +97,7 @@ static void wm_gcp_parse_output(char *output, char *tag);
 const wm_context WM_GCP_PUBSUB_CONTEXT = {
     GCP_PUBSUB_WM_NAME,
     (wm_routine)wm_gcp_pubsub_main,
-    (wm_routine)(void *)wm_gcp_pubsub_destroy,
+    (void(*)(void *))wm_gcp_pubsub_destroy,
     (cJSON * (*)(const void *))wm_gcp_pubsub_dump,
     NULL,
     NULL
@@ -117,7 +106,7 @@ const wm_context WM_GCP_PUBSUB_CONTEXT = {
 const wm_context WM_GCP_BUCKET_CONTEXT = {
     GCP_BUCKET_WM_NAME,
     (wm_routine)wm_gcp_bucket_main,
-    (wm_routine)(void *)wm_gcp_bucket_destroy,
+    (void(*)(void *))wm_gcp_bucket_destroy,
     (cJSON * (*)(const void *))wm_gcp_bucket_dump,
     NULL,
     NULL
@@ -450,27 +439,14 @@ void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket) {
     os_free(output);
 }
 
-#ifdef WIN32
-DWORD WINAPI wm_gcp_pubsub_destroy(void *gcp_config) {
-    wm_gcp_pubsub *data = (wm_gcp_pubsub *)gcp_config;
-#else
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data) {
-#endif
     if (data->project_id) os_free(data->project_id);
     if (data->subscription_name) os_free(data->subscription_name);
     if (data->credentials_file) os_free(data->credentials_file);
     os_free(data);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
-#ifdef WIN32
-DWORD WINAPI wm_gcp_bucket_destroy(void *gcp_config) {
-    wm_gcp_bucket_base * data = (wm_gcp_bucket_base *)gcp_config;
-#else
 void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
-#endif
     wm_gcp_bucket *cur_bucket;
     wm_gcp_bucket *next_bucket = data->buckets;
     while(next_bucket){
@@ -484,9 +460,6 @@ void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
         os_free(cur_bucket);
     }
     os_free(data);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data) {

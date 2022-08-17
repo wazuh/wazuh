@@ -7,7 +7,6 @@ import json
 import operator
 import os
 import shutil
-import time
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
@@ -828,9 +827,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exc_info
 
                 # Send zip file to the worker into chunks.
-                time_to_send = time.perf_counter()
+                time_to_send = perf_counter()
                 sent_size = await self.send_file(compressed_data, task_id)
-                time_to_send = time.perf_counter() - time_to_send
+                time_to_send = perf_counter() - time_to_send
                 logger.debug("Zip with files to be synced sent to worker.")
 
                 # Notify what is the zip path for the current taskID.
@@ -1254,7 +1253,8 @@ class Master(server.AbstractServer):
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 
         # Get active agents by node and format last keep alive date format
-        active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': filter_node})['items']
+        active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': filter_node},
+                                                  q="id!=000")['items']
         for agent in active_agents:
             if (agent_node := agent["node_name"]) in workers_info.keys():
                 workers_info[agent_node]["info"]["n_active_agents"] = \

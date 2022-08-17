@@ -271,6 +271,7 @@ get_rbac_actions:
           - GET /cluster/local/info
           - GET /cluster/nodes
           - GET /cluster/healthcheck
+          - GET /cluster/ruleset/synchronization
           - GET /cluster/local/config
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
