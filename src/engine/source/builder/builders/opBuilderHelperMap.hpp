@@ -68,7 +68,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition);
 /**
  * @brief Transforms an array of strings into a single string field result of concatenate
  * them with a separator between (not at the start or the end).
- * i.e: '<field>: +s_fromArray/<separator>/$<array_reference1>'
+ * i.e: '<field>: +s_fromArray/$<array_reference1>/<separator>'
  * @param definition The transformation definition.
  * @throw std::runtime_error if the parameter is not a reference or if theres no
  * Value argument for the separator.
