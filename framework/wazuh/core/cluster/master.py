@@ -1191,6 +1191,7 @@ class Master(server.AbstractServer):
             blacklisted_nodes = set()
         self.agents_reconnect = agents_reconnect.AgentsReconnect(
             logger=logger, blacklisted_nodes=blacklisted_nodes,
+            tolerance=self.cluster_items["intervals"]["master"]["agent_reconnection"]["tolerance"],
             nodes=self.clients, master_name=self.configuration['node_name'],
             nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"][
                 "nodes_stability_threshold"]
