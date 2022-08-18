@@ -336,12 +336,40 @@ void deletePolicyCheckDistinct(const DecodeCxt& ctx,
                                   Handlers
 *****************************************************************************************/
 
+/**
+ * @brief Handler for the events of 'check' type.
+ *
+ * @param ctx The decoder context, decode info status.
+ * @return returns a string with the error message if an error occurred. Otherwise,
+ * returns an empty optional.
+ */
 std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx);
 
+/**
+ * @brief Handler for the events of 'summary' type.
+ *
+ * @param ctx The decoder context, decode info status.
+ * @return returns a string with the error message if an error occurred. Otherwise,
+ * returns an empty optional.
+ */
 std::optional<std::string> handleScanInfo(const DecodeCxt& ctx);
 
+/**
+ * @brief Handler for the events of 'policies' type.
+ *
+ * @param ctx The decoder context, decode info status.
+ * @return returns a string with the error message if an error occurred. Otherwise,
+ * returns an empty optional.
+ */
 std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx);
 
+/**
+ * @brief Handler for the events of 'dump_end' type.
+ *
+ * @param ctx The decoder context, decode info status.
+ * @return returns a string with the error message if an error occurred. Otherwise,
+ * returns an empty optional.
+ */
 std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx);
 
 } // namespace sca
