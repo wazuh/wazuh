@@ -687,10 +687,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             goto clean;
         }
 
-        if (whodata_get_handle_id(buffer, &handle_id)) {
-            goto clean;
+        if (event_id == 4656 || event_id == 4663 || event_id == 4658) {
+            if (whodata_get_handle_id(buffer, &handle_id)) {
+                goto clean;
+            }
+            snprintf(hash_id, 21, "%llu", handle_id);
         }
-        snprintf(hash_id, 21, "%llu", handle_id);
 
         switch(event_id) {
 
@@ -888,6 +890,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 free_whodata_event(w_evt);
                 break;
 
+            case 4719:
+                merror(FIM_ERROR_WHODATA_WIN_POL_CH);
+            break;
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);
                 goto clean;
@@ -1133,7 +1138,21 @@ void set_subscription_query(wchar_t *query) {
                                                 ") " \
                                             ") " \
                                         "or " \
-                                            "System/EventID = 4658 " \
+                                            "( " \
+                                                "System/EventID = 4658 " \
+                                            ") " \
+                                        "or " \
+                                            "( " \
+                                                "System/EventID = 4719 " \
+                                                "and " \
+                                                    "(" \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE9223-69AE-11D9-BED3-505054503030}'" \
+                                                    "or " \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE921D-69AE-11D9-BED3-505054503030}'" \
+                                                    "or " \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE922F-69AE-11D9-BED3-505054503030}'" \
+                                                    ")" \
+                                            ") " \
                                         ") " \
                                     "]",
             AUDIT_SUCCESS, // Only successful events

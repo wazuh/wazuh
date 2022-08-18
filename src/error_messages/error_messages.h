@@ -520,6 +520,7 @@
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for '%s' option."
 #define FIM_INVALID_OPTION                          "(6680): Invalid option '%s' for attribute '%s'"
 
+#define FIM_ERROR_WHODATA_WIN_POL_CH                "(6681): Audit policy change detected. Switching directories to realtime."
 #define FIM_ERROR_WHODATA_WIN_ARCH                  "(6682): Error reading 'Architecture' from Windows registry. (Error %u)"
 #define FIM_ERROR_WHODATA_WIN_SIDERROR              "(6683): Could not obtain the sid of Everyone. Error '%lu'."
 #define FIM_ERROR_WHODATA_OPEN_TOKEN                "(6684): OpenProcessToken() failed. Error '%lu'."
