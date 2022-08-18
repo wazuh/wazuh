@@ -50,7 +50,7 @@ normalize:
   - check:
       - _syscollectorEventOriginal.process.argvs: +exists
     map:
-      _argvs_csv_str: +s_fromArray/,/$_syscollectorEventOriginal.process.argvs
+      _argvs_csv_str: +s_fromArray/$_syscollectorEventOriginal.process.argvs/,
 
   - check:
       - _syscollectorEventOriginal.process.argvs: +not_exists

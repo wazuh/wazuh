@@ -27,15 +27,14 @@ namespace utils::string
 std::vector<std::string> split(std::string_view str, char delimiter);
 
 /**
- * @brief Creates a single string from the resulting concatenation
- * of all string elements of a vector plus a separator.
+ * @brief Concatenates all the strings of a vector, separated by `separator`.
  *
- * @param strVector String vector taken as source
+ * @param strVector Vector to concatenate
  * @param separator Concatenated between or also at the start
  * @param startsWithSeparator If true starts with separator
- * @return std::string resultant of the process
+ * @return std::string Concatenation of the vector
  */
-std::string join(std::vector<std::string> strVector,
+std::string join(const std::vector<std::string>& strVector,
                  std::string_view separator = "",
                  bool startsWithSeparator = false);
 
