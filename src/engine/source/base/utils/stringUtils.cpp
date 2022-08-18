@@ -34,7 +34,7 @@ std::vector<std::string> split(std::string_view str, char delimiter)
     return ret;
 }
 
-std::string join(std::vector<std::string> strVector,
+std::string join(const std::vector<std::string>& strVector,
                  std::string_view separator,
                  bool startsWithSeparator)
 {
