@@ -22,7 +22,7 @@ requirements:
   description: "Requirements for running the SCA scan against Ubuntu Linux 22.04 LTS"
   condition: all
   rules:
-    - "f:/etc/os-release -> r:Ubuntu 22.04 LTS"
+    - "f:/etc/os-release -> r:Ubuntu 22.04"
     - "f:/proc/sys/kernel/ostype -> Linux"
 
 checks:
