@@ -70,7 +70,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_OnlyMandatoryFields)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -91,7 +91,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_OnlyMandatoryFields)
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
@@ -103,7 +103,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryField
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -123,7 +123,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryField
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8", wdb, cfg, fieldSource, fieldDest};
+        event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -135,7 +135,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryField
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -155,7 +155,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryField
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -167,7 +167,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryCheck
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -181,7 +181,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryCheck
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -193,7 +193,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryResul
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -212,7 +212,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryResul
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -224,7 +224,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_AllFields)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -267,7 +267,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_AllFields)
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
@@ -279,7 +279,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedNotPresentStatusAndRe
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -300,7 +300,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedNotPresentStatusAndRe
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -312,7 +312,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReas
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -333,7 +333,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReas
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -345,7 +345,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_IdFieldString)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -366,7 +366,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_IdFieldString)
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -378,7 +378,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_policyFieldEmpty)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -399,7 +399,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_policyFieldEmpty)
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
@@ -411,7 +411,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -444,7 +444,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     sca::fillCheckEvent(state,"Applicable");
 
@@ -480,7 +480,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFieldsResu
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -512,7 +512,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFieldsResu
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     sca::fillCheckEvent(state,"Applicable");
 
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "failed");
@@ -527,7 +527,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_CsvFields)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -569,7 +569,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_CsvFields)
     })")};
 
     auto state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     sca::fillCheckEvent(state,"Applicable");
 
     ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),
@@ -589,7 +589,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_MandatoryField)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -604,7 +604,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_MandatoryField)
     })")};
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_FALSE(checkError.has_value());
@@ -619,7 +619,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldScan_id)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -633,7 +633,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldScan_id)
     })")};
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
 
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
@@ -647,7 +647,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldElements
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -661,7 +661,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldElements
     })")};
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_TRUE(checkError.has_value());
@@ -674,7 +674,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -682,13 +682,13 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
             {
                 "type": "dump_end",
                 "elements_sent": 2,
-                "scan_id": "4602802"
+                "scan_id": 4602802
             }
         }
     })")};
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_TRUE(checkError.has_value());
@@ -697,9 +697,6 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
 // Result true, Executes Query and responds OK
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 {
-    GTEST_SKIP();
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
@@ -708,13 +705,31 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
         ASSERT_GT(clientRemoteFD, 0);
         ASSERT_STREQ(
             testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-            "agent vm-centos8 sca delete_check_distinct cis_centos8_linux|4602802");
+            "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
         testSendMsg(clientRemoteFD, "ok ");
         close(clientRemoteFD);
     });
 
-    // ASSERT_TRUE(sca::deletePolicyCheckDistinct(
-    //     "vm-centos8", "cis_centos8_linux", 4602802, wdb));
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "agent":
+        {
+            "id":"007"
+        },
+        "event":
+        {
+            "original":
+            {
+                "policy_id": "cis_centos8_linux",
+                "scan_id": 4602802
+            }
+        }
+    })")};
+
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+
+    sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
 
     t.join();
     close(serverSocketFD);
@@ -723,9 +738,6 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 // Result true, Executes Query and responds Err
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
 {
-    GTEST_SKIP();
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
@@ -734,13 +746,31 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
         ASSERT_GT(clientRemoteFD, 0);
         ASSERT_STREQ(
             testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-            "agent vm-centos7 sca delete_check_distinct cis_centos7_linux|4602802");
+            "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
         testSendMsg(clientRemoteFD, "err ");
         close(clientRemoteFD);
     });
 
-    //ASSERT_TRUE(sca::deletePolicyCheckDistinct(
-    //    "vm-centos7", "cis_centos7_linux", 4602802, wdb));
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "agent":
+        {
+            "id":"007"
+        },
+        "event":
+        {
+            "original":
+            {
+                "policy_id": "cis_centos8_linux",
+                "scan_id": 4602802
+            }
+        }
+    })")};
+
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+
+    sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
 
     t.join();
     close(serverSocketFD);
@@ -749,9 +779,6 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
 // Result false, Executes Query and responds with anything besides regular options
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 {
-    GTEST_SKIP();
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
@@ -760,13 +787,31 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithR
         ASSERT_GT(clientRemoteFD, 0);
         ASSERT_STREQ(
             testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-            "agent vm-centos7 sca delete_check_distinct cis_centos7_linux|4602802");
+            "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
         testSendMsg(clientRemoteFD, "anything_else ");
         close(clientRemoteFD);
     });
 
-    //ASSERT_FALSE(sca::deletePolicyCheckDistinct(
-    //    "vm-centos7", "cis_centos7_linux", 4602802, wdb));
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "agent":
+        {
+            "id":"007"
+        },
+        "event":
+        {
+            "original":
+            {
+                "policy_id": "cis_centos8_linux",
+                "scan_id": 4602802
+            }
+        }
+    })")};
+
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+
+    sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
 
     t.join();
     close(serverSocketFD);
@@ -779,7 +824,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -788,7 +833,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
                 "type": "dump_end",
                 "policy_id": "cis_centos8_linux",
                 "elements_sent": 2,
-                "scan_id": "4602802"
+                "scan_id": 4602802
             }
         }
     })")};
@@ -800,13 +845,13 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent vm-centos8 sca query_results cis_centos8_linux");
+                     "agent 007 sca query_results cis_centos8_linux");
         testSendMsg(clientRemoteFD, "ok found payload");
         close(clientRemoteFD);
     });
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     auto [resultCode, hashCheckResults] =
         sca::findCheckResults(state, "cis_centos8_linux");
 
@@ -824,7 +869,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -833,7 +878,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
                 "type": "dump_end",
                 "policy_id": "cis_centos8_linux",
                 "elements_sent": 2,
-                "scan_id": "4602802"
+                "scan_id": 4602802
             }
         }
     })")};
@@ -845,18 +890,18 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent vm-centos8 sca query_results cis_centos8_linux");
+                     "agent 007 sca query_results cis_centos8_linux");
         testSendMsg(clientRemoteFD, "ok not found");
         close(clientRemoteFD);
     });
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     auto [resultCode, hashCheckResults] =
         sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::NOT_FOUND);
-    ASSERT_STREQ(hashCheckResults.c_str(), "");
+    ASSERT_TRUE(hashCheckResults.empty());
 
     t.join();
     close(serverSocketFD);
@@ -869,7 +914,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
         R"({
         "agent":
         {
-            "id":"vm-centos8"
+            "id":"007"
         },
         "event":
         {
@@ -878,7 +923,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
                 "type": "dump_end",
                 "policy_id": "cis_centos8_linux",
                 "elements_sent": 2,
-                "scan_id": "4602802"
+                "scan_id": 4602802
             }
         }
     })")};
@@ -890,13 +935,13 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent vm-centos8 sca query_results cis_centos8_linux");
+                     "agent 007 sca query_results cis_centos8_linux");
         testSendMsg(clientRemoteFD, "err not_found");
         close(clientRemoteFD);
     });
 
     const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "vm-centos8",wdb, cfg, fieldSource, fieldDest};
+        event, "007",wdb, cfg, fieldSource, fieldDest};
     auto [resultCode, hashCheckResults] =
         sca::findCheckResults(state, "cis_centos8_linux");
 
@@ -905,6 +950,175 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
 
     t.join();
     close(serverSocketFD);
+}
+
+TEST_F(opBuilderSCAdecoder_Functions, IsValidScanInfo_OnlyMandatoryFields)
+{
+    auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "policy_id": "some_policy_id",
+                    "scan_id": 404,
+                    "start_time": 19920710,
+                    "end_time": 20220808,
+                    "passed": 314,
+                    "failed": 42,
+                    "invalid": 8,
+                    "total_checks": 420,
+                    "score": 4,
+                    "hash": "some_hash",
+                    "hash_file": "some_hash_file",
+                    "file": "some_file",
+                    "name": "some_name"
+                }
+            }
+    })")};
+
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    ASSERT_TRUE(sca::isValidScanInfoEvent(state));
+}
+
+TEST_F(opBuilderSCAdecoder_Functions, IsValidScanInfo_NotPresentPolicyID)
+{
+    auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "scan_id": 404,
+                    "start_time": 19920710,
+                    "end_time": 20220808,
+                    "passed": 314,
+                    "failed": 42,
+                    "invalid": 8,
+                    "total_checks": 420,
+                    "score": 4,
+                    "hash": "some_hash",
+                    "hash_file": "some_hash_file",
+                    "file": "some_file",
+                    "description": "Some description",
+                    "references": "Some references",
+                    "name": "some_name"
+                }
+            }
+    })")};
+
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    ASSERT_FALSE(sca::isValidScanInfoEvent(state));
+}
+
+TEST_F(opBuilderSCAdecoder_Functions, IsValidScanInfo_WrongTypeField)
+{
+    auto event {std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "policy_id": "some_policy_id",
+                    "scan_id": "404",
+                    "start_time": "19920710",
+                    "end_time": "20220808",
+                    "passed": 314,
+                    "failed": 42,
+                    "invalid": 8,
+                    "total_checks": 420,
+                    "score": 4,
+                    "hash": "some_hash",
+                    "hash_file": "some_hash_file",
+                    "file": "some_file",
+                    "description": "Some description",
+                    "references": "Some references",
+                    "name": "some_name"
+                }
+            }
+    })")};
+
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    ASSERT_FALSE(sca::isValidScanInfoEvent(state));
+}
+
+TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_AllCopiedFields)
+{
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "event":
+        {
+            "original":
+            {
+                "name": "some_name",
+                "scan_id": 404,
+                "description": "Some description",
+                "policy_id": "some_policy_id",
+                "passed": 314,
+                "failed": 42,
+                "invalid": 8,
+                "total_checks": 420,
+                "score": 4,
+                "file": "some_file"
+            }
+        }
+    })")};
+
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    sca::FillScanInfo(state);
+
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
+    ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
+    ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
+    ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
+    ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
+    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
+}
+
+TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_OnlyNameFieldPresent)
+{
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "event":
+        {
+            "original":
+            {
+                "name": "some_name"
+            }
+        }
+    })")};
+
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    sca::FillScanInfo(state);
+
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_FALSE(event->exists("/sca/scan_id"));
+    ASSERT_FALSE(event->exists("/sca/description"));
+    ASSERT_FALSE(event->exists("/sca/policy_id"));
+    ASSERT_FALSE(event->exists("/sca/passed"));
+    ASSERT_FALSE(event->exists("/sca/failed"));
+    ASSERT_FALSE(event->exists("/sca/invalid"));
+    ASSERT_FALSE(event->exists("/sca/total_checks"));
+    ASSERT_FALSE(event->exists("/sca/score"));
+    ASSERT_FALSE(event->exists("/sca/file"));
 }
 
 TEST(opBuilderSCAdecoder, BuildSimplest)
@@ -1034,6 +1248,7 @@ TEST(checkTypeDecoderSCA, missingFields)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, missingIDField)
@@ -1068,6 +1283,7 @@ TEST(checkTypeDecoderSCA, missingIDField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, missingPolicyField)
@@ -1102,6 +1318,7 @@ TEST(checkTypeDecoderSCA, missingPolicyField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, missingPolicyIDField)
@@ -1136,6 +1353,7 @@ TEST(checkTypeDecoderSCA, missingPolicyIDField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, missingCheckField)
@@ -1165,6 +1383,7 @@ TEST(checkTypeDecoderSCA, missingCheckField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, missingCheckIDField)
@@ -1199,6 +1418,7 @@ TEST(checkTypeDecoderSCA, missingCheckIDField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, missingCheckTitleField)
@@ -1233,6 +1453,7 @@ TEST(checkTypeDecoderSCA, missingCheckTitleField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->getString("/sca/type").has_value());
 }
 
 TEST(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
@@ -1267,6 +1488,7 @@ TEST(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
@@ -1296,6 +1518,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
     close(serverSocketFD);
 
     ASSERT_FALSE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
@@ -1315,7 +1538,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
         ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok found this_seems_to_be_ignored");
+        testSendMsg(clientRemoteFD, "ok found payload");
         close(clientRemoteFD);
 
         // SaveEventcheck update (exists)
@@ -1333,6 +1556,121 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_EQ(event->getInt("/sca/id").value(), 404);
+    ASSERT_EQ(event->getInt("/sca/check/id").value(), 911);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "check");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "Some Policy");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_Policy_ID");
+    ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Some Title");
+    ASSERT_STREQ(event->getString("/sca/check/previous_result").value().c_str(),
+                 "payload");
+    ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "Some Result");
+    ASSERT_FALSE(event->exists("/sca/check/compliance"));
+    ASSERT_FALSE(event->exists("/sca/check/status"));
+    ASSERT_FALSE(event->exists("/sca/check/reason"));
+}
+
+// It won't fill event check Result Exists and Response from DB is equal to result
+TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok found Some Result");
+        close(clientRemoteFD);
+
+        // SaveEventcheck update (exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
+        testSendMsg(clientRemoteFD, "This answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
+}
+
+// It won't fill event check Result doesn't exists and Response from DB is equal to status
+TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResponse)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto checkTypeEvtWithoutResult {
+    R"({
+        "agent":
+        {
+            "id": "007"
+        },
+        "event":
+        {
+            "original":
+            {
+                "type": "check",
+                "id": 404,
+                "policy": "Some Policy",
+                "policy_id": "some_Policy_ID",
+                "check":
+                {
+                    "id": 911,
+                    "title": "Some Title",
+                    "status": "Some Status",
+                    "reason": "Could not open file"
+                }
+            }
+        }
+    })"};
+
+    const auto event {std::make_shared<json::Json>(checkTypeEvtWithoutResult)};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        // FindEventcheck
+        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+        ASSERT_GT(clientRemoteFD, 0);
+        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+        testSendMsg(clientRemoteFD, "ok found Some Status");
+        close(clientRemoteFD);
+
+        // SaveEventcheck update (exists)
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911||Some Status|Could not open file|404");
+        testSendMsg(clientRemoteFD, "This answer is always ignored.");
+        close(clientRemoteFD);
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
@@ -1372,6 +1710,13 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_EQ(event->getInt("/sca/id").value(), 404);
+    ASSERT_EQ(event->getInt("/sca/check/id").value(), 911);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "check");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "Some Policy");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_Policy_ID");
+    ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Some Title");
+    ASSERT_FALSE(event->exists("/sca/check/previous_result"));
 }
 
 TEST(checkTypeDecoderSCA, SaveACompliance)
@@ -1446,6 +1791,21 @@ TEST(checkTypeDecoderSCA, SaveACompliance)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_EQ(event->getInt("/sca/id").value(), 404);
+    ASSERT_EQ(event->getInt("/sca/check/id").value(), 911);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "check");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "Some Policy");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_Policy_ID");
+    ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Some Title");
+    ASSERT_STREQ(event->getString("/sca/check/compliance/keyI").value().c_str(),
+                 "valueI");
+    ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "Some Result");
+    ASSERT_FALSE(event->exists("/sca/check/description"));
+    ASSERT_FALSE(event->exists("/sca/check/rationale"));
+    ASSERT_FALSE(event->exists("/sca/check/remediation"));
+    ASSERT_FALSE(event->exists("/sca/check/references"));
+    ASSERT_FALSE(event->exists("/sca/check/status"));
+    ASSERT_FALSE(event->exists("/sca/check/reason"));
 }
 
 TEST(checkTypeDecoderSCA, SaveCompliances)
@@ -2928,7 +3288,7 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
         ASSERT_STREQ(clientMessage.data(),
                      "agent 007 sca update_scan_info_start "
                      "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
+        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
         close(clientRemoteFD);
 
         // FindPolicyInfo
@@ -2946,6 +3306,98 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
+    ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
+    ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
+    ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
+    ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
+    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
+}
+
+TEST(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto notFirstScanNoForceSummaryEvt {
+    R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "summary",
+                    "scan_id": 404,
+                    "policy_id": "some_policy_id",
+                    "description": "Some description",
+                    "references": "Some references",
+                    "start_time": 19920710,
+                    "end_time": 20220808,
+                    "passed": 314,
+                    "failed": 42,
+                    "invalid": 8,
+                    "total_checks": 420,
+                    "score": 4,
+                    "hash": "some_hash",
+                    "hash_file": "some_hash_file",
+                    "name": "some_name",
+                    "file": "some_file"
+                }
+            }
+        })"};
+
+    const auto event {std::make_shared<json::Json>(notFirstScanNoForceSummaryEvt)};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        int clientRemoteFD {-1};
+        string clientMessage;
+
+        // FindScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+        testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
+        close(clientRemoteFD);
+
+        // SaveScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca update_scan_info_start "
+                     "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
+        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+        close(clientRemoteFD);
+
+        // FindPolicyInfo
+        ignoreCodeSection(
+            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+
+        // FindCheckResults
+        ignoreCodeSection(
+            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
@@ -2955,6 +3407,77 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
+
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        int clientRemoteFD {-1};
+        string clientMessage;
+
+        // FindScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+        testSendMsg(clientRemoteFD, "ok not found");
+        close(clientRemoteFD);
+
+        // SaveScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca insert_scan_info "
+                     "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
+        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+        close(clientRemoteFD);
+
+        // FindPolicyInfo
+        ignoreCodeSection(
+            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+
+        // FindCheckResults
+        ignoreCodeSection(
+            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+    });
+
+    // PushDumpRequest socket
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientDgramFD, 0);
+
+    result::Result<Event> result {op(event)};
+
+    // PushDumpRequest
+    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
+    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
+    close(clientDgramFD);
+    unlink(CFG_AR_PATH.data());
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
+    ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
+    ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
+    ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
+    ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
+    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
+}
+
+TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
@@ -2990,72 +3513,23 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
             FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
     });
 
-    // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
-
-    // PushDumpRequest
-    auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
-    ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
-    close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
-
-    t.join();
-    close(serverSocketFD);
-
-    ASSERT_TRUE(result);
-}
-
-TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
-{
-    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
-
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
-
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_scan_info "
-                     "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
-
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
-
     result::Result<Event> result {op(event)};
 
     t.join();
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
+    ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
+    ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
+    ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
+    ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
+    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
@@ -3093,7 +3567,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
             "agent 007 sca insert_policy some_name|some_file|some_policy_id|Some "
             "description|Some references|some_hash_file";
         ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok This answer is always ignored.");
+        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
         close(clientRemoteFD);
 
         // FindCheckResults
@@ -3107,6 +3581,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswer)
@@ -3156,6 +3631,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswe
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
@@ -3205,6 +3681,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHashFile)
@@ -3254,6 +3731,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHash
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA,
@@ -3313,6 +3791,7 @@ TEST(summaryTypeDecoderSCA,
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyErr)
@@ -3371,6 +3850,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyOk)
@@ -3448,6 +3928,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
@@ -3488,6 +3969,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
@@ -3538,6 +4020,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
@@ -3588,6 +4071,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
@@ -3628,6 +4112,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
@@ -3678,6 +4163,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
@@ -3728,6 +4214,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
     close(serverSocketFD);
 
     ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
 /* ************************************************************************************ */
@@ -3827,7 +4314,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -3871,7 +4358,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -3915,7 +4402,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -3959,7 +4446,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -3967,6 +4454,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
         testSendMsg(clientRemoteFD, "ok found some_different_policy");
         close(clientRemoteFD);
 
+        // DeletePolicy
         clientRemoteFD = testAcceptConnection(serverSocketFD);
         ASSERT_GT(clientRemoteFD, 0);
         clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
@@ -4011,7 +4499,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAnsw
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -4019,6 +4507,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAnsw
         testSendMsg(clientRemoteFD, "ok found some_different_policy");
         close(clientRemoteFD);
 
+        // DeletePolicy
         clientRemoteFD = testAcceptConnection(serverSocketFD);
         ASSERT_GT(clientRemoteFD, 0);
         clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
@@ -4063,7 +4552,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePolicy
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -4125,7 +4614,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicy
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -4184,7 +4673,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicy
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -4244,7 +4733,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicy
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
-        // FindCheckResults
+        // FindPoliciesIds
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
         auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
@@ -5221,428 +5710,6 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
     unlink(CFG_AR_PATH.data());
-
-    t.join();
-    close(serverSocketFD);
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
-}
-
-/* ************************************************************************************ */
-
-TEST(opBuilderSCAdecoder, handleDumpHashEmpty)
-{
-    GTEST_SKIP();
-
-    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
-
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    const auto event {std::make_shared<json::Json>(
-        R"({
-            "agent":
-            {
-                "id": "007"
-            },
-            "event":
-            {
-                "original":
-                {
-                    "type": "dump_end",
-                    "elements_sent": 2,
-                    "policy_id": "cis_centos8_linux",
-                    "scan_id": 4602802
-                }
-            }
-        })")};
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        // Check Distinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok payload");
-        close(clientRemoteFD);
-
-        // Check Result
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_GT(clientRemoteFD, 0);
-        testSendMsg(clientRemoteFD, "ok found RandomHash");
-        close(clientRemoteFD);
-
-        // Scan Info
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_GT(clientRemoteFD, 0);
-        testSendMsg(clientRemoteFD, "ok found");
-        close(clientRemoteFD);
-    });
-
-    result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_FALSE(result.payload()->getBool(targetField).value());
-}
-
-TEST(opBuilderSCAdecoder, handleCheckResultNotFoundEvent)
-{
-    GTEST_SKIP();
-
-    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
-
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    const auto event {std::make_shared<json::Json>(
-        R"({
-            "agent":
-            {
-                "id": "007"
-            },
-            "event":
-            {
-                "original":
-                {
-                    "type": "check",
-                    "id": 1858775963,
-                    "policy": "CIS Benchmark for CentOS Linux 8",
-                    "policy_id": "cis_centos8_linux",
-                    "check":
-                    {
-                        "id": 6529,
-                        "title": "Ensure bootloader password is set",
-                        "description": "Setting the boot loader password .",
-                        "rationale": "Requiring a boot password upon execution",
-                        "compliance":
-                        {
-                            "cis": "1.5.2",
-                            "tsc": "CC5.2"
-                        },
-                        "rules": [ "f:/boot/grub2/user.cfg ->r:^GRUB2_PASSWORD\\s*=\\.+" ],
-                        "condition": "all",
-                        "file": "/boot/grub2/user.cfg",
-                        "status": "Not applicable",
-                        "reason": "Could not open file '/boot/grub2/user.cfg'"
-                    }
-                }
-            }
-        })")};
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        // Find event
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-
-        // Save event
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // Save compliance
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok payload1");
-        close(clientRemoteFD);
-
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok payload2");
-        close(clientRemoteFD);
-
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok payload3");
-        close(clientRemoteFD);
-    });
-
-    result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
-}
-
-TEST(opBuilderSCAdecoder, handleEventInfo)
-{
-    GTEST_SKIP();
-
-    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
-
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    const auto event {std::make_shared<json::Json>(
-        R"({
-            "agent":
-            {
-                "id": "007"
-            },
-            "event":
-            {
-                "original":
-                {
-                    "type": "summary",
-                    "scan_id": 1858775963,
-                    "name": "CIS Benchmark for CentOS Linux 8",
-                    "policy_id": "cis_centos8_linux",
-                    "file": "cis_centos8_linux.yml",
-                    "description": "This document provides prescriptive guidance",
-                    "references": "https://www.cisecurity.org/cis-benchmarks/",
-                    "passed": 89,
-                    "failed": 95,
-                    "invalid": 2,
-                    "total_checks": 186,
-                    "score": 48.369564056396484,
-                    "start_time": 1654518796,
-                    "end_time": 1654518800,
-                    "hash": "eab79bb8419c85a74057e4f51bc7021e81132c273ff9bd7b243cc1f891d1c3d4",
-                    "hash_file": "2dd71c1696661dba6f1c6a409dc9e4a303028ba9d20c0e13b962ffe435490988",
-                    "force_alert": "1"
-                }
-            }
-        })")};
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        // FindScanInfo
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(
-            clientRemoteFD,
-            "ok found eab79bb8419c85a74057e4f51bc7021e81132c273ff9bd7b243cc1f891d1c3d4 "
-            "eab79bb8419c85a74057e4f51bc7021e81132c273ff9bd7b243cc1f891d1c3d0");
-        close(clientRemoteFD);
-
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok found");
-        close(clientRemoteFD);
-
-        // FindPolicySHA
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(
-            clientRemoteFD,
-            "ok found 2dd71c1696661dba6f1c6a409dc9e4a303028ba9d20c0e13b962ffe435490988");
-        close(clientRemoteFD);
-
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // FindCheckRes
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(
-            clientRemoteFD,
-            "ok found eab79bb8419c85a74057e4f51bc7021e81132c273ff9bd7b243cc1f891d1c3d4");
-        close(clientRemoteFD);
-    });
-
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
-    ASSERT_GT(clientDgramFD, 0);
-
-    result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
-    close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
-}
-
-TEST(opBuilderSCAdecoder, handleCheckResult)
-{
-    GTEST_SKIP();
-
-    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
-
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    const auto event {std::make_shared<json::Json>(
-        R"({
-            "agent":
-            {
-                "id": "007"
-            },
-            "event":
-            {
-                "original":
-                {
-                    "message":
-                    {
-                        "type": "check",
-                        "id": 634609468,
-                        "policy": "CIS Benchmark for CentOS Linux 8",
-                        "policy_id": "cis_centos8_linux",
-                        "check":
-                        {
-                            "id": 6663,
-                            "title": "Ensure password reuse is limited",
-                            "description": "The /etc/security/opasswd file stores",
-                            "compliance":
-                            {
-                                "cis": "5.4.3",
-                                "cis_csc": "16",
-                                "pci_dss": "8.2.5",
-                                "tsc": "CC6.1"
-                            },
-                            "rules": [ "f:/etc/pam.d/system-auth -> r:^\\s*password\\.+requisite\\.+pam_pwquality\\.so\\.+ && n:remember=(\\d+) compare >= 5","f:/etc/pam.d/system-auth -> r:^\\s*password\\.+sufficient\\.+pam_unix\\.so\\.+ && n:remember=(\\d+) compare >= 5" ],
-                            "condition": "all",
-                            "file": "/etc/pam.d/system-auth",
-                            "result": "failed"
-                        }
-                    }
-                }
-            }
-        })")};
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        // FindEvent
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok found");
-        close(clientRemoteFD);
-
-        // SaveEvent
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok found_failed");
-        close(clientRemoteFD);
-    });
-
-    result::Result<Event> result {op(event)};
-
-    t.join();
-    close(serverSocketFD);
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
-}
-
-TEST(opBuilderSCAdecoder, handlePolicies)
-{
-    GTEST_SKIP();
-
-    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
-
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    const auto event {std::make_shared<json::Json>(
-        R"({
-            "agent":
-            {
-                "id": "007"
-            },
-            "event":
-            {
-                "original":
-                {
-                    "type": "policies",
-                    "policies": [ "a", "b", "c", "cis_centos8_linux" ]
-                }
-            }
-        })")};
-
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD,
-                    "ok found cis_centos8,cis_centos7_linux,cis_centos8_linux");
-        close(clientRemoteFD);
-
-        // Delete_0
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // DeleteCheck_0
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // Delete_1
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-
-        // DeleteCheck_1
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        testRecvString(clientRemoteFD, SOCK_STREAM);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
-    });
-
-    result::Result<Event> result {op(event)};
 
     t.join();
     close(serverSocketFD);
