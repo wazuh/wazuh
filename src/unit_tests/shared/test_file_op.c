@@ -276,6 +276,243 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
 
 }
 
+void test_MergeAppendFile_filepath_null_fopen_fail(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = NULL;
+    char * tag = "New TAG";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to create merged file: '/test/shared/default/merged.mg' due to [(0)-(Success)].");
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_filepath_null_chmod_fail(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = NULL;
+    char * tag = "New TAG";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 2);
+
+    expect_value(__wrap_fprintf, __stream, 2);
+    expect_string(__wrap_fprintf, formatted_msg, "#New TAG\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap_chmod, path, finalpath);
+    will_return(__wrap_chmod, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/test/shared/default/merged.mg' due to [(0)-(Success)].");
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_filepath_null_success(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = NULL;
+    char * tag = "New TAG";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 2);
+
+    expect_value(__wrap_fprintf, __stream, 2);
+    expect_string(__wrap_fprintf, formatted_msg, "#New TAG\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, 2);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap_chmod, path, finalpath);
+    will_return(__wrap_chmod, 0);
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 1);
+}
+
+void test_MergeAppendFile_finalpath_open_fail(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = "test.txt";
+    char * tag = NULL;
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "a");
+    will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to append merged file: '/test/shared/default/merged.mg' due to [(0)-(Success)].");
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+
+void test_MergeAppendFile_open_fail(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = "test.txt";
+    char * tag = NULL;
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "a");
+    will_return(__wrap_fopen, 5);
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to append merge file 'test.txt' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 5);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_fseek_fail(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = "test.txt";
+    char * tag = NULL;
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "a");
+    will_return(__wrap_fopen, 5);
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to append merge file 'test.txt' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 5);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_fseek2_fail(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = "/test/shared/default/test.txt";
+    char * tag = "TAG_test";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "a");
+    will_return(__wrap_fopen, 5);
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_ftell, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "file '/test/shared/default/test.txt' size 0.");
+
+    expect_value(__wrap_fprintf, __stream, 5);
+    expect_string(__wrap_fprintf, formatted_msg, "#TAG_test\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fprintf, __stream, 5);
+    expect_string(__wrap_fprintf, formatted_msg, "!0 test.txt\n");
+    will_return(__wrap_fprintf, 0);
+
+    will_return(__wrap_fseek, -2);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to append merge file '/test/shared/default/test.txt' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 5);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_success(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = "/test/shared/default/test.txt";
+    char * tag = "TAG_test";
+    int path_offset = 0;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "a");
+    will_return(__wrap_fopen, 5);
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_ftell, 25);
+
+    expect_value(__wrap_fprintf, __stream, 5);
+    expect_string(__wrap_fprintf, formatted_msg, "#TAG_test\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fprintf, __stream, 5);
+    expect_string(__wrap_fprintf, formatted_msg, "!25 /test/shared/default/test.txt\n");
+    will_return(__wrap_fprintf, 0);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 1);
+
+    will_return(__wrap_fwrite, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 0);
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_fclose, _File, 5);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 1);
+}
+
 #endif
 
 // w_compress_gzfile
@@ -955,6 +1192,15 @@ int main(void) {
         cmocka_unit_test(test_w_is_compressed_bz2_file_uncompressed),
 #ifdef TEST_SERVER
         cmocka_unit_test(test_w_uncompress_bz2_gz_file_bz2),
+        // MergeAppendFile
+        cmocka_unit_test(test_MergeAppendFile_filepath_null_fopen_fail),
+        cmocka_unit_test(test_MergeAppendFile_filepath_null_chmod_fail),
+        cmocka_unit_test(test_MergeAppendFile_filepath_null_success),
+        cmocka_unit_test(test_MergeAppendFile_finalpath_open_fail),
+        cmocka_unit_test(test_MergeAppendFile_open_fail),
+        cmocka_unit_test(test_MergeAppendFile_fseek_fail),
+        cmocka_unit_test(test_MergeAppendFile_fseek2_fail),
+        cmocka_unit_test(test_MergeAppendFile_success),
 #endif
         // w_compress_gzfile
         cmocka_unit_test(test_w_compress_gzfile_wfopen_fail),
