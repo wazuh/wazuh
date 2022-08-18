@@ -88,7 +88,14 @@ std::vector<std::string> splitMulti(std::string_view input, Delim&&... delimiter
     return splitted;
 }
 
-// TODO Adds Docuemntation
+/**
+ * @brief Check if a string starts with a given prefix
+ *
+ * @param str String to be checked
+ * @param prefix Prefix to check against
+ * @return true if the string starts with the prefix
+ * @return false otherwise
+ */
 inline bool startsWith(std::string_view str, std::string_view prefix)
 {
     return str.substr(0, prefix.size()) == prefix;
