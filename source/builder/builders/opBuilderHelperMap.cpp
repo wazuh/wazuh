@@ -499,32 +499,30 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         });
 }
 
-// field: +s_fromArray/<separator>/<array_reference1>
+// field: +s_fromArray/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     auto parameters = helper::base::processParameters(rawParameters);
     helper::base::checkParametersSize(parameters, 2);
 
-    // Check separator parameter
-    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
-    const auto separator = parameters.at(0);
-
     // Check Array reference parameter
-    helper::base::checkParameterType(parameters[1],
+    helper::base::checkParameterType(parameters[0],
                                      helper::base::Parameter::Type::REFERENCE);
-    const auto arrayName = parameters.at(1);
+    const auto arrayName = parameters.at(0);
+
+    // Check separator parameter
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
+    const auto separator = parameters.at(1);
 
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
     const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: [{}] parameter should be a string", name, targetField);
+        fmt::format("[{}] -> Failure: Array Member should be a string", name);
     const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: parameter should be a string array", name);
-    const auto failureTrace3 =
-        fmt::format("[{}] -> Failure: array parameter has invalid json path", name);
+        "[{}] -> Failure: parameter is not an array or it doesn't exist", name);
 
     // Return Term
     return base::Term<base::EngineOp>::create(

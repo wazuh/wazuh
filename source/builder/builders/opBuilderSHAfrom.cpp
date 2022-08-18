@@ -5,6 +5,7 @@
 
 #include <fmt/format.h>
 #include <json/json.hpp>
+
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
@@ -18,7 +19,7 @@ namespace
 constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2);
 constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
 
-std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& input)
+std::optional<std::string> wdbStringsHash(const std::vector<std::string>& input)
 {
     char* parameter = NULL;
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -31,7 +32,7 @@ std::optional<std::string> wdbi_strings_hash(const std::vector<std::string>& inp
         return std::nullopt;
     }
 
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()))
+    if (1 != EVP_DigestInit_ex(ctx, EVP_sha1(), NULL))
     {
         // Failed during hash context initialization
         EVP_MD_CTX_destroy(ctx);
@@ -80,9 +81,7 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
     const auto successTrace = fmt::format("[{}] -> Success", name);
     const auto failureTrace1 =
         fmt::format("[{}] -> Failure: Argument shouldn't be empty", name);
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: Invalid Parameter Type", name);
-    const auto failureTrace3 = fmt::format(
+    const auto failureTrace2 = fmt::format(
         "[{}] -> Failure: Couldn't create HASH and write it in the JSON", name);
 
     // Return Term
@@ -105,20 +104,16 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                     }
                     resolvedParameter.emplace_back(s_paramValue.value());
                 }
-                else if (param.m_type == helper::base::Parameter::Type::VALUE)
+                else
                 {
                     resolvedParameter.emplace_back(param.m_value);
                 }
-                else
-                {
-                    return base::result::makeFailure(event, failureTrace2);
-                }
             }
 
-            auto resultHash = wdbi_strings_hash(resolvedParameter);
+            auto resultHash = wdbStringsHash(resolvedParameter);
             if (!resultHash.has_value())
             {
-                return base::result::makeFailure(event, failureTrace3);
+                return base::result::makeFailure(event, failureTrace2);
             }
             event->setString(resultHash.value(), targetField);
             return base::result::makeSuccess(event, successTrace);

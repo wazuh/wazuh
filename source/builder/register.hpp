@@ -96,7 +96,7 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
     Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
     Registry::registerBuilder(builders::opBuilderHelperStringConcat, "helper.s_concat");
-    Registry::registerBuilder(builders::opBuilderHelperStringFromArray, "helper.s_from_array");
+    Registry::registerBuilder(builders::opBuilderHelperStringFromArray, "helper.s_fromArray");
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
