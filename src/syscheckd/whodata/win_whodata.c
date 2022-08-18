@@ -1054,6 +1054,7 @@ int set_policies() {
     int retval = 1;
     static const char *WPOL_FILE_SYSTEM_SUC = ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n";
     static const char *WPOL_HANDLE_SUC = ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n";
+    static const char *WPOL_AUDIT_POL_CH = ",System,Audit Policy Change,{0CCE922F-69AE-11D9-BED3-505054503030},,,1\n";
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_REMOVE, WPOL_BACKUP_FILE, strerror(errno), errno);
@@ -1087,6 +1088,7 @@ int set_policies() {
     // Add the new policies
     fprintf(f_new, WPOL_FILE_SYSTEM_SUC);
     fprintf(f_new, WPOL_HANDLE_SUC);
+    fprintf(f_new, WPOL_AUDIT_POL_CH);
 
     fclose(f_new);
 
