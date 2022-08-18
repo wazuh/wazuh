@@ -106,7 +106,8 @@
                 "nodes_stability_time": 300,
                 "nodes_stability_threshold": 3,
                 "posbalance_time": 600,
-                "max_assignments_per_node": 100
+                "max_assignments_per_node": 100,
+                "tolerance": 0.05
             }
         },
 

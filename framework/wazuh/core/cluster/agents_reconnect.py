@@ -33,7 +33,7 @@ class AgentsReconnectionPhases(str, Enum):
 class AgentsReconnect:
     """Class that encapsulates everything related to the agent reconnection algorithm."""
 
-    def __init__(self, logger, nodes, master_name, blacklisted_nodes, nodes_stability_threshold) -> None:
+    def __init__(self, logger, nodes, master_name, blacklisted_nodes, tolerance, nodes_stability_threshold) -> None:
         """Class constructor.
 
         Parameters
@@ -46,6 +46,8 @@ class AgentsReconnect:
             Name of the master node.
         blacklisted_nodes : set
             Set of nodes that are not taken into account for the agents reconnection.
+        tolerance : float
+            Tolerance in the difference between the most populated node and the least populated node.
         nodes_stability_threshold : int
             Number of consecutive checks that must be successful to consider the environment stable.
         """
@@ -67,9 +69,9 @@ class AgentsReconnect:
         self.env_status = {}
         self.lost_agents_percent = 0.1  # 10%
 
-        # Check agents balance -> Provisional
-        self.balance_counter = 0
+        # Check agents balance
         self.balance_threshold = 3
+        self.tolerance = tolerance
 
         # Reconnection phase
         self.expected_rounds = 0
@@ -109,7 +111,6 @@ class AgentsReconnect:
         """
         if node_name not in self.blacklisted_nodes:
             if hard_reset:
-                self.balance_counter = 0
                 self.nodes_stability_counter = 0
             self.expected_rounds = 0
             self.round_counter = 0
@@ -305,7 +306,7 @@ class AgentsReconnect:
         if await self.check_previous_reconnections():
             self.env_status = await self.get_agents_balance()
             if self.env_status:
-                self.logger.debug2(f"Agents that need to be reconnected: "
+                self.logger.debug2(f"Agents exceeding the mean number of agents per node: "
                                    f"{str({node: info['agents'] for node, info in self.env_status.items()})}.")
 
     def get_current_phase(self) -> AgentsReconnectionPhases:
@@ -439,6 +440,30 @@ class AgentsReconnect:
         max_assignments_per_node : int
             Number of agents that can reconnect to the same cluster node.
         """
+        def is_balanced_based_tolerance(tolerance):
+            """Checks if the agents difference between the most populated node
+            and the least populated node is within the configured tolerance.
+
+            Parameters
+            ----------
+            tolerance : float
+                Tolerance in the difference between the most populated node and the least populated node.
+
+            Returns
+            -------
+            bool
+                True if the difference is within tolerable limits, False otherwise.
+            """
+            biggest_node = max(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
+            smallest_node = min(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
+            mean = (self.env_status[biggest_node]['total'] + self.env_status[smallest_node]['total']) / 2
+            tolerance_window = floor(mean * tolerance)
+
+            if tolerance_window < 3:
+                tolerance_window = 3
+
+            return self.env_status[biggest_node]['total'] - self.env_status[smallest_node]['total'] <= tolerance_window
+
         if self.env_status == {}:
             return
 
@@ -466,10 +491,17 @@ class AgentsReconnect:
             self.logger.info(f'Reconnecting agents (round {self.round_counter}/{self.expected_rounds}).')
 
         else:
+            self.reconnected_agents = []
+
+            if is_balanced_based_tolerance(self.tolerance):
+                self.logger.debug('The difference between the number of agents per node is within the tolerance limits '
+                                  f'({self.tolerance * 100}), resetting counters.')
+                self.reset_counters(hard_reset=False)
+                return
+
             self.logger.warning(f'Expected number of agent reconnection rounds has been exceeded '
                                 f'({self.round_counter + 1}/{self.expected_rounds}). Stopping this task.')
             self.current_phase = AgentsReconnectionPhases.HALT
-            self.reconnected_agents = []
             return
 
         try:
