@@ -121,7 +121,7 @@ bool sysNetAddresTableFill(base::Event event,
 
 base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool isIPv6)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     const auto parameters = helper::base::processParameters(rawParameters);
 
     // Assert expected number of parameters
@@ -140,23 +140,23 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
     helper::base::checkParameterType(parameters[3],
                                      helper::base::Parameter::Type::REFERENCE);
 
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    const auto traceName = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace = fmt::format("[{}] -> Success", traceName);
     const auto failureTrace = fmt::format(
-        "[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", name);
+        "[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", traceName);
     const auto failureTrace1 = fmt::format(
-        "[{}] -> Failure: [{}] sysNetAddressTableFill error", name, targetField);
+        "[{}] -> Failure: [{}] sysNetAddressTableFill error", traceName, targetField);
     const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: [{}] couldn't assign result value", name, targetField);
+        "[{}] -> Failure: [{}] couldn't assign result value", traceName, targetField);
 
     // EventPaths and mappedPaths can be set in buildtime
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
-        name,
+        traceName,
         [=,
          targetField = std::move(targetField),
          agent_id_path = parameters[0].m_value,
@@ -180,7 +180,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
 
             if (!event->exists(name_path) || !event->isString(name_path))
             {
-                return base::result::makeFailure(event, failureTrace + name);
+                return base::result::makeFailure(event, failureTrace + name_path);
             }
             const auto& name = event->getString(name_path).value_or("NULL");
 

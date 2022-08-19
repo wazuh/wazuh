@@ -8,7 +8,7 @@
 #include "builders/opBuilderHelperNetInfoAddress.hpp"
 #include "builders/opBuilderKVDB.hpp"
 #include "builders/opBuilderLogqlParser.hpp"
-#include "builders/opBuilderSHAfrom.hpp"
+#include "builders/opBuilderHelperHashSHA1.hpp"
 #include "builders/opBuilderWdb.hpp"
 #include "builders/operationBuilder.hpp"
 #include "builders/stageBuilderCheck.hpp"
@@ -96,7 +96,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
     Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
     Registry::registerBuilder(builders::opBuilderHelperStringConcat, "helper.s_concat");
-    Registry::registerBuilder(builders::opBuilderHelperStringFromArray, "helper.s_fromArray");
+    Registry::registerBuilder(builders::opBuilderHelperStringFromArray,
+                              "helper.s_fromArray");
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
@@ -106,11 +107,13 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
 
     //SysCollector - netInfo
-    Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4, "helper.saveNetInfoIPv4");
-    Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6, "helper.saveNetInfoIPv6");
+    Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4,
+                              "helper.saveNetInfoIPv4");
+    Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6,
+                              "helper.saveNetInfoIPv6");
 
     // SHA1
-    Registry::registerBuilder(builders::opBuilderSHAfrom, "helper.sha1_from");
+    Registry::registerBuilder(builders::opBuilderHelperHashSHA1, "helper.hash_sha1");
 
 }
 } // namespace builder::internals

@@ -194,7 +194,7 @@ add_executable(opBuilderHelperNetInfoAddress_test
 )
 gtest_discover_tests(opBuilderHelperNetInfoAddress_test)
 
-add_executable(opBuilderHelperSHAfrom_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperSHAfrom_test.cpp
+add_executable(opBuilderHelperHashSHA1_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHashSHA1_test.cpp
 )
-gtest_discover_tests(opBuilderHelperSHAfrom_test)
+gtest_discover_tests(opBuilderHelperHashSHA1_test)

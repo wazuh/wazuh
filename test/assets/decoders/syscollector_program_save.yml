@@ -83,7 +83,7 @@ normalize:
       - _syscollectorEventOriginal.program.version: +exists
       - _syscollectorEventOriginal.program.architecture: +exists
     map:
-      _hexDigest: +sha1_from/$_syscollectorEventOriginal.program.name/$_syscollectorEventOriginal.program.version/$_syscollectorEventOriginal.program.architecture
+      _hexDigest: +hash_sha1/$_syscollectorEventOriginal.program.name/$_syscollectorEventOriginal.program.version/$_syscollectorEventOriginal.program.architecture
 
   - check:
       _hexDigest: +is_string
