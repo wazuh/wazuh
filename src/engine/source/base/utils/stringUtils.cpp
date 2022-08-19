@@ -12,7 +12,7 @@
 namespace utils::string
 {
 
-std::vector<std::string> split(std::string_view str, char delimiter)
+std::vector<std::string> split(std::string_view str, const char delimiter)
 {
     std::vector<std::string> ret;
     while (true)
@@ -36,12 +36,12 @@ std::vector<std::string> split(std::string_view str, char delimiter)
 
 std::string join(const std::vector<std::string>& strVector,
                  std::string_view separator,
-                 bool startsWithSeparator)
+                 const bool startsWithSeparator)
 {
     std::string strResult {};
     for (ssize_t i = 0; i < strVector.size(); ++i)
     {
-        strResult.append((!startsWithSeparator && i == 0) ? "" : separator);
+        strResult.append((!startsWithSeparator && 0 == i) ? "" : separator);
         strResult.append(strVector.at(i));
     }
 
