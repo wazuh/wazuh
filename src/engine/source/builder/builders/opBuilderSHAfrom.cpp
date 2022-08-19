@@ -70,7 +70,7 @@ namespace builder::internals::builders
 base::Expression opBuilderSHAfrom(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    const auto parameters = helper::base::processParameters(rawParameters);
 
     // Assert expected minimun number of parameters
     helper::base::checkParametersMinSize(parameters, 1);
@@ -92,10 +92,10 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
         {
             std::vector<std::string> resolvedParameter;
             // Check parameters
-            for (auto& param : parameters)
+            for (const auto& param : parameters)
             {
                 // Getting array field name
-                if (param.m_type == helper::base::Parameter::Type::REFERENCE)
+                if (helper::base::Parameter::Type::REFERENCE == param.m_type)
                 {
                     const auto s_paramValue {event->getString(param.m_value)};
                     if (!s_paramValue.has_value())
@@ -110,7 +110,7 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
                 }
             }
 
-            auto resultHash = wdbStringsHash(resolvedParameter);
+            const auto resultHash = wdbStringsHash(resolvedParameter);
             if (!resultHash.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
