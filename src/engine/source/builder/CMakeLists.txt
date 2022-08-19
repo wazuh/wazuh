@@ -34,7 +34,7 @@ add_library(builders OBJECT
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperNetInfoAddress.cpp
   builders/opBuilderHelperMap.cpp
-  builders/opBuilderSHAfrom.cpp
+  builders/opBuilderHelperHashSHA1.cpp
   builders/baseHelper.cpp
   builders/opBuilderWdb.cpp
   builders/opBuilderARWrite.cpp
