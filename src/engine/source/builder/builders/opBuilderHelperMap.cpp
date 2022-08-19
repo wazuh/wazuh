@@ -502,8 +502,8 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 // field: +s_fromArray/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    const auto parameters = helper::base::processParameters(rawParameters);
     helper::base::checkParametersSize(parameters, 2);
 
     // Check Array reference parameter
@@ -515,25 +515,25 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
     helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
     const auto separator = parameters.at(1);
 
-    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+    const auto traceName = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto successTrace = fmt::format("[{}] -> Success", traceName);
     const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: Array Member should be a string", name);
+        fmt::format("[{}] -> Failure: Array Member should be a string", traceName);
     const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: parameter is not an array or it doesn't exist", name);
+        "[{}] -> Failure: parameter is not an array or it doesn't exist", traceName);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
-        name,
+        traceName,
         [=, targetField = std::move(targetField),
             separator = std::move(separator.m_value),
             arrayName = std::move(arrayName.m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
             // Getting array field, must be a reference
-            auto stringJsonArray = event->getArray(arrayName);
+            const auto stringJsonArray = event->getArray(arrayName);
             if (!stringJsonArray.has_value() )
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -544,7 +544,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             {
                 if (s_param.isString())
                 {
-                    auto strVal = s_param.getString().value();
+                    const auto strVal = s_param.getString().value();
                     stringArray.emplace_back(std::move(strVal));
                 }
                 else
@@ -554,7 +554,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             }
 
             // accumulated concation without trailing indexes
-            std::string composedValueString {utils::string::join(stringArray, separator)};
+            const std::string composedValueString {utils::string::join(stringArray, separator)};
 
             event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);
@@ -729,9 +729,6 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            // Get field value
-            auto resolvedField {event->getString(targetField)};
-
             if (event->erase(targetField))
             {
                 return base::result::makeSuccess(event, successTrace);
