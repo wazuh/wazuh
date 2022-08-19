@@ -24,7 +24,7 @@ namespace utils::string
  * @param delimiter Delimiter to split the string
  * @return std::vector<std::string>
  */
-std::vector<std::string> split(std::string_view str, char delimiter);
+std::vector<std::string> split(std::string_view str, const char delimiter);
 
 /**
  * @brief Concatenates all the strings of a vector, separated by `separator`.
@@ -36,7 +36,7 @@ std::vector<std::string> split(std::string_view str, char delimiter);
  */
 std::string join(const std::vector<std::string>& strVector,
                  std::string_view separator = "",
-                 bool startsWithSeparator = false);
+                 const bool startsWithSeparator = false);
 
 using Delimeter = std::pair<char, bool>;
 
