@@ -23,7 +23,7 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperNetInfoTest, Builds)
 {
-    auto tuple = std::make_tuple(
+    const auto tuple = std::make_tuple(
         std::string {"/field"},
         std::string {"saveNetInfoIPv4"},
         std::vector<std::string> {"$agentID", "$scanId", "$name", "$array"});
@@ -33,7 +33,7 @@ TEST(opBuilderHelperNetInfoTest, Builds)
 
 TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
 {
-    auto tuple = std::make_tuple(
+    const auto tuple = std::make_tuple(
         std::string {"/field"},
         std::string {"saveNetInfoIPv6"},
         std::vector<std::string> {"parameter", "agentID", "scanId", "name"});
@@ -43,7 +43,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
 
 TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_reference)
 {
-    auto tuple = std::make_tuple(
+    const auto tuple = std::make_tuple(
         std::string {"/field"},
         std::string {"saveNetInfoIPv6"},
         std::vector<std::string> {"$agentID", "$scanId", "$name", "array"});
@@ -53,7 +53,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_referen
 
 TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity)
 {
-    auto tuple = std::make_tuple(
+    const auto tuple = std::make_tuple(
         std::string {"/field"},
         std::string {"saveNetInfoIPv6"},
         std::vector<std::string> {"$agentID", "$scanId", "$name", "$array", "$array2"});
@@ -61,16 +61,147 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
+TEST(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv4"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "021"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "ID": "123456",
+                    "iface":
+                    {
+                        "name": 123,
+                        "IPv4":
+                        {
+                            "address":
+                            [
+                                "192.168.10.15"
+                            ],
+                            "netmask":
+                            [
+                                "255.255.255.0"
+                            ],
+                            "broadcast":
+                            [
+                                "192.168.10.255"
+                            ]
+                        }
+                    }
+                }
+            }
+        })");
+
+    auto op =
+        bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result {op(event1)};
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
+{
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"saveNetInfoIPv4"},
+                                 std::vector<std::string> {"$agent.id",
+                                                           "$event.original.ID",
+                                                           "$event.original.iface.name",
+                                                           "$event.original.iface.IPv4"});
+
+    const auto event1 = std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "021"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "iface":
+                    {
+                        "name": 123,
+                        "IPv4":
+                        {
+                            "address":
+                            [
+                                "192.168.10.15"
+                            ],
+                            "netmask":
+                            [
+                                "255.255.255.0"
+                            ],
+                            "broadcast":
+                            [
+                                "192.168.10.255"
+                            ]
+                        }
+                    }
+                }
+            }
+        })");
+
+    auto op =
+        bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result {op(event1)};
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
+{
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"saveNetInfoIPv4"},
+                                 std::vector<std::string> {"$agent.id",
+                                                           "$event.original.ID",
+                                                           "$event.original.iface.name",
+                                                           "$event.original.iface.IPv4"});
+
+    const auto event1 = std::make_shared<json::Json>(
+        R"({
+            "agent":
+            {
+                "id": "021"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "ID": "123456",
+                    "iface":
+                    {
+                        "name": "iface_name"
+                    }
+                }
+            }
+        })");
+
+    auto op =
+        bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    result::Result<Event> result {op(event1)};
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
+{
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"saveNetInfoIPv4"},
+                                 std::vector<std::string> {"$agent.id",
+                                                           "$event.original.ID",
+                                                           "$event.original.iface.name",
+                                                           "$event.original.iface.IPv4"});
+
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {
@@ -130,23 +261,24 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result {op(event1)};
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->getBool("/field").value());
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->getBool("/field").value());
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv4"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {
@@ -196,23 +328,25 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->getBool("/field").value());
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->getBool("/field").value());
+
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv4"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {
@@ -269,22 +403,23 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_FALSE(result);
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_FALSE(result);
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_event)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv6"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv6"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {
@@ -334,23 +469,24 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv6(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->getBool("/field").value());
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->getBool("/field").value());
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_others)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv4"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {
@@ -412,22 +548,23 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_othe
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_TRUE(result);
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_TRUE(result);
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wrong_type)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv4"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {
@@ -493,22 +630,23 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_TRUE(result);
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_TRUE(result);
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv4"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv4"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"(
         {
             "agent":
@@ -567,22 +705,23 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
     auto op =
         bld::opBuilderHelperSaveNetInfoIPv4(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
-    ASSERT_TRUE(result);
 
     t.join();
     close(serverSocketFD);
+
+    ASSERT_TRUE(result);
 }
 
 TEST(opBuilderHelperNetInfoTest, False_result_when_no_address)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
+    const auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"saveNetInfoIPv6"},
                                  std::vector<std::string> {"$agent.id",
                                                            "$event.original.ID",
                                                            "$event.original.iface.name",
                                                            "$event.original.iface.IPv6"});
 
-    auto event1 = std::make_shared<json::Json>(
+    const auto event1 = std::make_shared<json::Json>(
         R"({
             "agent":
             {

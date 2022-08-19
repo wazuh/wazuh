@@ -1,4 +1,4 @@
-#include "opBuilderSHAfrom.hpp"
+#include "opBuilderHelperHashSHA1.hpp"
 
 #include <optional>
 #include <string>
@@ -19,7 +19,7 @@ namespace
 constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2);
 constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
 
-std::optional<std::string> wdbStringsHash(const std::vector<std::string>& input)
+std::optional<std::string> wdbStringsHash(std::string& input)
 {
     char* parameter = NULL;
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -39,13 +39,10 @@ std::optional<std::string> wdbStringsHash(const std::vector<std::string>& input)
         return std::nullopt;
     }
 
-    for (const auto& word : input)
+    if (1 != EVP_DigestUpdate(ctx, input.c_str(), input.length()))
     {
-        if (1 != EVP_DigestUpdate(ctx, word.c_str(), word.length()))
-        {
-            // Failed during hash context update
-            return std::nullopt;
-        }
+        // Failed during hash context update
+        return std::nullopt;
     }
 
     EVP_DigestFinal_ex(ctx, digest, &digest_size);
@@ -66,14 +63,14 @@ std::optional<std::string> wdbStringsHash(const std::vector<std::string>& input)
 namespace builder::internals::builders
 {
 
-// field: +sha1_from/<string1>|<string_reference1>/<string2>|<string_reference2>
-base::Expression opBuilderSHAfrom(const std::any& definition)
+// field: +hash_sha1/<string1>|<string_reference1>
+base::Expression opBuilderHelperHashSHA1(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     const auto parameters = helper::base::processParameters(rawParameters);
 
     // Assert expected minimun number of parameters
-    helper::base::checkParametersMinSize(parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
@@ -87,27 +84,23 @@ base::Expression opBuilderSHAfrom(const std::any& definition)
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), parameters = std::move(parameters)](
+        [=, targetField = std::move(targetField), parameter = std::move(parameters.at(0))](
             base::Event event) -> base::result::Result<base::Event>
         {
-            std::vector<std::string> resolvedParameter;
-            // Check parameters
-            for (const auto& param : parameters)
+            std::string resolvedParameter;
+            // Check parameter
+            if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
-                // Getting array field name
-                if (helper::base::Parameter::Type::REFERENCE == param.m_type)
+                const auto paramValue {event->getString(parameter.m_value)};
+                if (!paramValue.has_value())
                 {
-                    const auto s_paramValue {event->getString(param.m_value)};
-                    if (!s_paramValue.has_value())
-                    {
-                        return base::result::makeFailure(event, failureTrace1);
-                    }
-                    resolvedParameter.emplace_back(s_paramValue.value());
+                    return base::result::makeFailure(event, failureTrace1);
                 }
-                else
-                {
-                    resolvedParameter.emplace_back(param.m_value);
-                }
+                resolvedParameter = paramValue.value();
+            }
+            else
+            {
+                resolvedParameter = parameter.m_value;
             }
 
             const auto resultHash = wdbStringsHash(resolvedParameter);
