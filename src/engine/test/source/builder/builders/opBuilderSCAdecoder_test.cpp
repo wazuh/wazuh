@@ -35,20 +35,25 @@ const std::vector<string> commonArguments {"$event.original", "$agent.id"};
 
 class opBuilderSCAdecoder_Functions : public ::testing::Test
 {
-    protected:
-        std::shared_ptr<wazuhdb::WazuhDB> wdb {};
-        std::shared_ptr<base::utils::socketInterface::unixDatagram> cfg {};
-        std::unordered_map<sca::field::Name, std::string> fieldSource {};
-        std::unordered_map<sca::field::Name, std::string> fieldDest {};
+protected:
+    std::shared_ptr<wazuhdb::WazuhDB> wdb {};
+    std::shared_ptr<base::utils::socketInterface::unixDatagram> cfg {};
+    std::unordered_map<sca::field::Name, std::string> fieldSource {};
+    std::unordered_map<sca::field::Name, std::string> fieldDest {};
+
+    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
 
     void SetUp() override
     {
+        // Disable error logs for these tests
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+
         wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
         cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(CFG_AR_PATH);
 
         for (sca::field::Name field = sca::field::Name::A_BEGIN;
-            field != sca::field::Name::A_END;
-            ++field)
+             field != sca::field::Name::A_END;
+             ++field)
         {
             fieldSource.insert(
                 {field, "/event/original" + sca::field::getRealtivePath(field)});
@@ -59,7 +64,98 @@ class opBuilderSCAdecoder_Functions : public ::testing::Test
 
     void TearDown() override
     {
+        // Restore original log level
+        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+    }
+};
 
+class opBuilderSCAdecoderInit : public ::testing::Test
+{
+protected:
+    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+
+    void SetUp() override
+    {
+        // Disable error logs for these tests
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    }
+
+    void TearDown() override
+    {
+        // Restore original log level
+        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+    }
+};
+
+class checkTypeDecoderSCA : public ::testing::Test
+{
+protected:
+    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+
+    void SetUp() override
+    {
+        // Disable error logs for these tests
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    }
+
+    void TearDown() override
+    {
+        // Restore original log level
+        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+    }
+};
+
+class summaryTypeDecoderSCA : public ::testing::Test
+{
+protected:
+    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+
+    void SetUp() override
+    {
+        // Disable error logs for these tests
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    }
+
+    void TearDown() override
+    {
+        // Restore original log level
+        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+    }
+};
+
+class policiesTypeDecoderSCA : public ::testing::Test
+{
+protected:
+    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+
+    void SetUp() override
+    {
+        // Disable error logs for these tests
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    }
+
+    void TearDown() override
+    {
+        // Restore original log level
+        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+    }
+};
+
+class dumpEndTypeDecoderSCA : public ::testing::Test
+{
+protected:
+    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+
+    void SetUp() override
+    {
+        // Disable error logs for these tests
+        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    }
+
+    void TearDown() override
+    {
+        // Restore original log level
+        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
     }
 };
 
@@ -90,8 +186,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_OnlyMandatoryFields)
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007", wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
@@ -122,8 +217,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryField
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007", wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -154,8 +248,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryField
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -180,8 +273,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryCheck
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -211,8 +303,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_NotContainingMandatoryResul
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -266,8 +357,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_AllFields)
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
@@ -299,8 +389,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedNotPresentStatusAndRe
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -332,8 +421,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReas
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -365,8 +453,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_IdFieldString)
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_FALSE(sca::isValidCheckEvent(state));
 }
@@ -398,8 +485,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_policyFieldEmpty)
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
@@ -443,10 +529,9 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
-    sca::fillCheckEvent(state,"Applicable");
+    sca::fillCheckEvent(state, "Applicable");
 
     ASSERT_EQ(event->getInt("/sca/id").value(), 631388619);
     ASSERT_EQ(event->getInt("/sca/check/id").value(), 6500);
@@ -474,7 +559,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
 }
 
 // Map only mandatory fields present, result variation
-TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
+TEST_F(opBuilderSCAdecoder_Functions,
+       FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -511,9 +597,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFieldsResu
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
-    sca::fillCheckEvent(state,"Applicable");
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    sca::fillCheckEvent(state, "Applicable");
 
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "failed");
 }
@@ -568,9 +653,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_CsvFields)
         }
     })")};
 
-    auto state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
-    sca::fillCheckEvent(state,"Applicable");
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    sca::fillCheckEvent(state, "Applicable");
 
     ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),
                  "/usr/lib/systemd/system/rescue.service");
@@ -603,8 +687,8 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_MandatoryField)
         }
     })")};
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_FALSE(checkError.has_value());
@@ -632,8 +716,8 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldScan_id)
         }
     })")};
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
@@ -660,8 +744,8 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldElements
         }
     })")};
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_TRUE(checkError.has_value());
@@ -687,8 +771,8 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
         }
     })")};
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_TRUE(checkError.has_value());
@@ -703,9 +787,8 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
     std::thread t([&]() {
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(
-            testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-            "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                     "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
         testSendMsg(clientRemoteFD, "ok ");
         close(clientRemoteFD);
     });
@@ -744,9 +827,8 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
     std::thread t([&]() {
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(
-            testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-            "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                     "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
         testSendMsg(clientRemoteFD, "err ");
         close(clientRemoteFD);
     });
@@ -777,7 +859,8 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
 }
 
 // Result false, Executes Query and responds with anything besides regular options
-TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
+TEST_F(opBuilderSCAdecoder_Functions,
+       DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 {
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
@@ -785,9 +868,8 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithR
     std::thread t([&]() {
         auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
         ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(
-            testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-            "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
+        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                     "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
         testSendMsg(clientRemoteFD, "anything_else ");
         close(clientRemoteFD);
     });
@@ -850,8 +932,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
         close(clientRemoteFD);
     });
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [resultCode, hashCheckResults] =
         sca::findCheckResults(state, "cis_centos8_linux");
 
@@ -895,8 +977,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
         close(clientRemoteFD);
     });
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [resultCode, hashCheckResults] =
         sca::findCheckResults(state, "cis_centos8_linux");
 
@@ -940,8 +1022,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
         close(clientRemoteFD);
     });
 
-    const sca::DecodeCxt &state = sca::DecodeCxt {
-        event, "007",wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state =
+        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [resultCode, hashCheckResults] =
         sca::findCheckResults(state, "cis_centos8_linux");
 
@@ -1082,7 +1164,8 @@ TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_AllCopiedFields)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
+                 "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -1121,14 +1204,14 @@ TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_OnlyNameFieldPresent)
     ASSERT_FALSE(event->exists("/sca/file"));
 }
 
-TEST(opBuilderSCAdecoder, BuildSimplest)
+TEST_F(opBuilderSCAdecoderInit, BuildSimplest)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     ASSERT_NO_THROW(opBuilderSCAdecoder(tuple));
 }
 
-TEST(opBuilderSCAdecoder, checkWrongQttyParams)
+TEST_F(opBuilderSCAdecoderInit, checkWrongQttyParams)
 {
     const std::vector<string> arguments {"$event.original"};
 
@@ -1137,7 +1220,7 @@ TEST(opBuilderSCAdecoder, checkWrongQttyParams)
     ASSERT_THROW(opBuilderSCAdecoder(tuple), std::runtime_error);
 }
 
-TEST(opBuilderSCAdecoder, checkNoParams)
+TEST_F(opBuilderSCAdecoderInit, checkNoParams)
 {
     const std::vector<string> arguments {};
 
@@ -1146,7 +1229,7 @@ TEST(opBuilderSCAdecoder, checkNoParams)
     ASSERT_THROW(opBuilderSCAdecoder(tuple), std::runtime_error);
 }
 
-TEST(opBuilderSCAdecoder, gettingEmptyReference)
+TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
 {
     const std::vector<string> arguments {"$_event_json", "$agent.id"};
 
@@ -1163,7 +1246,7 @@ TEST(opBuilderSCAdecoder, gettingEmptyReference)
     ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
 }
 
-TEST(opBuilderSCAdecoder, gettingNonExistingReference)
+TEST_F(opBuilderSCAdecoderInit, gettingNonExistingReference)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1174,9 +1257,11 @@ TEST(opBuilderSCAdecoder, gettingNonExistingReference)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_TRUE(result.payload().get()->exists("/wdb/result"));
+    ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
 }
 
-TEST(opBuilderSCAdecoder, unexpectedType)
+TEST_F(opBuilderSCAdecoderInit, unexpectedType)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1196,6 +1281,8 @@ TEST(opBuilderSCAdecoder, unexpectedType)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
+    ASSERT_TRUE(result.payload().get()->exists("/wdb/result"));
+    ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
 }
 
 /* ************************************************************************************ */
@@ -1228,7 +1315,7 @@ const auto checkTypeEvtWithMandatoryFields {
 
 // Missing event parameters checks
 
-TEST(checkTypeDecoderSCA, missingFields)
+TEST_F(checkTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1251,7 +1338,7 @@ TEST(checkTypeDecoderSCA, missingFields)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingIDField)
+TEST_F(checkTypeDecoderSCA, missingIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1286,7 +1373,7 @@ TEST(checkTypeDecoderSCA, missingIDField)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingPolicyField)
+TEST_F(checkTypeDecoderSCA, missingPolicyField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1321,7 +1408,7 @@ TEST(checkTypeDecoderSCA, missingPolicyField)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingPolicyIDField)
+TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1356,7 +1443,7 @@ TEST(checkTypeDecoderSCA, missingPolicyIDField)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingCheckField)
+TEST_F(checkTypeDecoderSCA, missingCheckField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1386,7 +1473,7 @@ TEST(checkTypeDecoderSCA, missingCheckField)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingCheckIDField)
+TEST_F(checkTypeDecoderSCA, missingCheckIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1421,7 +1508,7 @@ TEST(checkTypeDecoderSCA, missingCheckIDField)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingCheckTitleField)
+TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1453,10 +1540,10 @@ TEST(checkTypeDecoderSCA, missingCheckTitleField)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
-    ASSERT_FALSE(event->getString("/sca/type").has_value());
+    ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
+TEST_F(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1491,7 +1578,7 @@ TEST(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
+TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1521,7 +1608,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
+TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1571,7 +1658,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 }
 
 // It won't fill event check Result Exists and Response from DB is equal to result
-TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
+TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1610,14 +1697,14 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 }
 
 // It won't fill event check Result doesn't exists and Response from DB is equal to status
-TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResponse)
+TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResponse)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto checkTypeEvtWithoutResult {
-    R"({
+        R"({
         "agent":
         {
             "id": "007"
@@ -1659,7 +1746,8 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualRespon
         clientRemoteFD = testAcceptConnection(serverSocketFD);
         ASSERT_GT(clientRemoteFD, 0);
         clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911||Some Status|Could not open file|404");
+        ASSERT_STREQ(clientMessage.data(),
+                     "agent 007 sca update 911||Some Status|Could not open file|404");
         testSendMsg(clientRemoteFD, "This answer is always ignored.");
         close(clientRemoteFD);
     });
@@ -1673,7 +1761,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualRespon
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
+TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1719,7 +1807,7 @@ TEST(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
     ASSERT_FALSE(event->exists("/sca/check/previous_result"));
 }
 
-TEST(checkTypeDecoderSCA, SaveACompliance)
+TEST_F(checkTypeDecoderSCA, SaveACompliance)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1808,7 +1896,7 @@ TEST(checkTypeDecoderSCA, SaveACompliance)
     ASSERT_FALSE(event->exists("/sca/check/reason"));
 }
 
-TEST(checkTypeDecoderSCA, SaveCompliances)
+TEST_F(checkTypeDecoderSCA, SaveCompliances)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1901,7 +1989,7 @@ TEST(checkTypeDecoderSCA, SaveCompliances)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveFileRule)
+TEST_F(checkTypeDecoderSCA, SaveFileRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -1975,7 +2063,7 @@ TEST(checkTypeDecoderSCA, SaveFileRule)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveDirectoryRule)
+TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2049,7 +2137,7 @@ TEST(checkTypeDecoderSCA, SaveDirectoryRule)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveRegistryRule)
+TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2123,7 +2211,7 @@ TEST(checkTypeDecoderSCA, SaveRegistryRule)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveCommandRule)
+TEST_F(checkTypeDecoderSCA, SaveCommandRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2197,7 +2285,7 @@ TEST(checkTypeDecoderSCA, SaveCommandRule)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveProcessRule)
+TEST_F(checkTypeDecoderSCA, SaveProcessRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2271,7 +2359,7 @@ TEST(checkTypeDecoderSCA, SaveProcessRule)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveNumericRule)
+TEST_F(checkTypeDecoderSCA, SaveNumericRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2345,7 +2433,7 @@ TEST(checkTypeDecoderSCA, SaveNumericRule)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, InvalidRules)
+TEST_F(checkTypeDecoderSCA, InvalidRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2512,7 +2600,7 @@ TEST(checkTypeDecoderSCA, InvalidRules)
     ASSERT_TRUE(result);
 }
 
-TEST(checkTypeDecoderSCA, SaveRules)
+TEST_F(checkTypeDecoderSCA, SaveRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2666,7 +2754,7 @@ TEST(checkTypeDecoderSCA, SaveRules)
 
 // [Type Summary missing fields tests] START
 
-TEST(summaryTypeDecoderSCA, missingFields)
+TEST_F(summaryTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2688,7 +2776,7 @@ TEST(summaryTypeDecoderSCA, missingFields)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldPolicyId)
+TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2722,7 +2810,7 @@ TEST(summaryTypeDecoderSCA, missingFieldPolicyId)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldScanId)
+TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2756,7 +2844,7 @@ TEST(summaryTypeDecoderSCA, missingFieldScanId)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldStartTime)
+TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2790,7 +2878,7 @@ TEST(summaryTypeDecoderSCA, missingFieldStartTime)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldEndTime)
+TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2824,7 +2912,7 @@ TEST(summaryTypeDecoderSCA, missingFieldEndTime)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldPassed)
+TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2858,7 +2946,7 @@ TEST(summaryTypeDecoderSCA, missingFieldPassed)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldFailed)
+TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2892,7 +2980,7 @@ TEST(summaryTypeDecoderSCA, missingFieldFailed)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldInvalid)
+TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2926,7 +3014,7 @@ TEST(summaryTypeDecoderSCA, missingFieldInvalid)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldTotalChecks)
+TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2959,7 +3047,7 @@ TEST(summaryTypeDecoderSCA, missingFieldTotalChecks)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldScore)
+TEST_F(summaryTypeDecoderSCA, missingFieldScore)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -2993,7 +3081,7 @@ TEST(summaryTypeDecoderSCA, missingFieldScore)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldHash)
+TEST_F(summaryTypeDecoderSCA, missingFieldHash)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3027,7 +3115,7 @@ TEST(summaryTypeDecoderSCA, missingFieldHash)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldHashFile)
+TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3061,7 +3149,7 @@ TEST(summaryTypeDecoderSCA, missingFieldHashFile)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldFile)
+TEST_F(summaryTypeDecoderSCA, missingFieldFile)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3095,7 +3183,7 @@ TEST(summaryTypeDecoderSCA, missingFieldFile)
     ASSERT_FALSE(result);
 }
 
-TEST(summaryTypeDecoderSCA, missingFieldName)
+TEST_F(summaryTypeDecoderSCA, missingFieldName)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3223,7 +3311,7 @@ static inline void ignoreCodeSection(const FuncName function,
     close(clientRemoteFD);
 }
 
-TEST(summaryTypeDecoderSCA, AllUnexpectedAnswers)
+TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3258,7 +3346,7 @@ TEST(summaryTypeDecoderSCA, AllUnexpectedAnswers)
     ASSERT_TRUE(event->getBool("/wdb/result").value());
 }
 
-TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
+TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3309,7 +3397,8 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
+                 "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3319,14 +3408,14 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkFound)
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
-TEST(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
+TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
     const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto notFirstScanNoForceSummaryEvt {
-    R"({
+        R"({
             "agent":
             {
                 "id": "007"
@@ -3400,7 +3489,7 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
+TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3461,7 +3550,8 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
+                 "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3471,7 +3561,7 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
-TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
+TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3522,7 +3612,8 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
+                 "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3532,7 +3623,7 @@ TEST(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
-TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3584,7 +3675,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswer)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3634,7 +3725,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswe
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3684,7 +3775,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHashFile)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHashFile)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3734,8 +3825,8 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHash
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA,
-     FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
+TEST_F(summaryTypeDecoderSCA,
+       FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3794,7 +3885,7 @@ TEST(summaryTypeDecoderSCA,
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyErr)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyErr)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3853,7 +3944,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyOk)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyOk)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3931,7 +4022,7 @@ TEST(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePo
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
+TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -3972,7 +4063,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
+TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4023,7 +4114,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
+TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4074,7 +4165,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
+TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4115,7 +4206,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
+TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4166,7 +4257,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
+TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4221,7 +4312,7 @@ TEST(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 //  Type: "policies"
 /* ************************************************************************************ */
 
-TEST(policiesTypeDecoderSCA, missingFields)
+TEST_F(policiesTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4243,7 +4334,7 @@ TEST(policiesTypeDecoderSCA, missingFields)
     ASSERT_FALSE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4287,7 +4378,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4331,7 +4422,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4375,7 +4466,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4419,7 +4510,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4472,7 +4563,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAnswer)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAnswer)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4525,7 +4616,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAnsw
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePolicyCheck)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePolicyCheck)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4587,7 +4678,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePolicy
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckI)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckI)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4647,7 +4738,7 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicy
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckII)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckII)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4706,7 +4797,8 @@ TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicy
     ASSERT_TRUE(result);
 }
 
-TEST(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckIII)
+TEST_F(policiesTypeDecoderSCA,
+       FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckIII)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -4812,7 +4904,7 @@ const auto dumpEndTypeEvent {
             }
         })"};
 
-TEST(dumpEndTypeDecoderSCA, missingFields)
+TEST_F(dumpEndTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4834,7 +4926,7 @@ TEST(dumpEndTypeDecoderSCA, missingFields)
     ASSERT_FALSE(result);
 }
 
-TEST(dumpEndTypeDecoderSCA, missingPolicyIDField)
+TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4858,7 +4950,7 @@ TEST(dumpEndTypeDecoderSCA, missingPolicyIDField)
     ASSERT_FALSE(result);
 }
 
-TEST(dumpEndTypeDecoderSCA, missingElementsSentField)
+TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4882,7 +4974,7 @@ TEST(dumpEndTypeDecoderSCA, missingElementsSentField)
     ASSERT_FALSE(result);
 }
 
-TEST(dumpEndTypeDecoderSCA, missingScanIDField)
+TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4906,8 +4998,8 @@ TEST(dumpEndTypeDecoderSCA, missingScanIDField)
     ASSERT_FALSE(result);
 }
 
-TEST(dumpEndTypeDecoderSCA,
-     DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA,
+       DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4947,8 +5039,8 @@ TEST(dumpEndTypeDecoderSCA,
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA,
-     DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA,
+       DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -4988,7 +5080,7 @@ TEST(dumpEndTypeDecoderSCA,
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5028,7 +5120,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFou
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5068,7 +5160,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpecte
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5108,8 +5200,8 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFoun
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA,
-     DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA,
+       DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5157,8 +5249,8 @@ TEST(dumpEndTypeDecoderSCA,
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA,
-     DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA,
+       DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5206,7 +5298,7 @@ TEST(dumpEndTypeDecoderSCA,
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5254,7 +5346,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAn
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5302,7 +5394,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5350,7 +5442,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5398,7 +5490,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAns
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZero)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZero)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5446,7 +5538,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZer
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5494,7 +5586,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
@@ -5542,7 +5634,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsNotZero)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsNotZero)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -5601,7 +5693,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsNot
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
@@ -5660,7 +5752,7 @@ TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
