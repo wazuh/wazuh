@@ -193,17 +193,18 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added SCA Policy for CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0. ([#13087](https://github.com/wazuh/wazuh/issues/13087))
-- Added SCA Policy for CIS Microsoft Windows 10 Enterprise Release 21H2 Benchmark v1.12.0. ([#13191](https://github.com/wazuh/wazuh/issues/13191))
-- Added SCA policy for Red Hat Enterprise Linux 9 (RHEL9). ([#13756](https://github.com/wazuh/wazuh/issues/13756))
-- Added SCA policy for CIS Microsoft Windows Server 2022 Benchmark 1.0.0. ([#13895](https://github.com/wazuh/wazuh/issues/13895))
+- Added SCA Policy for CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0. ([#13806](https://github.com/wazuh/wazuh/pull/13806))
+- Added SCA Policy for CIS Microsoft Windows 10 Enterprise Release 21H2 Benchmark v1.12.0. ([#13879](https://github.com/wazuh/wazuh/pull/13879))
+- Added SCA policy for Red Hat Enterprise Linux 9 (RHEL9). ([#13843](https://github.com/wazuh/wazuh/pull/13843))
+- Added SCA policy for CIS Microsoft Windows Server 2022 Benchmark 1.0.0. ([#13899](https://github.com/wazuh/wazuh/pull/13899))
 
 #### Fixed
 
-- Fixed rule regular expression bug on Ubuntu 20.04 Linux SCA policy control ID 19137. ([#14235](https://github.com/wazuh/wazuh/issues/14235))
-- Fixed AWS Amazon Linux SCA policy. Fixed bug when wazuh-agent tries to run the policy. ([#14258](https://github.com/wazuh/wazuh/issues/14258))
-- Fixed AWS Amazon Linux 2 SCA policy. Limit journalctl to kernel events and only since boot. ([#13949](https://github.com/wazuh/wazuh/issues/13949))
-- Added missing SCA files during Wazuh-manager installation. ([#](https://github.com/wazuh/wazuh/issues/14481))
+- Fixed rule regular expression bug on Ubuntu 20.04 Linux SCA policy control ID 19137. ([#14513](https://github.com/wazuh/wazuh/pull/14513))
+- Fixed AWS Amazon Linux SCA policy. Fixed bug when wazuh-agent tries to run the policy. ([#14483](https://github.com/wazuh/wazuh/pull/14483))
+- Fixed AWS Amazon Linux 2 SCA policy. Limit journalctl to kernel events and only since boot. ([#13950](https://github.com/wazuh/wazuh/pull/13950))
+- Added missing SCA files during Wazuh-manager installation. ([#14482](https://github.com/wazuh/wazuh/pull/14482))
+- Fixed OS detection in Ubuntu 20.04 LTS SCA policy. ([#14678](https://github.com/wazuh/wazuh/pull/14678))
 
 
 ## [v4.3.6] 2022-07-20
