@@ -36,7 +36,10 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         // {"RubyDate", "%a %b %d %H:%M:%S %z %Y"},
         // {"Stamp", "%b %d %T"},
         // {"UnixDate", "%a %b %d %T %Z %Y"},
-        {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}},
+        {"RC3154_W_ID_TIMEZONE", {"%b %d %R:%6S %Z", "Mar  1 18:48:50.483 UTC"}},
+        {"RC3154_W_TIMEZONE", {"%b %d %T %Z", "Mar  1 18:48:50 UTC"}},
+        {"24H_LOCALTIME", {"%T", "15:16:01"}},
+        {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}}, //TODO specify the RCF, rfc3164?
         {"ISO8601", {"%Y-%d-%mT%T%z", "2018-08-14T14:30:02.203151+02:00"}},
         {"ISO8601_Z", {"%Y-%d-%mT%TZ", "2018-08-14T14:30:02.203151Z"}},
         {"HTTPDATE", {"%d/%b/%Y:%T %z", "26/Dec/2016:16:22:14 +0000"}},
