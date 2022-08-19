@@ -49,23 +49,22 @@ bool sysNetAddresTableFill(base::Event event,
                            const std::string& name,
                            const std::string& ipObjectPath,
                            std::shared_ptr<wazuhdb::WazuhDB> wdb,
-                           bool isIPv6)
+                           const bool isIPv6)
 {
     // Cheking if AddresArray exists
-    auto address_ar = event->getArray(ipObjectPath + getPath(Name::ADDRESS).data());
+    const auto address_ar = event->getArray(ipObjectPath + getPath(Name::ADDRESS).data());
 
     if (!address_ar.has_value())
     {
         return false;
     }
 
-    std::string middleFieldName = isIPv6 ? "IPv6" : "IPv4";
-
-    auto netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
+    const auto netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
                         .value_or(std::vector<json::Json>());
 
-    auto broadcastI = event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
-                          .value_or(std::vector<json::Json>());
+    const auto broadcastI =
+        event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
+            .value_or(std::vector<json::Json>());
 
     for (size_t i = 0; i != address_ar.value().size(); ++i)
     {
@@ -101,16 +100,16 @@ bool sysNetAddresTableFill(base::Event event,
         }
 
         // We should still check if it's empty because value_or only checks nullopt
-        std::string msg = fmt::format("agent {} netaddr save {}|{}|{}|{}|{}|{}",
-                                      agentId,
-                                      scan_id,
-                                      name,
-                                      isIPv6 ? "1" : "0",
-                                      addressIValue.value(),
-                                      netmaskIValue.value(),
-                                      broadcastIValue.value());
+        const std::string msg = fmt::format("agent {} netaddr save {}|{}|{}|{}|{}|{}",
+                                            agentId,
+                                            scan_id,
+                                            name,
+                                            isIPv6 ? "1" : "0",
+                                            addressIValue.value(),
+                                            netmaskIValue.value(),
+                                            broadcastIValue.value());
 
-        auto findEventResponse = wdb->tryQueryAndParseResult(msg);
+        const auto findEventResponse = wdb->tryQueryAndParseResult(msg);
         if (std::get<0>(findEventResponse) != wazuhdb::QueryResultCodes::OK)
         {
             return false;
@@ -123,7 +122,7 @@ bool sysNetAddresTableFill(base::Event event,
 base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool isIPv6)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(rawParameters);
+    const auto parameters = helper::base::processParameters(rawParameters);
 
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 4);
@@ -191,7 +190,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
                 return base::result::makeFailure(event, failureTrace + ipObject_path);
             }
 
-            auto resultExecution = sysNetAddresTableFill(
+            const auto resultExecution = sysNetAddresTableFill(
                 event, agent_id, scan_id, name, ipObject_path, wdb, isIPv6);
 
             if (!resultExecution)

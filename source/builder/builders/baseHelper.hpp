@@ -90,7 +90,7 @@ namespace helper::base
      * @throws std::runtime_error if the number of parameters is not correct.
      */
     void checkParametersMinSize(const std::vector<Parameter>& parameters,
-                                size_t min_size);
+                                const size_t min_size);
     /**
      * @brief Check that the paremeter is of Parameter::Type and throw otherwise.
      *
