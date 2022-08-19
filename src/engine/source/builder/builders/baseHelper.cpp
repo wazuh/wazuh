@@ -87,7 +87,8 @@ void checkParametersSize(const std::vector<Parameter>& parameters, size_t size)
     }
 }
 
-void checkParametersMinSize(const std::vector<Parameter>& parameters, size_t minSize)
+void checkParametersMinSize(const std::vector<Parameter>& parameters,
+                            const size_t minSize)
 {
     if (parameters.size() < minSize)
     {
