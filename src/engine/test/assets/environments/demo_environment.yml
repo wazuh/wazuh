@@ -13,6 +13,9 @@ decoders:
   - apache_error
   - apache_access
   - aws-elb
+  # Exclusive Syslog decoders
+  - default_syslog_queue
+  - cisco-ios
 
 rules:
   - source_malicious_ip

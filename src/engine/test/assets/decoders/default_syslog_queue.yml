@@ -1,0 +1,9 @@
+---
+name: default_syslog_queue
+
+check:
+  - queue: 50 # SYSLOG_MQ -> '2' = 50
+
+normalize:
+  - map:
+      event.original: $message
