@@ -239,6 +239,7 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
 
 int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
 
+    char loc_buff[OS_BUFFER_SIZE + 1];
     char * event_str = NULL;
     char * location_str = NULL;
     char * log = NULL;
@@ -259,10 +260,15 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     location = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_LOCATION);
     location_str = cJSON_GetStringValue(location);
 
-    int logsize = strlen(location_str) + strlen(event_str) + 4;
+    if (NULL == wstr_escape(loc_buff, location_str, '\\', ':')) {
+        if (event_json) os_free(event_str);
+        return -1;
+    }
+
+    int logsize = strlen(loc_buff) + strlen(event_str) + 4;
 
     os_calloc(logsize, sizeof(char), log);
-    snprintf(log, logsize, "1:%s:%s", location_str, event_str);
+    snprintf(log, logsize, "1:%s:%s", loc_buff, event_str);
 
     if (OS_CleanMSG(log, lf) < 0) {
         os_free(log);

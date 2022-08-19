@@ -75,9 +75,15 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
 static int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
+    char loc_buff[OS_BUFFER_SIZE + 1];
     static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
+
+    if (NULL == wstr_escape(loc_buff, (char *) locmsg, '\\', ':')) {
+        merror(FORMAT_ERROR);
+        return (0);
+    }
 
     if (loc == SECURE_MQ) {
         loc = message[0];
@@ -93,9 +99,9 @@ static int SendMSGAction(int queue, const char *message, const char *locmsg, cha
             return (0);
         }
 
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, locmsg, message);
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, loc_buff, message);
     } else {
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, locmsg, message);
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
     }
 
     /* Queue not available */

@@ -102,6 +102,25 @@ char * wstr_replace(const char * string, const char * search, const char * repla
 // Locate first occurrence of non escaped character in string
 char * wstr_chr(char * str, int character);
 
+/* Escape a specific character from a character string
+ *
+ * dststr must be a valid pointer to a char buffer where escaped string will be stored.
+ * str must be a valid pointer to a string to escape.
+ * scape int is the value of the operator used to escape.
+ * toscape int is the value to scape.
+ * Returns pointer to dststr if success, or NULL if fail.
+ */
+char * wstr_escape(char *dststr, char *str, int scape, int toscape);
+
+/* Unescape a specific character from a character string
+ *
+ * dststr must be a valid pointer to a char buffer where unescaped string will be stored.
+ * str must be a valid pointer to a string to unescape.
+ * scape int is the value of the operator used to unescape.
+ * Returns pointer to dststr if success, or NULL if fail.
+ */
+char * wstr_unescape(char *dststr, char *str, int scape);
+
 // Free string array
 void free_strarray(char ** array);
 

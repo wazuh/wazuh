@@ -326,6 +326,46 @@ char * wstr_chr(char * str, int character) {
     return NULL;
 }
 
+// Escape a specific character from a character string
+
+char * wstr_escape(char *dststr, char *str, int scape, int toscape) {
+
+    char * str_cpy = str;
+    if (str_cpy == NULL || dststr == NULL) {
+        return NULL;
+    }
+
+    unsigned int a = 0;
+    while(*str_cpy != '\0') {
+        if (*str_cpy == toscape || *str_cpy == scape) {
+            dststr[a++] = scape;
+        }
+        dststr[a++] = *str_cpy++;
+    }
+    dststr[a] = '\0';
+    return dststr;
+}
+
+// Unescape a specific character from a character string
+
+char * wstr_unescape(char *dststr, char *str, int scape) {
+
+    char * str_cpy = str;
+    if (str_cpy == NULL || dststr == NULL) {
+        return NULL;
+    }
+
+    unsigned int a = 0;
+    while(*str_cpy != '\0') {
+        if (*str_cpy == scape) {
+            str_cpy++;
+        }
+        dststr[a++] = *str_cpy++;
+    }
+    dststr[a] = '\0';
+    return dststr;
+}
+
 #ifdef WIN32
 
 char *convert_windows_string(LPCWSTR string)
