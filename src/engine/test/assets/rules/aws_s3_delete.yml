@@ -1,0 +1,11 @@
+name: aws_s3_delete
+
+parents:
+  - aws_s3
+
+check:
+  - _jsonEventOriginal.aws.operation: +s_eq/DELETE
+
+normalize:
+  - map:
+      event.severity: 3

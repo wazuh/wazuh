@@ -1,0 +1,17 @@
+name: aws_s3_get
+
+parents:
+  - aws_s3
+
+check:
+  - _jsonEventOriginal.aws.operation: +s_eq/GET
+
+normalize:
+  - map:
+      event.severity: 2
+
+  - check:
+      - _jsonEventOriginal.aws.operation: +s_eq/REST.GET.OBJECT
+      - _jsonEventOriginal.aws.http_status: +i_eq/200
+    map:
+      event.severity: 0
