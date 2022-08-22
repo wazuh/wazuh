@@ -1,0 +1,11 @@
+name: aws_s3_post
+
+parents:
+  - aws_s3
+
+check:
+  - _jsonEventOriginal.aws.operation: +s_eq/POST
+
+normalize:
+  - map:
+      event.severity: 2
