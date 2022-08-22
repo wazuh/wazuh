@@ -1,0 +1,12 @@
+name: aws_cloudtrail
+
+parents:
+  - aws_integration
+
+check:
+  - _jsonEventOriginal.aws.source: +s_eq/cloudtrail
+  - _jsonEventOriginal.aws.eventName: +kvdb_match/aws-eventnames
+
+normalize:
+  - map:
+      event.severity: 3

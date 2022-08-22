@@ -1,0 +1,12 @@
+name: aws_cloudtrail_login_failed
+
+parents:
+  - aws_cloudtrail
+
+check:
+  - _jsonEventOriginal.aws.eventName: +s_eq/ConsoleLogin
+  - _jsonEventOriginal.aws.responseElements.ConsoleLogin: +s_eq/Failure
+
+normalize:
+  - map:
+      event.severity: 5

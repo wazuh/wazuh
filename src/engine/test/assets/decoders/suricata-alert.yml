@@ -7,15 +7,15 @@ metadata:
   description: suricata-alert
 
 check:
-  - _json.event_type: alert
+  - _jsonEventOriginal.event_type: alert
 
 normalize:
   - map:
-      event.type: +s_append/$_json.alert.action
+      event.type: +s_append/$_jsonEventOriginal.alert.action
       event.category: +s_append/intrusion_detection
       event.kind: alert
-      event.severity: $_json.alert.severity
-      message: $_json.alert.category
-      rule.category: $_json.alert.category
-      rule.id: $_json.alert.signature_id
-      rule.name: $_json.alert.signature
+      event.severity: $_jsonEventOriginal.alert.severity
+      message: $_jsonEventOriginal.alert.category
+      rule.category: $_jsonEventOriginal.alert.category
+      rule.id: $_jsonEventOriginal.alert.signature_id
+      rule.name: $_jsonEventOriginal.alert.signature
