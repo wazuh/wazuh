@@ -1,0 +1,11 @@
+name: aws_s3_error
+
+parents:
+  - aws_s3
+
+check:
+  - _jsonEventOriginal.aws.error_code: +exists
+
+normalize:
+  - map:
+      event.severity: 5
