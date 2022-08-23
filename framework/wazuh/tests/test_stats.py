@@ -4,7 +4,7 @@
 
 import sys
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import call, MagicMock, patch
 
 import pytest
 
@@ -42,10 +42,34 @@ def test_weekly():
     assert response.total_affected_items == len(response.affected_items)
 
 
-@patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
-def test_get_daemons_stats(mock_daemons_stats_):
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
+@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
+@patch('wazuh.core.common.WDB_SOCKET', '/var/ossec/queue/db/wdb')
+@patch('wazuh.stats.get_daemons_stats_socket')
+def test_get_daemons_stats(mock_get_daemons_stats_socket):
     """Makes sure get_daemons_stats() fit with the expected."""
-    response = stats.get_daemons_stats('filename')
+    response = stats.get_daemons_stats(['wazuh-remoted', 'wazuh-analysisd', 'wazuh-db'])
+
+    calls = [call('/var/ossec/queue/sockets/remote'), call('/var/ossec/queue/sockets/analysis'),
+             call('/var/ossec/queue/db/wdb')]
+    mock_get_daemons_stats_socket.assert_has_calls(calls)
+    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
+    assert response.total_affected_items == len(response.affected_items)
+
+
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/wrong_socket_name')
+def test_get_daemons_stats_ko():
+    """Makes sure get_daemons_stats() fit with the expected."""
+    response = stats.get_daemons_stats(['wazuh-remoted'])
+
+    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
+    assert response.render()['data']['failed_items'][0]['error']['code'] == 1121, 'Expected error code was not returned'
+
+
+@patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
+def test_deprecated_get_daemons_stats(mock_daemons_stats_):
+    """Makes sure deprecated_get_daemons_stats() fit with the expected."""
+    response = stats.deprecated_get_daemons_stats('filename')
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
 
