@@ -31,7 +31,7 @@
 #define criteria (DELETE | modify_criteria)
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 #define FILETIME_SECOND 10000000
-
+#define WHODATA_START_DELAY 10
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
@@ -90,6 +90,8 @@ static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
 STATIC int restore_policies = 0;
+atomic_int_t whodata_end = ATOMIC_INT_INITIALIZER(0);
+EVT_HANDLE evt_subscribe_handle;  // Subscribe handle.
 
 // Whodata function headers
 void restore_sacls();
@@ -104,6 +106,10 @@ void notify_SACL_change(char *dir);
 int whodata_path_filter(char **path);
 void whodata_adapt_path(char **path);
 int whodata_check_arch();
+/**
+ * @brief Release all whodata allocated resources. Frees all data stored in the structure, not the structure.
+ */
+STATIC void win_whodata_release_resources(whodata *wdata);
 
 /**
  * @brief Checks the sacl status of an object.
@@ -138,6 +144,30 @@ char *get_whodata_path(const short unsigned int *win_path);
 int get_volume_names();
 int get_drive_names(wchar_t *volume_name, char *device);
 void replace_device_path(char **path);
+
+STATIC void win_whodata_release_resources(whodata *wdata) {
+    if (evt_subscribe_handle != NULL) {
+        EvtClose(evt_subscribe_handle);
+    }
+
+    if (wdata->fd != NULL) {
+        OSHash_Free(wdata->fd);
+    }
+
+    if (wdata->directories != NULL) {
+        OSHash_Free(wdata->directories);
+    }
+
+    if (wdata->device != NULL) {
+        free_strarray(wdata->device);
+    }
+
+    if (wdata->drive != NULL) {
+        free_strarray(wdata->drive);
+    }
+
+    atomic_int_set(&whodata_end, 1);
+}
 
 int set_winsacl(const char *dir, directory_t *configuration) {
     DWORD result = 0;
@@ -383,10 +413,18 @@ int run_whodata_scan() {
     }
 
     set_subscription_query(query);
-
+    sleep(WHODATA_START_DELAY); // sleep to avoid processing policy change events.
     // Set the whodata callback
-    if (!EvtSubscribe(NULL, NULL, L"Security", query,
-            NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
+
+    evt_subscribe_handle = EvtSubscribe(NULL,
+                           NULL,
+                           L"Security",
+                           query,
+                           NULL,
+                           NULL,
+                           (EVT_SUBSCRIBE_CALLBACK) whodata_callback,
+                           EvtSubscribeToFutureEvents);
+    if (evt_subscribe_handle == NULL) {
         merror(FIM_ERROR_WHODATA_EVENTCHANNEL);
         return 1;
     }
@@ -675,6 +713,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     whodata_directory *w_dir;
     unsigned long mask = 0;
     directory_t *configuration;
+    directory_t *dir_it;
+    OSListNode *node_it;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -892,6 +932,19 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
             case 4719:
                 merror(FIM_ERROR_WHODATA_WIN_POL_CH);
+                // Move all directories to realtime
+                w_rwlock_wrlock(&syscheck.directories_lock);
+                OSList_foreach(node_it, syscheck.directories) {
+                    dir_it = (directory_t *) node_it->data;
+                    dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
+                    dir_it->options &= ~WHODATA_ACTIVE;
+                    dir_it->dirs_status.status &= ~WD_IGNORE_REST;
+                    dir_it->dirs_status.status |= WD_CHECK_REALTIME;
+                    syscheck.realtime_change = 1;
+                }
+                w_rwlock_unlock(&syscheck.directories_lock);
+                win_whodata_release_resources(&syscheck.wdata);
+
             break;
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);
@@ -944,7 +997,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
-    while (FOREVER()) {
+    while (atomic_int_get(&whodata_end) == 0) {
         w_rwlock_wrlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
