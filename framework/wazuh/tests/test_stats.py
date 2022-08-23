@@ -83,7 +83,7 @@ def test_get_daemons_stats_ko():
     assert response.render()['data']['failed_items'][0]['error']['code'] == 1121, 'Expected error code was not returned'
 
 
-def side_effect_get_test_daemons_stats(daemon_path, agents_list):
+def side_effect_test_get_daemons_stats(daemon_path, agents_list):
     return {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [{'id': a} for a in agents_list]}
 
 
