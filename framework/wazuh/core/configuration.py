@@ -802,7 +802,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     dict
         The active configuration the agent is currently using.
     """
-    sockets_json_protocol = {'remote'}
+    sockets_json_protocol = {'remote', 'analysis'}
     component_socket_mapping = {'agent': 'agent', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
                                 'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
