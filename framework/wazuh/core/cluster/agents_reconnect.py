@@ -72,6 +72,8 @@ class AgentsReconnect:
         # Check agents balance
         self.balance_threshold = 3
         self.tolerance = tolerance
+        self.previous_deviation = None
+        self.expected_deviation = 0
 
         # Reconnection phase
         self.expected_rounds = 0
@@ -82,7 +84,7 @@ class AgentsReconnect:
         # General
         self.current_phase = AgentsReconnectionPhases.NOT_STARTED
 
-        # Provisional
+        # Sleep times
         self.posbalance_sleep = 60
         self.agents_connection_delay = 30
 
@@ -114,6 +116,7 @@ class AgentsReconnect:
                 self.nodes_stability_counter = 0
             self.expected_rounds = 0
             self.round_counter = 0
+            self.previous_deviation = None
             self.logger.debug("Reset all counters.")
         else:
             self.logger.debug(f"Disconnected {node_name} node, it is blacklisted, skipping counters reset.")
@@ -286,18 +289,12 @@ class AgentsReconnect:
 
         self.current_phase = AgentsReconnectionPhases.CHECK_AGENTS_BALANCE
         need_balance = await need_balance()
-        if need_balance == {}:
+
+        if need_balance == {} or not any([info['agents'] > 0 for info in need_balance.values()]):
             return {}
-
-        current_unbalanced_agents = await get_agents(need_balance)
-        if all(info['agents'] == [] for info in current_unbalanced_agents.values()):
-            self.logger.info('Agents are balanced in the cluster.')
-            current_unbalanced_agents.clear()
-            self.reset_counters(hard_reset=False)
         else:
-            self.logger.info('Agents are not balanced in the cluster.')
-
-        return current_unbalanced_agents
+            current_unbalanced_agents = await get_agents(need_balance)
+            return current_unbalanced_agents
 
     async def balance_previous_conditions(self) -> None:
         """Controller function for the pre-reconnection phase of agents.
@@ -345,6 +342,44 @@ class AgentsReconnect:
         dict
         """
         NotImplementedError("Not implemented yet")
+
+    @staticmethod
+    def absolute_deviation(data):
+        """Calculate how many agents are above or below the cluster average.
+
+        Parameters
+        ----------
+        data : dict
+            Dict with workers names, list of agents connected to each one and number of active agents.
+
+        Returns
+        -------
+        int
+            Number of agents that are above or below the cluster average.
+        """
+        agents_per_worker = [worker_agents['total'] for worker_agents in data.values()]
+        mean = sum(agents_per_worker) / len(agents_per_worker)
+        return sum(abs(item - mean) for item in agents_per_worker)
+
+    @staticmethod
+    def close_to_predicted(predicted, current, previous):
+        """Determines whether "current" value is closer to "predicted" than "previous".
+
+        Parameters
+        ----------
+        predicted : int
+            Expected absolute deviation.
+        current : int
+            Actual absolute deviation.
+        previous : INT
+            Absolute deviation in the last iteration.
+
+        Returns
+        -------
+        bool
+            Whether "current" value is closer to "predicted" than "previous".
+        """
+        return predicted == min([predicted, previous], key=lambda x: abs(x - current))
 
     @staticmethod
     def predict_distribution(nodes_info, max_assignments_per_node, calculate_rounds=False) -> dict:
@@ -406,7 +441,8 @@ class AgentsReconnect:
                 moved_agents[smallest_node] += 1
                 not calculate_rounds and agents_id.append(nodes_info_cpy[biggest_node]['agents'].pop())
 
-        return {'agents': agents_id, 'rounds': rounds, 'partial_balance': partial_balance}
+        return {'agents': agents_id, 'rounds': rounds, 'partial_balance': partial_balance,
+                'distribution': nodes_info_cpy}
 
     async def reconnect_agents(self, agents_to_reconnect) -> list:
         """Redistribute agents in cluster.
@@ -464,7 +500,9 @@ class AgentsReconnect:
 
             return self.env_status[biggest_node]['total'] - self.env_status[smallest_node]['total'] <= tolerance_window
 
-        if self.env_status == {}:
+        if self.env_status == {} or is_balanced_based_tolerance(self.tolerance):
+            self.logger.info('Agents are balanced in the cluster.')
+            self.reset_counters(hard_reset=False)
             return
 
         self.current_phase = AgentsReconnectionPhases.RECONNECT_AGENTS
@@ -487,20 +525,25 @@ class AgentsReconnect:
 
         elif self.round_counter < self.expected_rounds:
             self.round_counter += 1
+
+            # Stop if current deviation is closer to previous one than it is to the expected one.
+            current_deviation = self.absolute_deviation(self.env_status)
+            if self.previous_deviation is not None and not self.close_to_predicted(
+                    self.expected_deviation, current_deviation, self.previous_deviation):
+                self.logger.warning('Agents are not getting balanced even after reconnection. Something could be '
+                                    'misconfigured. Stopping task.')
+                self.current_phase = AgentsReconnectionPhases.HALT
+                return
+
             predict_info = self.predict_distribution(self.env_status, max_assignments_per_node)
+            self.previous_deviation = current_deviation
+            self.expected_deviation = self.absolute_deviation(predict_info['distribution'])
             self.logger.info(f'Reconnecting agents (round {self.round_counter}/{self.expected_rounds}).')
 
         else:
             self.reconnected_agents = []
-
-            if is_balanced_based_tolerance(self.tolerance):
-                self.logger.debug('The difference between the number of agents per node is within the tolerance limits '
-                                  f'({self.tolerance * 100}), resetting counters.')
-                self.reset_counters(hard_reset=False)
-                return
-
             self.logger.warning(f'Expected number of agent reconnection rounds has been exceeded '
-                                f'({self.round_counter + 1}/{self.expected_rounds}). Stopping this task.')
+                                f'({self.round_counter + 1}/{self.expected_rounds}). Stopping task.')
             self.current_phase = AgentsReconnectionPhases.HALT
             return
 
