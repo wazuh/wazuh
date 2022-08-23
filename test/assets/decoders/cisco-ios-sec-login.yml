@@ -8,7 +8,7 @@ metadata:
   description: "Cisco IOS, Facility Code: SEC_LOGIN [Secure login]"
 
 check:
-  - log.syslog.facility.name: SEC_LOGIN
+  - cisco.ios.facility: SEC_LOGIN
 
 parse:
   logql:
@@ -32,3 +32,6 @@ parse:
     # "%SEC_LOGIN-5-LOGIN_SUCCESS: Login Success [user: tech] [Source: UNKNOWN] [localport: 0] at 08:18:24 UTC Wed Jul 17 2019"
     - message: >-
         Login Success [user: <user.name>] [Source: <source.ip>?<_>] [localport: <source.port>] at <_time/any>
+
+# related.user
+# source.user.name
