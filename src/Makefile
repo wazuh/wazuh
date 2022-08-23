@@ -75,6 +75,7 @@ USE_MSGPACK_OPT=yes
 DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
+ALPINE?=no
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
@@ -136,6 +137,9 @@ else
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+ifneq (,$(filter ${ALPINE},YES yes y Y 1))
+		OSSEC_LIBS+=-lintl
+endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
@@ -593,6 +597,7 @@ help: failtarget
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make ALPINE=yes 	       Build by Alpine Linux systems"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -637,6 +642,7 @@ settings:
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
 	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
+	@echo "    ALPINE:	        ${ALPINE}"
 	@echo "Mysql settings:"
 	@echo "    includes:           ${MI}"
 	@echo "    libs:               ${ML}"
@@ -1008,9 +1014,12 @@ PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
+ifneq (,$(filter ${ALPINE},YES yes y Y 1))
+alpine_debug := "-DPATH_MAX=4096"
+endif
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${alpine_debug} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
 	${OSSEC_LINK} $@ $^
@@ -1487,6 +1496,9 @@ shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
 
 shared/%.o: shared/%.c
+ifneq (,$(filter ${ALPINE},YES yes y Y 1))
+	if [[ $^ == "shared/log_builder.c" ]]; then sed -i -e "/#ifdef __linux__/,/#endif/d" shared/log_builder.c; fi
+endif
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 shared/debug_op_proc.o: shared/debug_op.c
@@ -1767,8 +1779,12 @@ wazuh-execd: ${os_execd_o} active-response/active_responses.o
 os_logcollector_c := $(wildcard logcollector/*.c)
 os_logcollector_o := $(os_logcollector_c:.c=.o)
 os_logcollector_eventchannel_o := $(os_logcollector_c:.c=-event.o)
+logcollector_file := logcollector/logcollector.c
 
 logcollector/%.o: logcollector/%.c
+ifneq (,$(filter ${ALPINE},YES yes y Y 1))
+	if [[ $^ == "logcollector/logcollector.c" ]]; then sed -i -e '/#ifdef __linux__/,/#endif/d' logcollector/logcollector.c; fi
+endif
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
 
 logcollector/%-event.o: logcollector/%.c
