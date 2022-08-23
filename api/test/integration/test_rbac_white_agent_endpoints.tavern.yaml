@@ -134,7 +134,7 @@ test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
 
-  - name: Try to get Request-Agent-Client for agent 003 (Denied)
+  - name: Try to get client configuration from agent component for agent 003 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/003/config/agent/client"
@@ -144,7 +144,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Get Request-Agent-Client for agent 002 (Allowed)
+  - name: Get client configuration from agent component for agent 002 (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/002/config/agent/client"
