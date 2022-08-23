@@ -1,0 +1,34 @@
+---
+name: cisco-ios-sec-login
+
+parents:
+  - cisco-ios
+
+metadata:
+  description: "Cisco IOS, Facility Code: SEC_LOGIN [Secure login]"
+
+check:
+  - log.syslog.facility.name: SEC_LOGIN
+
+parse:
+  logql:
+
+    # Quiet mode is now on
+    # "%SEC_LOGIN-1-QUIET_MODE_ON: Still timeleft for watching failures is 0 secs, [user: admin] [Source: UNKNOWN] [localport: 23] [Reason: Login Authentication Failed] [ACL: sl_def_acl] at 07:03:36 UTC Fri Jun 5 2015"
+    - message: >-
+        Still timeleft for watching failures is <_frameSec/number> secs, [user: <user.name>] [Source: <source.ip>?<_>] [localport: <source.port>] [Reason: <_reason/any>] [ACL: <_acl/any>] at <_time/any>
+
+    # Quiet mode is now off.
+    # "%SEC_LOGIN-5-QUIET_MODE_OFF: Quiet Mode is OFF, because block period timed out at 16:22:23 UTC Wed Feb 26 2003"
+    # TODO: should be "Quiet Mode is OFF, because <_reason/any> at <_time/any>" but fails
+    - message: Quiet Mode is OFF, because <_reason/any>
+
+    # A user name or password is invalid.
+    # "%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: root] [Source: UNKNOWN] [localport: 23] [Reason: Login Authentication Failed] at 18:45:55 UTC Fri Jun 5 2015"
+    - message: >-
+        Login failed [user: <user.name>] [Source: <source.ip>?<_>] [localport: <source.port>] [Reason: <_reason/any>] at <_time/any>
+
+    # Login has succeeded.
+    # "%SEC_LOGIN-5-LOGIN_SUCCESS: Login Success [user: tech] [Source: UNKNOWN] [localport: 0] at 08:18:24 UTC Wed Jul 17 2019"
+    - message: >-
+        Login Success [user: <user.name>] [Source: <source.ip>?<_>] [localport: <source.port>] at <_time/any>
