@@ -16,6 +16,8 @@ decoders:
   # Exclusive Syslog decoders
   - default_syslog_queue
   - cisco-ios
+  - cisco-ios-sec-login
+  - cisco-ios-sec
 
 rules:
   - source_malicious_ip
