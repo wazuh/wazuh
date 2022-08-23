@@ -87,6 +87,7 @@ def weekly():
 def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
     """Get agents statistical information from the specified daemons.
     If the daemons list is empty, the stats from all daemons will be retrieved.
+    If the `all` keyword is included in the agents list, the stats from all the agents will be retrieved.
 
     Parameters
     ----------
