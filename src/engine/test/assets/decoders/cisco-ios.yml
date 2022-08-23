@@ -20,22 +20,30 @@ parse:
     # Parse header only
 
     # "Feb 14 09:40:10.326: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/1, changed state to up"
-    - event.original: '<timestamp/SYSLOG>.<_seqID/number>: %<log.syslog.facility.name>-<log.syslog.severity.code>-<log.syslog.severity.name>: <message/any>'
+    - event.original: '<timestamp/SYSLOG>.<_seqID/number>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
 
     # Mar  1 18:46:11: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
-    - event.original: '<timestamp/SYSLOG>: %<log.syslog.facility.name>-<log.syslog.severity.code>-<log.syslog.severity.name>: <message/any>'
+    - event.original: '<timestamp/SYSLOG>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
 
     # "00:00:46: %LINK-3-UPDOWN: Interface Port-channel1, changed state to up"
     # "18:47:02: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)"
-    - event.original: '<timestamp/24H_LOCALTIME>: %<log.syslog.facility.name>-<log.syslog.severity.code>-<log.syslog.severity.name>: <message/any>'
+    - event.original: '<timestamp/24H_LOCALTIME>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
 
     # Mar  1 18:48:50.483 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
-    - event.original: '<timestamp/RC3154_W_ID_TIMEZONE>: %<log.syslog.facility.name>-<log.syslog.severity.code>-<log.syslog.severity.name>: <message/any>'
+    - event.original: '<timestamp/RC3154_W_ID_TIMEZONE>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
+
+
 
 normalize:
   - map:
       # host.os.platform: cisco-ios
-      host.os.type: cisco-ios
-      host.ip: wazuh.origin
-      observer.vendor: Cisco
+      # host.os.type: cisco-ios
+      # host.ip: wazuh.origin
+      # observer.vendor: Cisco
+      service.type: "cisco"
       event.category: [ network ]
+      event.type: [ connection, firewall ]
+      # Maybe:
+      log.source.address: $wazuh.origin
+      # "network.type": "ipv4",
+      # "related.ip": []
