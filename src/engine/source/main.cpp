@@ -202,53 +202,59 @@ int main(int argc, char* argv[])
     // TODO: handle hot modification of routes
     for (auto i = 0; i < nThreads; ++i)
     {
-        std::thread t {
-            [=, &eventBuffer = server.output()]()
+        std::thread t {[=, &eventBuffer = server.output()]()
+        {
+            auto controller = rxbk::buildRxPipeline(env);
+            // Trace cerr logger
+            // TODO: this will need to be handled by the api and on the
+            // reworked router
+            auto cerrLogger = [name = environment](auto msg) {
+                std::stringstream ssTid;
+                ssTid << std::this_thread::get_id();
+                std::cerr << fmt::format("{}: [{}]{}\n", ssTid.str(), name, msg);
+            };
+            if (traceAll)
             {
-                auto controller = rxbk::buildRxPipeline(env);
-                // Trace cerr logger
-                // TODO: this will need to be handled by the api and on the
-                // reworked router
-                auto cerrLogger = [name = environment](auto msg)
-                {
-                    std::stringstream ssTid;
-                    ssTid << std::this_thread::get_id();
-                    std::cerr << fmt::format("{}: [{}]{}\n", ssTid.str(), name, msg);
-                };
-                if (traceAll)
-                {
-                    auto subscriber = rxcpp::make_subscriber<std::string>(
-                        cerrLogger, [](auto) {}, []() {});
-                    controller.listenOnAllTrace(subscriber);
-                }
-                // else if (trace)
-                // {
-                //     for (auto assetName : traceNames)
-                //     {
-                //         router.subscribeTraceSink(
-                //             "test_environment", assetName, cerrLogger);
-                //     }
-                // }
+                auto subscriber = rxcpp::make_subscriber<std::string>(
+                    cerrLogger, [](auto) {}, []() {});
+                controller.listenOnAllTrace(subscriber);
+            }
+            // else if (trace)
+            // {
+            //     for (auto assetName : traceNames)
+            //     {
+            //         router.subscribeTraceSink(
+            //             "test_environment", assetName, cerrLogger);
+            //     }
+            // }
 
-                // Thread loop
-                while (gs_doRun)
-                {
-                    std::string event;
+            // Thread loop
+            while (gs_doRun)
+            {
+                std::string event;
 
-                    if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                {
+                    WAZUH_TRACE_SCOPE("Router on-next");
+                    try
                     {
-                        WAZUH_TRACE_SCOPE("Router on-next");
                         auto result =
                             base::result::makeSuccess(ProtocolHandler::parse(event));
                         controller.ingestEvent(
                             std::make_shared<base::result::Result<base::Event>>(
                                 std::move(result)));
                     }
+                    catch (const std::exception& e)
+                    {
+                        WAZUH_LOG_ERROR("An error ocurred while parsing a message: [{}]",
+                                        e.what());
+                    }
                 }
+            }
 
-                controller.complete();
-                return 0;
-            }};
+            controller.complete();
+            return 0;
+        }};
 
         gs_threadList.push_back(std::move(t));
     }
