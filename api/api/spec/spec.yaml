@@ -6214,8 +6214,8 @@ paths:
                     - timestamp: 2022-07-27T14:09:20+00:00
                       name: wazuh-remoted
                       agents:
-                        - id: 1
-                          uptime: 2022-07-27T14:09:20+00:00
+                        - uptime: 2022-07-27T14:09:20+00:00
+                          id: 1
                           metrics:
                             messages:
                               received_breakdown:
@@ -6236,8 +6236,8 @@ paths:
                     - timestamp: 2022-07-27T14:09:20+00:00
                       name: wazuh-analysisd
                       agents:
-                        - id: 1
-                          uptime: 2022-07-27T14:09:20+00:00
+                        - uptime: 2022-07-27T14:09:20+00:00
+                          id: 1
                           metrics:
                             events:
                               processed: 195
