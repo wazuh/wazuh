@@ -4,7 +4,7 @@ parents:
   - aws_s3
 
 check:
-  - _jsonEventOriginal.aws.operation: +s_eq/POST
+  - event.action: +s_eq/POST
 
 normalize:
   - map:

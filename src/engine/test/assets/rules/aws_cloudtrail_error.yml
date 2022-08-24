@@ -4,7 +4,7 @@ parents:
   - aws_cloudtrail
 
 check:
-  - _jsonEventOriginal.aws.errorCode: +exists # can it exist empty?
+  - aws.cloudtrail.error_code: +exists # can it exist empty?
 
 normalize:
   - map:
