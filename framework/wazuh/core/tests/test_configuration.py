@@ -335,46 +335,47 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
             configuration.upload_group_file('default', [], 'a.conf')
 
 
-@pytest.mark.parametrize("agent_id, component, socket, rec_msg", [
-    ('000', 'auth', 'auth', 'ok {"auth": {"use_password": "yes"}}'),
-    ('000', 'auth', 'auth', 'ok {"auth": {"use_password": "no"}}'),
-    ('000', 'auth', 'auth', 'ok {"auth": {}}'),
-    ('000', 'agent', 'agent', 'ok {"agent": {"enabled": "yes"}}'),
-    ('000', 'agentless', 'agentless', 'ok {"agentless": {"enabled": "yes"}}'),
-    ('000', 'analysis', 'analysis', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'com', 'com', 'ok {"com": {"enabled": "yes"}}'),
-    ('000', 'csyslog', 'csyslog', 'ok {"csyslog": {"enabled": "yes"}}'),
-    ('000', 'integrator', 'integrator', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('000', 'logcollector', 'logcollector', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('000', 'mail', 'mail', 'ok {"mail": {"enabled": "yes"}}'),
-    ('000', 'monitor', 'monitor', 'ok {"monitor": {"enabled": "yes"}}'),
-    ('000', 'request', 'remote', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'syscheck', 'syscheck', 'ok {"syscheck": {"enabled": "yes"}}'),
-    ('000', 'wmodules', 'wmodules', 'ok {"wmodules": {"enabled": "yes"}}'),
-    ('001', 'auth', 'remote', 'ok {"auth": {"use_password": "yes"}}'),
-    ('001', 'auth', 'remote', 'ok {"auth": {"use_password": "no"}}'),
-    ('001', 'auth', 'remote', 'ok {"auth": {}}'),
-    ('001', 'agent', 'remote', 'ok {"agent": {"enabled": "yes"}}'),
-    ('001', 'agentless', 'remote', 'ok {"agentless": {"enabled": "yes"}}'),
-    ('001', 'analysis', 'remote', 'ok {"analysis": {"enabled": "yes"}}'),
-    ('001', 'com', 'remote', 'ok {"com": {"enabled": "yes"}}'),
-    ('001', 'csyslog', 'remote', 'ok {"csyslog": {"enabled": "yes"}}'),
-    ('001', 'integrator', 'remote', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('001', 'logcollector', 'remote', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('001', 'mail', 'remote', 'ok {"mail": {"enabled": "yes"}}'),
-    ('001', 'monitor', 'remote', 'ok {"monitor": {"enabled": "yes"}}'),
-    ('001', 'request', 'remote', 'ok {"request": {"enabled": "yes"}}'),
-    ('001', 'syscheck', 'remote', 'ok {"syscheck": {"enabled": "yes"}}'),
-    ('001', 'wmodules', 'remote', 'ok {"wmodules": {"enabled": "yes"}}')
+@pytest.mark.parametrize("agent_id, component, socket, socket_dir, rec_msg", [
+    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
+    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
+    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
+    ('000', 'agent', 'agent', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
+    ('000', 'agentless', 'agentless', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
+    ('000', 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('000', 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
+    ('000', 'csyslog', 'csyslog', 'sockets', 'ok {"csyslog": {"enabled": "yes"}}'),
+    ('000', 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
+    ('000', 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
+    ('000', 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
+    ('000', 'monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
+    ('000', 'request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('000', 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
+    ('000', 'wazuh-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
+    ('000', 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
+    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
+    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
+    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {}}'),
+    ('001', 'agent', 'remote', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
+    ('001', 'agentless', 'remote', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
+    ('001', 'analysis', 'remote', 'sockets', 'ok {"analysis": {"enabled": "yes"}}'),
+    ('001', 'com', 'remote', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
+    ('001', 'csyslog', 'remote', 'sockets', 'ok {"csyslog": {"enabled": "yes"}}'),
+    ('001', 'integrator', 'remote', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
+    ('001', 'logcollector', 'remote', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
+    ('001', 'mail', 'remote', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
+    ('001', 'monitor', 'remote', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
+    ('001', 'request', 'remote', 'sockets', 'ok {"request": {"enabled": "yes"}}'),
+    ('001', 'syscheck', 'remote', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
+    ('001', 'wmodules', 'remote', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}')
 ])
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
 @patch('wazuh.core.common.WAZUH_PATH', new='/var/ossec')
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
-                                  rec_msg):
+                                  socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
-    sockets_json_protocol = {'remote', 'analysis'}
+    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     config = MagicMock()
 
     socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id != '000' else "WazuhSocketJSON"
@@ -386,7 +387,7 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
                     result = configuration.get_active_configuration(agent_id, component, config)
 
                     mock__init__.assert_called_with(
-                        f"/var/ossec/queue/sockets/{socket}" if agent_id == '000' else REMOTED_SOCKET)
+                        f"/var/ossec/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
 
                     if socket_class == "WazuhSocket":
                         mock_send.assert_called_with(f"getconfig {config}".encode() if agent_id == '000' else \

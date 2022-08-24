@@ -802,11 +802,16 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     dict
         The active configuration the agent is currently using.
     """
-    sockets_json_protocol = {'remote', 'analysis'}
+    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     component_socket_mapping = {'agent': 'agent', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
                                 'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
-                                'request': 'remote', 'syscheck': 'syscheck', 'wmodules': 'wmodules'}
+                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
+    component_socket_dir_mapping = {'agent': 'sockets', 'agentless': 'sockets', 'analysis': 'sockets',
+                                    'auth': 'sockets', 'com': 'sockets', 'csyslog': 'sockets', 'integrator': 'sockets',
+                                    'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
+                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
+                                    'wmodules': 'sockets'}
 
     if not component or not configuration:
         raise WazuhError(1307)
@@ -819,7 +824,8 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     def get_active_configuration_manager():
         """Get manager active configuration."""
         # Communicate with the socket that corresponds to the component requested
-        dest_socket = os_path.join(common.WAZUH_PATH, "queue", "sockets", component_socket_mapping[component])
+        dest_socket = os_path.join(common.WAZUH_PATH, "queue", component_socket_dir_mapping[component],
+                                   component_socket_mapping[component])
 
         # Verify component configuration
         if not os.path.exists(dest_socket):

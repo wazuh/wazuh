@@ -3620,6 +3620,7 @@ components:
         - monitor
         - request
         - syscheck
+        - wazuh-db
         - wmodules
     configuration:
       in: path
@@ -3807,6 +3808,16 @@ components:
         <td><code>&lt;syscheck&gt;</code>, <code>&lt;rootcheck&gt;</code></td>
         </tr>
         <tr>
+        <td>wazuh-db</td>
+        <td>internal</td>
+        <td><code>&lt;wazuh_db&gt;</code></td>
+        </tr>
+        <tr>
+        <td>wazuh-db</td>
+        <td>wdb</td>
+        <td><code>&lt;wdb&gt;</code></td>
+        </tr>
+        <tr>
         <td>wmodules</td>
         <td>wmodules</td>
         <td><code>&lt;wodle&gt;</code></td>
@@ -3840,6 +3851,7 @@ components:
         - remote
         - syscheck
         - rootcheck
+        - wdb
         - wmodules
     cve:
       in: query
