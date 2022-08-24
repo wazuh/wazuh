@@ -5,6 +5,21 @@
 #include "syntax.hpp"
 #include <fmt/format.h>
 
+namespace
+{
+void substituteDefinition(const std::string& key,
+                          const std::string& value,
+                          std::string& text)
+{
+    size_t pos = 0;
+    while ((pos = text.find(key, pos)) != std::string::npos)
+    {
+        text.replace(pos, key.length(), value);
+        pos += value.length();
+    }
+}
+} // namespace
+
 namespace builder::internals
 {
 
@@ -38,6 +53,23 @@ void substituteDefinitions(Json& asset)
                 "[substituteDefinitions(asset)] Could not erase [{}]", DEFINITIONS_KEY));
         }
 
+        // Definitions can reference other definitions, so we need to check other
+        // definitions as well.
+        for (auto& [key, value] : definitionsObject)
+        {
+            for (auto& [key2, value2] : definitionsObject)
+            {
+                if (key != key2)
+                {
+                    auto formatKey = syntax::REFERENCE_ANCHOR + key;
+                    auto formatValue = value.getString().value();
+                    auto formatStr = value2.getString().value();
+                    substituteDefinition(formatKey, formatValue, formatStr);
+                    value2.setString(formatStr);
+                }
+            }
+        }
+
         auto assetStr = asset.str();
         for (auto& [key, value] : definitionsObject)
         {
@@ -46,16 +78,9 @@ void substituteDefinitions(Json& asset)
                 throw std::runtime_error(fmt::format(
                     "[substituteDefinitions(asset)] Definition [{}] is null", key));
             }
-
             auto formatKey = syntax::REFERENCE_ANCHOR + key;
             auto formatValue = value.getString().value();
-
-            size_t pos = 0;
-            while ((pos = assetStr.find(formatKey, pos)) != std::string::npos)
-            {
-                assetStr.replace(pos, formatKey.length(), formatValue);
-                pos += formatValue.length();
-            }
+            substituteDefinition(formatKey, formatValue, assetStr);
         }
 
         try
