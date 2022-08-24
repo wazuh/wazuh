@@ -38,6 +38,7 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         // {"UnixDate", "%a %b %d %T %Z %Y"},
         {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}},
         {"ISO8601", {"%Y-%d-%mT%T%z", "2018-08-14T14:30:02.203151+02:00"}},
+        {"ISO8601_Z", {"%Y-%d-%mT%TZ", "2018-08-14T14:30:02.203151Z"}},
         {"HTTPDATE", {"%d/%b/%Y:%T %z", "26/Dec/2016:16:22:14 +0000"}},
         {"NGINX_ERROR", {"%Y/%m/%d %T", "2016/10/25 14:49:34"}},
         {"APACHE_ERROR", {"%a %b %d %T %Y", "Mon Dec 26 16:15:55.103786 2016"}},
@@ -956,7 +957,7 @@ bool parseQuotedString(const char** it, Parser const& parser, ParseResult& resul
         return false;
     }
 
-    const char* end = *it - endQuote.size() - 1;
+    const char* end = *it - endQuote.size();
     result[parser.name] = std::string {start, end};
     return true;
 }
