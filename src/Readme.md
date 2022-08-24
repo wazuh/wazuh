@@ -188,3 +188,23 @@ Output Example executing the SCANBUILD analysis with `winagent` target:
 [ScanBuild: PASSED]
 <winagent>[SCANBUILD: PASSED]<winagent>
 ```
+
+## Compile Wazuh on Alpine Linux
+### Dependencies
+There are some dependencies in order to make an agent on Alpine Linux. To install those dependencies we should execute:
+```
+#> apk --update add git less openssh openssl openssl-dev libgcc bash make gcc g++ cmake curl
+automake linux-headers autoconf libtool procps python3 gettext-dev
+```
+
+### Compile Wazuh
+After that we can execute this command to install the dependencies necessary to build on Alpine:
+```
+#> make deps TARGET=agent EXTERNAL_SRC_ONLY=yes
+```
+
+After install the dependencies, we can build Wazuh in Alpine Linux using:
+
+```
+#> make TARGET=agent ALPINE=1
+```
