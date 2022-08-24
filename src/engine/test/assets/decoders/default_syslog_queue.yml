@@ -1,9 +1,8 @@
 ---
 name: default_syslog_queue
 
-check:
-  - queue: 50 # SYSLOG_MQ -> '2' = 50
+metadata:
+  description: Exclusive parent decoder por Wazuh-Syslog server (SYSLOG_MQ)
 
-normalize:
-  - map:
-      event.original: $message
+check:
+  - wazuh.queue: 50 # SYSLOG_MQ -> '2' = 50
