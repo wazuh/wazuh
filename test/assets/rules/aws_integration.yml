@@ -1,11 +1,7 @@
 name: aws_integration
 
-parents:
-  - json
-
 check:
-  - wazuh.queue: +i_eq/49
-  - _jsonEventOriginal.integration: +s_eq/aws
+  - wazuh.integration: +s_starts/aws
 
 normalize:
   - map:

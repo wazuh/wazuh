@@ -1,0 +1,17 @@
+name: aws
+
+metadata:
+  description: Decoder for AWS Logs
+  product.name: AWS
+
+parents:
+  - json
+
+- check:
+  - _json.integration: +s_starts/aws
+
+normalize:
+  - map:
+      wazuh.integration: $_json.integration
+      wazuh.aws.source: $_json.aws.source
+      wazuh.aws.response_elements.console_login: $_json.aws.responseElements.ConsoleLogin

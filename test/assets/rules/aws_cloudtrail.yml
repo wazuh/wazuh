@@ -4,8 +4,8 @@ parents:
   - aws_integration
 
 check:
-  - _jsonEventOriginal.aws.source: +s_eq/cloudtrail
-  - _jsonEventOriginal.aws.eventName: +kvdb_match/aws-eventnames
+  - wazuh.aws.source: +s_eq/cloudtrail
+  - event.action: +kvdb_match/aws-eventnames
 
 normalize:
   - map:

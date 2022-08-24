@@ -1,0 +1,87 @@
+name: aws_cloudtrail
+
+metadata:
+  description: Decoder for AWS CloudTrail Logs
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html
+  product.name: AWS CloudTrail
+
+parents:
+  - aws
+
+- check:
+  - wazuh.aws.source: +s_eq/cloudtrail
+
+normalize:
+  - check:
+      _json.aws.previousDigestHashAlgorithm: +s_eq/SHA-256
+    map:
+      file.hash.sha256: $_json.aws.previousDigestSignature
+
+  - map:
+      aws.cloudtrail.api_version: $_json.aws.apiVersion
+      aws.cloudtrail.digest.end_time: $_json.aws.digestEndTime
+      aws.cloudtrail.digest.log_files: $_json.aws.logFiles
+      aws.cloudtrail.digest.newest_event_time: $_json.aws.newestEventTime
+      aws.cloudtrail.digest.oldest_event_time: $_json.aws.oldestEventTime
+      aws.cloudtrail.digest.previous_hash_algorithm: $_json.aws.previousDigestHashAlgorithm
+      aws.cloudtrail.digest.previous_s3_bucket: $_json.aws.previousDigestS3Bucket
+      aws.cloudtrail.digest.public_key_fingerprint: $_json.aws.publicKeyFingerprint
+      aws.cloudtrail.digest.s3_bucket: $_json.aws.digestEndTime
+      aws.cloudtrail.digest.signature_algorithm: $_json.aws.digestSignatureAlgorithm
+      aws.cloudtrail.digest.start_time: $_json.aws.digestStartTime
+      aws.cloudtrail.error_code: $_json.aws.errorCode
+      aws.cloudtrail.error_message: $_json.aws.errorMessage
+      aws.cloudtrail.event_category: $_json.aws.eventCategory
+      aws.cloudtrail.event_type: $_json.aws.eventType
+      aws.cloudtrail.event_version: $_json.aws.eventVersion
+      aws.cloudtrail.insight_details: $_json.aws.insightDetails
+      aws.cloudtrail.management_event: $_json.aws.managementEvent
+      aws.cloudtrail.read_only: $_json.aws.readOnly
+      aws.cloudtrail.recipient_account_id: $_json.aws.recipientAccountId
+      aws.cloudtrail.request_id: $_json.aws.requestId
+      aws.cloudtrail.resources.account_id: $_json.aws.resources.accountId
+      aws.cloudtrail.resources.arn: $_json.aws.resources.ARN
+      aws.cloudtrail.resources.type: $_json.aws.resources.type
+      aws.cloudtrail.shared_event_id: $_json.aws.sharedEventId
+      aws.cloudtrail.user_identity.access_key_id: $_json.aws.userIdentity.accessKeyId
+      aws.cloudtrail.user_identity.arn: $_json.aws.userIdentity.arn
+      aws.cloudtrail.user_identity.invoked_by: $_json.aws.userIdentity.invokedBy
+      aws.cloudtrail.user_identity.session_context.creation_date: $_json.aws.userIdentity.sessionContext.attributes.creationDate
+      aws.cloudtrail.user_identity.session_context.mfa_authenticated: $_json.aws.userIdentity.sessionContext.attributes.mfaAuthenticated
+      aws.cloudtrail.user_identity.session_context.session_issuer.account_id: $_json.aws.userIdentity.sessionContext.sessionIssuer.accountId
+      aws.cloudtrail.user_identity.session_context.session_issuer.arn: $_json.aws.userIdentity.sessionContext.sessionIssuer.arn
+      aws.cloudtrail.user_identity.session_context.session_issuer.principal_id: $_json.aws.userIdentity.sessionContext.sessionIssuer.principalId
+      aws.cloudtrail.user_identity.type: $_json.aws.userIdentity.type
+      aws.cloudtrail.vpc_endpoint_id: $_json.aws.vpcEndpointId
+
+      cloud.account.id: $_json.aws.awsAccountId
+      cloud.account.id: $_json.aws.userIdentity.accountId
+      cloud.region: $_json.aws.awsRegion
+
+      event.action: $_json.aws.eventName
+      event.id: $_json.aws.eventID
+      event.provider: $_json.aws.eventSource
+
+      file.path: $_json.aws.digestS3Object
+
+      related.hash: $_json.aws.previousDigestSignature
+      related.user: +s_append/$_json.aws.userIdentity.userName
+
+      source.address: $_json.aws.sourceIPAddress
+      source.ip: $_json.aws.sourceIPAddress
+      # TODO: implement geolocalization
+      # source.geo: +geo/$source.ip
+      # source.as: +geo/$source.ip # database_file: GeoLite2-ASN.mmdb | properties:[asn, organization_name]
+
+      timestamp: $_json.aws.eventTime
+
+      user_agent: $_json.aws.userAgent
+      user_agent.original: $_json.aws.userAgent
+      user.id: $_json.aws.userIdentity.principalId
+      user.name: $_json.aws.userIdentity.sessionContext.sessionIssuer.userName
+      user.name: $_json.aws.userIdentity.userName
+
+      # TODO: check the "scripts" and assignments related to "flattened" fields
+
+      json: +delete_field
