@@ -368,7 +368,7 @@ async def get_software(request, software_ids: list = None, pretty: bool = False,
     Returns
     -------
     web.Response
-        API response with the MITRE's software information
+        API response with the MITRE's software information.
     """
     f_kwargs = {
         'filters': {
