@@ -1,0 +1,163 @@
+name: aws-elb
+
+parents:
+  - default_decoder
+
+definitions:
+  ELBTIMESTAMP: <timestamp/ISO8601_Z>
+  ELBNAME: <aws.elb.name>
+  ELBSOURCE: <source.ip>:<source.port>
+  # ELBBACKEND: '(?:-|%{IP:aws.elb.backend.ip}:%{POSINT:aws.elb.backend.port})'
+  ELBBACKEND: <aws.elb.backend.ip>:<aws.elb.backend.port>
+  # ELBPROCESSINGTIME: >-
+  # (?:-1|%{NUMBER:aws.elb.request_processing_time.sec:float})
+  # (?:-1|%{NUMBER:aws.elb.backend_processing_time.sec:float})
+  # (?:-1|%{NUMBER:aws.elb.response_processing_time.sec:float})
+  ELBPROCESSINGTIME: >-
+    <aws.elb.request_processing_time.sec>
+    <aws.elb.backend_processing_time.sec>
+    <aws.elb.response_processing_time.sec>
+  #  ELBSSL: >-
+  #         (?:-|%{NOTSPACE:aws.elb.ssl_cipher})
+  #         (?:-|%{NOTSPACE:aws.elb.ssl_protocol})
+  ELBSSL: <aws.elb.ssl_cipher> <aws.elb.ssl_protocol>
+  ELBCOMMON: $ELBTIMESTAMP $ELBNAME $ELBSOURCE $ELBBACKEND $ELBPROCESSINGTIME
+  ELBHTTPLOG: >-
+    $ELBCOMMON
+    <http.response.status_code>
+    <aws.elb.backend.http.response.status_code>
+    <http.request.body.bytes>
+    <http.response.body.bytes>
+    \"<http.request.method> <_tmp.uri_orig> <http.version>\"
+    <_tmp.user_agent/quoted>
+    $ELBSSL
+  ELBTCPLOG: >-
+    $ELBCOMMON
+    -
+    -
+    <source.bytes>
+    <destination.bytes>
+    \"- - -<_/ >\"
+    \"-\"
+    $ELBSSL
+  ELBV2TYPE: <aws.elb.type>
+  ELBV2LOGVERSION: <_/ > # ignore spaces
+
+check:
+  - wazuh.queue: 49
+  - event.original: +exists
+
+parse:
+  logql:
+    # HTTP (Classic ELB)
+    - event.original: $ELBHTTPLOG
+    # TCP (Classic ELB)
+    - event.original: $ELBTCPLOG
+    # HTTP from Application Load Balancers (v2 Load Balancers)
+    - event.original: >-
+        $ELBV2TYPE
+        $ELBHTTPLOG
+        <aws.elb.target_group.arn>
+        "<aws.elb.trace_id>"
+        "<destination.domain>"
+        "<aws.elb.chosen_cert.arn>"
+        <aws.elb.matched_rule_priority>
+        <event.start/ISO8601_Z>
+        <_tmp.actions_executed/quoted>
+        "<aws.elb.redirect_url>"
+        "<aws.elb.error.reason>"<?_tmp.http_v2_optional>
+    # TODO: process _tmp.http_v2_optional:: ( \"(?:-|%{DATA:_tmp.target_port})\")?( \"(?:-|%{DATA:_tmp.target_status_code})\")?( \"(?:-|%{DATA:aws.elb.classification})\")?( \"(?:-|%{DATA:aws.elb.classification_reason})\")?
+    # TCP from Network Load Balancers (v2 Load Balancers)
+    - event.original: >-
+        $ELBV2TYPE
+        $ELBV2LOGVERSION
+        $ELBTIMESTAMP
+        $ELBNAME
+        <aws.elb.listener>
+        $ELBSOURCE
+        $ELBBACKEND
+        <aws.elb.connection_time.ms>
+        <aws.elb.tls_handshake_time.ms>
+        <source.bytes>
+        <destination.bytes>
+        <NUMBER:aws.elb.incoming_tls_alert>
+        <aws.elb.chosen_cert.arn>
+        <aws.elb.chosen_cert.serial>
+        $ELBSSL
+        <aws.elb.ssl_named_group>
+        <NOTSPACE:destination.domain>
+
+normalize:
+  - map:
+      event.kind: event
+      event.dataset: aws
+      event.module: aws
+      cloud.provider: aws
+      service.type: aws
+      trace.id: $aws.elb.trace_id
+      # TODO: add splits once wazuhdb is merged
+      # - split:
+      #     field: '_tmp.actions_executed'
+      #     target_field: 'aws.elb.action_executed'
+      #     separator: ','
+      #     ignore_missing: true
+
+      # - split:
+      #     field: '_tmp.target_port'
+      #     target_field: 'aws.elb.target_port'
+      #     separator: ' '
+      #     ignore_missing: true
+
+      # - split:
+      #     field: '_tmp.target_status_code'
+      #     target_field: 'aws.elb.target_status_code'
+      #     separator: ' '
+      #     ignore_missing: true
+      event.end: $timestamp
+      tls.cipher:
+        $aws.elb.ssl_cipher
+        # - script:
+        #     lang: painless
+        #     if: ctx.aws?.elb?.ssl_protocol != null
+        #     source: >-
+        #       def parts = ctx.aws.elb.ssl_protocol.splitOnToken("v");
+        #       if (parts.length != 2) {
+        #         return;
+        #       }
+        #       if (parts[1].contains(".")) {
+        #         ctx.tls.version = parts[1];
+        #       } else {
+        #         ctx.tls.version = parts[1].substring(0,1) + "." + parts[1].substring(1);
+        #       }
+        #       ctx.tls.version_protocol = parts[0].toLowerCase();
+
+  - check:
+      - http: +exists
+    map:
+      aws.elb.protocol: http
+      event.category: +s_append/web
+
+  - check:
+      - http.response.status_code: +i_lt/400
+    map:
+      event.outcome: success
+
+  - check:
+      - http.response.status_code: +i_ge/400
+    map:
+      event.outcome: failure
+
+  - check:
+      - http: +not_exists
+    map:
+      aws.elb.protocol: tcp
+      event.category: +s_append/network
+
+  # - uri_parts:
+  #     if: 'ctx?._tmp?.uri_orig != null'
+  #     field: _tmp.uri_orig
+  #     ignore_failure: true
+  # - user_agent:
+  #     if: 'ctx?._tmp?.user_agent != null'
+  #     field: _tmp.user_agent
+  #     ignore_missing: true
