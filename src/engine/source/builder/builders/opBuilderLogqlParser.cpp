@@ -37,7 +37,7 @@ static bool any2Json(std::any const& anyVal, std::string const& path, base::Even
     else if (typeid(float) == type || typeid(double) == type)
     {
         json::Json val;
-        val.setDouble(std::any_cast<double>(anyVal));
+        val.setDouble(std::any_cast<float>(anyVal));
         event->set(path, val);
     }
     else if (typeid(std::string) == type)
