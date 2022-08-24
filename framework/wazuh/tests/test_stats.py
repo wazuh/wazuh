@@ -116,9 +116,7 @@ def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents
     # Check failed items
     error_codes_in_failed_items = [error.code for error in result.failed_items.keys()]
     failed_items = list(result.failed_items.values())
-    errors_and_items = {}
-    for i, error in enumerate(error_codes_in_failed_items):
-        errors_and_items[str(error)] = failed_items[i]
+    errors_and_items = {str(error): failed_items[i] for i, error in enumerate(error_codes_in_failed_items)}
     assert expected_errors_and_items == errors_and_items
 
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
@@ -150,8 +148,8 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     # get_daemons_stats_socket called with the expected parameters
     calls = []
     for daemon in expected_daemons_list:
-        calls.append(call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list='all', last_id=0))
-        calls.append(call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list='all', last_id=9))
+        calls.extend((call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list='all', last_id=0),
+                      call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list='all', last_id=9)))
     mock_get_daemons_stats_socket.assert_has_calls(calls)
 
     # Check affected_items

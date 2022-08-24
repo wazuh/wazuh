@@ -2,6 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import contextlib
+
 from wazuh.core import common
 from wazuh.core import exception
 from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
@@ -117,11 +119,9 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
             agent_list = set(agent_list)
 
-            try:
+            with contextlib.suppress(KeyError):
                 agent_list.remove('000')
                 result.add_failed_item('000', exception.WazuhError(1703))
-            except KeyError:
-                pass
 
             # Add non-existent agents to failed_items
             not_found_agents = agent_list - system_agents
