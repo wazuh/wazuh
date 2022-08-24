@@ -3445,8 +3445,8 @@ static void test_get_file_user_LookupAccountSid_error(void **state) {
 
     expect_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
-
-    expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
+    expect_FormatMessage_call("Access is denied.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6950): Error in LookupAccountSid getting user. (5): Access is denied.");
 
     array[0] = get_file_user("C:\\a\\path", &array[1]);
 
@@ -3986,8 +3986,8 @@ void test_get_registry_group_LookupAccountSid_fails(void **state) {
 
     expect_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
-
-    expect_string(__wrap__merror, formatted_msg, "Error in LookupAccountSid.");
+    expect_FormatMessage_call("Access is denied.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6950): Error in LookupAccountSid getting group. (5): Access is denied.");
 
     group = get_registry_group(&group_id, hndl);
 

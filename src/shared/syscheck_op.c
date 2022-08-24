@@ -760,7 +760,17 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
             mdebug1("Account owner not found for '%s'", path);
         }
         else {
-            merror("Error in LookupAccountSid.");
+            LPSTR messageBuffer = NULL;
+            LPSTR end;
+
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                          NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+            if (end = strchr(messageBuffer, '\r'), end) {
+                *end = '\0';
+            }
+
+            mwarn(FIM_REGISTRY_ACC_SID, "user", dwErrorCode, messageBuffer);
+            LocalFree(messageBuffer);
         }
 
         *AcctName = '\0';
@@ -1089,12 +1099,21 @@ char *get_registry_group(char **sid, HANDLE hndl) {
         DWORD dwErrorCode = 0;
 
         dwErrorCode = GetLastError();
-
         if (dwErrorCode == ERROR_NONE_MAPPED) {
             mdebug1("Group not found for registry key");
         }
         else {
-            merror("Error in LookupAccountSid.");
+            LPSTR messageBuffer = NULL;
+            LPSTR end;
+
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                          NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+            if (end = strchr(messageBuffer, '\r'), end) {
+                *end = '\0';
+            }
+
+            mwarn(FIM_REGISTRY_ACC_SID, "group", dwErrorCode, messageBuffer);
+            LocalFree(messageBuffer);
         }
 
         *GrpName = '\0';
