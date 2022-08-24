@@ -6215,6 +6215,7 @@ paths:
                       name: wazuh-remoted
                       agents:
                         - id: 1
+                          uptime: 2022-07-27T14:09:20+00:00
                           metrics:
                             messages:
                               received_breakdown:
@@ -6236,6 +6237,7 @@ paths:
                       name: wazuh-analysisd
                       agents:
                         - id: 1
+                          uptime: 2022-07-27T14:09:20+00:00
                           metrics:
                             events:
                               processed: 195
@@ -8941,7 +8943,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: 2022-07-21T10:48:32+00:00
+                    - uptime: 2022-07-27T14:09:20+00:00
+                      timestamp: 2022-07-21T10:48:32+00:00
                       name: wazuh-remoted
                       statistics:
                         tcp_sessions: 0
@@ -10436,7 +10439,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: 2022-07-21T10:47:59+00:00
+                    - uptime: 2022-07-27T14:09:20+00:00
+                      timestamp: 2022-07-21T10:47:59+00:00
                       name: wazuh-db
                       statistics:
                         queries_total: 1514
