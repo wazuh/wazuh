@@ -13,10 +13,9 @@ decoders:
   - windows-security
   - apache_error
   - apache_access
+  - aws-elb
 
-rules:
-  - source_malicious_ip
-  - destination_malicious_ip
+
 
 outputs:
   - file_output
