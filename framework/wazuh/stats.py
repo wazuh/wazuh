@@ -2,9 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import contextlib
 
 from wazuh.core import common
-from wazuh.core.agent import Agent, get_agents_info
+from wazuh.core import exception
+from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhException, WazuhResourceNotFound
@@ -79,6 +81,113 @@ def weekly():
     result.affected_items = weekly_()
     result.total_affected_items = len(result.affected_items)
 
+    return result
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
+    """Get agents statistical information from the specified daemons.
+    If the daemons list is empty, the stats from all daemons will be retrieved.
+    If the `all` keyword is included in the agents list, the stats from all the agents will be retrieved.
+
+    Parameters
+    ----------
+    daemons_list : list
+        List of the daemons to get statistical information from.
+    agent_list : list
+        List of agents ID's.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Dictionary with daemon's statistical information of the specified agents.
+    """
+    daemon_socket_mapping = {'wazuh-remoted': common.REMOTED_SOCKET,
+                             'wazuh-analysisd': common.ANALYSISD_SOCKET}
+    result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
+                                      some_msg='Could not read statistical information for some daemons',
+                                      none_msg='Could not read statistical information for any daemon')
+
+    if agent_list:
+        if 'all' not in agent_list:
+            system_agents = get_agents_info()
+            rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+
+            with WazuhDBQueryAgents(limit=None, select=["id", "status"], **rbac_filters) as db_query:
+                data = db_query.run()
+
+            agent_list = set(agent_list)
+
+            with contextlib.suppress(KeyError):
+                agent_list.remove('000')
+                result.add_failed_item('000', exception.WazuhError(1703))
+
+            # Add non-existent agents to failed_items
+            not_found_agents = agent_list - system_agents
+            [result.add_failed_item(id_=agent, error=exception.WazuhResourceNotFound(1701)) for agent in
+             not_found_agents]
+
+            # Add non-active agents to failed_items
+            non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
+            [result.add_failed_item(id_=agent, error=exception.WazuhError(1707)) for agent in non_active_agents]
+            non_active_agents = set(non_active_agents)
+
+            eligible_agents = agent_list - not_found_agents - non_active_agents
+
+            # Transform the format of the agent ids to the general format
+            eligible_agents = [int(agent) for agent in eligible_agents]
+
+            # To avoid the socket error 'Error 11 - Too many agents', we must use chunks of less than 75 agents
+            agents_chunks = [eligible_agents[x:x + 74] for x in range(0, len(eligible_agents), 74)]
+
+            for daemon in daemons_list or daemon_socket_mapping.keys():
+                daemon_results = []
+                for chunk in agents_chunks:
+                    try:
+                        for partial_daemon_result in daemon_results:
+                            if partial_daemon_result['name'] == daemon:
+                                partial_daemon_result['agents'].extend(
+                                    get_daemons_stats_socket(daemon_socket_mapping[daemon],
+                                                             agents_list=chunk)['agents'])
+                                break
+                        else:
+                            daemon_results.append(
+                                get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list=chunk))
+                    except exception.WazuhException as e:
+                        result.add_failed_item(id_=daemon, error=e)
+                result.affected_items.extend(daemon_results)
+
+            # Sort list of affected agents
+            for affected_item in result.affected_items:
+                affected_item['agents'].sort(key=lambda d: d['id'])
+
+        else:  # 'all' in agent_list
+            for daemon in daemons_list or daemon_socket_mapping.keys():
+                daemon_results = []
+                try:
+                    last_id = 0
+                    while True:
+                        stats = get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list='all',
+                                                         last_id=last_id)
+                        for partial_daemon_result in daemon_results:
+                            if partial_daemon_result['name'] == daemon:
+                                partial_daemon_result['agents'].extend(stats['data']['agents'])
+                                break
+                        else:
+                            daemon_results.append(stats['data'])
+
+                        if len(stats['data']['agents']) > 0:
+                            last_id = stats['data']['agents'][-1]['id']
+                        if stats['message'] != 'due':
+                            break
+
+                except exception.WazuhException as e:
+                    result.add_failed_item(id_=daemon, error=e)
+                result.affected_items.extend(daemon_results)
+            # The affected agents are sorted, no need to sort here
+
+    result.total_affected_items = len(result.affected_items)
     return result
 
 
@@ -164,9 +273,9 @@ def get_agents_component_stats_json(agent_list=None, component=None):
     for agent_id in agent_list:
         try:
             if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
+                raise exception.WazuhResourceNotFound(1701)
             result.affected_items.append(Agent(agent_id).get_stats(component=component))
-        except WazuhException as e:
+        except exception.WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
