@@ -133,6 +133,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition);
  */
 base::Expression opBuilderHelperAppendString(const std::any& definition);
 
+
 /**
  * @brief Append splitted strings to array field.
  * Accepts one parameter with a reference and another with seprator char. If reference not
@@ -145,6 +146,17 @@ base::Expression opBuilderHelperAppendString(const std::any& definition);
  * valid.
  */
 base::Expression opBuilderHelperAppendSplitString(const std::any& definition);
+
+//*************************************************
+//*              IP tranform                      *
+//*************************************************
+/**
+ * @brief Get the Internet Protocol version of an IP address.
+ *
+ * @param definition The transformation definition.
+ * @return base::Expression The lifter with the `ip version` transformation.
+ */
+base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition);
 
 } // namespace builder::internals::builders
 

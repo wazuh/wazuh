@@ -19,6 +19,7 @@
 
 #include "syntax.hpp"
 #include <baseHelper.hpp>
+#include <utils/ipUtils.hpp>
 #include <utils/stringUtils.hpp>
 
 namespace
@@ -799,4 +800,59 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         });
 }
 
+//*************************************************
+//*              IP tranform                      *
+//*************************************************
+// field: +s_IPVersion/$ip_field
+base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+
+    // Check parameters
+    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
+
+    // Tracing
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace1 {fmt::format(
+        "[{}] -> Failure: parameter reference not found or not a string", name)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: The string not a valid IP address", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=,
+         targetField = std::move(targetField),
+         name = std::move(name),
+         ipStrPath = std::move(parameters[0].m_value)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            const auto strIP = event->getString(ipStrPath);
+
+            if (!strIP)
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            if (utils::ip::checkStrIsIPv4(strIP.value()))
+            {
+                event->setString("IPv4", targetField);
+            }
+            else if (utils::ip::checkStrIsIPv6(strIP.value()))
+            {
+                event->setString("IPv6", targetField);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
 } // namespace builder::internals::builders

@@ -9,13 +9,15 @@
 
 #include "ipUtils.hpp"
 
+#include <arpa/inet.h>
+
 namespace utils::ip
 {
 
-uint32_t IPv4ToUInt(const std::string ipStr)
+uint32_t IPv4ToUInt(const std::string& ipStr)
 {
-    int a, b, c, d{};
-    char z{}; // Character after IP
+    int a, b, c, d {};
+    char z {}; // Character after IP
     uint32_t ipUInt = 0;
 
     if (sscanf(ipStr.c_str(), "%d.%d.%d.%d%c", &a, &b, &c, &d, &z) != 4)
@@ -35,7 +37,8 @@ uint32_t IPv4ToUInt(const std::string ipStr)
     return ipUInt;
 }
 
-uint32_t IPv4MaskUInt(const std::string maskStr)
+// TODO: Missing unit tests fot this
+uint32_t IPv4MaskUInt(const std::string& maskStr)
 {
 
     uint32_t maskUInt = 0;
@@ -65,6 +68,29 @@ uint32_t IPv4MaskUInt(const std::string maskStr)
     }
 
     return maskUInt;
+}
+
+bool checkStrIsIPv4(const std::string& ip)
+{
+
+    char buf[sizeof(struct in_addr)];
+    if (inet_pton(AF_INET, ip.c_str(), buf))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool checkStrIsIPv6(const std::string& ip)
+{
+
+    // Support RFC 2373
+    char buf[sizeof(struct in6_addr)];
+    if (inet_pton(AF_INET6, ip.c_str(), buf))
+    {
+        return true;
+    }
+    return false;
 }
 
 } // namespace utils::ip
