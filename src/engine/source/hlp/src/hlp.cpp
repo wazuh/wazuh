@@ -25,9 +25,13 @@ void configureParserMappings(const std::string &config)
     static const std::unordered_map<std::string_view, ParserType>
         kSchema2ParserType {
             {"keyword", ParserType::Any},
+            {"constant_keyword", ParserType::Any},
+            {"wildcard", ParserType::Any},
+            {"match_only_text", ParserType::Any},
             {"any", ParserType::ToEnd},
             {"ip", ParserType::IP},
             {"timestamp", ParserType::Ts},
+            {"date", ParserType::Ts},
             {"url", ParserType::URL},
             {"json", ParserType::JSON},
             {"map", ParserType::Map},
@@ -35,6 +39,9 @@ void configureParserMappings(const std::string &config)
             {"filepath", ParserType::FilePath},
             {"useragent", ParserType::UserAgent},
             {"number", ParserType::Number},
+            {"scaled_float", ParserType::Number},
+            {"long", ParserType::Number},
+            {"float", ParserType::Number},
             {"quoted", ParserType::QuotedString},
             {"boolean", ParserType::Boolean},
         };
