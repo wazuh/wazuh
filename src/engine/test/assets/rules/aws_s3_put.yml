@@ -4,13 +4,13 @@ parents:
   - aws_s3
 
 check:
-  - _jsonEventOriginal.aws.operation: +s_eq/PUT
+  - event.action: +s_eq/PUT
 
 normalize:
   - map:
       event.severity: 3
 
   - check:
-      - _jsonEventOriginal.aws.requester: +s_eq/svc:s3.amazonaws.com
+      - client.user.id: +s_eq/svc:s3.amazonaws.com
     map:
       event.severity: 0

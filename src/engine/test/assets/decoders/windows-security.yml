@@ -16,37 +16,37 @@ metadata:
     - 'evtx'
 
 check:
-  - _jsonEventOriginal.win.system.channel: Security
+  - _json.win.system.channel: Security
 
 normalize:
   - check:
-      - _jsonEventOriginal.win.eventdata.targetUserSid: +exists
+      - _json.win.eventdata.targetUserSid: +exists
     map:
-      group.id: $_jsonEventOriginal.win.eventdata.targetUserSid
+      group.id: $_json.win.eventdata.targetUserSid
 
   - check:
-      - _jsonEventOriginal.win.eventdata.targetSid: +exists
+      - _json.win.eventdata.targetSid: +exists
     map:
-      group.id: $_jsonEventOriginal.win.eventdata.targetSid
+      group.id: $_json.win.eventdata.targetSid
 
   - map:
-      event.code: $_jsonEventOriginal.win.system.eventID
+      event.code: $_json.win.system.eventID
       event.provider: Microsoft-Windows-Security-Auditing
       event.module: security
-      group.name: $_jsonEventOriginal.win.eventdata.targetUserName
-      group.domain: $_jsonEventOriginal.win.eventdata.targetDomainName
-      process.executable: $_jsonEventOriginal.win.eventdata.processName
-      process.pid: $_jsonEventOriginal.win.eventdata.processId
-      process.command_line: $_jsonEventOriginal.win.eventdata.commandLine
-      related.user: +s_append/$_jsonEventOriginal.win.userData.subjectUserName
-      source.domain: $_jsonEventOriginal.win.eventdata.workstationName
-      source.ip: $_jsonEventOriginal.win.eventdata.ipAddress
-      source.port: $_jsonEventOriginal.win.eventdata.ipPort
-      service.name: $_jsonEventOriginal.win.eventdata.serviceName
+      group.name: $_json.win.eventdata.targetUserName
+      group.domain: $_json.win.eventdata.targetDomainName
+      process.executable: $_json.win.eventdata.processName
+      process.pid: $_json.win.eventdata.processId
+      process.command_line: $_json.win.eventdata.commandLine
+      related.user: +s_append/$_json.win.userData.subjectUserName
+      source.domain: $_json.win.eventdata.workstationName
+      source.ip: $_json.win.eventdata.ipAddress
+      source.port: $_json.win.eventdata.ipPort
+      service.name: $_json.win.eventdata.serviceName
       #service.type: $cdb_security.serviceTypes.$(_json.win.eventdata.ServiceType)
-      user.domain: $_jsonEventOriginal.win.eventdata.subjectDomainName
-      user.id: $_jsonEventOriginal.win.eventdata.subjectUserSid
-      user.name: $_jsonEventOriginal.win.eventdata.subjectUserName
+      user.domain: $_json.win.eventdata.subjectDomainName
+      user.id: $_json.win.eventdata.subjectUserSid
+      user.name: $_json.win.eventdata.subjectUserName
       user.target.group.id: $group.id
       user.target.group.name: $group.name
       user.target.group.domain: $group.domain
@@ -61,22 +61,22 @@ normalize:
   - check:
       - user.id: +exists
     map:
-      user.target.id: $_jsonEventOriginal.win.eventdata.targetUserSid
+      user.target.id: $_json.win.eventdata.targetUserSid
 
   - check:
       - user.id: +not_exists
     map:
-      user.id: $_jsonEventOriginal.win.eventdata.targetUserSid
+      user.id: $_json.win.eventdata.targetUserSid
 
   - check:
       - user.domain: +exists
     map:
-      user.target.domain: $_jsonEventOriginal.win.eventdata.targetDomainName
+      user.target.domain: $_json.win.eventdata.targetDomainName
 
   - check:
       - user.domain: +not_exists
     map:
-      user.domain: $_jsonEventOriginal.win.eventdata.targetDomainName
+      user.domain: $_json.win.eventdata.targetDomainName
 
   # - check:
   #     - process.name: +not_exists

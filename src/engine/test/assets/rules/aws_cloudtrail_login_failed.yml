@@ -4,8 +4,8 @@ parents:
   - aws_cloudtrail
 
 check:
-  - _jsonEventOriginal.aws.eventName: +s_eq/ConsoleLogin
-  - _jsonEventOriginal.aws.responseElements.ConsoleLogin: +s_eq/Failure
+  - event.action: +s_eq/ConsoleLogin
+  - wazuh.aws.response_elements.console_login: +s_eq/Failure
 
 normalize:
   - map:

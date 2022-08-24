@@ -6,15 +6,15 @@ metadata:
   description: suricata-http
 
 check:
-  - _jsonEventOriginal.event_type: http
+  - _json.event_type: http
 
 normalize:
   - check:
-      - _jsonEventOriginal.http.status: +i_lt/400
+      - _json.http.status: +i_lt/400
     map:
       event.outcome: success
 
   - check:
-      - _jsonEventOriginal.http.status: +i_ge/400
+      - _json.http.status: +i_ge/400
     map:
       event.outcome: failure

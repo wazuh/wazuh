@@ -6,7 +6,7 @@ metadata:
   description: suricata-stats
 
 check:
-  - _jsonEventOriginal.event_type: stats
+  - _json.event_type: stats
 
 normalize:
   - map:
