@@ -1,0 +1,62 @@
+name: aws_s3
+
+metadata:
+  description: Decoder for Amazon S3 server access logs
+  references:
+    - https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html
+  product.name: Amazon S3 server access
+
+parents:
+  - aws
+
+- check:
+  - wazuh.aws.source: +s_eq/s3_server_access
+
+logql:
+  - $_json.aws.request_uri: <http.request.method> <http.url.original> HTTP/<http.version>
+  - $_json.aws.request_uri: <http.request.method> <http.url.original> http/<http.version>
+
+logql:
+  - $_json.aws.host_header: <_>.<cloud.region>.<_>.<_>
+
+logql:
+  - $_json.aws.tls_version: <tls.version_protocol>V<tls.version>
+
+normalize:
+  - check:
+      _json.aws.error_code: +exists
+    map:
+      event.outcome: failure
+
+  - check:
+      _json.aws.error_code: +not_exists
+    map:
+      event.outcome: success
+
+  - map:
+      client.address: $_json.aws.remote_ip
+      client.ip: $_json.aws.remote_ip
+      client.user.id: $_json.aws.requester
+
+      cloud.provider: aws
+
+      event.action: $_json.aws.operation
+      event.category: +s_append/web
+      event.code: $_json.aws.error_code
+      event.duration: $_json.aws.total_time # ms - ECS transforms this field to nanoseconds
+      event.id: $_json.aws.request_id
+      event.kind: event
+      event.type: +s_append/access
+
+      http.request.referrer: $_json.aws.referer
+      http.response.body.bytes: $_json.aws.bytes_sent
+      http.response.status_code: $_json.aws.http_status
+
+      related.ip: +s_append/$_json.aws.remote_ip
+      related.user: +s_append/$_json.aws.bucket_owner
+
+      timestamp: $_json.aws.time
+
+      tls.cipher: $_json.aws.cipher_suite
+
+      json: +delete_field

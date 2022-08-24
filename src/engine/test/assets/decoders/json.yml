@@ -1,9 +1,8 @@
 name: json
 
 check:
-  - wazuh.queue: +i_eq/49
   - event.original: +s_starts/{
 
 parse:
   logql:
-    - event.original: <_jsonEventOriginal/json>
+    - event.original: <_json/json>
