@@ -2,6 +2,10 @@
     Copyright (C) 2015, Wazuh Inc.
 -->
 
+<!--
+  WEF baseline for intrusion detection rules: 67011 - 67099
+-->
+
 <!-- This set of rules is based on the "Baseline subscription query" suggested by Microsoft for intrusion detection:
      https://docs.microsoft.com/en-us/windows/security/threat-protection/use-windows-event-forwarding-to-assist-in-intrusion-detection
 
@@ -15,7 +19,7 @@
   <!-- Query 0: Anti-malware events. Covered by rules 62123 and 62126-->
 
   <!-- Query 1: AppLocker EXE events or Script events -->
-  <rule id="1" level="3">
+  <rule id="67011" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-AppLocker</field>
     <field name="win.system.eventID">8002</field>
@@ -23,7 +27,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="2" level="10">
+  <rule id="67012" level="3">
     <if_sid>60010</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-AppLocker</field>
     <field name="win.system.eventID">8003</field>
@@ -31,7 +35,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="2" level="10">
+  <rule id="67013" level="3">
     <if_sid>60011</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-AppLocker</field>
     <field name="win.system.eventID">8004</field>
@@ -40,7 +44,7 @@
   </rule>
 
   <!--Query 3: Task scheduler Tasks -->
-  <rule id="1" level="3">
+  <rule id="67014" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
     <field name="win.system.eventID">106</field>
@@ -48,7 +52,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="1" level="3">
+  <rule id="67015" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
     <field name="win.system.eventID">141</field>
@@ -57,7 +61,7 @@
   </rule>
 
 
-  <rule id="1" level="3">
+  <rule id="67016" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
     <field name="win.system.eventID">142</field>
@@ -70,7 +74,7 @@
   <!--Query 6: Terminal services connect/reconnect: Covered by rule 60108-->
 
   <!--Query 7: Network share object access without IPC$ and Netlogon shares -->
-  <rule id="1" level="3">
+  <rule id="67017" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-Security-Auditing</field>
     <field name="win.system.eventID">5140</field>
@@ -82,7 +86,7 @@
   <!--Query 8: System time change: Covered by rule 60132 -->
 
   <!--Query 9: Shutdown initiate requests-->
-  <rule id="2" level="10">
+  <rule id="67018" level="3">
     <if_sid>61100</if_sid>
     <field name="win.system.providerName">User32</field>
     <field name="win.system.eventID">1074</field>
@@ -91,7 +95,7 @@
   </rule>
 
   <!--Query 10: Applocker packaged UI execution-->
-  <rule id="1" level="3">
+  <rule id="67019" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-AppLocker</field>
     <field name="win.system.eventID">8020</field>
@@ -99,7 +103,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="2" level="10">
+  <rule id="67020" level="3">
     <if_sid>60010</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-AppLocker</field>
     <field name="win.system.eventID">8021</field>
@@ -107,7 +111,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="2" level="10">
+  <rule id="67021" level="3">
     <if_sid>60011</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-AppLocker</field>
     <field name="win.system.eventID">8022</field>
@@ -118,7 +122,7 @@
   <!--Query 13: Log cleared events. Covered by rule 63104-->
 
   <!--Query 14: Local logons without network or service events -->
-  <rule id="1" level="3">
+  <rule id="67022" level="3">
     <if_sid>60106</if_sid>
     <field name="win.eventdata.logonType" negate="yes">3|5</field>
     <description>Non network or service local logon</description>
@@ -132,7 +136,7 @@
   <!--Query 18: User initiated logoff. Covered by rule 60137-->
 
   <!--Query 19: user logoff for all non-network logon sessions-->
-  <rule id="2" level="3">
+  <rule id="67023" level="3">
     <if_sid>60137</if_sid>
     <field name="win.system.eventID">4634</field>
     <field name="win.eventdata.logonType" negate="yes">3</field>
@@ -141,7 +145,7 @@
   </rule>
 
   <!--Query 20: Service logon events if the user account isn't LocalSystem, NetworkService, LocalService-->
-  <rule id="1" level="3">
+  <rule id="67024" level="3">
     <if_sid>60106</if_sid>
     <field name="win.eventdata.logonType">5</field>
     <field name="win.eventdata.targetUserSid" negate="yes">^S-1-5-18$|^S-1-5-19$|^S-1-5-20$</field>
@@ -150,7 +154,7 @@
   </rule>
 
   <!--Query 21: Network create share and delete-->
-  <rule id="1" level="3">
+  <rule id="67025" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-Security-Auditing</field>
     <field name="win.system.eventID">5142</field>
@@ -158,7 +162,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="1" level="3">
+  <rule id="67026" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-Security-Auditing</field>
     <field name="win.system.eventID">5144</field>
@@ -167,7 +171,7 @@
   </rule>
 
   <!--Query 22: Process create-->
-  <rule id="1" level="3">
+  <rule id="67027" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-Security-Auditing</field>
     <field name="win.system.eventID">4688</field>
@@ -176,7 +180,7 @@
   </rule>
 
   <!--Query 26: Special privileges (Admin-equivalent Access) assigned to new logon, excluding LocalSystem. Covered by rule 60226-->
-  <rule id="60226" level="8">
+  <rule id="67028" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4672$</field>
     <field name="win.eventdata.subjectUserSid" negate="yes">^S-1-5-18$</field>
@@ -196,7 +200,7 @@
   <!-- Query 30: User removed from local Administrators group. Covered by rule 60154-->
 
   <!-- Query 31: Log attempted TS connect to remote server-->
-  <rule id="1" level="3">
+  <rule id="67029" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-TerminalServices-ClientActiveXCore</field>
     <field name="win.system.eventID">1024</field>
@@ -206,6 +210,5 @@
 
   <!--Query 34: New User Account Created(4720), User Account Enabled (4722), User Account Disabled (4725), User Account Deleted (4726)
               Covereded by rules: 60109 and 60111 -->
-
-
+  
 </group>
