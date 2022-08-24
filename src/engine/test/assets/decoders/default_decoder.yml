@@ -2,8 +2,10 @@
 name: default_decoder
 
 check:
-  - queue: 1
+  - queue: +exists
+  - message: +exists
 
 normalize:
   - map:
       event.original: $message
+      wazuh.queue: $queue
