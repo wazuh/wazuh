@@ -4,4 +4,4 @@ parents:
   - aws_integration
 
 check:
-  - _jsonEventOriginal.aws.source: +s_eq/s3_server_access
+  - wazuh.aws.source: +s_eq/s3_server_access

@@ -4,7 +4,7 @@ parents:
   - aws_s3
 
 check:
-  - _jsonEventOriginal.aws.error_code: +exists
+  - event.outcome: +s_eq/failure
 
 normalize:
   - map:

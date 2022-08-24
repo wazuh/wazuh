@@ -7,7 +7,7 @@ metadata:
   description: suricata-flow
 
 check:
-  - _jsonEventOriginal.event_type: flow
+  - _json.event_type: flow
 
 normalize:
   - map:
