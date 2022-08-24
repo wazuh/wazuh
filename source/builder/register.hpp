@@ -3,8 +3,8 @@
 
 #include "builders/opBuilderARWrite.hpp"
 #include "builders/opBuilderFileOutput.hpp"
-#include "builders/opBuilderHelperHashSHA1.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
+#include "builders/opBuilderHelperHashSHA1.hpp"
 #include "builders/opBuilderHelperMap.hpp"
 #include "builders/opBuilderHelperNetInfoAddress.hpp"
 #include "builders/opBuilderKVDB.hpp"
@@ -71,8 +71,7 @@ static void registerBuilders()
                               "helper.s_contains");
     Registry::registerBuilder(builders::opBuilderHelperDeleteField,
                               "helper.delete_field");
-    Registry::registerBuilder(builders::opBuilderHelperContainsString,
-                              "helper.s_starts");
+    Registry::registerBuilder(builders::opBuilderHelperContainsString, "helper.s_starts");
     Registry::registerBuilder(builders::opBuilderHelperIsNumber, "helper.is_number");
     Registry::registerBuilder(builders::opBuilderHelperIsNotNumber,
                               "helper.is_not_number");
@@ -101,6 +100,8 @@ static void registerBuilders()
                               "helper.s_fromArray");
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
+    Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,
+                              "helper.s_ipVersion");
     Registry::registerBuilder(builders::opBuilderHelperAppendSplitString, "helper.s_to_array");
 
     // DB sync
@@ -111,7 +112,7 @@ static void registerBuilders()
     // SCA decoder
     Registry::registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
 
-    //SysCollector - netInfo
+    // SysCollector - netInfo
     Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4,
                               "helper.saveNetInfoIPv4");
     Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6,
@@ -119,7 +120,6 @@ static void registerBuilders()
 
     // SHA1
     Registry::registerBuilder(builders::opBuilderHelperHashSHA1, "helper.hash_sha1");
-
 }
 } // namespace builder::internals
 
