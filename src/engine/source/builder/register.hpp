@@ -101,6 +101,7 @@ static void registerBuilders()
                               "helper.s_fromArray");
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
+    Registry::registerBuilder(builders::opBuilderHelperAppendSplitString, "helper.s_to_array");
 
     // DB sync
     Registry::registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
