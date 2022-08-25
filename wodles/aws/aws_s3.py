@@ -953,11 +953,11 @@ class AWSBucket(WazuhIntegration):
                         return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
 
                 return check_regex(expression_to_evaluate)
-            return self._check_recursive(expression_to_evaluate, field_list[1], regex=regex)
+            return _check_recursive(expression_to_evaluate, field_list[1], regex=regex)
 
         def _event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and self._check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                   and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
