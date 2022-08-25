@@ -10,7 +10,7 @@ parents:
   - aws
 
 - check:
-  - wazuh.aws.source: +s_eq/cloudtrail
+  - wazuh.modules.aws.source: +s_eq/cloudtrail
 
 normalize:
   - check:
@@ -19,6 +19,7 @@ normalize:
       file.hash.sha256: $_json.aws.previousDigestSignature
 
   - map:
+      aws.cloudtrail.additional_eventdata: $_json.aws.additionalEventData
       aws.cloudtrail.api_version: $_json.aws.apiVersion
       aws.cloudtrail.digest.end_time: $_json.aws.digestEndTime
       aws.cloudtrail.digest.log_files: $_json.aws.logFiles
@@ -35,14 +36,18 @@ normalize:
       aws.cloudtrail.event_category: $_json.aws.eventCategory
       aws.cloudtrail.event_type: $_json.aws.eventType
       aws.cloudtrail.event_version: $_json.aws.eventVersion
+      aws.cloudtrail.flattened.response_elements.ConsoleLogin: $_json.aws.responseElements.ConsoleLogin
       aws.cloudtrail.insight_details: $_json.aws.insightDetails
       aws.cloudtrail.management_event: $_json.aws.managementEvent
       aws.cloudtrail.read_only: $_json.aws.readOnly
       aws.cloudtrail.recipient_account_id: $_json.aws.recipientAccountId
       aws.cloudtrail.request_id: $_json.aws.requestId
+      aws.cloudtrail.request_parameters: $_json.aws.requestParameters
       aws.cloudtrail.resources.account_id: $_json.aws.resources.accountId
       aws.cloudtrail.resources.arn: $_json.aws.resources.ARN
       aws.cloudtrail.resources.type: $_json.aws.resources.type
+      aws.cloudtrail.response_elements:  $_json.aws.responseElements
+      aws.cloudtrail.service_event_details: $_json.aws.serviceEventDetails
       aws.cloudtrail.shared_event_id: $_json.aws.sharedEventId
       aws.cloudtrail.user_identity.access_key_id: $_json.aws.userIdentity.accessKeyId
       aws.cloudtrail.user_identity.arn: $_json.aws.userIdentity.arn
@@ -62,6 +67,7 @@ normalize:
       event.action: $_json.aws.eventName
       event.id: $_json.aws.eventID
       event.provider: $_json.aws.eventSource
+      event.outcome: success
 
       file.path: $_json.aws.digestS3Object
 
@@ -84,4 +90,20 @@ normalize:
 
       # TODO: check the "scripts" and assignments related to "flattened" fields
 
-      json: +delete_field
+      _json: +delete_field
+
+  - check:
+      aws.cloudtrail.error_code: +is_not_null
+    map:
+      event.outcome: failure
+
+  - check:
+      aws.cloudtrail.error_message: +is_not_null
+    map:
+      event.outcome: failure
+
+  - check:
+      event.action: +s_eq/ConsoleLogin
+      aws.cloudtrail.flattened.response_elements.ConsoleLogin: +is_not_null
+    map:
+      event.outcome: +s_lo/aws.cloudtrail.flattened.response_elements.ConsoleLogin
