@@ -13,5 +13,4 @@ parents:
 normalize:
   - map:
       wazuh.integration: $_json.integration
-      wazuh.aws.source: $_json.aws.source
-      wazuh.aws.response_elements.console_login: $_json.aws.responseElements.ConsoleLogin
+      wazuh.modules.aws.source: $_json.aws.source
