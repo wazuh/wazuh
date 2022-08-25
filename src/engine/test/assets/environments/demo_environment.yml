@@ -19,6 +19,7 @@ decoders:
   - cisco-ios-sec-login
   - cisco-ios-sec
   - cisco-ios-grandchild
+  - cisco-asa
 
 rules:
   - source_malicious_ip
