@@ -118,7 +118,33 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition);
  */
 base::Expression opBuilderHelperRegexExtract(const std::any& definition);
 
+//*************************************************
+//*           Array tranform                      *
+//*************************************************
+
+/**
+ * @brief Append string to array field.
+ * Accepts parameters with literals or references. If reference not exists or is not an
+ * string it will fail.
+ *
+ * @param definition Definition of the operation to be built
+ * @return base::Expression The lifter with the `append string to array` transformation.
+ * @throw std::runtime_error if the parameters are empty.
+ */
 base::Expression opBuilderHelperAppendString(const std::any& definition);
+
+/**
+ * @brief Append splitted strings to array field.
+ * Accepts one parameter with a reference and another with seprator char. If reference not
+ * exists, is not a string or split operation fails it will fail.
+ *
+ * @param definition Definition of the operation to be built
+ * @return base::Expression The lifter with the `append splitted strings to array`
+ * transformation.
+ * @throw std::runtime_error if the parameters size is not 2 or character separator is not
+ * valid.
+ */
+base::Expression opBuilderHelperAppendSplitString(const std::any& definition);
 
 } // namespace builder::internals::builders
 

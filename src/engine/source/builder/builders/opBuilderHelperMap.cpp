@@ -18,7 +18,6 @@
 #include <re2/re2.h>
 
 #include "syntax.hpp"
-
 #include <baseHelper.hpp>
 #include <utils/stringUtils.hpp>
 
@@ -647,10 +646,15 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
         });
 }
 
+//*************************************************
+//*           Array tranform                      *
+//*************************************************
+
+// field: +s_append/$field|literal...
 base::Expression opBuilderHelperAppendString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(rawParameters)};
+    auto parameters = helper::base::processParameters(rawParameters);
     if (parameters.empty())
     {
         throw std::runtime_error(
@@ -659,15 +663,15 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
-    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const auto successTrace = fmt::format("[{}] -> Success", name);
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: parameter reference not found", name)};
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: parameter reference not found", name);
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), name = std::move(name)](
+        [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
             for (const auto& parameter : parameters)
@@ -676,7 +680,7 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        auto value {event->getString(parameter.m_value)};
+                        auto value = event->getString(parameter.m_value);
                         if (!value)
                         {
                             return base::result::makeFailure(event, failureTrace1);
@@ -697,6 +701,60 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
                                         parameter.m_value));
                 }
             }
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+// field: +s_to_array/$field/[,| | ...]
+base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(rawParameters);
+    helper::base::checkParametersSize(parameters, 2);
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
+    if (parameters[1].m_value.size() != 1)
+    {
+        throw std::runtime_error(fmt::format(
+            "[opBuilderHelperAppendSplit] separator can only be one character"));
+    }
+
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: parameter reference [{}] not found or not string",
+                    name,
+                    parameters[0].m_value);
+    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            auto resolvedReference = event->getString(parameters[0].m_value);
+            if (!resolvedReference.has_value())
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            auto splitted =
+                utils::string::split(resolvedReference.value(), parameters[1].m_value[0]);
+            if (splitted.empty())
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            for (const auto& value : splitted)
+            {
+                event->appendString(value, targetField);
+            }
+
             return base::result::makeSuccess(event, successTrace);
         });
 }
