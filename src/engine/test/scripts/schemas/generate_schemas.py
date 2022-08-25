@@ -16,11 +16,7 @@ LOGQL_TYPES_OUTPUT = "wazuh-logql-types.json"
 
 # ECS integrations
 INTEGRATIONS = [
-    {
-        'name': 'AWS ELB',
-        'url': 'https://raw.githubusercontent.com/elastic/beats/main/x-pack/filebeat/module/aws/elb/_meta/fields.yml',
-        'root': 'aws'
-    },
+
 ]
 
 def main():
@@ -158,8 +154,15 @@ def flatten(schema, root):
     return {f'{prefix}.{field["name"]}': field for field in schema[0]['fields']}
 
 def strip_fields(field_value):
-    return {'description': field_value['description'],
-            'ecs_type': field_value['type'],
+    description = 'Not available'
+    ecs_type = 'keyword'
+    if 'description' in field_value:
+        description = field_value['description']
+    if 'type' in field_value:
+        ecs_type = field_value['type']
+
+    return {'description': description,
+            'ecs_type': ecs_type,
             'type': ["string", "number", "boolean"]}
 
 def make_error(msg):

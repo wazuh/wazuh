@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "custom_ecs_field.json",
+  "$id": "custom-ecs-field.json",
   "type": "object",
   "additionalProperties": false,
   "patternProperties": {
