@@ -80,8 +80,8 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
 /* Send message primitive. */
 STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
-    char tmpstr[OS_MAXSTR + 1];
-    char loc_buff[OS_BUFFER_SIZE + 1];
+    char tmpstr[OS_MAXSTR + 1] = {0};
+    char loc_buff[OS_BUFFER_SIZE + 1] = {0};
     static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';

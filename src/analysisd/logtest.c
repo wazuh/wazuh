@@ -239,7 +239,7 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
 
 int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
 
-    char loc_buff[OS_BUFFER_SIZE + 1];
+    char loc_buff[OS_BUFFER_SIZE + 1] = {0};
     char * event_str = NULL;
     char * location_str = NULL;
     char * log = NULL;

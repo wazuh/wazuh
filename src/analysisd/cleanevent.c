@@ -25,7 +25,7 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
-    char loc_buff[OS_BUFFER_SIZE + 1];
+    char loc_buff[OS_BUFFER_SIZE + 1] = {0};
     size_t loglen;
     char *pieces;
     char * msg_cpy;
