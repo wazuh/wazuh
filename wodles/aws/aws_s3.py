@@ -2155,18 +2155,6 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         for msg in self.reformat_msg(event):
             self.send_msg(msg)
 
-    def iter_events(self, event_list, log_key, aws_account_id):
-        if event_list is not None:
-            for event in event_list:
-                if self._event_should_be_skipped(event):
-                    debug(
-                        f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
-                        f'The event will be skipped.', 2)
-                    continue
-
-                event_msg = self.get_alert_msg(aws_account_id, log_key, event)
-
-
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
