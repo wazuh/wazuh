@@ -1,0 +1,21 @@
+---
+name: cisco-ios-grandchild
+
+parents:
+  # TODO: Should has a list of parents
+  # - cisco-ios-sec-login
+  - cisco-ios-sec
+
+metadata:
+  description: Cisco IOS last child, add common fields to cisco-ios event
+
+check:
+  - service.type: cisco
+
+
+normalize:
+  - map:
+      network.type: +s_ipVersion/$source.ip
+      related.ip: +s_append/$source.ip
+      related.ip: +s_append/$destination.ip
+      tags: +s_append/cisco-ios
