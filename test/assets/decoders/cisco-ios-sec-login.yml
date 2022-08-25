@@ -2,7 +2,7 @@
 name: cisco-ios-sec-login
 
 parents:
-  - cisco-ios
+  - cisco
 
 metadata:
   description: "Cisco IOS, Facility Code: SEC_LOGIN [Secure login]"
@@ -33,5 +33,15 @@ parse:
     - message: >-
         Login Success [user: <user.name>] [Source: <source.ip>?<_>] [localport: <source.port>] at <_time/any>
 
-# related.user
-# source.user.name
+normalize:
+  - map:
+      event.category: [ authentication ]
+
+  - check:
+      - event.code: LOGIN_SUCCESS
+    map:
+        event.type: +s_append/allowed
+  - check:
+      - event.code: LOGIN_FAILED
+    map:
+        event.type: +s_append/denied
