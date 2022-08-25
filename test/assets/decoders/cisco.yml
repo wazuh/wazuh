@@ -36,7 +36,7 @@ normalize:
       # host.os.platform: cisco-ios
       # host.os.type: cisco-ios
       # host.ip: wazuh.origin
-      # observer.vendor: Cisco
+      observer.vendor: Cisco
       service.type: "cisco"
       log.source.address: $wazuh.origin
 
