@@ -82,6 +82,10 @@ Install()
     elif [ "X$NUNAME" = "XAIX" ]; then
           MAKEBIN=/opt/freeware/bin/gmake
     fi
+    if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+        ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
+        ALPINE="ALPINE=1"
+    fi
 
     # On CentOS <= 5 we need to disable syscollector compilation
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
@@ -102,7 +106,7 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps TARGET=${INSTYPE}
+        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
@@ -110,7 +114,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} ${ALPINE} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
