@@ -360,7 +360,7 @@ void test_MergeAppendFile_finalpath_open_fail(void **state) {
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to append merged file: '/test/shared/default/merged.mg' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: '/test/shared/default/merged.mg' due to [(0)-(Success)].");
 
     ret = MergeAppendFile(finalpath, file, tag, path_offset);
     assert_int_equal(ret, 0);
@@ -383,7 +383,7 @@ void test_MergeAppendFile_open_fail(void **state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to append merge file 'test.txt' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'test.txt' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 5);
     will_return(__wrap_fclose, 1);
@@ -410,7 +410,7 @@ void test_MergeAppendFile_fseek_fail(void **state) {
 
     will_return(__wrap_fseek, 1);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to append merge file 'test.txt' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to set EOF offset in file: 'test.txt', due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 5);
     will_return(__wrap_fclose, 1);
@@ -441,7 +441,7 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
     will_return(__wrap_fseek, 0);
 
     will_return(__wrap_ftell, 0);
-    expect_string(__wrap__mwarn, formatted_msg, "file '/test/shared/default/test.txt' size 0.");
+    expect_string(__wrap__mwarn, formatted_msg, "file '/test/shared/default/test.txt' is empty.");
 
     expect_value(__wrap_fprintf, __stream, 5);
     expect_string(__wrap_fprintf, formatted_msg, "#TAG_test\n");
@@ -453,7 +453,7 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
 
     will_return(__wrap_fseek, -2);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to append merge file '/test/shared/default/test.txt' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to set the offset in file: '/test/shared/default/test.txt', due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 5);
     will_return(__wrap_fclose, 1);
