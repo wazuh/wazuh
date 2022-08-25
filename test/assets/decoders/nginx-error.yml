@@ -3,9 +3,6 @@ name: nginx-error
 metadata:
   description: Nginx error log decoder
 
-parents:
-  - default_decoder
-
 check:
   - event.original: +exists
 

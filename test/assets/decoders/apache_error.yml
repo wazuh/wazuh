@@ -1,7 +1,5 @@
 ---
 name: apache_error
-parents:
-  - default_decoder
 
 metadata:
   description: Parses Apache HTTPD errors logs in its Common Log Format
