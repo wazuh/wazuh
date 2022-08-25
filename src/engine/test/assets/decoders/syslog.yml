@@ -8,10 +8,6 @@ metadata:
   formats: [ rfc3164, rfc5424 ]
   json_event_name: syslog
 
-# TODO: remove when protocol handle fix is integrated
-parents:
-  - default_decoder
-
 check:
   - event.original: +exists
 

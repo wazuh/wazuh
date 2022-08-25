@@ -1,8 +1,5 @@
 name: aws-elb
 
-parents:
-  - default_decoder
-
 definitions:
   ELBTIMESTAMP: <timestamp/ISO8601_Z>
   ELBNAME: <aws.elb.name>
