@@ -5,7 +5,7 @@ parents:
 
 check:
   - event.action: +s_eq/ConsoleLogin
-  - wazuh.aws.response_elements.console_login: +s_eq/Failure
+  - aws.cloudtrail.flattened.response_elements.ConsoleLogin: +s_eq/Failure
 
 normalize:
   - map:

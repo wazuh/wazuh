@@ -4,7 +4,7 @@ parents:
   - aws_integration
 
 check:
-  - wazuh.aws.source: +s_eq/cloudtrail
+  - wazuh.modules.aws.source: +s_eq/cloudtrail
   - event.action: +kvdb_match/aws-eventnames
 
 normalize:
