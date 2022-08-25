@@ -1649,16 +1649,18 @@ components:
             - wazuh-analysisd
             - wazuh-remoted
         agents:
-          type: object
-          properties:
-            uptime:
-              type: string
-              format: date-time
-            id:
-              type: integer
-              format: int32
-            metrics:
-              type: object
+          type: array
+          items:
+            type: object
+            properties:
+              uptime:
+                type: string
+                format: date-time
+              id:
+                type: integer
+                format: int32
+              metrics:
+                type: object
 
     ## CisCat models
     CiscatResults:
