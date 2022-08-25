@@ -1,8 +1,5 @@
 name: json
 
-parents:
-  - default_decoder
-
 check:
   - event.original: +exists
 
