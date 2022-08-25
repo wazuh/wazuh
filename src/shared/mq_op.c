@@ -12,6 +12,12 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 static log_builder_t * mq_log_builder;
 int sock_fail_time;
 
@@ -72,7 +78,7 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
 }
 
 /* Send message primitive. */
-static int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
+STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
     char loc_buff[OS_BUFFER_SIZE + 1];
