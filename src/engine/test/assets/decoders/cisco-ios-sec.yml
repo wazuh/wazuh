@@ -2,38 +2,61 @@
 name: cisco-ios-sec
 
 parents:
-  - cisco-ios
+  - cisco
 
 metadata:
   description: "Cisco IOS, Facility Code: SEC [IP security]"
-
+  version: Cisco IOS System, 15 SY
   references:
-    - "https://www.cisco.com/c/en/us/td/docs/ios/system/messages/guide/consol_smg/sm_cnovr.html"
-    - "https://tools.cisco.com/security/center/resources/access_control_list_logging.html"
+    - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg.pdf
+    - https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
+    - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg/sm15syovr.html
+    - https://www.cisco.com/c/en/us/td/docs/ios/system/messages/guide/consol_smg/sm_cnovr.html"
+    - https://tools.cisco.com/security/center/resources/access_control_list_logging.html"
 
-check:
-  - cisco.ios.facility: SEC
+check: >-
+  cisco.ios.facility==SEC
+  OR (cisco.ios.facility==IPV6 AND event.code==ACCESSLOGP)
 
 parse:
   logql:
 
     # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1024) -> 192.168.2.1(22), 1 packet
     # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1024) -> 192.168.2.1(22), 9 packets
-    # TODO Should be: "list <cisco.ios.access_list> <event.outcome> <network.transport> <source.ip>(<source.port>) -> <destination.ip>(<destination.port>), <network.packets> packet", but > is not supported
     - message: >-
-        list <cisco.ios.access_list> <event.outcome> <network.transport> <source.address>(<source.port>) -<_dir/keyword> <destination.ip>(<destination.port>), <network.packets> packet
+        list <cisco.ios.access_list> <_outcome> <network.transport> <source.address>(<source.port>) -> <destination.ip>(<destination.port>), <network.packets> packet
 
     # Feb  8 04:00:47.272: %SEC-6-IPACCESSLOGRP: list 177 denied igmp 198.51.100.197 -> 224.0.0.22, 1 packet
     - message: >-
-          list <cisco.ios.access_list> <event.outcome> <network.transport> <source.address> -<_dir/keyword> <destination.ip>, <network.packets> packet
-
+          list <cisco.ios.access_list> <_outcome> <network.transport> <source.address> -> <destination.ip>, <network.packets> packet
 
     # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1025) (Ethernet0/0 000e.9b5a.9839) -> 192.168.2.1(22), 1 packet
     # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1025) (Ethernet0/0 000e.9b5a.9839) -> 192.168.2.1(22), 9 packets
-    # TODO Should be: "list <cisco.ios.access_list> <event.outcome> <network.transport> <source.address>(<source.port>) (<observer.ingress.interface.name> <_observer.ingress.interface.mac>) -> <destination.ip>(<destination.port>), <network.packets> packet"
     - message: >-
-        list <cisco.ios.access_list> <event.outcome> <network.transport> <source.address>(<source.port>) (<observer.ingress.interface.name> <_observer.ingress.interface.mac>) -<_dir/keyword> <destination.ip>(<destination.port>), <network.packets> packet
+        list <cisco.ios.access_list> <_outcome> <network.transport> <source.address>(<source.port>) (<observer.ingress.interface.name> <_observer.ingress.interface.mac>) -> <destination.ip>(<destination.port>), <network.packets> packet
+
+    # %SEC-6-IPACCESSLOGSP: list INBOUND-ON-F11 denied igmp 198.51.100.2 -> 224.0.0.2 (20), 1 packet
+    - message: >-
+        list <cisco.ios.access_list> <_outcome> <network.transport> <source.address> -> <destination.ip> (<_igmp_type>), <network.packets> packet
 
 normalize:
   - map:
       source.ip: $source.address
+      event.category: [ network ]
+      event.type: [ connection, firewall ]
+      tags: +s_append/forwarded
+
+  - check:
+      - network.transport: igmp
+    map:
+      igmp.type: _igmp_type
+
+  - check:
+      - _outcome: denied
+    map:
+      event.outcome: deny
+
+  - check:
+      - _outcome: permitted
+    map:
+      event.outcome: allow
