@@ -95,24 +95,9 @@ normalize:
       cloud.provider: aws
       service.type: aws
       trace.id: $aws.elb.trace_id
-      # TODO: add splits once wazuhdb is merged
-      # - split:
-      #     field: '_tmp.actions_executed'
-      #     target_field: 'aws.elb.action_executed'
-      #     separator: ','
-      #     ignore_missing: true
-
-      # - split:
-      #     field: '_tmp.target_port'
-      #     target_field: 'aws.elb.target_port'
-      #     separator: ' '
-      #     ignore_missing: true
-
-      # - split:
-      #     field: '_tmp.target_status_code'
-      #     target_field: 'aws.elb.target_status_code'
-      #     separator: ' '
-      #     ignore_missing: true
+      aws.elb.action_executed: +s_to_array/$_tmp.actions_executed/,
+      aws.elb.target_port: "+s_to_array/$_tmp.target_port/ "
+      aws.elb.target_status_code: "+s_to_array/$_tmp.target_status_code/ "
       event.end: $timestamp
       tls.cipher:
         $aws.elb.ssl_cipher

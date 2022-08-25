@@ -62,4 +62,5 @@ TEST(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_trim"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_ext"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_append"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.s_to_array"));
 }

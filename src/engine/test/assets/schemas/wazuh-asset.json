@@ -129,7 +129,7 @@
                     "items": {
                         "allOf": [
                             {
-                                "$ref": "custom_ecs_field_1-10.json#"
+                                "$ref": "custom-ecs-field.json#"
                             },
                             {
                                 "maxProperties": 1
@@ -154,7 +154,7 @@
                     "items": {
                         "allOf": [
                             {
-                                "$ref": "custom_ecs_field_1-10.json#"
+                                "$ref": "custom-ecs-field.json#"
                             },
                             {
                                 "maxProperties": 1
@@ -179,7 +179,7 @@
                 "map": {
                     "allOf": [
                         {
-                            "$ref": "custom_ecs_field_1-10.json#"
+                            "$ref": "custom-ecs-field.json#"
                         },
                         {
                             "description": "Modify fields on the event, syntax is `field`: `value`, where `field` is the field to modify and `value` is the new value. If `value` is a function helper, it will be executed and the result will be used as new value if executed correctly. If `value` is a reference it will be used as new value only if the reference exists."
