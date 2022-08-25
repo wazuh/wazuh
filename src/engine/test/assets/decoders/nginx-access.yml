@@ -1,7 +1,5 @@
 ---
 name: nginx-access
-parents:
-  - default_decoder
 
 metadata:
   description: Parses nginx access logs
