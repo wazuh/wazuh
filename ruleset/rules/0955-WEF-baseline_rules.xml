@@ -60,7 +60,6 @@
     <options>no_full_log</options>
   </rule>
 
-
   <rule id="67016" level="3">
     <if_sid>60009</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
@@ -119,7 +118,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <!--Query 13: Log cleared events. Covered by rule 63104-->
+  <!--Query 13: Event Log service events. Covered by rules in 0610-win-ms_logs_rules.xml-->
 
   <!--Query 14: Local logons without network or service events -->
   <rule id="67022" level="3">
@@ -179,7 +178,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <!--Query 26: Special privileges (Admin-equivalent Access) assigned to new logon, excluding LocalSystem. Covered by rule 60226-->
+  <!--Query 26: Special privileges (Admin-equivalent Access) assigned to new logon, excluding LocalSystem.-->
   <rule id="67028" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4672$</field>
