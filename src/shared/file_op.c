@@ -454,23 +454,22 @@ int check_path_type(const char *dir)
 }
 
 
-int IsFile(const char *file)
-{
+int IsFile(const char *file) {
     struct stat buf;
-	return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
+    return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
 #ifndef WIN32
 
 int IsSocket(const char * file) {
     struct stat buf;
-	return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
+    return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
 }
 
 
 int IsLink(const char * file) {
     struct stat buf;
-	return (!lstat(file, &buf) && S_ISLNK(buf.st_mode)) ? 0 : -1;
+    return (!lstat(file, &buf) && S_ISLNK(buf.st_mode)) ? 0 : -1;
 }
 
 #endif // WIN32
@@ -883,25 +882,27 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         }
     }
 
-    finalfp = fopen(finalpath, "a");
-    if (finalfp == NULL) {
-        merror("Unable to append merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
+    if (finalfp = fopen(finalpath, "a"), finalfp == NULL) {
+        merror("Unable to open file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
     }
 
-    fp = fopen(files, "r");
-    if (fp == NULL || (fseek(fp, 0, SEEK_END) != 0)) {
-        merror("Unable to append merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
+    if (fp = fopen(files, "r"), fp == NULL) {
+        merror("Unable to open file: '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
         fclose(finalfp);
-        if (fp != NULL) {
-            fclose(fp);
-        }
+        return (0);
+    }
+
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        merror("Unable to set EOF offset in file: '%s', due to [(%d)-(%s)].", files, errno, strerror(errno));
+        fclose(finalfp);
+        fclose(fp);
         return (0);
     }
 
     files_size = ftell(fp);
     if (files_size == 0) {
-        mwarn("file '%s' size 0.", files);
+        mwarn("file '%s' is empty.", files);
     }
 
     if (tag != NULL) {
@@ -911,7 +912,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
 
     if (fseek(fp, 0, SEEK_SET) != 0) {
-        merror("Unable to append merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
+        merror("Unable to set the offset in file: '%s', due to [(%d)-(%s)].", files, errno, strerror(errno));
         fclose(finalfp);
         fclose(fp);
         return (0);
