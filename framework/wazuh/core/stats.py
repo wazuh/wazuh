@@ -1,11 +1,12 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import contextlib
 import json
 import os
 import re
-
 from typing import Union
+
 from wazuh.core import common, utils
 from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -165,13 +166,19 @@ def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = N
     finally:
         s.close()
 
-    try:
-        if last_id is None:
-            response['timestamp'] = utils.get_date_from_timestamp(response['timestamp'])
+    # Timestamps transformations
+    with contextlib.suppress(KeyError):
+        response_data = response if last_id is None else response['data']
+
+        # timestamp field
+        response_data['timestamp'] = utils.get_date_from_timestamp(response_data['timestamp'])
+
+        # uptime field
+        if not agents_list:
+            response_data['uptime'] = utils.get_date_from_timestamp(response_data['uptime'])
         else:
-            response['data']['timestamp'] = utils.get_date_from_timestamp(response['data']['timestamp'])
-    except KeyError:
-        pass
+            for agent in response_data['agents']:
+                agent['uptime'] = utils.get_date_from_timestamp(agent['uptime'])
 
     return response
 

@@ -253,11 +253,13 @@ stages:
               name: wazuh-remoted
               agents:
                 - id: 2
+                  uptime: !anystr
                   metrics: !anything
             - timestamp: !anystr
               name: wazuh-analysisd
               agents:
                 - id: 2
+                  uptime: !anystr
                   metrics: !anything
           failed_items: [ ]
           total_affected_items: 2

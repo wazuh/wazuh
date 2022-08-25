@@ -1644,12 +1644,23 @@ components:
           format: date-time
         name:
           type: string
-          description: "Demon name"
+          description: "Daemon name"
           enum:
             - wazuh-analysisd
             - wazuh-remoted
-        statistics:
-          type: object
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              uptime:
+                type: string
+                format: date-time
+              id:
+                type: integer
+                format: int32
+              metrics:
+                type: object
 
     ## CisCat models
     CiscatResults:
@@ -2065,17 +2076,20 @@ components:
     WazuhDaemonStatsItem:
       type: object
       properties:
+        uptime:
+          type: string
+          format: date-time
         timestamp:
           type: string
           format: date-time
         name:
           type: string
-          description: "Demon name"
+          description: "Daemon name"
           enum:
             - wazuh-analysisd
             - wazuh-remoted
             - wazuh-db
-        statistics:
+        metrics:
           type: object
 
     WazuhDaemonsStatus:
@@ -6214,7 +6228,8 @@ paths:
                     - timestamp: 2022-07-27T14:09:20+00:00
                       name: wazuh-remoted
                       agents:
-                        - id: 1
+                        - uptime: 2022-07-27T14:09:20+00:00
+                          id: 1
                           metrics:
                             messages:
                               received_breakdown:
@@ -6235,7 +6250,8 @@ paths:
                     - timestamp: 2022-07-27T14:09:20+00:00
                       name: wazuh-analysisd
                       agents:
-                        - id: 1
+                        - uptime: 2022-07-27T14:09:20+00:00
+                          id: 1
                           metrics:
                             events:
                               processed: 195
@@ -8941,9 +8957,10 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: 2022-07-21T10:48:32+00:00
+                    - uptime: 2022-07-27T14:09:20+00:00
+                      timestamp: 2022-07-21T10:48:32+00:00
                       name: wazuh-remoted
-                      statistics:
+                      metrics:
                         tcp_sessions: 0
                         received_bytes: 0
                         messages_received_breakdown:
@@ -10436,9 +10453,10 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: 2022-07-21T10:47:59+00:00
+                    - uptime: 2022-07-27T14:09:20+00:00
+                      timestamp: 2022-07-21T10:47:59+00:00
                       name: wazuh-db
-                      statistics:
+                      metrics:
                         queries_total: 1514
                         queries_breakdown:
                           wazuhdb_queries: 0
