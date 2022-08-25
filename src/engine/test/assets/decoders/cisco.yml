@@ -1,16 +1,15 @@
 ---
-name: cisco-ios
+name: cisco
 
 parents:
   - default_syslog_queue
 
 metadata:
-  description: Cisco IOS System, 15 SY
+  description: Cisco Generic Syslog decoder
   references:
     - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg.pdf
     - https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
     - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg/sm15syovr.html
-
 
 check:
   - event.original: +exists
@@ -32,8 +31,6 @@ parse:
     # Mar  1 18:48:50.483 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
     - event.original: '<timestamp/RC3154_W_ID_TIMEZONE>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
 
-
-
 normalize:
   - map:
       # host.os.platform: cisco-ios
@@ -41,9 +38,37 @@ normalize:
       # host.ip: wazuh.origin
       # observer.vendor: Cisco
       service.type: "cisco"
-      event.category: [ network ]
-      event.type: [ connection, firewall ]
-      # Maybe:
       log.source.address: $wazuh.origin
-      # "network.type": "ipv4",
-      # "related.ip": []
+
+  - check:
+      - event.severity: 0
+    map:
+        log.level: "emergency"
+  - check:
+      - event.severity: 1
+    map:
+        log.level: "alert"
+  - check:
+      - event.severity: 2
+    map:
+        log.level: "critical"
+  - check:
+      - event.severity: 3
+    map:
+        log.level: "error"
+  - check:
+      - event.severity: 4
+    map:
+        log.level: "warning"
+  - check:
+      - event.severity: 5
+    map:
+        log.level: "notice"
+  - check:
+      - event.severity: 6
+    map:
+        log.level: "informational"
+  - check:
+      - event.severity: 7
+    map:
+        log.level: "debug"
