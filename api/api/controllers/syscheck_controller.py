@@ -20,6 +20,7 @@ async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
 
     Parameters
     ----------
+    request : request.connexion
     agents_list : str
         List of agent ids.
     pretty : bool
@@ -29,8 +30,8 @@ async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -48,13 +49,15 @@ async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=False, offset=0,
-                             limit=None, select=None, sort=None, search=None, distinct=False,
-                             summary=False, md5=None, sha1=None, sha256=None, q=None, arch=None):
+async def get_syscheck_agent(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                             search: str = None, distinct: bool = False, summary: bool = False, md5: str = None,
+                             sha1: str = None, sha256: str = None, q: str = None, arch: str = None) -> web.Response:
     """Get file integrity monitoring scan result from an agent.
 
     Parameters
     ----------
+    request : request.connexion
     agent_id : str
         Agent ID.
     pretty : bool
@@ -65,10 +68,11 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
         First element to return in the collection.
     limit : int
         Maximum number of elements to return.
-    select : list[str]
+    select : str
         Select which fields to return (separated by comma).
     sort : str
-        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending
+        or descending order.
     search : str
         Looks for elements with the specified string.
     summary : bool
@@ -88,8 +92,8 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    web.Response
+        API response.
     """
 
     # get type parameter from query
@@ -119,11 +123,13 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_complete=False):
+async def delete_syscheck_agent(request, agent_id: str = '*', pretty: bool = False,
+                                wait_for_complete: bool = False) -> web.Response:
     """Clear file integrity monitoring scan results for a specified agent.
 
     Parameters
     ----------
+    request : request.connexion
     agent_id : str
         Agent ID.
     pretty : bool
@@ -133,8 +139,8 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -151,11 +157,13 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete=False):
-    """Return when the last syscheck scan of a specified agent started and ended
+async def get_last_scan_agent(request, agent_id: str, pretty: bool = False,
+                              wait_for_complete: bool = False) -> web.Response:
+    """Return when the last syscheck scan of a specified agent started and ended.
 
     Parameters
     ----------
+    request : request.connexion
     agent_id : str
         Agent ID.
     pretty : bool
@@ -165,8 +173,8 @@ async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
