@@ -928,42 +928,48 @@ class AWSBucket(WazuhIntegration):
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
-    def _check_recursive(self, json_item=None, nested_field: str = '', regex: str = ''):
-        field_list = nested_field.split('.', 1)
-        try:
-            expression_to_evaluate = json_item[field_list[0]]
-        except TypeError:
-            if isinstance(json_item, list):
-                return any(self._check_recursive(i, field_list[0], regex=regex) for i in json_item)
-            return False
-        except KeyError:
-            return False
-        if len(field_list) == 1:
-            def check_regex(exp):
-                try:
-                    return re.match(regex, exp) is not None
-                except TypeError:
-                    return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
-            return check_regex(expression_to_evaluate)
-        return self._check_recursive(expression_to_evaluate, field_list[1], regex=regex)
-
-    def _event_should_be_skipped(self, event_):
-        return self.discard_field and self.discard_regex \
-               and self._check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
-
+    def send_event(self, event):
+        # Change dynamic fields to strings; truncate values as needed
+        event_msg = self.reformat_msg(event)
+        # Send the message
+        self.send_msg(event_msg)
 
     def iter_events(self, event_list, log_key, aws_account_id):
+        def _check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
+            field_list = nested_field.split('.', 1)
+            try:
+                expression_to_evaluate = json_item[field_list[0]]
+            except TypeError:
+                if isinstance(json_item, list):
+                    return any(_check_recursive(i, field_list[0], regex=regex) for i in json_item)
+                return False
+            except KeyError:
+                return False
+            if len(field_list) == 1:
+                def check_regex(exp):
+                    try:
+                        return re.match(regex, exp) is not None
+                    except TypeError:
+                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
+
+                return check_regex(expression_to_evaluate)
+            return self._check_recursive(expression_to_evaluate, field_list[1], regex=regex)
+
+        def _event_should_be_skipped(event_):
+            return self.discard_field and self.discard_regex \
+                   and self._check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+
         if event_list is not None:
             for event in event_list:
-                if self._event_should_be_skipped(event):
+                if _event_should_be_skipped(event):
                     debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
                           f'The event will be skipped.', 2)
                     continue
+                # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
-                # Change dynamic fields to strings; truncate values as needed
-                event_msg = self.reformat_msg(event_msg)
-                # Send the message
-                self.send_msg(event_msg)
+
+                self.send_event(event_msg)
+
 
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
@@ -2144,6 +2150,11 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         db_table_name = 'guardduty'
         AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
+    def send_event(self, event):
+        # Send the message (splitted if it is necessary)
+        for msg in self.reformat_msg(event):
+            self.send_msg(msg)
+
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
             for event in event_list:
@@ -2152,11 +2163,9 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                         f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
                         f'The event will be skipped.', 2)
                     continue
-                # Parse out all the values of 'None'
+
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
-                # Send the message (splitted if it is necessary)
-                for msg in self.reformat_msg(event_msg):
-                    self.send_msg(msg)
+
 
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
