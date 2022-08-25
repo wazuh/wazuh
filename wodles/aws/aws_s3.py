@@ -928,33 +928,34 @@ class AWSBucket(WazuhIntegration):
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
+    def _check_recursive(self, json_item=None, nested_field: str = '', regex: str = ''):
+        field_list = nested_field.split('.', 1)
+        try:
+            expression_to_evaluate = json_item[field_list[0]]
+        except TypeError:
+            if isinstance(json_item, list):
+                return any(self._check_recursive(i, field_list[0], regex=regex) for i in json_item)
+            return False
+        except KeyError:
+            return False
+        if len(field_list) == 1:
+            def check_regex(exp):
+                try:
+                    return re.match(regex, exp) is not None
+                except TypeError:
+                    return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
+            return check_regex(expression_to_evaluate)
+        return self._check_recursive(expression_to_evaluate, field_list[1], regex=regex)
+
+    def _event_should_be_skipped(self, event_):
+        return self.discard_field and self.discard_regex \
+               and self._check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+
+
     def iter_events(self, event_list, log_key, aws_account_id):
-        def check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
-            field_list = nested_field.split('.', 1)
-            try:
-                expression_to_evaluate = json_item[field_list[0]]
-            except TypeError:
-                if isinstance(json_item, list):
-                    return any(check_recursive(i, field_list[0], regex=regex) for i in json_item)
-                return False
-            except KeyError:
-                return False
-            if len(field_list) == 1:
-                def check_regex(exp):
-                    try:
-                        return re.match(regex, exp) is not None
-                    except TypeError:
-                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
-                return check_regex(expression_to_evaluate)
-            return check_recursive(expression_to_evaluate, field_list[1], regex=regex)
-
-        def event_should_be_skipped(event_):
-            return self.discard_field and self.discard_regex \
-                   and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
-
         if event_list is not None:
             for event in event_list:
-                if event_should_be_skipped(event):
+                if self._event_should_be_skipped(event):
                     debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
                           f'The event will be skipped.', 2)
                     continue
@@ -2146,6 +2147,11 @@ class AWSGuardDutyBucket(AWSCustomBucket):
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
             for event in event_list:
+                if self._event_should_be_skipped(event):
+                    debug(
+                        f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
+                        f'The event will be skipped.', 2)
+                    continue
                 # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
                 # Send the message (splitted if it is necessary)
