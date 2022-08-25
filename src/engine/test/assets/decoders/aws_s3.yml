@@ -10,7 +10,7 @@ parents:
   - aws
 
 - check:
-  - wazuh.aws.source: +s_eq/s3_server_access
+  - wazuh.modules.aws.source: +s_eq/s3_server_access
 
 logql:
   - $_json.aws.request_uri: <http.request.method> <http.url.original> HTTP/<http.version>
@@ -34,6 +34,30 @@ normalize:
       event.outcome: success
 
   - map:
+      aws.s3access.authentication_type: $_json.aws.authentication_type
+      aws.s3access.bucket_owner: $_json.aws.bucket_owner
+      aws.s3access.bucket: $_json.aws.bucket
+      aws.s3access.bytes_sent: $_json.aws.bytes_sent
+      aws.s3access.cipher_suite: $_json.aws.cipher_suite
+      aws.s3access.error_code: $_json.aws.error_code
+      aws.s3access.host_header: $_json.aws.host_header
+      aws.s3access.host_id: $_json.aws.host_id
+      aws.s3access.http_status: $_json.aws.http_status
+      aws.s3access.key: $_json.aws.key
+      aws.s3access.object_size: $_json.aws.object_sent
+      aws.s3access.operation: $_json.aws.operation
+      aws.s3access.referrer: $_json.aws.referer
+      aws.s3access.remote_ip: $_json.aws.remote_ip
+      aws.s3access.request_id: $_json.aws.request_id
+      aws.s3access.request_uri: $_json.aws.request_uri
+      aws.s3access.requester: $_json.aws.requester
+      aws.s3access.signature_version: $_json.aws.signature_version
+      aws.s3access.tls_version: $_json.aws.tls_version
+      aws.s3access.total_time: $_json.aws.total_time
+      aws.s3access.turn_around_time: $_json.aws.turn_around_time
+      aws.s3access.user_agent: $_json.aws.user_agent
+      aws.s3access.version_id: $_json.aws.version_id
+
       client.address: $_json.aws.remote_ip
       client.ip: $_json.aws.remote_ip
       client.user.id: $_json.aws.requester
@@ -59,4 +83,4 @@ normalize:
 
       tls.cipher: $_json.aws.cipher_suite
 
-      json: +delete_field
+      _json: +delete_field
