@@ -46,6 +46,8 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         {"NGINX_ERROR", {"%Y/%m/%d %T", "2016/10/25 14:49:34"}},
         {"APACHE_ERROR", {"%a %b %d %T %Y", "Mon Dec 26 16:15:55.103786 2016"}},
         {"APACHE_ERROR2", {"%a %b %d %T %Y", "Mon Dec 26 16:15:55 2016"}},
+        {"POSTGRES", {"%Y-%m-%d %T %Z", "2021-02-14 10:45:33 UTC"}},
+        {"POSTGRES_MS", {"%Y-%m-%d %T %Z", "2021-02-14 10:45:33.XXX UTC"}},
 };
 
 bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args)
@@ -453,6 +455,8 @@ bool parseTimeStamp(const char** it, Parser const& parser, ParseResult& result)
         auto tsFormat = std::get<0>(kTimeStampFormatMapper.at(tsName));
 
         const char* start = *it;
+        //TODO: instead of defining the size directly we could look for the first
+        // occurrence of the endToken between all sizes of the tsExample
         for (auto i = 0; i < tsSize; i++, (*it)++)
         {
             if (**it == '\0')
