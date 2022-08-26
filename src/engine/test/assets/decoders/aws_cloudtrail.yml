@@ -9,14 +9,34 @@ metadata:
 parents:
   - aws
 
-- check:
+check:
   - wazuh.modules.aws.source: +s_eq/cloudtrail
 
 normalize:
   - check:
-      _json.aws.previousDigestHashAlgorithm: +s_eq/SHA-256
+      - _json.aws.previousDigestHashAlgorithm: +s_eq/SHA-256
     map:
       file.hash.sha256: $_json.aws.previousDigestSignature
+
+  - check:
+      - _json.aws.userIdentity.accountId: +not_exists
+    map:
+      cloud.account.id: $_json.aws.awsAccountId
+
+  - check:
+      - _json.aws.userIdentity.accountId: +exists
+    map:
+      cloud.account.id: $_json.aws.userIdentity.accountId
+
+  - check:
+      - _json.aws.userIdentity.userName: +not_exists
+    map:
+      user.name: $_json.aws.userIdentity.sessionContext.sessionIssuer.userName
+
+  - check:
+      - _json.aws.userIdentity.userName: +exists
+    map:
+      user.name: $_json.aws.userIdentity.userName
 
   - map:
       aws.cloudtrail.additional_eventdata: $_json.aws.additionalEventData
@@ -60,8 +80,6 @@ normalize:
       aws.cloudtrail.user_identity.type: $_json.aws.userIdentity.type
       aws.cloudtrail.vpc_endpoint_id: $_json.aws.vpcEndpointId
 
-      cloud.account.id: $_json.aws.awsAccountId
-      cloud.account.id: $_json.aws.userIdentity.accountId
       cloud.region: $_json.aws.awsRegion
 
       event.action: $_json.aws.eventName
@@ -85,8 +103,6 @@ normalize:
       user_agent: $_json.aws.userAgent
       user_agent.original: $_json.aws.userAgent
       user.id: $_json.aws.userIdentity.principalId
-      user.name: $_json.aws.userIdentity.sessionContext.sessionIssuer.userName
-      user.name: $_json.aws.userIdentity.userName
 
       # TODO: check the "scripts" and assignments related to "flattened" fields
 

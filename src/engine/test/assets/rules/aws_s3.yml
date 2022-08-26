@@ -1,7 +1,0 @@
-name: aws_s3
-
-parents:
-  - aws_integration
-
-check:
-  - wazuh.modules.aws.source: +s_eq/s3_server_access
