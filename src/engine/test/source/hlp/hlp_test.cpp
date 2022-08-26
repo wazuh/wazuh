@@ -106,6 +106,7 @@ TEST(hlpTests_logQL, optional_Field_Not_Found)
 
 TEST(hlpTests_logQL, optional_Or)
 {
+    //TODO: this should be fixed and tested in other aspects
     static const char* logQl = "<_url/url>?<_field/json>";
     static const char* eventjson = "{\"String\":\"SomeValue\"}";
     static const char* eventURL = "https://user:password@wazuh.com:8080/path"
@@ -672,6 +673,24 @@ TEST(hlpTests_Timestamp, kitchen)
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
     ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+}
+
+// {"POSTGRES", {"%Y-%m-%d %T %Z", "2021-02-14 10:45:33.257 UTC"}},
+TEST(hlpTests_Timestamp, POSTGRES)
+{
+    static const char* logQl =
+        "[<timestamp/POSTGRES>] - [<_t/timestamp/POSTGRES_MS>] - "
+        "(<postgresql.log.session_start_time/POSTGRES>) - "
+        "[<_stamp/timestamp/POSTGRES_MS>] [<postgresql.log.session_start_time/POSTGRES>]";
+    static const char* event =
+        "[2021-02-14 10:45:14 UTC] - [2021-02-14 10:45:14.123 UTC] - (2021-02-14 "
+        "10:45:14 UTC) - [2021-02-14 10:45:14.123456 UTC] [2021-02-14 10:45:14 UTC]";
+
+    auto parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
 }
 
 // Test: domain parsing
