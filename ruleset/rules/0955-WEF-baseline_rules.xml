@@ -68,7 +68,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <!--Query 5: Services: Covered by rule 61138 -->
+  <!--Query 5: Services: Covered by rule 60108 -->
 
   <!--Query 6: Terminal services connect/reconnect: Covered by rule 60108-->
 
