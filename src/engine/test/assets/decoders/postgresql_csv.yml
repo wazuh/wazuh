@@ -1,0 +1,90 @@
+name: postgresql_csv
+
+metadata:
+  description: Parses postgresql csv logs in its Common Log Format
+  references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
+  product.name: postgresql
+
+
+definitions:
+  #'^duration: %{NUMBER:temp.duration:float} ms  %{POSTGRESQL_QUERY_STEP:postgresql.log.query_step} %{DATA:postgresql.log.query_name}: %{GREEDYDATA:message}$'
+  #'^duration: %{NUMBER:temp.duration:float} ms  %{POSTGRESQL_QUERY_STEP:postgresql.log.query_step}: %{GREEDYDATA:message}$'
+  #'^(%{POSTGRESQL_QUERY_STEP:postgresql.log.query_step}: )?%{GREEDYDATA:message}$'
+  #'^duration: %{NUMBER:temp.duration:float} ms$'
+  #'^{GREEDYDATA:message}$'
+  MESSAGE_FORMAT_1: "duration: <_temp_duration/float> ms  <postgresql.log.query_step> <postgresql.log.query_name>: <_message/keyword>"
+  MESSAGE_FORMAT_2: "duration: <_temp_duration/float> ms  <postgresql.log.query_step>: <_message/keyword>"
+  MESSAGE_FORMAT_3: "<postgresql.log.query_step>:<_message/keyword>"
+  MESSAGE_FORMAT_4: "duration: <_temp_duration/float> ms"
+  MESSAGE_FORMAT_5: "<_message/keyword>"
+
+  SECTION_1: <timestamp/POSTGRES_MS>,<user.name>,<postgresql.log.database>,<process.pid>,\"<postgresql.log.client_addr>:<postgresql.log.client_port>\"
+  SECTION_2: <postgresql.log.session_id>,<postgresql.log.session_line_num>,<postgresql.log.command_tag>,<postgresql.log.session_start_time/POSTGRES>,<postgresql.log.virtual_transaction_id>
+  SECTION_3: <postgresql.log.transaction_id>,<log.level>,<postgresql.log.sql_state_code>
+
+  POSTGRES_OPTIONAL_FIELDS: <?postgresql.log.detail>,<?postgresql.log.hint>,<?postgresql.internal_query>,<?_internal_query_pos>,<?postgresql.log.context>,<?postgresql.log.query>,<?_query_pos>,<?postgresql.log.location>
+
+check:
+  # - wazuh.queue: +i_eq/TODO: what number??
+  - event.original: +exists
+
+parse:
+  logql:
+      # 2021-02-14 10:45:48.113 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,5,"idle",2021-02-14 10:45:14 UTC,3/4,0,LOG,00000,"statement: BEGIN;",,,,,,,,,"psql","client backend"
+      # 2021-02-14 10:45:33.257 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,4,"idle",2021-02-14 10:45:14 UTC,3/3,0,LOG,00000,"statement: SET idle_in_transaction_session_timeout = 50;",,,,,,,,,"psql","client backend"
+      # 2021-02-14 10:45:48.164 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,6,"idle in transaction",2021-02-14 10:45:14 UTC,3/4,0,FATAL,25P03,"terminating connection due to idle-in-transaction timeout",,,,,,,,,"psql","client backend"
+      # 2021-02-14 10:45:48.164 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,7,"idle in transaction",2021-02-14 10:45:14 UTC,,0,LOG,00000,"disconnection: session time: 0:00:33.289 user=postgres database=postgres host=172.24.0.1 port=48978",,,,,,,,,"psql","client backend"
+      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_1",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_2",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_3",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_4",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_5",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+
+normalize:
+  - map:
+      event.kind: event
+      event.module: postgresql
+      event.dataset: postgresql.log
+      event.category: +s_append/database
+      service.type: postgresql
+      postgresql.log.timestamp: $timestamp
+      fileset.name: log                 #assumed fixed value
+      input.type: log                   #assumed fixed value
+      related.user: +s_append/postgres  #assumed fixed value
+      #Getting last value of timestamp = timezone
+      _temp_timestamp: "+s_to_array/$timestamp/ "
+      event.timezone: $_temp_timestamp/2
+      message: $_message                #workaround for name collision (or it will need rework on any parser)
+      log.offset: 111                   #TODO: where to get this value?
+      # _temp_timestamp: +delete_field  #TODO: this is not allowed becasue of duplicated key:value pair in json but it shouldn't
+      _message: +delete_field
+
+  - check:
+      - _internal_query_pos: +exists
+    map:
+      postgresql.internal_query: $_internal_query_pos
+      _internal_query_pos: +delete_field
+
+  #TODO: see Table 20.2. Message Severity Levels (https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG)
+  # we're loosing warning type and double check state_code comparisson
+  # info  if: "ctx?.postgresql?.log?.sql_state_code == null ||  (ctx.postgresql.log.sql_state_code ==~ /^0[012].*/)"
+  # error if: "ctx?.postgresql?.log?.sql_state_code != null && !(ctx.postgresql.log.sql_state_code ==~ /^0[012].*/)"
+  - check:
+      - postgresql.log.sql_state_code: +s_ne/00000
+    map:
+      event.type: +s_append/error
+
+  - check:
+      - postgresql.log.sql_state_code: +not_exists
+    map:
+      event.type: +s_append/info
+
+  - check:
+      - postgresql.log.sql_state_code: +s_eq/00000
+    map:
+      event.type: +s_append/info
