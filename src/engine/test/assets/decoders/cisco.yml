@@ -5,7 +5,7 @@ parents:
   - default_syslog_queue
 
 metadata:
-  description: Cisco Generic Syslog decoder
+  description: Generic Cisco Syslog decoder
   references:
     - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg.pdf
     - https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
@@ -19,17 +19,17 @@ parse:
     # Parse header only (IOS and ASA)
 
     # "Feb 14 09:40:10.326: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet0/1, changed state to up"
-    - event.original: '<timestamp/SYSLOG>.<_seqID/number>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
+    - event.original: '<timestamp/SYSLOG>.<_/number>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message>'
 
     # Mar  1 18:46:11: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
-    - event.original: '<timestamp/SYSLOG>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
+    - event.original: '<timestamp/SYSLOG>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message>'
 
     # "00:00:46: %LINK-3-UPDOWN: Interface Port-channel1, changed state to up"
     # "18:47:02: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)"
-    - event.original: '<timestamp/24H_LOCALTIME>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
+    - event.original: '<timestamp/24H_LOCALTIME>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message>'
 
     # Mar  1 18:48:50.483 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
-    - event.original: '<timestamp/RC3154_W_ID_TIMEZONE>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message/any>'
+    - event.original: '<timestamp/RFC3154_ID_TIMEZONE>: %<cisco.ios.facility>-<event.severity>-<event.code>: <message>'
 
 normalize:
   - map:
