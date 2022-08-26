@@ -328,7 +328,12 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
     char buffer[OS_MAXSTR + 1] = { '\0' };
     char cleartext[OS_MAXSTR + 1] = { '\0' };
 
-    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+    cJSON* agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "version", __ossec_version);
+    char *agent_info_string = cJSON_PrintUnformatted(agent_info);
+    cJSON_Delete(agent_info);
+
+    snprintf(msg, OS_MAXSTR, "%s%s%s", CONTROL_HEADER, HC_STARTUP, agent_info_string);
 
     if (connect_server(server_id, true)) {
         /* Send start up message */
