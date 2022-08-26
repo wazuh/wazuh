@@ -78,10 +78,12 @@ default_api_configuration = {
 
 
 def dict_to_lowercase(mydict: Dict):
-    """Turns all str values to lowercase. Supports nested dictionaries.
+    """Turn all string values of a dictionary to lowercase. Also support nested dictionaries.
 
-    :param mydict: Dictionary to lowercase
-    :return: None (the dictionary's reference is modified)
+    Parameters
+    ----------
+    mydict : dict
+        Dictionary with the values we want to convert.
     """
     for k, val in filter(lambda x: isinstance(x[1], str) or isinstance(x[1], dict), mydict.items()):
         if isinstance(val, dict):
@@ -97,7 +99,7 @@ def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[st
     ----------
     dictionary : dict
         Dictionary with the API configuration.
-    path_fields : dict of lists of tuples of string
+    path_fields : dict
         Key: Prefix to append (path)
         Values: Sections of the configuration to append the prefix to.
     """
@@ -140,7 +142,8 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
     return {**default, **config}
 
 
-def generate_private_key(private_key_path, public_exponent=65537, key_size=2048):
+def generate_private_key(private_key_path: str, public_exponent: int = 65537,
+                         key_size: int = 2048) -> rsa.RSAPrivateKey:
     """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
 
     Parameters
@@ -154,7 +157,7 @@ def generate_private_key(private_key_path, public_exponent=65537, key_size=2048)
 
     Returns
     -------
-    RSAPrivateKey
+    rsa.RSAPrivateKey
         Private key.
     """
     key = rsa.generate_private_key(
@@ -173,20 +176,19 @@ def generate_private_key(private_key_path, public_exponent=65537, key_size=2048)
     return key
 
 
-def generate_self_signed_certificate(private_key, certificate_path):
-    """Generate a self signed certificate using a generated private key. The certificate will be created in
-        'CONFIG_PATH/ssl/server.crt'.
+def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
+    """Generate a self-signed certificate using a generated private key. The certificate will be created in
+    'CONFIG_PATH/ssl/server.crt'.
 
     Parameters
     ----------
     private_key : RSAPrivateKey
         Private key.
     certificate_path : str
-        Path where the self signed certificate will be generated.
+        Path where the self-signed certificate will be generated.
     """
     # Generate private key
-    # Various details about who we are. For a self-signed certificate the
-    # subject and issuer are always the same.
+    # Various details about who we are. For a self-signed certificate, the subject and issuer are always the same
     subject = issuer = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
@@ -218,13 +220,23 @@ def generate_self_signed_certificate(private_key, certificate_path):
     os.chmod(certificate_path, 0o400)
 
 
-def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
-    """Reads user API configuration and merges it with the default one
+def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = None) -> Dict:
+    """Read user API configuration and merge it with the default one.
 
-    :return: API configuration
+    Parameters
+    ----------
+    config_file : str
+        Configuration file path.
+    default_conf : dict
+        Default configuration to be merged with the user's one.
+
+    Returns
+    -------
+    dict
+        API configuration.
     """
 
-    def replace_bools(conf):
+    def replace_bools(conf: dict):
         """Replace 'yes' and 'no' strings in configuration for actual booleans.
 
         Parameters

@@ -6,14 +6,28 @@ import datetime
 import os
 import typing
 from functools import wraps
+from typing import Union
 
 import six
 from connexion import ProblemException
 
+from api.models.base_model_ import Model
 from wazuh.core import common, exception
 
 
-def serialize(item):
+def serialize(item: object) -> object:
+    """Serialize item when it is a datetime object.
+
+    Parameters
+    ----------
+    item : object
+        Object to serialize.
+
+    Returns
+    -------
+    object
+        Serialized item.
+    """
     try:
         if isinstance(item, datetime.datetime):
             return item.replace(tzinfo=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
@@ -23,13 +37,20 @@ def serialize(item):
         return item
 
 
-def _deserialize(data, klass):
-    """Deserializes dict, list, str into an object.
+def _deserialize(data: Union[dict, list, str], klass: type) -> object:
+    """Deserialize dict, list, str into an object.
 
-    :param data: dict, list or str.
-    :param klass: class literal, or string of class name.
+    Parameters
+    ----------
+    data : Union[dict, list, str]
+        dict, list or str to deserialize.
+    klass : type
+        Class literal, or string of class name.
 
-    :return: object.
+    Returns
+    -------
+    object
+        Deserialized object.
     """
     if data is None:
         return None
@@ -51,14 +72,20 @@ def _deserialize(data, klass):
         return deserialize_model(data, klass)
 
 
-def _deserialize_primitive(data, klass):
-    """Deserializes to primitive type.
+def _deserialize_primitive(data: Union[dict, list, str], klass: type) -> Union[int, float, str, bool]:
+    """Deserialize to primitive type.
 
-    :param data: data to deserialize.
-    :param klass: class literal.
+    Parameters
+    ----------
+    data : Union[dict, list, str]
+        dict, list or str to deserialize.
+    klass : type
+        Class literal, or string of class name.
 
-    :return: int, long, float, str, bool.
-    :rtype: int | long | float | str | bool
+    Returns
+    -------
+    Union[int, float, str, bool]
+        Deserialized data.
     """
     try:
         value = klass(data)
@@ -69,21 +96,34 @@ def _deserialize_primitive(data, klass):
     return value
 
 
-def _deserialize_object(value):
+def _deserialize_object(value: object) -> object:
     """Return a original value.
 
-    :return: object.
+    Parameters
+    ----------
+    value : object
+        Object to be deserialized.
+
+    Returns
+    -------
+    object
+        Original object.
     """
     return value
 
 
-def deserialize_date(string):
-    """Deserializes string to date.
+def deserialize_date(string: str) -> Union[datetime.date, str]:
+    """Deserialize string to date.
 
-    :param string: str.
-    :type string: str
-    :return: date.
-    :rtype: date
+    Parameters
+    ----------
+    string : object
+        String to be deserialized to date.
+
+    Returns
+    -------
+    Union[datetime.date, str]
+        Deserialized date or string in case of ImportError.
     """
     try:
         from dateutil.parser import parse
@@ -92,15 +132,20 @@ def deserialize_date(string):
         return string
 
 
-def deserialize_datetime(string):
-    """Deserializes string to datetime.
+def deserialize_datetime(string: str) -> Union[datetime.datetime, str]:
+    """Deserialize string to datetime.
 
     The string should be in iso8601 datetime format.
 
-    :param string: str.
-    :type string: str
-    :return: datetime.
-    :rtype: datetime
+    Parameters
+    ----------
+    string : object
+        String to be deserialized to date.
+
+    Returns
+    -------
+    Union[datetime.datetime, str]
+        Deserialized datetime or string in case of ImportError.
     """
     try:
         from dateutil.parser import parse
@@ -109,13 +154,20 @@ def deserialize_datetime(string):
         return string
 
 
-def deserialize_model(data, klass):
-    """Deserializes list or dict to model.
+def deserialize_model(data: Union[list, dict], klass: type) -> Union[Model, list, dict]:
+    """Deserialize list or dict to Model.
 
-    :param data: dict, list.
-    :type data: dict | list
-    :param klass: class literal.
-    :return: model object.
+    Parameters
+    ----------
+    data : Union[list, dict]
+        dict, list or str to deserialize.
+    klass : type
+        Class literal, or string of class name.
+
+    Returns
+    -------
+    Union[Model, list, dict]
+        Deserialized data to Model or data without changes.
     """
     instance = klass()
 
@@ -132,50 +184,75 @@ def deserialize_model(data, klass):
     return instance
 
 
-def _deserialize_list(data, boxed_type):
-    """Deserializes a list and its elements.
+def _deserialize_list(data: list, boxed_type: type) -> list:
+    """Deserialize a list and its elements.
 
-    :param data: list to deserialize.
-    :type data: list
-    :param boxed_type: class literal.
+    Parameters
+    ----------
+    data : list
+        list to deserialize.
+    boxed_type : type
+        Class literal.
 
-    :return: deserialized list.
-    :rtype: list
+    Returns
+    -------
+    list
+        Deserialized list.
     """
     return [_deserialize(sub_data, boxed_type)
             for sub_data in data]
 
 
-def _deserialize_dict(data, boxed_type):
-    """Deserializes a dict and its elements.
+def _deserialize_dict(data: dict, boxed_type: type) -> dict:
+    """Deserialize a dict and its elements.
 
-    :param data: dict to deserialize.
-    :type data: dict
-    :param boxed_type: class literal.
+    Parameters
+    ----------
+    data : dict
+        dict to deserialize.
+    boxed_type : type
+        Class literal.
 
-    :return: deserialized dict.
-    :rtype: dict
+    Returns
+    -------
+    dict
+        Deserialized dict.
     """
     return {k: _deserialize(v, boxed_type)
             for k, v in six.iteritems(data)}
 
 
-def remove_nones_to_dict(dct):
-    """Removes none values from a dict recursively
+def remove_nones_to_dict(dct: dict) -> dict:
+    """Remove None values from a dict recursively.
 
-    :param dct: dict to filter
-    :return: new dict without none values
+    Parameters
+    ----------
+    dct : dict
+        Dictionary with the None values to be removed.
+
+    Returns
+    -------
+    dict
+        Dictionary with the None values removed.
     """
     return {k: v if not isinstance(v, dict) else remove_nones_to_dict(v)
             for k, v in dct.items() if v is not None}
 
 
-def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
-    """Parses an str parameter from the API query and returns a dictionary the framework can process
+def parse_api_param(param: str, param_type: str) -> Union[typing.Dict, None]:
+    """Parse a str parameter from the API query and returns a dictionary the framework can process.
 
-    :param param: Str parameter coming from the API.
-    :param param_type: Type of parameter -> search or sort
-    :return: A dictionary
+    Parameters
+    ----------
+    param : str
+        String parameter coming from the API.
+    param_type : str
+        Type of parameter: search or sort.
+
+    Returns
+    -------
+    dict
+        Dictionary that the framework can process.
     """
     if param is not None:
         my_func = f'_parse_{param_type}_param'
@@ -186,37 +263,51 @@ def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
 
 
 def _parse_search_param(search: str) -> typing.Dict:
-    """Parses search str param coming from the API query into a dictionary the framework can process.
+    """Parse search str param coming from the API query into a dictionary the framework can process.
 
-    :param search: Search parameter coming from the API query
-    :return: A dictionary like {'value': 'ubuntu', 'negation': False}
+    Parameters
+    ----------
+    search : str
+        Search parameter coming from the API query.
+
+    Returns
+    -------
+    dict
+        Dictionary that the framework can process.
     """
     negation = search[0] == '-'
     return {'negation': negation, 'value': search[1:] if negation else search}
 
 
-def _parse_sort_param(sort: str) -> [typing.Dict, None]:
-    """Parses sort str param coming from the API query into a dictionary the framework can process.
+def _parse_sort_param(sort: str) -> typing.Dict:
+    """Parse sort str param coming from the API query into a dictionary the framework can process.
 
-    :param sort: Sort parameter coming from the API query
-    :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
+    Parameters
+    ----------
+    sort : str
+        Sort parameter coming from the API query.
+
+    Returns
+    -------
+    dict
+        Dictionary that the framework can process.
     """
     sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 
-def _parse_q_param(query: str):
-    """Search and parse q parameter inside the query string
+def _parse_q_param(query: str) -> str:
+    """Search and parse q parameter inside the query string.
 
     Parameters
     ----------
     query : str
-        String query which can contain q parameter
+        String query which can contain q parameter.
 
     Returns
     -------
-    q : str
-        Parsed query
+    str
+        Parsed query.
     """
     q = next((q for q in query.split('&') if q.startswith('q=')), None)
 
@@ -224,32 +315,37 @@ def _parse_q_param(query: str):
         return q[2:]
 
 
-def to_relative_path(full_path):
-    """Returns a relative path from Wazuh base directory
+def to_relative_path(full_path: str) -> str:
+    """Return a relative path from Wazuh base directory.
 
-    :param full_path: Full path
-    :type path: str
-    :return: Relative path
-    :rtype: str
+    Parameters
+    ----------
+    full_path : str
+        Full path.
+
+    Returns
+    -------
+    str
+        Relative path from Wazuh base directory.
     """
     return os.path.relpath(full_path, common.WAZUH_PATH)
 
 
-def _create_problem(exc: Exception, code=None):
-    """
-    Transforms an exception into a ProblemException according to `exc`
+def _create_problem(exc: Exception, code: int = None):
+    """Transform an exception into a ProblemException according to `exc`.
 
     Parameters
     ----------
     exc : Exception
         If `exc` is an instance of `WazuhException` it will be casted into a ProblemException, otherwise it will be
-        raised
+        raised.
     code : int
-        HTTP status code for this response
+        HTTP status code for this response.
 
     Raises
     ------
-        ProblemException or `exc` exception type
+    Exception
+        ProblemException or `exc` exception type.
     """
     ext = None
     if isinstance(exc, exception.WazuhException):
@@ -276,17 +372,18 @@ def _create_problem(exc: Exception, code=None):
     raise exc
 
 
-def raise_if_exc(obj):
-    """Checks if obj is an Exception and raises it. Otherwise it is returned
+def raise_if_exc(obj: object) -> Union[object, None]:
+    """Check if obj is an Exception and raises it. Otherwise it is returned.
 
     Parameters
     ----------
-    obj : dict or Exception
+    obj : object
         Object to be checked
 
     Returns
     -------
-    An obj only if it is not an Exception instance
+    object
+        An object only if obj is not an Exception instance.
     """
     if isinstance(obj, Exception):
         _create_problem(obj)
@@ -294,7 +391,7 @@ def raise_if_exc(obj):
         return obj
 
 
-def get_invalid_keys(original_dict, des_dict):
+def get_invalid_keys(original_dict: dict, des_dict: dict) -> set:
     """Return a set with the keys from `original_dict` that are not present in `des_dict`.
 
     Parameters

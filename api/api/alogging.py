@@ -2,16 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import binascii
+import collections
 import json
 import logging
 import re
 from base64 import b64decode
 
+from aiohttp import web_request
 from aiohttp.abc import AbstractAccessLogger
 from pythonjsonlogger import jsonlogger
-from wazuh.core.wlogging import WazuhLogger
 
-from api.configuration import api_conf
+from wazuh.core.wlogging import WazuhLogger
 
 # compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -22,7 +23,7 @@ UNKNOWN_USER_STRING = "unknown_user"
 
 class AccessLogger(AbstractAccessLogger):
     """
-    Define the log writter used by aiohttp.
+    Define the log writer used by aiohttp.
     """
     def check_stream(self):
         """Renew logger handler stream if it has been closed."""
@@ -30,7 +31,8 @@ class AccessLogger(AbstractAccessLogger):
             if not handler.stream or handler.stream.closed:
                 handler.stream = handler._open()
 
-    def custom_logging(self, user, remote, method, path, query, body, time, status):
+    def custom_logging(self, user: str, remote: str, method: str, path: str, query: dict, body: dict, time: float,
+                       status: int):
         """Provide the log entry structure depending on the logging format.
 
         Parameters
@@ -73,7 +75,18 @@ class AccessLogger(AbstractAccessLogger):
                          extra={'log_type': 'json'}
                          )
 
-    def log(self, request, response, time):
+    def log(self, request: web_request.BaseRequest, response: web_request.StreamResponse, time: float):
+        """Override the log method to log messages.
+
+        Parameters
+        ----------
+        request : web_request.BaseRequest
+            API request onject.
+        response : web_request.StreamResponse
+            API response object.
+        time : float
+            Time taken by the API to respond to the request.
+        """
         self.check_stream()
         query = dict(request.query)
         body = request.get("body", dict())
@@ -108,18 +121,17 @@ class APILogger(WazuhLogger):
     Define the logger used by wazuh-apid.
     """
 
-    def __init__(self, *args, **kwargs):
-        """
-        Constructor
-        """
+    def __init__(self, *args: dict, **kwargs: dict):
+        """APIlogger class constructor."""
         log_path = kwargs.get('log_path', '')
         super().__init__(*args, **kwargs,
                          custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
 
     def setup_logger(self):
-        """
-        Set ups API logger. In addition to super().setup_logger() this method adds:
-            * Sets up log level based on the log level defined in API configuration file.
+        """Set up API logger.
+
+        In addition to super().setup_logger(), this method sets up the log level based on the log level defined in the
+        API configuration file.
         """
         super().setup_logger()
 
@@ -143,7 +155,8 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     """
     Define the custom JSON log formatter used by wlogging.
     """
-    def add_fields(self, log_record, record, message_dict):
+
+    def add_fields(self, log_record: collections.OrderedDict, record: logging.LogRecord, message_dict: dict):
         """Implement custom logic for adding fields in a log entry.
 
         Parameters
@@ -160,7 +173,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
             record.message = {
                 'type': 'request',
                 'payload': message_dict
-                }
+            }
         else:
             # Traceback handling
             traceback = message_dict.get('exc_info')
@@ -168,13 +181,13 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
                 record.message = {
                     'type': 'error',
                     'payload': f'{record.message}. {traceback}'
-                    }
+                }
             else:
                 # Plain text messages
                 record.message = {
                     'type': 'informative',
                     'payload': record.message
-                    }
+                }
         log_record['timestamp'] = self.formatTime(record, self.datefmt)
         log_record['levelname'] = record.levelname
         log_record['data'] = record.message

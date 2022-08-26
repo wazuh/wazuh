@@ -7,14 +7,18 @@ from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
 
 class APIException(Exception):
     """
-    Wazuh API exception
+    Wazuh API exception class.
     """
 
     def __init__(self, code: int, details: str = None):
-        """
-        Constructor
-        :param code: Error code.
-        :param details: Extra details to add to the default exception message to include useful context information
+        """APIException class constructor.
+
+        Parameters
+        ----------
+        code : int
+            Error code.
+        details : str
+            Extra details to add to the default exception message to include useful context information.
         """
         self.code = code
         self.details = details
@@ -40,6 +44,13 @@ class APIException(Exception):
         }
 
     def __str__(self):
+        """Magic method str().
+
+        Returns
+        -------
+        str
+            String representation of the APIException object.
+        """
         details = '.' if self.details is None else f': {self.details}.'
         return f"{self.code} - {self.exceptions[self.code]}{details}"
 
