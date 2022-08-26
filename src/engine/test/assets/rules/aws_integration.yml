@@ -1,8 +1,0 @@
-name: aws_integration
-
-check:
-  - wazuh.integration: +s_starts/aws
-
-normalize:
-  - map:
-      event.severity: 0
