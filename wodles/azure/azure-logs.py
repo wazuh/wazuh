@@ -24,6 +24,7 @@ from hashlib import md5
 from json import dumps, loads, JSONDecodeError
 from os.path import abspath, dirname
 from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
+from typing import Optional
 
 from azure.common import AzureException, AzureHttpError
 from azure.storage.blob import BlockBlobService
@@ -138,6 +139,8 @@ def get_script_arguments():
                              "By default, the content of the blob is considered to be plain text.")
     parser.add_argument("--storage_time_offset", metavar="time", type=str, required=False,
                         help="Time range for the request.")
+    parser.add_argument('-p', '--prefix', dest='prefix', help='The relative path to the logs', type=str, required=False)
+
 
     # General parameters #
     parser.add_argument('--reparse', action='store_true', dest='reparse',
@@ -656,13 +659,15 @@ def start_storage():
         min_datetime = parse(item.min_processed_date, fuzzy=True)
         max_datetime = parse(item.max_processed_date, fuzzy=True)
         desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-        get_blobs(container_name=container, blob_service=block_blob_service, md5_hash=md5_hash,
+        get_blobs(container_name=container, prefix=args.prefix, blob_service=block_blob_service, md5_hash=md5_hash,
                   min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
     logging.info("Storage: End")
 
 
-def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str, min_datetime: datetime,
-              max_datetime: datetime, desired_datetime: datetime, next_marker: str = None):
+def get_blobs(
+    container_name: str, blob_service: BlockBlobService, md5_hash: str, min_datetime: datetime, max_datetime: datetime,
+    desired_datetime: datetime, next_marker: Optional[str] = None, prefix: Optional[str] = None
+):
     """Get the blobs from a container and send their content.
 
     Parameters
@@ -690,15 +695,19 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
     try:
         # Get the blob list
         logging.info("Storage: Getting blobs.")
-        blobs = blob_service.list_blobs(container_name, marker=next_marker)
+        blobs = blob_service.list_blobs(container_name, prefix, marker=next_marker)
     except AzureException as e:
         logging.error(f"Storage: Error getting blobs from '{container_name}': '{e}'.")
         raise e
     else:
 
         logging.info(f"Storage: The search starts from the date: {desired_datetime} for blobs in "
-                     f"container: '{container_name}' ")
+                     f"container: '{container_name}' and prefix: '/{prefix if prefix is not None else ''}'")
         for blob in blobs:
+            # Skip the blob if nested under prefix but prefix is not setted
+            if prefix is None and len(blob.name.split("/")) > 1:
+                logging.debug(f"Skipping {blob.name}")
+                continue
             # Skip the blob if its name has not the expected format
             if args.blobs and args.blobs not in blob.name:
                 continue
