@@ -51,12 +51,20 @@ normalize:
     map:
       igmp.type: _igmp_type
 
-  - check:
-      - _outcome: denied
+
+  - check: >-
+      +exists/_outcome AND (
+      _outcome==est-allowed
+      OR _outcome==permitted
+      OR _outcome==allow
+      )
     map:
-      event.outcome: deny
+      event.outcome: allowed
 
   - check:
-      - _outcome: permitted
+      +exists/_outcome AND (
+      _outcome==deny
+      OR _outcome==Deny)
     map:
-      event.outcome: allow
+      event.outcome: denied
+

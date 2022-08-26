@@ -1124,7 +1124,7 @@ TEST(hlpTests_ParseNumber, failed_float)
 
 TEST(hlpTests_QuotedString, success)
 {
-    const char* logQl = " ASRTR <_val/quoted_string> STRINGS ";
+    const char* logQl = " ASRTR <_val/quoted> STRINGS ";
     const char* event = " ASRTR \"this is some quoted string \" STRINGS ";
 
     ParserFn parseOp = getParserOp(logQl);
@@ -1134,9 +1134,22 @@ TEST(hlpTests_QuotedString, success)
     ASSERT_EQ(std::any_cast<std::string>(result["_val"]), "this is some quoted string ");
 }
 
+TEST(hlpTests_QuotedString, success_START_END)
+{
+    const char* logQl = " ASRTR <_val/quoted/START STRING / END STRING> STRINGS ";
+    const char* event =
+        " ASRTR START STRING this is some quoted string END STRING STRINGS ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(std::any_cast<std::string>(result["_val"]), "this is some quoted string");
+}
+
 TEST(hlpTests_QuotedString, success_simple_char)
 {
-    const char* logQl = " ASRTR <_val/quoted_string/SIMPLE> STRINGS ";
+    const char* logQl = " ASRTR <_val/quoted/'> STRINGS ";
     const char* event = " ASRTR \'this is some quoted string \' STRINGS ";
 
     ParserFn parseOp = getParserOp(logQl);
@@ -1148,7 +1161,7 @@ TEST(hlpTests_QuotedString, success_simple_char)
 
 TEST(hlpTests_QuotedString, failed)
 {
-    const char* logQl = " ASRTR <_val/quoted_string> STRINGS ";
+    const char* logQl = " ASRTR <_val/quoted> STRINGS ";
     const char* event = " ASRTR \"this is some quoted string STRINGS ";
 
     ParserFn parseOp = getParserOp(logQl);
