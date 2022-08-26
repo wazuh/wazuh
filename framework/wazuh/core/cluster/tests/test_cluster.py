@@ -156,18 +156,27 @@ def test_unmerge_info(stat_mock, agent_info, exception):
         assert len(agent_groups) == (1 if exception is None else 0)
 
 
-def test_update_cluster_control_with_failed():
-    """Check if cluster_control json is updated as expected"""
+@pytest.mark.parametrize('failed_item, exists, expected_result', [
+    ('/test_file0', False, {'missing': {'/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                            'extra': {'/test_file2': 'test'}}),
+    ('/test_file1', False, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {},
+                             'extra': {'/test_file1': 'test', '/test_file2': 'test'}}),
+    ('/test_file2', False, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                             'extra': {'/test_file2': 'test'}}),
+    ('/test_file0', True, {'missing': {'/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                           'extra': {'/test_file2': 'test'}}),
+    ('/test_file1', True, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {},
+                            'extra': {'/test_file2': 'test'}}),
+    ('/test_file2', True, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                            'extra': {'/test_file2': 'test'}}),
+])
+def test_update_cluster_control(failed_item, exists, expected_result):
+    """Check if cluster_control json is updated as expected."""
     ko_files = {
         'missing': {'/test_file0': 'test',
                     '/test_file3': 'ok'},
         'shared': {'/test_file1': 'test'},
         'extra': {'/test_file2': 'test'}
     }
-    wazuh.core.cluster.cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'],
-                                                                  ko_files)
-
-    assert ko_files == {'missing': {'/test_file3': 'ok'},
-                        'shared': {},
-                        'extra': {'/test_file2': 'test', '/test_file1': 'test'}
-                        }
+    wazuh.core.cluster.cluster.update_cluster_control(failed_item, ko_files, exists=exists)
+    assert ko_files == expected_result
