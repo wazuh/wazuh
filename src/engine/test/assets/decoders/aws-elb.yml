@@ -4,19 +4,14 @@ definitions:
   ELBTIMESTAMP: <timestamp/ISO8601_Z>
   ELBNAME: <aws.elb.name>
   ELBSOURCE: <source.ip>:<source.port>
-  # ELBBACKEND: '(?:-|%{IP:aws.elb.backend.ip}:%{POSINT:aws.elb.backend.port})'
+  # Or -
   ELBBACKEND: <aws.elb.backend.ip>:<aws.elb.backend.port>
-  # ELBPROCESSINGTIME: >-
-  # (?:-1|%{NUMBER:aws.elb.request_processing_time.sec:float})
-  # (?:-1|%{NUMBER:aws.elb.backend_processing_time.sec:float})
-  # (?:-1|%{NUMBER:aws.elb.response_processing_time.sec:float})
+  # Or -1 for each expression
   ELBPROCESSINGTIME: >-
     <aws.elb.request_processing_time.sec>
     <aws.elb.backend_processing_time.sec>
     <aws.elb.response_processing_time.sec>
-  #  ELBSSL: >-
-  #         (?:-|%{NOTSPACE:aws.elb.ssl_cipher})
-  #         (?:-|%{NOTSPACE:aws.elb.ssl_protocol})
+  #  Or - for each expression
   ELBSSL: <aws.elb.ssl_cipher> <aws.elb.ssl_protocol>
   ELBCOMMON: $ELBTIMESTAMP $ELBNAME $ELBSOURCE $ELBBACKEND $ELBPROCESSINGTIME
   ELBHTTPLOG: >-
@@ -63,7 +58,7 @@ parse:
         <_tmp.actions_executed/quoted>
         "<aws.elb.redirect_url>"
         "<aws.elb.error.reason>"<?_tmp.http_v2_optional>
-    # TODO: process _tmp.http_v2_optional:: ( \"(?:-|%{DATA:_tmp.target_port})\")?( \"(?:-|%{DATA:_tmp.target_status_code})\")?( \"(?:-|%{DATA:aws.elb.classification})\")?( \"(?:-|%{DATA:aws.elb.classification_reason})\")?
+    # TODO: process _tmp.http_v2_optional
     # TCP from Network Load Balancers (v2 Load Balancers)
     - event.original: >-
         $ELBV2TYPE
@@ -96,22 +91,8 @@ normalize:
       aws.elb.target_port: "+s_to_array/$_tmp.target_port/ "
       aws.elb.target_status_code: "+s_to_array/$_tmp.target_status_code/ "
       event.end: $timestamp
-      tls.cipher:
-        $aws.elb.ssl_cipher
-        # - script:
-        #     lang: painless
-        #     if: ctx.aws?.elb?.ssl_protocol != null
-        #     source: >-
-        #       def parts = ctx.aws.elb.ssl_protocol.splitOnToken("v");
-        #       if (parts.length != 2) {
-        #         return;
-        #       }
-        #       if (parts[1].contains(".")) {
-        #         ctx.tls.version = parts[1];
-        #       } else {
-        #         ctx.tls.version = parts[1].substring(0,1) + "." + parts[1].substring(1);
-        #       }
-        #       ctx.tls.version_protocol = parts[0].toLowerCase();
+      tls.cipher: $aws.elb.ssl_cipher
+      # TODO: process ssl_protocol once parse is avaliable on normalize
 
   - check:
       - http: +exists
@@ -135,11 +116,4 @@ normalize:
       aws.elb.protocol: tcp
       event.category: +s_append/network
 
-  # - uri_parts:
-  #     if: 'ctx?._tmp?.uri_orig != null'
-  #     field: _tmp.uri_orig
-  #     ignore_failure: true
-  # - user_agent:
-  #     if: 'ctx?._tmp?.user_agent != null'
-  #     field: _tmp.user_agent
-  #     ignore_missing: true
+  #TODO: add uri and user_agent once parsers are fixed

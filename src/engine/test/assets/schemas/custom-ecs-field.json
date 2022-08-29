@@ -1,7 +1,6 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "custom-ecs-field.json",
-  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "patternProperties": {
     "^_.+": {
@@ -14,16 +13,6 @@
     }
   },
   "properties": {
-    "wazuh.queue": {
-      "description": "Internal wazuh field.",
-      "ecs_type": null,
-      "type": "number"
-    },
-    "wazuh.location": {
-      "description": "Internal wazuh field.",
-      "ecs_type": null,
-      "type": "string"
-    },
     "agent.build.original": {
       "description": "Extended build information for the agent.\nThis field is intended to contain any build information that a data source may provide, no specific formatting is required.",
       "ecs_type": "keyword",
@@ -71,6 +60,258 @@
     },
     "agent.version": {
       "description": "Version of the agent.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.action_executed": {
+      "description": "The action executed when processing the request (forward, fixed-response, authenticate...). It can contain several values.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.backend_processing_time.sec": {
+      "description": "The total time in seconds since the connection is sent to the backend till the backend starts responding.\n",
+      "ecs_type": "float",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.backend.http.response.status_code": {
+      "description": "The status code from the backend (status code sent to the client from ELB is stored in `http.response.status_code`\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.backend.ip": {
+      "description": "The IP address of the backend processing this connection.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.backend.port": {
+      "description": "The port in the backend processing this connection.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.chosen_cert.arn": {
+      "description": "The ARN of the chosen certificate presented to the client in TLS/SSL connections.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.chosen_cert.serial": {
+      "description": "The serial number of the chosen certificate presented to the client in TLS/SSL connections.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.classification": {
+      "description": "The classification for desync mitigation.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.classification_reason": {
+      "description": "The classification reason code.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.connection_time.ms": {
+      "description": "The total time of the connection in milliseconds, since it is opened till it is closed.\n",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.error.reason": {
+      "description": "The error reason if the executed action failed.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.incoming_tls_alert": {
+      "description": "The integer value of TLS alerts received by the load balancer from the client, if present.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.listener": {
+      "description": "The ELB listener that received the connection.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.matched_rule_priority": {
+      "description": "The priority value of the rule that matched the request, if a rule matched.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.name": {
+      "description": "The name of the load balancer.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.protocol": {
+      "description": "The protocol of the load balancer (http or tcp).\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.redirect_url": {
+      "description": "The URL used if a redirection action was executed.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.request_processing_time.sec": {
+      "description": "The total time in seconds since the connection or request is received until it is sent to a registered backend.\n",
+      "ecs_type": "float",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.response_processing_time.sec": {
+      "description": "The total time in seconds since the response is received from the backend till it is sent to the client.\n",
+      "ecs_type": "float",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.ssl_cipher": {
+      "description": "The SSL cipher used in TLS/SSL connections.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.ssl_protocol": {
+      "description": "The SSL protocol used in TLS/SSL connections.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.target_group.arn": {
+      "description": "The ARN of the target group handling the request.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.target_port": {
+      "description": "List of IP addresses and ports for the targets that processed this request.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.target_status_code": {
+      "description": "List of status codes from the responses of the targets.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.tls_handshake_time.ms": {
+      "description": "The total time for the TLS handshake to complete in milliseconds once the connection has been established.\n",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.tls_named_group": {
+      "description": "The TLS named group.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.trace_id": {
+      "description": "The contents of the `X-Amzn-Trace-Id` header.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "aws.elb.type": {
+      "description": "The type of the load balancer for v2 Load Balancers.\n",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -1693,20 +1934,7 @@
       "description": "Attachment file size in bytes.",
       "ecs_type": "long",
       "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "email.bcc.address": {
-      "description": "The email address of BCC recipient",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
+        "string",>
     "email.cc.address": {
       "description": "The email address of CC recipient",
       "ecs_type": "keyword",
@@ -5155,7 +5383,7 @@
       ]
     },
     "process.entry_leader.tty.char_device.minor": {
-      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
+      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don’t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
       "ecs_type": "long",
       "type": [
         "string",
@@ -5434,7 +5662,7 @@
       ]
     },
     "process.group_leader.tty.char_device.minor": {
-      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
+      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don’t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
       "ecs_type": "long",
       "type": [
         "string",
@@ -5955,24 +6183,6 @@
         "boolean"
       ]
     },
-    "process.parent.group.id": {
-      "description": "Unique identifier for the group on the system/platform.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "process.parent.group.name": {
-      "description": "Name of the group.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
     "process.parent.group_leader.entity_id": {
       "description": "Unique identifier for the process.\nThe implementation of this is specified by the data source, but some examples of what could be used here are a process-generated UUID, Sysmon Process GUIDs, or a hash of some uniquely identifying components of a process.\nConstructing a globally unique identifier is a common practice to mitigate PID reuse as well as to identify a specific process over time, across multiple monitored hosts.",
       "ecs_type": "keyword",
@@ -5994,6 +6204,24 @@
     "process.parent.group_leader.start": {
       "description": "The time the process started.",
       "ecs_type": "date",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "process.parent.group.id": {
+      "description": "Unique identifier for the group on the system/platform.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "process.parent.group.name": {
+      "description": "Name of the group.",
+      "ecs_type": "keyword",
       "type": [
         "string",
         "number",
@@ -6316,7 +6544,7 @@
       ]
     },
     "process.parent.tty.char_device.minor": {
-      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
+      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don’t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
       "ecs_type": "long",
       "type": [
         "string",
@@ -6820,7 +7048,7 @@
       ]
     },
     "process.session_leader.tty.char_device.minor": {
-      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
+      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don’t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
       "ecs_type": "long",
       "type": [
         "string",
@@ -6928,7 +7156,7 @@
       ]
     },
     "process.tty.char_device.minor": {
-      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
+      "description": "The minor number is used only by the driver specified by the major number; other parts of the kernel don’t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
       "ecs_type": "long",
       "type": [
         "string",
@@ -9763,7 +9991,7 @@
       ]
     },
     "threat.group.alias": {
-      "description": "The alias(es) of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group alias(es).",
+      "description": "The alias(es) of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group alias(es).",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -9772,7 +10000,7 @@
       ]
     },
     "threat.group.id": {
-      "description": "The id of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group id.",
+      "description": "The id of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group id.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -9781,7 +10009,7 @@
       ]
     },
     "threat.group.name": {
-      "description": "The name of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group name.",
+      "description": "The name of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group name.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -9790,7 +10018,7 @@
       ]
     },
     "threat.group.reference": {
-      "description": "The reference URL of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group reference URL.",
+      "description": "The reference URL of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group reference URL.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11338,7 +11566,7 @@
       ]
     },
     "threat.software.alias": {
-      "description": "The alias(es) of the software for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae associated software description.",
+      "description": "The alias(es) of the software for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® associated software description.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11347,7 +11575,7 @@
       ]
     },
     "threat.software.id": {
-      "description": "The id of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software id.",
+      "description": "The id of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software id.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11356,7 +11584,7 @@
       ]
     },
     "threat.software.name": {
-      "description": "The name of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software name.",
+      "description": "The name of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software name.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11365,7 +11593,7 @@
       ]
     },
     "threat.software.platforms": {
-      "description": "The platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use MITRE ATT&CK\u00ae software platform values.",
+      "description": "The platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use MITRE ATT&CK® software platform values.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11374,7 +11602,7 @@
       ]
     },
     "threat.software.reference": {
-      "description": "The reference URL of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software reference URL.",
+      "description": "The reference URL of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software reference URL.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11383,7 +11611,7 @@
       ]
     },
     "threat.software.type": {
-      "description": "The type of software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software type.",
+      "description": "The type of software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software type.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11392,7 +11620,7 @@
       ]
     },
     "threat.tactic.id": {
-      "description": "The id of tactic used by this threat. You can use a MITRE ATT&CK\u00ae tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
+      "description": "The id of tactic used by this threat. You can use a MITRE ATT&CK® tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11401,7 +11629,7 @@
       ]
     },
     "threat.tactic.name": {
-      "description": "Name of the type of tactic used by this threat. You can use a MITRE ATT&CK\u00ae tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/)",
+      "description": "Name of the type of tactic used by this threat. You can use a MITRE ATT&CK® tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/)",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11410,7 +11638,7 @@
       ]
     },
     "threat.tactic.reference": {
-      "description": "The reference url of tactic used by this threat. You can use a MITRE ATT&CK\u00ae tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
+      "description": "The reference url of tactic used by this threat. You can use a MITRE ATT&CK® tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11419,7 +11647,7 @@
       ]
     },
     "threat.technique.id": {
-      "description": "The id of technique used by this threat. You can use a MITRE ATT&CK\u00ae technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
+      "description": "The id of technique used by this threat. You can use a MITRE ATT&CK® technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11428,7 +11656,7 @@
       ]
     },
     "threat.technique.name": {
-      "description": "The name of technique used by this threat. You can use a MITRE ATT&CK\u00ae technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
+      "description": "The name of technique used by this threat. You can use a MITRE ATT&CK® technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11437,7 +11665,7 @@
       ]
     },
     "threat.technique.reference": {
-      "description": "The reference url of technique used by this threat. You can use a MITRE ATT&CK\u00ae technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
+      "description": "The reference url of technique used by this threat. You can use a MITRE ATT&CK® technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11446,7 +11674,7 @@
       ]
     },
     "threat.technique.subtechnique.id": {
-      "description": "The full id of subtechnique used by this threat. You can use a MITRE ATT&CK\u00ae subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
+      "description": "The full id of subtechnique used by this threat. You can use a MITRE ATT&CK® subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11455,7 +11683,7 @@
       ]
     },
     "threat.technique.subtechnique.name": {
-      "description": "The name of subtechnique used by this threat. You can use a MITRE ATT&CK\u00ae subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
+      "description": "The name of subtechnique used by this threat. You can use a MITRE ATT&CK® subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -11464,8 +11692,17 @@
       ]
     },
     "threat.technique.subtechnique.reference": {
-      "description": "The reference url of subtechnique used by this threat. You can use a MITRE ATT&CK\u00ae subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
+      "description": "The reference url of subtechnique used by this threat. You can use a MITRE ATT&CK® subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
       "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "timestamp": {
+      "description": "Date/time when the event originated.\nThis is the date/time extracted from the event, typically representing when the event was generated by the source.\nIf the event source has no original timestamp, this value is typically populated by the first time the event was received by the pipeline.\nRequired field for all events.",
+      "ecs_type": "date",
       "type": [
         "string",
         "number",
@@ -12309,6 +12546,105 @@
         "boolean"
       ]
     },
+    "user_agent.device.name": {
+      "description": "Name of the device.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.name": {
+      "description": "Name of the user agent.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.original": {
+      "description": "Unparsed user_agent string.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.family": {
+      "description": "OS family (such as redhat, debian, freebsd, windows).",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.full": {
+      "description": "Operating system name, including the version or code name.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.kernel": {
+      "description": "Operating system kernel version as a raw string.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.name": {
+      "description": "Operating system name, without the version.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.platform": {
+      "description": "Operating system platform (such centos, ubuntu, windows).",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.type": {
+      "description": "Use the `os.type` field to categorize the operating system into one of the broad commercial families.\nIf the OS you're dealing with is not listed as an expected value, the field should not be populated. Please let us know by opening an issue with ECS, to propose its addition.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.os.version": {
+      "description": "Operating system version as a raw string.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "user_agent.version": {
+      "description": "Version of the user agent.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
     "user.changes.domain": {
       "description": "Name of the directory the user is a member of.\nFor example, an LDAP or Active Directory domain name.",
       "ecs_type": "keyword",
@@ -12669,105 +13005,6 @@
         "boolean"
       ]
     },
-    "user_agent.device.name": {
-      "description": "Name of the device.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.name": {
-      "description": "Name of the user agent.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.original": {
-      "description": "Unparsed user_agent string.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.family": {
-      "description": "OS family (such as redhat, debian, freebsd, windows).",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.full": {
-      "description": "Operating system name, including the version or code name.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.kernel": {
-      "description": "Operating system kernel version as a raw string.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.name": {
-      "description": "Operating system name, without the version.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.platform": {
-      "description": "Operating system platform (such centos, ubuntu, windows).",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.type": {
-      "description": "Use the `os.type` field to categorize the operating system into one of the broad commercial families.\nIf the OS you're dealing with is not listed as an expected value, the field should not be populated. Please let us know by opening an issue with ECS, to propose its addition.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.os.version": {
-      "description": "Operating system version as a raw string.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "user_agent.version": {
-      "description": "Version of the user agent.",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
     "vulnerability.category": {
       "description": "The type of system or architecture that the vulnerability affects. These may be platform-specific (for example, Debian or SUSE) or general (for example, Database or Firewall). For example (https://qualysguard.qualys.com/qwebhelp/fo_portal/knowledgebase/vulnerability_categories.htm[Qualys vulnerability categories])\nThis field must be an array.",
       "ecs_type": "keyword",
@@ -12885,266 +13122,16 @@
         "boolean"
       ]
     },
-    "timestamp": {
-      "description": "Date/time when the event originated.\nThis is the date/time extracted from the event, typically representing when the event was generated by the source.\nIf the event source has no original timestamp, this value is typically populated by the first time the event was received by the pipeline.\nRequired field for all events.",
-      "ecs_type": "date",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
+    "wazuh.location": {
+      "description": "Internal wazuh field.",
+      "ecs_type": null,
+      "type": "string"
     },
-    "aws.elb.name": {
-      "description": "The name of the load balancer.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.type": {
-      "description": "The type of the load balancer for v2 Load Balancers.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.target_group.arn": {
-      "description": "The ARN of the target group handling the request.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.listener": {
-      "description": "The ELB listener that received the connection.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.protocol": {
-      "description": "The protocol of the load balancer (http or tcp).\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.request_processing_time.sec": {
-      "description": "The total time in seconds since the connection or request is received until it is sent to a registered backend.\n",
-      "ecs_type": "float",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.backend_processing_time.sec": {
-      "description": "The total time in seconds since the connection is sent to the backend till the backend starts responding.\n",
-      "ecs_type": "float",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.response_processing_time.sec": {
-      "description": "The total time in seconds since the response is received from the backend till it is sent to the client.\n",
-      "ecs_type": "float",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.connection_time.ms": {
-      "description": "The total time of the connection in milliseconds, since it is opened till it is closed.\n",
-      "ecs_type": "long",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.tls_handshake_time.ms": {
-      "description": "The total time for the TLS handshake to complete in milliseconds once the connection has been established.\n",
-      "ecs_type": "long",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.backend.ip": {
-      "description": "The IP address of the backend processing this connection.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.backend.port": {
-      "description": "The port in the backend processing this connection.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.backend.http.response.status_code": {
-      "description": "The status code from the backend (status code sent to the client from ELB is stored in `http.response.status_code`\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.ssl_cipher": {
-      "description": "The SSL cipher used in TLS/SSL connections.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.ssl_protocol": {
-      "description": "The SSL protocol used in TLS/SSL connections.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.chosen_cert.arn": {
-      "description": "The ARN of the chosen certificate presented to the client in TLS/SSL connections.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.chosen_cert.serial": {
-      "description": "The serial number of the chosen certificate presented to the client in TLS/SSL connections.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.incoming_tls_alert": {
-      "description": "The integer value of TLS alerts received by the load balancer from the client, if present.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.tls_named_group": {
-      "description": "The TLS named group.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.trace_id": {
-      "description": "The contents of the `X-Amzn-Trace-Id` header.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.matched_rule_priority": {
-      "description": "The priority value of the rule that matched the request, if a rule matched.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.action_executed": {
-      "description": "The action executed when processing the request (forward, fixed-response, authenticate...). It can contain several values.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.redirect_url": {
-      "description": "The URL used if a redirection action was executed.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.error.reason": {
-      "description": "The error reason if the executed action failed.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.target_port": {
-      "description": "List of IP addresses and ports for the targets that processed this request.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.target_status_code": {
-      "description": "List of status codes from the responses of the targets.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.classification": {
-      "description": "The classification for desync mitigation.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
-    },
-    "aws.elb.classification_reason": {
-      "description": "The classification reason code.\n",
-      "ecs_type": "keyword",
-      "type": [
-        "string",
-        "number",
-        "boolean"
-      ]
+    "wazuh.queue": {
+      "description": "Internal wazuh field.",
+      "ecs_type": null,
+      "type": "number"
     }
-  }
+  },
+  "type": "object"
 }
