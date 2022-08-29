@@ -49,6 +49,9 @@
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
     <field name="win.system.eventID">106</field>
     <description>Task Scheduler: $(win.eventdata.message)</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -57,6 +60,9 @@
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
     <field name="win.system.eventID">141</field>
     <description>Task Scheduler: $(win.eventdata.message)</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -65,6 +71,9 @@
     <field name="win.system.providerName">Microsoft-Windows-TaskScheduler</field>
     <field name="win.system.eventID">142</field>
     <description>Task Scheduler: $(win.eventdata.message)</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -79,6 +88,9 @@
     <field name="win.system.eventID">5140</field>
     <field name="win.eventdata.shareName" negate="yes">IPC$|NetLogon</field>
     <description>A network share was accessed</description>
+    <mitre>
+      <id>T1021.002</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -90,6 +102,9 @@
     <field name="win.system.providerName">User32</field>
     <field name="win.system.eventID">1074</field>
     <description>System shutdown initiated</description>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
@@ -184,10 +199,10 @@
     <field name="win.system.eventID">^4672$</field>
     <field name="win.eventdata.subjectUserSid" negate="yes">^S-1-5-18$</field>
     <description>Special privileges assigned to new logon</description>
-    <options>no_full_log</options>
     <mitre>
       <id>T1484</id>
     </mitre>
+    <options>no_full_log</options>
   </rule>
 
   <!--Query 27: New user added to local security group. Covered by rule 60144-->
@@ -204,6 +219,9 @@
     <field name="win.system.providerName">Microsoft-Windows-TerminalServices-ClientActiveXCore</field>
     <field name="win.system.eventID">1024</field>
     <description>RDP: $(win.system.message)</description>
+    <mitre>
+      <id>T1021.001</id>
+    </mitre>
     <options>no_full_log</options>
   </rule>
 
