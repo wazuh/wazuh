@@ -101,10 +101,10 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-  NAME argparse
-  GITHUB_REPOSITORY p-ranav/argparse
-  GIT_TAG v2.2
-  VERSION 2.2
+  NAME CLI11
+  GITHUB_REPOSITORY CLIUtils/CLI11
+  GIT_TAG v2.2.0
+  VERSION 2.2.0
   DOWNLOAD_ONLY YES
 )
 ####################################################################################################
@@ -118,7 +118,7 @@ target_include_directories(main
     ${ENGINE_SOURCE_DIR}/router
     ${ENGINE_SOURCE_DIR}/rxcppBackend
     ${CameronQueue_SOURCE_DIR}
-    ${argparse_SOURCE_DIR}/include
+    ${CLI11_SOURCE_DIR}/include
 )
 
 
