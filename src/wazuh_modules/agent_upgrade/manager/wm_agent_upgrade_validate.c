@@ -103,9 +103,9 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
     if (wazuh_version) {
         if (tmp_agent_version = strchr(wazuh_version, 'v'), tmp_agent_version) {
 
-            if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
+            if (compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
-            } else if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS) < 0 && !strcmp(platform, "darwin")) {
+            } else if (compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS) < 0 && !strcmp(platform, "darwin")) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
                 wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
@@ -116,9 +116,9 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
                     os_strdup(upgrade_task->custom_version ? upgrade_task->custom_version : manager_version, upgrade_task->wpk_version);
 
                     if (!upgrade_task->force_upgrade) {
-                        if (wm_agent_upgrade_compare_versions(tmp_agent_version, upgrade_task->wpk_version) >= 0) {
+                        if (compare_wazuh_versions(tmp_agent_version, upgrade_task->wpk_version) >= 0) {
                             return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
-                        } else if (wm_agent_upgrade_compare_versions(upgrade_task->wpk_version, manager_version) > 0) {
+                        } else if (compare_wazuh_versions(upgrade_task->wpk_version, manager_version) > 0) {
                             return_code = WM_UPGRADE_NEW_VERSION_GREATER_MASTER;
                         }
                     }
@@ -152,7 +152,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     if (!task->wpk_repository) {
         if (wpk_repository_config) {
             os_strdup(wpk_repository_config, task->wpk_repository);
-        } else if (wm_agent_upgrade_compare_versions(task->wpk_version, "v4.0.0") < 0) {
+        } else if (compare_wazuh_versions(task->wpk_version, "v4.0.0") < 0) {
             os_strdup(WM_UPGRADE_WPK_REPO_URL_3_X, task->wpk_repository);
         } else {
             if (sscanf(task->wpk_version, "v%d.%*d.%*d", &ver) != 1 &&
@@ -196,7 +196,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
                  task->wpk_version, agent_info->architecture);
     } else {
-        if (wm_agent_upgrade_compare_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) {
+        if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) {
             snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
                      repository_url, agent_info->architecture);
             snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.wpk",
@@ -229,7 +229,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
                 *next_line = '\0';
                 if (sha1 = strchr(version, ' '), sha1) {
                     *sha1 = '\0';
-                    if (wm_agent_upgrade_compare_versions(task->wpk_version, version) == 0) {
+                    if (compare_wazuh_versions(task->wpk_version, version) == 0) {
                         // Save WPK url, file name and sha1
                         os_strdup(sha1 + 1, task->wpk_sha1);
                         os_strdup(file_url, task->wpk_file);
@@ -246,7 +246,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         if (version) {
             if (sha1 = strchr(version, ' '), sha1) {
                 *sha1 = '\0';
-                if (wm_agent_upgrade_compare_versions(task->wpk_version, version) == 0) {
+                if (compare_wazuh_versions(task->wpk_version, version) == 0) {
                     // Save WPK url, file name and sha1
                     os_strdup(sha1 + 1, task->wpk_sha1);
                     os_strdup(file_url, task->wpk_file);
@@ -347,87 +347,6 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
     }
 
     return return_code;
-}
-
-int wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
-    char ver1[10];
-    char ver2[10];
-    char *tmp_v1 = NULL;
-    char *tmp_v2 = NULL;
-    char *token = NULL;
-    int patch1 = 0;
-    int major1 = 0;
-    int minor1 = 0;
-    int patch2 = 0;
-    int major2 = 0;
-    int minor2 = 0;
-    int result = 0;
-
-    if (version1) {
-        strncpy(ver1, version1, 9);
-
-        if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
-            tmp_v1++;
-        } else {
-            tmp_v1 = ver1;
-        }
-
-        if (token = strtok(tmp_v1, "."), token) {
-            major1 = atoi(token);
-
-            if (token = strtok(NULL, "."), token) {
-                minor1 = atoi(token);
-
-                if (token = strtok(NULL, "."), token) {
-                    patch1 = atoi(token);
-                }
-            }
-        }
-    }
-
-    if (version2) {
-        strncpy(ver2, version2, 9);
-
-        if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
-            tmp_v2++;
-        } else {
-            tmp_v2 = ver2;
-        }
-
-        if (token = strtok(tmp_v2, "."), token) {
-            major2 = atoi(token);
-
-            if (token = strtok(NULL, "."), token) {
-                minor2 = atoi(token);
-
-                if (token = strtok(NULL, "."), token) {
-                    patch2 = atoi(token);
-                }
-            }
-        }
-    }
-
-    if (major1 > major2) {
-        result = 1;
-    } else if (major1 < major2){
-        result = -1;
-    } else {
-        if(minor1 > minor2) {
-            result = 1;
-        } else if (minor1 < minor2) {
-            result = -1;
-        } else {
-            if (patch1 > patch2) {
-                result = 1;
-            } else if (patch1 < patch2) {
-                result = -1;
-            } else {
-                result = 0;
-            }
-        }
-    }
-
-    return result;
 }
 
 bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {

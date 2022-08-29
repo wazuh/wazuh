@@ -77,4 +77,15 @@ void free_osinfo(os_info * osinfo);
  */
 int get_nproc();
 
+/**
+ * Compare two versions with format v4.0.0
+ * @param version1 char * with the string version
+ * @param version2 char * with the string version
+ * @return return_code
+ * @retval 0 equals
+ * @retval 1 version1 > version2
+ * @retval -1 version1 < version2
+ * */
+int compare_wazuh_versions(const char *version1, const char *version2);
+
 #endif /* VERSION_H */
