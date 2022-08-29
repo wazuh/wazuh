@@ -23,14 +23,14 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief Executes query on WDB returning status ok or not ok.
+ * @brief Executes query on WDB returning the status.
  * @param definition The filter definition.
  * @return base::Expression true when executes without any problem, false otherwise.
  */
 base::Expression opBuilderWdbUpdate(const std::any& definition);
 
 /**
- * @brief Executes query on WDB returning status and payload.
+ * @brief Executes query on WDB returning the payload.
  * @param definition The filter definition.
  * @param tr Tracer
  * @return base::Expression when true returns string of payload, false none.

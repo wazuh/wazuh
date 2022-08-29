@@ -717,6 +717,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*************************************************
 
 // field: +s_contains/value1/value2/...valueN
+// TODO: Add test for this helper
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -742,6 +743,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
+            // TODO FIx this, unused resolvedField
             const auto resolvedField {event->getString(targetField)};
             if (!resolvedField.has_value())
             {
