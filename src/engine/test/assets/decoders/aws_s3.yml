@@ -1,3 +1,4 @@
+---
 name: aws_s3
 
 metadata:
@@ -12,25 +13,26 @@ parents:
 check:
   - wazuh.modules.aws.source: +s_eq/s3_server_access
 
+// TODO: fix the multiple parsing
 parse:
-  - logql:
+  logql:
     - _json.aws.request_uri: <http.request.method> <http.url.original> HTTP/<http.version>
     - _json.aws.request_uri: <http.request.method> <http.url.original> http/<http.version>
 
-  - logql:
+  logql:
     - _json.aws.host_header: <_>.<cloud.region>.<_>.<_>
 
-  - logql:
+  logql:
     - _json.aws.tls_version: <tls.version_protocol>V<tls.version>
 
 normalize:
   - check:
-      _json.aws.error_code: +exists
+      - _json.aws.error_code: +exists
     map:
       event.outcome: failure
 
   - check:
-      _json.aws.error_code: +not_exists
+      - _json.aws.error_code: +not_exists
     map:
       event.outcome: success
 
