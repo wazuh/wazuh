@@ -1,3 +1,4 @@
+---
 name: aws_cloudtrail
 
 metadata:
@@ -109,17 +110,17 @@ normalize:
       _json: +delete_field
 
   - check:
-      aws.cloudtrail.error_code: +is_not_null
+      - aws.cloudtrail.error_code: +is_not_null
     map:
       event.outcome: failure
 
   - check:
-      aws.cloudtrail.error_message: +is_not_null
+      - aws.cloudtrail.error_message: +is_not_null
     map:
       event.outcome: failure
 
   - check:
-      event.action: +s_eq/ConsoleLogin
-      aws.cloudtrail.flattened.response_elements.ConsoleLogin: +is_not_null
+      - event.action: +s_eq/ConsoleLogin
+      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: +is_not_null
     map:
       event.outcome: +s_lo/aws.cloudtrail.flattened.response_elements.ConsoleLogin
