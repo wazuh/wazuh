@@ -108,6 +108,7 @@ void whodata_adapt_path(char **path);
 int whodata_check_arch();
 /**
  * @brief Release all whodata allocated resources. Frees all data stored in the structure, not the structure.
+ * Also switches the directories to realtime.
  */
 STATIC void win_whodata_release_resources(whodata *wdata);
 
@@ -145,7 +146,29 @@ int get_volume_names();
 int get_drive_names(wchar_t *volume_name, char *device);
 void replace_device_path(char **path);
 
+/**
+ * @brief Function to check if a global policy is configured as Success.
+ *
+ * @param guid Unique identifier of the policy.
+ * @return int -1 on failure, 1 if the policy is configured properly or 0 otherwise.
+ */
+int policy_check(const char *guid);
+
 STATIC void win_whodata_release_resources(whodata *wdata) {
+    directory_t *dir_it;
+    OSListNode *node_it;
+    // Move all directories to realtime
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = (directory_t *) node_it->data;
+        dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
+        dir_it->options &= ~WHODATA_ACTIVE;
+        dir_it->dirs_status.status &= ~WD_IGNORE_REST;
+        dir_it->dirs_status.status |= WD_CHECK_REALTIME;
+        syscheck.realtime_change = 1;
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
     if (evt_subscribe_handle != NULL) {
         EvtClose(evt_subscribe_handle);
     }
@@ -713,8 +736,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     whodata_directory *w_dir;
     unsigned long mask = 0;
     directory_t *configuration;
-    directory_t *dir_it;
-    OSListNode *node_it;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -930,19 +951,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 free_whodata_event(w_evt);
                 break;
 
-            case 4719:
+            case 224719:
                 merror(FIM_ERROR_WHODATA_WIN_POL_CH);
-                // Move all directories to realtime
-                w_rwlock_wrlock(&syscheck.directories_lock);
-                OSList_foreach(node_it, syscheck.directories) {
-                    dir_it = (directory_t *) node_it->data;
-                    dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
-                    dir_it->options &= ~WHODATA_ACTIVE;
-                    dir_it->dirs_status.status &= ~WD_IGNORE_REST;
-                    dir_it->dirs_status.status |= WD_CHECK_REALTIME;
-                    syscheck.realtime_change = 1;
-                }
-                w_rwlock_unlock(&syscheck.directories_lock);
                 win_whodata_release_resources(&syscheck.wdata);
 
             break;
@@ -976,7 +986,46 @@ int whodata_audit_start() {
     return 0;
 }
 
+int policy_check(const char *guid) {
+    char subcategory_parameter[OS_SIZE_2048 + 1] = {0};
+    char buffer[OS_MAXSTR] = {0};
+    wfd_t *wfd = NULL;
+    unsigned int line = 0;
+    int ret_value = 0;
+    char *lowercase_guid = NULL;
+
+    snprintf(subcategory_parameter, OS_SIZE_2048, "/Subcategory:\"%s\"", guid);
+    os_strdup(guid, lowercase_guid);
+    str_lowercase(lowercase_guid);
+    char *cmd[5] = { "auditpol", "/get", subcategory_parameter, "/r" };
+    wfd = wpopenv(cmd[0], cmd, W_BIND_STDOUT);
+    if (wfd == NULL) {
+        merror("Cannot execute commmand: auditpol /get %s /r", subcategory_parameter);
+        os_free(lowercase_guid);
+        return -1;
+    }
+
+    // loop through the policies
+    while (fgets(buffer, OS_MAXSTR - 60, wfd->file_out)) {
+        if (line == 0) { // skip the first line
+            line++;
+            continue;
+        }
+        str_lowercase(buffer);
+        if (strstr(buffer, lowercase_guid) && strstr(buffer, "success")) {
+            ret_value = 1;
+            break;
+        }
+    }
+    wpclose(wfd);
+    os_free(lowercase_guid)
+    return ret_value;
+}
+
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
+    static const char *FILE_SYSTEM_GUID = "{0CCE921D-69AE-11D9-BED3-505054503030}";
+    static const char *HANDLE_MAN_GUID =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
+    static const char *POLICY_CHANGE_GUID = "{0CCE922F-69AE-11D9-BED3-505054503030}";
     int exists;
     whodata_dir_status *d_status;
     int interval;
@@ -998,6 +1047,17 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
     while (atomic_int_get(&whodata_end) == 0) {
+        // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
+        if (policy_check(FILE_SYSTEM_GUID) == 0 || policy_check(HANDLE_MAN_GUID) == 0) {
+            merror(FIM_ERROR_WHODATA_WIN_POL_CH);
+            win_whodata_release_resources(&syscheck.wdata);
+            break;
+        }
+        // Check the Audit Policy Change policy, if disabled, show a warning but keep whodata monitoring.
+        if(policy_check(POLICY_CHANGE_GUID) == 0) {
+            mwarn("The 'Audit Policy Change' policy has been disabled. Changes in the configured policies are not detected.");
+        }
+
         w_rwlock_wrlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
