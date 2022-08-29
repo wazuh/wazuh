@@ -362,6 +362,8 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
                         }
 
                         return true;
+                    } else if (strcmp(tmp_msg, HC_INVALID_VERSION) == 0) {
+                        mwarn("Unable to connect to server '%s'. Incompatible version", agt->server[server_id].rip);
                     }
                 }
             }
