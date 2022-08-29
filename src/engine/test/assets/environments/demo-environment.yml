@@ -13,6 +13,8 @@ decoders:
   - apache-error
   - apache-access
   - aws-elb
+  - aws_cloudtrail
+  - aws_s3
   # Exclusive Syslog decoders
   - default_syslog_queue
   - cisco
