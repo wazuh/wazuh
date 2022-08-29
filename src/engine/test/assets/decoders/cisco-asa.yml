@@ -106,10 +106,10 @@ parse:
     # %ASA-4-106023: Deny tcp src outside:10.10.10.2/56444 dst srv:192.168.2.2/51635 (testhostname.domain) by access-group "global_access_1"
     - message:  >-
         <_outcome> <network.transport> src <cisco.asa.source_interface>:$SRC_ALL
-        dst <cisco.asa.destination_interface>:$DST_ALL <_/quoted/(/)> by access_group <cisco.ios.access_list>
+        dst <cisco.asa.destination_interface>:$DST_ALL <_tmp/quoted/(/)> by access_group <cisco.ios.access_list>
     - message:  >-
         <_outcome> <network.transport> src <cisco.asa.source_interface>:$SRC_ALL
-        dst <cisco.asa.destination_interface>:$DST_ALL <_/quoted/(/)>
+        dst <cisco.asa.destination_interface>:$DST_ALL <_tmp/quoted/(/)>
 
     # %ASA-4-106027: Deny src [source address] dst [destination address] by access-group “access-list name"
     - message:  >-
@@ -177,16 +177,18 @@ normalize:
       # Only one of the following will be set
       destination.ip: $destination.address
       destination.host: $destination.address
-      related.ip: +s_append/$source.ip
-      related.ip: +s_append/$destination.ip
       tags: +s_append/cisco-asa
+
+  - map:
+      related.ip: +s_append/$source.ip
+  - map:
+      related.ip: +s_append/$destination.ip
 
   - check: >-
       +exists/_outcome AND (
       _outcome==est-allowed
       OR _outcome==permitted
-      OR _outcome==allow
-      )
+      OR _outcome==allow)
     map:
       event.outcome: allowed
 
