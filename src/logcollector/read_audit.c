@@ -113,6 +113,11 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, buffer)) {
+            continue;
+        }
+
         // Extract header: "\.*type=\.* msg=audit(.*):"
         //                                        --
 

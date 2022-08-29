@@ -87,6 +87,11 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         /* MS SQL messages have the following formats:
          * 2009-03-25 04:47:30.01 Server
          * 2003-10-09 00:00:06.68 sys1

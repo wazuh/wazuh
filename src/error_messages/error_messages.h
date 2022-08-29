@@ -244,6 +244,8 @@
 #define GET_FLAGS_ERROR "(1972): The flags couldn't be obtained from the file descriptor: %s (%d)."
 #define SET_FLAGS_ERROR "(1973): The flags couldn't be set in the file descriptor: %s (%d)."
 #define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
+#define LF_LOG_REGEX    "(1975): Syntax error on regex %s: '%s'"
+#define LF_MATCH_REGEX  "(1976): Avoiding the log line '%s' due to %s config: '%s'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

@@ -95,7 +95,7 @@ typedef enum {
 
 /**
  * @brief Context of a multiline log that was not completely written.
- * 
+ *
  * An instance of w_multiline_timeout_ctxt_t allow save the context of a log that have not yet matched with the regex.
  */
 typedef struct {
@@ -136,7 +136,7 @@ typedef struct {
 
 /**
  * @brief Stores `log` process instance info.
- * 
+ *
  */
 typedef struct {
     wfd_t * wfd;        ///< IPC connector
@@ -145,7 +145,7 @@ typedef struct {
 
 /**
  * @brief Store references of two main excecution of `log` process.
- * 
+ *
  */
 typedef struct {
     w_macos_log_pinfo_t stream;     ///< `log stream` process info
@@ -205,6 +205,8 @@ typedef struct _logreader {
     logtarget * log_target;
     int duplicated;
     char *exclude;
+    w_expression_t * regex_ignore;
+    w_expression_t * regex_restrict;
     wlabel_t *labels;
     pthread_mutex_t mutex;
     int exists;

@@ -92,6 +92,11 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, (char * )str, rbytes > sample_log_length ? "..." : "");
 
         /* Send message to queue */

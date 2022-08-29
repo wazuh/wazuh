@@ -75,6 +75,11 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         /* MySQL messages have the following format:
          * 070823 21:01:30 xx
          */

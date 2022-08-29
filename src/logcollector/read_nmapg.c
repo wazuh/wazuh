@@ -176,6 +176,11 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         /* Get host */
         q = __go_after(str, NMAPG_HOST);
         if (!q) {

@@ -195,6 +195,9 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
             cJSON_AddItemToObject(file, "multiline_regex", multiline);
         }
+        if (list[i].regex_ignore) cJSON_AddStringToObject(file, "regex_ignore", list[i].regex_ignore);
+        if (list[i].regex_restrict) cJSON_AddStringToObject(file, "regex_restrict", list[i].regex_restrict);
+
         cJSON_AddItemToArray(array, file);
         i++;
     }

@@ -101,6 +101,11 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
 
         /* Send message to queue */

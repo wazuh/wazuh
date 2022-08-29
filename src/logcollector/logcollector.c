@@ -133,6 +133,27 @@ STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
 #endif
 
+int check_log_regex(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line) {
+
+    if (ignore_exp) {
+        /* Check ignore regex, if it matches, do not process the log */
+        if (w_expression_match(ignore_exp, log_line, NULL, NULL)) {
+            mdebug2(LF_MATCH_REGEX, log_line, "ignore", w_expression_get_regex_pattern(ignore_exp));
+            return true;
+        }
+    }
+
+    if (restrict_exp) {
+        /* Check restrict regex, only if match log is processed */
+        if (!w_expression_match(restrict_exp, log_line, NULL, NULL)) {
+            mdebug2(LF_MATCH_REGEX, log_line, "restrict", w_expression_get_regex_pattern(restrict_exp));
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /* Handle file management */
 void LogCollectorStart()
 {

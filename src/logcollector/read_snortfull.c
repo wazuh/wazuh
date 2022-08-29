@@ -47,6 +47,11 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
             goto file_error;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         /* First part of the message */
         if (p == NULL) {
             if (strncmp(str, "[**] [", 6) == 0) {

@@ -84,6 +84,11 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         /* PostgreSQL messages have the following format:
          * [2007-08-31 19:17:32.186 ADT] 192.168.2.99:db_name
          */

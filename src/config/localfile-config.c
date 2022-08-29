@@ -54,6 +54,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
+    const char *xml_localfile_ignore = "ignore_log";
+    const char *xml_localfile_restrict = "restrict_log";
     const char *xml_localfile_multiline_regex =  "multiline_regex";
 
     logreader *logf;
@@ -99,6 +101,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
+    logf[pl].regex_ignore = NULL;
+    logf[pl].regex_restrict = NULL;
 
     /* Search for entries related to files */
     i = 0;
@@ -447,6 +451,22 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
 
+        } else if (strcasecmp(node[i]->element, xml_localfile_ignore) == 0) {
+            w_calloc_expression_t(&logf[pl].regex_ignore, EXP_TYPE_PCRE2);
+
+            if (!w_expression_compile(logf[pl].regex_ignore, node[i]->content, 0)) {
+                merror(LF_LOG_REGEX, "ignore", node[i]->content);
+                w_free_expression_t(&logf[pl].regex_ignore);
+                return (OS_INVALID);
+            }
+        } else if (strcasecmp(node[i]->element, xml_localfile_restrict) == 0) {
+            w_calloc_expression_t(&logf[pl].regex_restrict, EXP_TYPE_PCRE2);
+
+            if (!w_expression_compile(logf[pl].regex_restrict, node[i]->content, 0)) {
+                merror(LF_LOG_REGEX, "restrict", node[i]->content);
+                w_free_expression_t(&logf[pl].regex_restrict);
+                return (OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
