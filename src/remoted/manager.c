@@ -270,7 +270,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     char * clean = w_utf8_filter(r_msg, true);
     r_msg = clean;
 
-    if ((strcmp(r_msg, HC_STARTUP) == 0) || (strcmp(r_msg, HC_SHUTDOWN) == 0)) {
+    if ((strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) || (strcmp(r_msg, HC_SHUTDOWN) == 0)) {
         char aux_ip[IPSIZE + 1] = {0};
         switch (key->peer_info.ss_family) {
         case AF_INET:
@@ -282,8 +282,25 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         default:
             break;
         }
-        if (strcmp(r_msg, HC_STARTUP) == 0) {
+        if (strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) {
             mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
+
+            const char *json_err;
+            cJSON *agent_info = NULL;
+            cJSON *version = NULL;
+            if (agent_info = cJSON_ParseWithOpts(strchr(r_msg, '{'), &json_err, 0), agent_info) {
+                if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
+                    if (compare_wazuh_versions(__ossec_version, version->valuestring) < 0) {
+                        /* Reply to the agent */
+                        char msg_err[OS_FLSIZE + 1] = "";
+                        snprintf(msg_err, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_INVALID_VERSION);
+                        send_msg(key->id, msg_err, -1);
+                        return;
+                    }
+                } else {
+                    merror("Error getting version from agent '%s'", key->id);
+                }
+            }
             is_startup = 1;
             rem_inc_recv_ctrl_startup(key->id);
         } else {
@@ -315,6 +332,10 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             rem_inc_send_ack(key->id);
         }
     }
+
+    /* Reply to the agent */
+    snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
+    send_msg(key->id, msg_ack, -1);
 
     w_mutex_lock(&lastmsg_mutex);
 
@@ -424,14 +445,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             os_calloc(1, sizeof(agent_info_data), agent_data);
 
             result = parse_agent_update_msg(msg, agent_data);
-
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);
                 wdb_free_agent_info_data(agent_data);
                 os_free(clean);
                 return;
             }
-
+// mwarn("------------------------------------ '%s'", agent_data->version);
             // Appending system labels
             os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
 

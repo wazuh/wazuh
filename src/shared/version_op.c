@@ -977,3 +977,84 @@ int get_nproc() {
     return 1;
 #endif
 }
+
+int compare_wazuh_versions(const char *version1, const char *version2) {
+    char ver1[10];
+    char ver2[10];
+    char *tmp_v1 = NULL;
+    char *tmp_v2 = NULL;
+    char *token = NULL;
+    int patch1 = 0;
+    int major1 = 0;
+    int minor1 = 0;
+    int patch2 = 0;
+    int major2 = 0;
+    int minor2 = 0;
+    int result = 0;
+
+    if (version1) {
+        strncpy(ver1, version1, 9);
+
+        if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
+            tmp_v1++;
+        } else {
+            tmp_v1 = ver1;
+        }
+
+        if (token = strtok(tmp_v1, "."), token) {
+            major1 = atoi(token);
+
+            if (token = strtok(NULL, "."), token) {
+                minor1 = atoi(token);
+
+                if (token = strtok(NULL, "."), token) {
+                    patch1 = atoi(token);
+                }
+            }
+        }
+    }
+
+    if (version2) {
+        strncpy(ver2, version2, 9);
+
+        if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
+            tmp_v2++;
+        } else {
+            tmp_v2 = ver2;
+        }
+
+        if (token = strtok(tmp_v2, "."), token) {
+            major2 = atoi(token);
+
+            if (token = strtok(NULL, "."), token) {
+                minor2 = atoi(token);
+
+                if (token = strtok(NULL, "."), token) {
+                    patch2 = atoi(token);
+                }
+            }
+        }
+    }
+
+    if (major1 > major2) {
+        result = 1;
+    } else if (major1 < major2){
+        result = -1;
+    } else {
+        if(minor1 > minor2) {
+            result = 1;
+        } else if (minor1 < minor2) {
+            result = -1;
+        } else {
+            if (patch1 > patch2) {
+                result = 1;
+            } else if (patch1 < patch2) {
+                result = -1;
+            } else {
+                result = 0;
+            }
+        }
+    }
+
+    return result;
+}
