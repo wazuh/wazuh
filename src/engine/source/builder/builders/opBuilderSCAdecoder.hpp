@@ -375,7 +375,7 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx);
 } // namespace sca
 
 /**
- * @brief Executes query on WDB returning status ok or not ok.
+ * @brief SCA Decoder
  * @param def Json Doc
  * @param tr Tracer
  * @return base::Lifter true when executes without any problem, false otherwise.
