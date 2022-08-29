@@ -445,8 +445,8 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {
-        fmt::format("[{}] -> Failure: [{}] must be string or int", name, parameters[1].m_value)};
+    const auto failureTrace1 {fmt::format(
+        "[{}] -> Failure: [{}] must be string or int", name, parameters[1].m_value)};
     const auto failureTrace2 {
         fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value)};
 
@@ -462,19 +462,20 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
             {
                 if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
                 {
-                    //Check path exists
-                    if(!event->exists(parameter.m_value))
+                    // Check path exists
+                    if (!event->exists(parameter.m_value))
                     {
                         return base::result::makeFailure(event, failureTrace2);
                     }
 
                     // Get field value
                     std::string resolvedField;
-                    if(event->isInt(parameter.m_value))
+                    if (event->isInt(parameter.m_value))
                     {
-                        resolvedField = std::to_string(event->getInt(parameter.m_value).value());
+                        resolvedField =
+                            std::to_string(event->getInt(parameter.m_value).value());
                     }
-                    else if(event->isString(parameter.m_value))
+                    else if (event->isString(parameter.m_value))
                     {
                         resolvedField = event->getString(parameter.m_value).value();
                     }
@@ -484,7 +485,6 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
                     }
 
                     result.append(resolvedField);
-
                 }
                 else
                 {
@@ -501,7 +501,8 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 // field: +s_fromArray/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] =
+        helper::base::extractDefinition(definition);
     const auto parameters = helper::base::processParameters(rawParameters);
     helper::base::checkParametersSize(parameters, 2);
 
@@ -514,7 +515,8 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
     helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
     const auto separator = parameters.at(1);
 
-    const auto traceName = helper::base::formatHelperFilterName(name, targetField, parameters);
+    const auto traceName =
+        helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
@@ -526,14 +528,15 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
     // Return Term
     return base::Term<base::EngineOp>::create(
         traceName,
-        [=, targetField = std::move(targetField),
-            separator = std::move(separator.m_value),
-            arrayName = std::move(arrayName.m_value)](
+        [=,
+         targetField = std::move(targetField),
+         separator = std::move(separator.m_value),
+         arrayName = std::move(arrayName.m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
             // Getting array field, must be a reference
             const auto stringJsonArray = event->getArray(arrayName);
-            if (!stringJsonArray.has_value() )
+            if (!stringJsonArray.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
@@ -553,7 +556,8 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             }
 
             // accumulated concation without trailing indexes
-            const std::string composedValueString {utils::string::join(stringArray, separator)};
+            const std::string composedValueString {
+                utils::string::join(stringArray, separator)};
 
             event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);
@@ -729,26 +733,23 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
         fmt::format("[{}] -> Failure: parameter reference [{}] not found or not string",
                     name,
                     parameters[0].m_value);
-    const auto failureTrace2 = fmt::format("[{}] -> Failure", name);
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
+        [=,
+         targetField = std::move(targetField),
+         fieldReference = std::move(parameters[0].m_value),
+         separator = std::move(parameters[1].m_value[0])](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedReference = event->getString(parameters[0].m_value);
+            auto resolvedReference = event->getString(fieldReference);
             if (!resolvedReference.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            auto splitted =
-                utils::string::split(resolvedReference.value(), parameters[1].m_value[0]);
-            if (splitted.empty())
-            {
-                return base::result::makeFailure(event, failureTrace2);
-            }
+            auto splitted = utils::string::split(resolvedReference.value(), separator);
 
             for (const auto& value : splitted)
             {

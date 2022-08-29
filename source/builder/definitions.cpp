@@ -7,6 +7,13 @@
 
 namespace
 {
+/**
+ * @brief Replace all occurrences of key with value in text.
+ *
+ * @param key The key to replace.
+ * @param value The value to replace with.
+ * @param text The text to replace in.
+ */
 void substituteDefinition(const std::string& key,
                           const std::string& value,
                           std::string& text)
