@@ -151,7 +151,9 @@ class AgentsReconnect:
             if self.previous_nodes == set():
                 self.previous_nodes = node_list.copy()
             if self.nodes_stability_counter >= self.nodes_stability_threshold:
-                self.logger.info("Cluster is stable.")
+                self.logger.info(f"Checking cluster stability "
+                                 f"({self.nodes_stability_counter}/{self.nodes_stability_threshold}). "
+                                 f"Cluster is stable.")
                 return True
             else:
                 self.logger.info(f"Checking cluster stability "
