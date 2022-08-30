@@ -1,7 +1,7 @@
 name: json
 
 check:
-  - event.original: +s_starts/{
+  - event.original: +r_match/^{.+}$
 
 parse:
   logql:
