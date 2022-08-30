@@ -1,0 +1,82 @@
+---
+name: auditd-syscall
+
+metadata:
+  description: Decoder for Linux auditd syscall logs
+  references:
+    - https://docs.elastic.co/en/integrations/auditd
+  product.name: auditd
+
+parents:
+  - auditd
+
+check:
+  - event.action: syscall
+
+parse:
+  logql:
+    - _auditd.log.payload: >-
+        arch=<host.architecture> syscall=<auditd.log.syscall>
+        success=<_auditd.log.success> exit=<process.exit_code>
+        a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
+        a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
+        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
+        fsuid=<user.filesystem.id> egid=<user.effective.group.id>
+        sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
+        tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
+        exe="<process.executable>" subj=<auditd.log.subj> key=<_auditd.log.key>
+    - _auditd.log.payload: >-
+        arch=<host.architecture> syscall=<auditd.log.syscall>
+        success=<_auditd.log.success> exit=<process.exit_code>
+        a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
+        a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
+        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
+        fsuid=<user.filesystem.id> egid=<user.effective.group.id>
+        sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
+        tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
+        exe=<process.executable> subj=<auditd.log.subj> key=<_auditd.log.key>
+    - _auditd.log.payload: >-
+        arch=<host.architecture> syscall=<auditd.log.syscall>
+        success=<_auditd.log.success> exit=<process.exit_code>
+        a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
+        a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
+        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
+        fsuid=<user.filesystem.id> egid=<user.effective.group.id>
+        sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
+        tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
+        exe=<process.executable> key=<_auditd.log.key>
+
+normalize:
+  - check:
+      - auditd.log.syscall: +s_eq/execve
+    map:
+      event.category: [ "process" ]
+      event.type: info
+
+  - check: >-
+      auditd.log.syscall==accept OR auditd.log.syscall==43 OR
+      auditd.log.syscall==recvfrom OR auditd.log.syscall==45 OR
+      auditd.log.syscall==recvmsg OR auditd.log.syscall==47 OR
+      auditd.log.syscall==accept4 OR auditd.log.syscall==288
+    map:
+      network.direction: ingress
+
+  - check: >-
+      auditd.log.syscall==connect OR auditd.log.syscall==42 OR
+      auditd.log.syscall==sendto OR auditd.log.syscall==44 OR
+      auditd.log.syscall==sendmsg OR auditd.log.syscall==46
+    map:
+      network.direction: egress
+
+  - map:
+      auditd.log.success: false
+  - check:
+      - _auditd.log.success: +s_eq/yes
+    map:
+      auditd.log.success: true
+
+  - map:
+      _auditd: +delete_field
