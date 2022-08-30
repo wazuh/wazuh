@@ -8,6 +8,9 @@ parents:
 
 metadata:
   description: Cisco IOS last child, add common fields to cisco-ios event
+  version:
+    - Cisco IOS System, 15 SY
+    - Cisco ASA version 9.10
 
 check:
   - service.type: cisco
