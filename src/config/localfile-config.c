@@ -765,6 +765,9 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->exclude);
         os_free(logf->query_level);
 
+        w_free_expression_t(&logf->regex_ignore);
+        w_free_expression_t(&logf->regex_restrict);
+
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {
                 free(logf->target[i]);

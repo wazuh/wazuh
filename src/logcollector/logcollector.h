@@ -95,8 +95,11 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it);
 /* Read postgresql log format */
 void *read_postgresql_log(logreader *lf, int *rc, int drop_it);
 
-/* read multi line logs */
+/* Read multi line logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it);
+
+/* Check ignore and restrict setting with pcre2 regex */
+int check_log_regex(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line);
 
 /**
  * @brief Read multi line logs with variable lenght

@@ -150,6 +150,27 @@ static int teardown_process(void **state) {
     return 0;
 }
 
+static int setup_regex(void **state) {
+    logreader *regex_config = calloc(1, sizeof(logreader));
+    regex_config->regex_ignore = NULL;
+    regex_config->regex_restrict = NULL;
+
+    *state = regex_config;
+
+    return 0;
+}
+
+static int teardown_regex(void **state) {
+    logreader *regex_config = *state;
+
+    w_free_expression_t(&regex_config->regex_ignore);
+    w_free_expression_t(&regex_config->regex_restrict);
+
+    os_free(regex_config);
+
+    return 0;
+}
+
 /* wraps */
 
 /* tests */
@@ -2255,6 +2276,100 @@ void test_w_macos_release_log_execution_log_stream_not_launched_and_show_launche
 
 }
 
+void check_log_regex_null_config(void ** state) {
+
+    logreader *regex_config = *state;
+
+    int ret = check_log_regex(regex_config->regex_ignore, regex_config->regex_restrict, "testing log line");
+    assert_false(ret);
+}
+
+void check_log_regex_not_ignored(void ** state) {
+
+    logreader *regex_config = *state;
+    char *str_test = "testing log not match";
+
+    w_calloc_expression_t(&regex_config->regex_ignore, EXP_TYPE_PCRE2);
+    w_expression_compile(regex_config->regex_ignore, "ignore.*", 0);
+
+    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
+    will_return(wrap_pcre2_match, 0);
+
+    int ret = check_log_regex(regex_config->regex_ignore, regex_config->regex_restrict, str_test);
+
+    w_free_expression_t(&regex_config->regex_ignore);
+
+    assert_false(ret);
+}
+
+void check_log_regex_ignored(void ** state) {
+
+    logreader *regex_config = *state;
+    char *str_test = "testing log with ignore word";
+    char *aux[2]   ;
+    aux[0] = str_test;
+    aux[1] = str_test+1;
+
+    w_calloc_expression_t(&regex_config->regex_ignore, EXP_TYPE_PCRE2);
+    w_expression_compile(regex_config->regex_ignore, "ignore.*", 0);
+
+    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
+    will_return(wrap_pcre2_match, 1);
+    will_return(wrap_pcre2_get_ovector_pointer, aux);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(1976): Avoiding the log line 'testing log with ignore word' due to ignore config: 'ignore.*'.");
+
+    int ret = check_log_regex(regex_config->regex_ignore, regex_config->regex_restrict, str_test);
+
+    w_free_expression_t(&regex_config->regex_ignore);
+
+    assert_true(ret);
+}
+
+void check_log_regex_not_restricted(void ** state) {
+
+    logreader *regex_config = *state;
+    char *str_test = "testing log with restrict word";
+    char *aux[2]   ;
+    aux[0] = str_test;
+    aux[1] = str_test+1;
+
+    w_calloc_expression_t(&regex_config->regex_restrict, EXP_TYPE_PCRE2);
+    w_expression_compile(regex_config->regex_restrict, "restrict.*", 0);
+
+    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
+    will_return(wrap_pcre2_match, 0);
+
+    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
+    will_return(wrap_pcre2_match, 1);
+    will_return(wrap_pcre2_get_ovector_pointer, aux);
+
+    int ret = check_log_regex(regex_config->regex_restrict, regex_config->regex_restrict, str_test);
+
+    assert_false(ret);
+}
+
+void check_log_regex_restricted(void ** state) {
+
+    logreader *regex_config = *state;
+    char *str_test = "testing log not match";
+
+    w_calloc_expression_t(&regex_config->regex_restrict, EXP_TYPE_PCRE2);
+    w_expression_compile(regex_config->regex_restrict, "restrict.*", 0);
+
+    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
+    will_return(wrap_pcre2_match, 0);
+
+    will_return(wrap_pcre2_match_data_create_from_pattern, 1);
+    will_return(wrap_pcre2_match, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(1976): Avoiding the log line 'testing log not match' due to restrict config: 'restrict.*'.");
+
+    int ret = check_log_regex(regex_config->regex_restrict, regex_config->regex_restrict, str_test);
+
+    assert_true(ret);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -2349,7 +2464,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_and_show_not_launched, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_and_show_launched_and_running, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_launched_and_show_not_launched, setup_process, teardown_process),
-        cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_not_launched_and_show_launched, setup_process, teardown_process)
+        cmocka_unit_test_setup_teardown(test_w_macos_release_log_execution_log_stream_not_launched_and_show_launched, setup_process, teardown_process),
+
+        // Test w_macos_release_log_execution
+        cmocka_unit_test_setup_teardown(check_log_regex_null_config, setup_regex, teardown_regex),
+        cmocka_unit_test_setup_teardown(check_log_regex_not_ignored, setup_regex, teardown_regex),
+        cmocka_unit_test_setup_teardown(check_log_regex_ignored, setup_regex, teardown_regex),
+        cmocka_unit_test_setup_teardown(check_log_regex_not_restricted, setup_regex, teardown_regex),
+        cmocka_unit_test_setup_teardown(check_log_regex_restricted, setup_regex, teardown_regex)
 
     };
 
