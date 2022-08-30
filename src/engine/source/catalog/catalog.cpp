@@ -58,7 +58,7 @@ std::string readFileFromDisk(std::filesystem::path const& file)
     }
 
     throw std::runtime_error(fmt::format(
-        "Error oppening asset [{}]. Error [{}]", file.string(), errno));
+        "Error while opening asset [{}]. Error [{}]", file.string(), errno));
 }
 } // namespace
 

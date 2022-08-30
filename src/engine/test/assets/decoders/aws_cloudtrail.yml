@@ -1,11 +1,46 @@
 ---
-name: aws_cloudtrail
+name: aws-cloudtrail
 
 metadata:
   description: Decoder for AWS CloudTrail Logs
   references:
     - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html
   product.name: AWS CloudTrail
+
+# Example AWS Cloudtrail log:
+# {
+#   "aws": {
+#     "source": "cloudtrail",
+#     "eventVersion": "some-event-version",
+#     "eventID": "some-event-id",
+#     "eventTime": "2018-08-24T17:20:08Z",
+#     "log_file": "some-log-file.json.gz",
+#     "additionalEventData": {
+#       "MFAUsed": "No",
+#       "LoginTo": "https://console.aws.amazon.com/console/home",
+#       "MobileVersion": "No"
+#     },
+#     "eventType": "AwsConsoleSignIn",
+#     "errorMessage": "Failed authentication",
+#     "responseElements": {
+#       "ConsoleLogin": "Failure"
+#     },
+#     "awsRegion": "us-east-1",
+#     "eventName": "ConsoleLogin",
+#     "userIdentity": {
+#       "userName": "some-user-name",
+#       "accessKeyId": "some-access-key",
+#       "type": "IAMUser",
+#       "principalId": "some-principal-id",
+#       "accountId": "0303456"
+#     },
+#     "eventSource": "signin.amazonaws.com",
+#     "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0",
+#     "sourceIPAddress": "7.222.123.101",
+#     "recipientAccountId": "1020304050607080"
+#   },
+#   "integration": "aws"
+# }
 
 parents:
   - aws
@@ -112,9 +147,11 @@ normalize:
   - check:
       - aws.cloudtrail.error_code: +is_not_null
     map:
+      _aws_is_failure: true
       event.outcome: failure
 
   - check:
+      - _aws_is_failure: +exists
       - aws.cloudtrail.error_message: +is_not_null
     map:
       event.outcome: failure
