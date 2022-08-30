@@ -3286,29 +3286,43 @@ class AWSCloudWatchLogs(AWSService):
         """
 
         result_list = list()
-        try:
-            debug('Getting log streams for "{}" log group'.format(log_group), 1)
+        for _ in range(AWSCloudWatchLogs.CONNECTION_ATTEMPTS_ALLOWED):
+            try:
+                debug('Getting log streams for "{}" log group'.format(log_group), 1)
 
-            # Get all log streams using the token of the previous call to describe_log_streams
-            response = self.client.describe_log_streams(logGroupName=log_group)
-            log_streams = response['logStreams']
-            token = response.get('nextToken')
-            while token:
-                response = self.client.describe_log_streams(logGroupName=log_group, nextToken=token)
-                log_streams.extend(response['logStreams'])
+                # Get all log streams using the token of the previous call to describe_log_streams
+                response = self.client.describe_log_streams(logGroupName=log_group)
+                log_streams = response['logStreams']
                 token = response.get('nextToken')
+                while token:
+                    response = self.client.describe_log_streams(logGroupName=log_group, nextToken=token)
+                    log_streams.extend(response['logStreams'])
+                    token = response.get('nextToken')
 
-            for log_stream in log_streams:
-                debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
-                result_list.append(log_stream['logStreamName'])
+                for log_stream in log_streams:
+                    debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
+                    result_list.append(log_stream['logStreamName'])
 
-            if result_list == list():
-                debug('No log streams were found for log group "{}"'.format(log_group), 1)
-        except botocore.exceptions.EndpointConnectionError as e:
-            print(f'ERROR: {str(e)}')
-        except Exception:
-            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
-                log_group), 0)
+                if result_list == list():
+                    debug('No log streams were found for log group "{}"'.format(log_group), 1)
+                break
+            except botocore.exceptions.EndpointConnectionError as e:
+                print(f'ERROR: {str(e)}')
+            except botocore.exceptions.ClientError as err:
+                if err.response['Error']['Code'] == 'ThrottlingException':
+                    debug(f'WARNING: The "describe_log_streams" request was denied due to request throttling. '
+                          f'Attempting again.', 1)
+                else:
+                    debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
+                    sys.exit(1)
+            except Exception:
+                debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
+                    log_group), 0)
+            else:
+                debug(f'ERROR: The "describe_log_streams" request was denied. No more attempts allowed. '
+                      f'Make sure the CloudWatch Logs endpoint URL is available and AWS CloudWatch service is not '
+                      f'receiving too many non-Wazuh related requests.', 1)
+                sys.exit(16)
 
         return result_list
 
