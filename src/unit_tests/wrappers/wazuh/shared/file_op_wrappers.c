@@ -245,3 +245,12 @@ char *__wrap_GetRandomNoise() {
 const char *__wrap_getuname() {
     return mock_ptr_type(char*);
 }
+
+char * __wrap_w_get_file_content(__attribute__ ((__unused__)) const char * path,
+                                 __attribute__ ((__unused__)) int max_size) {
+    return mock_type(char *);
+}
+
+void expect_w_get_file_content(const char *buffer) {
+    will_return(__wrap_w_get_file_content, buffer);
+}

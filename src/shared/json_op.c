@@ -71,7 +71,6 @@ end:
     return retval;
 }
 
-// Clear C/C++ style comments from a JSON string
 void json_strip(char * json) {
     char * line;
     char * cursor;
@@ -113,4 +112,5 @@ void json_strip(char * json) {
             *next++ = '\n';
         }
     }
+
 }
