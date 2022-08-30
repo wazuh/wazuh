@@ -1,0 +1,54 @@
+---
+name: auditd
+
+metadata:
+  description: Decoder for Linux auditd logs
+  references:
+    - https://docs.elastic.co/en/integrations/auditd
+  product.name: auditd
+
+definitions:
+  TYPE_FIELD: type=<auditd.log.record_type>
+  NODE_FIELD: node=<auditd.log.node>
+  LOG_EPOCH: <auditd.log.epoch>
+  LOG_SEQUENCE: <auditd.log.sequence>
+  EPOCH_SEQ_FIELD: "($LOG_EPOCH:$LOG_SEQUENCE):"
+  MSG_FIELD: msg=audit$EPOCH_SEQ_FIELD
+
+check:
+  - event.original: +r_match/msg=audit
+
+# Example auditd logs:
+# type=SYSCALL msg=audit(1485893834.891:18877199): arch=c000003e syscall=44 success=yes exit=184 a0=9 a1=7f564b2672a0 a2=b8 a3=0 items=0 ppid=1240 pid=1281 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=\"charon\" exe=2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429 key=(null)
+
+parse:
+  logql:
+    # Logs that start with "type="
+    - event.original: >
+        $TYPE_FIELD $MSG_FIELD <_auditd.log.payload> old
+        auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid> old
+        ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
+    - event.original: >
+        $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
+        msg=<_auditd.log.sub_payload>
+    - event.original: $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
+    - event.original: $TYPE_FIELD $MSG_FIELD
+
+    # Logs that start with "node="
+    - event.original: >
+        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_auditd.log.payload> old
+        auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid> old
+        ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
+    - event.original: >
+        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
+        msg=<_auditd.log.sub_payload>
+    - event.original: $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
+    - event.original: $NODE_FIELD $TYPE_FIELD $MSG_FIELD
+
+normalize:
+  - map:
+      timestamp: $auditd.log.epoch
+      auditd.log.epoch: +delete_field
+      event.kind: event
+      event.action: +s_lo/$auditd.log.record_type
+      auditd.log.record_type: +delete_field
