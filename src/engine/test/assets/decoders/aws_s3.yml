@@ -1,5 +1,5 @@
 ---
-name: aws_s3
+name: aws-s3
 
 metadata:
   description: Decoder for Amazon S3 server access logs
