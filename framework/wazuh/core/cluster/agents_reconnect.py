@@ -113,6 +113,7 @@ class AgentsReconnect:
         """
         if node_name not in self.blacklisted_nodes:
             if hard_reset:
+                self.previous_nodes = set()
                 self.nodes_stability_counter = 0
             self.expected_rounds = 0
             self.round_counter = 0
@@ -137,7 +138,6 @@ class AgentsReconnect:
 
         if len(node_list) <= 1:
             self.reset_counters()
-            self.previous_nodes = set()
             self.current_phase = AgentsReconnectionPhases.NOT_ENOUGH_NODES
 
             return False
@@ -159,9 +159,7 @@ class AgentsReconnect:
 
         else:
             self.logger.info("Nodes changed, restarting cluster stability phase.")
-            self.previous_nodes = node_list.copy()
             self.reset_counters()
-            return False
 
         return False
 
@@ -493,10 +491,7 @@ class AgentsReconnect:
             biggest_node = max(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
             smallest_node = min(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
             mean = (self.env_status[biggest_node]['total'] + self.env_status[smallest_node]['total']) / 2
-            tolerance_window = floor(mean * tolerance)
-
-            if tolerance_window < 3:
-                tolerance_window = 3
+            tolerance_window = max(floor(mean * tolerance), 3)
 
             return self.env_status[biggest_node]['total'] - self.env_status[smallest_node]['total'] <= tolerance_window
 
