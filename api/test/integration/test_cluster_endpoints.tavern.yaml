@@ -1441,10 +1441,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-      response:
-        status_code: 400
-        json:
-          error: 1127
+    response:
+      status_code: 400
+      json:
+        error: 1127
 
 ---
 test_name: GET /cluster/{node_id}/info
