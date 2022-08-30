@@ -951,7 +951,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 free_whodata_event(w_evt);
                 break;
 
-            case 224719:
+            case 4719:
                 merror(FIM_ERROR_WHODATA_WIN_POL_CH);
                 win_whodata_release_resources(&syscheck.wdata);
 
