@@ -1,10 +1,12 @@
-name: postgresql_csv
+name: postgresql-csv
 
 metadata:
   description: Parses postgresql csv logs in its Common Log Format
   references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
   product.name: postgresql
-
+  product.versions:
+    - v13
+    - v11
 
 definitions:
   SECTION_1: <timestamp/POSTGRES_MS>,<?user.name>,<?postgresql.log.database>,<process.pid>
