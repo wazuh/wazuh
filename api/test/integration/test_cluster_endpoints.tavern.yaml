@@ -1434,6 +1434,18 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Try to show the invalid config of component in the master node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/agent/wmodules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      response:
+        status_code: 400
+        json:
+          error: 1127
+
 ---
 test_name: GET /cluster/{node_id}/info
 
