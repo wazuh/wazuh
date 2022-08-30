@@ -7,42 +7,43 @@ metadata:
 
 
 definitions:
-  #'^duration: %{NUMBER:temp.duration:float} ms  %{POSTGRESQL_QUERY_STEP:postgresql.log.query_step} %{DATA:postgresql.log.query_name}: %{GREEDYDATA:message}$'
-  #'^duration: %{NUMBER:temp.duration:float} ms  %{POSTGRESQL_QUERY_STEP:postgresql.log.query_step}: %{GREEDYDATA:message}$'
-  #'^(%{POSTGRESQL_QUERY_STEP:postgresql.log.query_step}: )?%{GREEDYDATA:message}$'
-  #'^duration: %{NUMBER:temp.duration:float} ms$'
-  #'^{GREEDYDATA:message}$'
-  MESSAGE_FORMAT_1: "duration: <_temp_duration/float> ms  <postgresql.log.query_step> <postgresql.log.query_name>: <_message/keyword>"
-  MESSAGE_FORMAT_2: "duration: <_temp_duration/float> ms  <postgresql.log.query_step>: <_message/keyword>"
-  MESSAGE_FORMAT_3: "<postgresql.log.query_step>:<_message/keyword>"
-  MESSAGE_FORMAT_4: "duration: <_temp_duration/float> ms"
-  MESSAGE_FORMAT_5: "<_message/keyword>"
+  SECTION_1: <timestamp/POSTGRES_MS>,<?user.name>,<?postgresql.log.database>,<process.pid>
 
-  SECTION_1: <timestamp/POSTGRES_MS>,<user.name>,<postgresql.log.database>,<process.pid>,\"<postgresql.log.client_addr>:<postgresql.log.client_port>\"
-  SECTION_2: <postgresql.log.session_id>,<postgresql.log.session_line_num>,<postgresql.log.command_tag>,<postgresql.log.session_start_time/POSTGRES>,<postgresql.log.virtual_transaction_id>
-  SECTION_3: <postgresql.log.transaction_id>,<log.level>,<postgresql.log.sql_state_code>
+  ADDRESS_W_PORT: <postgresql.log.client_addr>:<postgresql.log.client_port>
 
-  POSTGRES_OPTIONAL_FIELDS: <?postgresql.log.detail>,<?postgresql.log.hint>,<?postgresql.internal_query>,<?_internal_query_pos>,<?postgresql.log.context>,<?postgresql.log.query>,<?_query_pos>,<?postgresql.log.location>
+  SECTION_2: <?postgresql.log.session_id>,<?postgresql.log.session_line_num>,<?postgresql.log.command_tag>,<postgresql.log.session_start_time/POSTGRES>,<?postgresql.log.virtual_transaction_id>
+  SECTION_3: <?postgresql.log.transaction_id>,<?log.level>,<?postgresql.log.sql_state_code>
+
+  MESSAGE_FORMAT_1: "duration: <_temp_duration/float> ms  <postgresql.log.query_step> <postgresql.log.query_name>:<message/quoted/ /,>"
+  MESSAGE_FORMAT_2: "duration: <_temp_duration/float> ms  <postgresql.log.query_step>: <message/keyword>"
+  MESSAGE_FORMAT_3: "duration: <_temp_duration/float> ms"
+  MESSAGE_FORMAT_4: "<postgresql.log.query_step>:<message/keyword>"
+
+  POSTGRES_OPTIONAL_FIELDS: <?postgresql.log.detail>,<?postgresql.log.hint>,<?postgresql.internal_query>,<?_internal_query_pos>,<?postgresql.log.context>,<?postgresql.log.query>,<?_query_pos>,<_/,>
 
 check:
-  # - wazuh.queue: +i_eq/TODO: what number??
+  - wazuh.queue: 49
   - event.original: +exists
 
 parse:
   logql:
+      #2021-01-04 00:51:56.843 UTC,"postgres","postgres",105,"172.24.0.1:44618",5ff26691.69,8,"SELECT",2021-01-04 00:51:29 UTC,3/136,0,LOG,00000,"duration: 0.455 ms  execute py:0x7fde12d61b80: SELECT * from information_schema.tables WHERE table_name = $1","parameters: $1 = 'tables'",,,,,,,,""
+      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_1"$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>'
+
+      # 2021-01-04 01:07:24.374 UTC,"postgres","postgres",86,"172.24.0.1:45126",5ff26a0c.56,13,"CHECKPOINT",2021-01-04 01:06:20 UTC,3/0,0,LOG,00000,"duration: 15.136 ms  statement: checkpoint;",,,,,,,,,"psql","client backend"
+      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_2",$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+      # 2021-01-04 00:17:53.742 UTC,"postgres","postgres",54,"172.24.0.1:42608",5ff25ea4.36,6,"ALTER SYSTEM",2021-01-04 00:17:40 UTC,3/0,0,LOG,00000,"duration: 6.589 ms",,,,,,,,,"psql"
+      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_3",$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>,<postgresql.log.backend_type>'
+
+      # 2021-01-04 00:05:12.999 UTC,"postgres","postgres",34,"172.24.0.1:42304",5ff25bb2.22,3,"idle",2021-01-04 00:05:06 UTC,3/2,0,LOG,00000,"statement: SELECT name FROM  (SELECT pg_catalog.lower(name) AS name FROM pg_catalog.pg_settings   WHERE context != 'internal'   UNION ALL SELECT 'all') ss  WHERE substring(name,1,10)='log_connec' LIMIT 1000",,,,,,,,,"psql"
       # 2021-02-14 10:45:48.113 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,5,"idle",2021-02-14 10:45:14 UTC,3/4,0,LOG,00000,"statement: BEGIN;",,,,,,,,,"psql","client backend"
       # 2021-02-14 10:45:33.257 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,4,"idle",2021-02-14 10:45:14 UTC,3/3,0,LOG,00000,"statement: SET idle_in_transaction_session_timeout = 50;",,,,,,,,,"psql","client backend"
+      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_4",$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>'
+
       # 2021-02-14 10:45:48.164 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,6,"idle in transaction",2021-02-14 10:45:14 UTC,3/4,0,FATAL,25P03,"terminating connection due to idle-in-transaction timeout",,,,,,,,,"psql","client backend"
       # 2021-02-14 10:45:48.164 UTC,"postgres","postgres",86,"172.24.0.1:48978",6028ff3a.56,7,"idle in transaction",2021-02-14 10:45:14 UTC,,0,LOG,00000,"disconnection: session time: 0:00:33.289 user=postgres database=postgres host=172.24.0.1 port=48978",,,,,,,,,"psql","client backend"
-      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_1",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
-      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_2",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
-      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_3",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
-      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_4",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
-      - event.original: '$SECTION_1,$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_5",$POSTGRES_OPTIONAL_FIELDS,<postgresql.log.application_name>,<postgresql.log.backend_type>'
+      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,<message/quoted/">,$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>,<postgresql.log.backend_type>'
 
 
 normalize:
@@ -55,14 +56,16 @@ normalize:
       postgresql.log.timestamp: $timestamp
       fileset.name: log                 #assumed fixed value
       input.type: log                   #assumed fixed value
-      related.user: +s_append/postgres  #assumed fixed value
-      #Getting last value of timestamp = timezone
+      #Getting timezone from timestamp (third position after spliting it)
       _temp_timestamp: "+s_to_array/$timestamp/ "
       event.timezone: $_temp_timestamp/2
-      message: $_message                #workaround for name collision (or it will need rework on any parser)
-      log.offset: 111                   #TODO: where to get this value?
-      # _temp_timestamp: +delete_field  #TODO: this is not allowed becasue of duplicated key:value pair in json but it shouldn't
-      _message: +delete_field
+      #log.offset: XXX                   #TODO: where to get this value?
+      # _message: +delete_field
+
+  - check:
+      - user.name: +exists
+    map:
+      related.user: +s_append/postgres
 
   - check:
       - _internal_query_pos: +exists
@@ -88,3 +91,19 @@ normalize:
       - postgresql.log.sql_state_code: +s_eq/00000
     map:
       event.type: +s_append/info
+
+  # Cleanup
+  - check:
+      - _temp_timestamp: +exists
+    map:
+      _temp_timestamp: +delete_field
+
+  - check:
+      - _: +exists
+    map:
+      _: +delete_field
+
+  - check:
+      - _query_pos: +exists
+    map:
+      _query_pos: +delete_field
