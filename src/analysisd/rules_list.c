@@ -163,6 +163,13 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
                 return addedAsChild ? 0 : -1;
             }
         } while (*sid_ptr++ != '\0');
+
+        // If the rule was not added as a child of at least one rule, return error
+        if (!addedAsChild) {
+            smwarn(log_msg, ANALYSISD_EMPTY_SID, read_rule->if_matched_sid != 0 ? "if_matched_sid" : "if_sid",
+                   read_rule->sigid);
+            return -1;
+        }
     }
 
     /* Adding for if_level */
