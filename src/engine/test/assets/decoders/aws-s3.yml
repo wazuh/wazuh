@@ -10,6 +10,38 @@ metadata:
 parents:
   - aws
 
+# Example of Wazuh's integration with AWS S3 server access log:
+# {
+#   "aws": {
+#     "authentication_type": "AuthHeader",
+#     "bucket_owner": "79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be",
+#     "bucket": "awsexamplebucket1",
+#     "bytes_sent": 2662992,
+#     "cipher_suite": "ECDHE-RSA-AES128-GCM-SHA256",
+#     "error_code": "NoSuchBucket",
+#     "host_header": "s3.us-west-2.amazonaws.com",
+#     "host_id": "s9lzHYrFp76ZVxRcpX9+5cjAnEH2ROuNkd2BHfIa6UkFVdtjf5mKR3/eTPFvsiP/XV/VLi31234=",
+#     "http_status": 200,
+#     "key": "/photos/2019/08/puppy.jpg",
+#     "object_sent": 3462992,
+#     "operation": "REST.GET.VERSIONING",
+#     "referer": "http://www.amazon.com/webservices",
+#     "remote_ip": "192.0.2.3",
+#     "request_id": "3E57427F3EXAMPLE",
+#     "request_uri": "GET /awsexamplebucket1/photos/2019/08/puppy.jpg?x-foo=bar HTTP/1.1",
+#     "requester": "79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be",
+#     "signature_version": "SigV2",
+#     "source": "s3_server_access",
+#     "time": "06/Feb/2019:00:00:38 +0000",
+#     "tls_version": "TLSv1.2",
+#     "total_time": 70,
+#     "turn_around_time": 10,
+#     "user_agent": "curl/7.15.1",
+#     "version_id": "3HL4kqtJvjVBH40Nrjfkd"
+#   },
+#   "integration": "aws"
+# }
+
 check:
   - wazuh.modules.aws.source: +s_eq/s3_server_access
 

@@ -7,7 +7,7 @@ metadata:
     - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html
   product.name: AWS CloudTrail
 
-# Example AWS Cloudtrail log:
+# Example of Wazuh's integration with AWS Cloudtrail log:
 # {
 #   "aws": {
 #     "source": "cloudtrail",

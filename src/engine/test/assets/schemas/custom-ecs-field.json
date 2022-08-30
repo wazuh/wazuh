@@ -886,6 +886,69 @@
         "boolean"
       ]
     },
+    "cisco.asa.destination_interface": {
+      "description": "Destination interface for the flow or event.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "cisco.asa.icmp_code": {
+      "description": "ICMP code.",
+      "ecs_type": "short",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "cisco.asa.icmp_type": {
+      "description": "ICMP type.",
+      "ecs_type": "short",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "cisco.asa.message_id": {
+      "description": "The Cisco ASA message identifier.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "cisco.asa.source_interface": {
+      "description": "Source interface for the flow or event.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "cisco.ios.facility": {
+      "description": "A facility can be a hardware device, a protocol, or a module of the system software. It denotes the source or the cause of the system message",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "cisco.ios.outcome": {
+      "description": "The result of the event.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
     "client.address": {
       "description": "Some event client addresses are defined ambiguously. The event will sometimes list an IP, a domain or a unix socket.  You should always store the raw address in the `.address` field.\nThen it should be duplicated to `.ip` or `.domain`, depending on which one it is.",
       "ecs_type": "keyword",
