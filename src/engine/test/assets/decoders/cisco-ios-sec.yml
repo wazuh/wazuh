@@ -6,7 +6,8 @@ parents:
 
 metadata:
   description: "Cisco IOS, Facility Code: SEC [IP security]"
-  version: Cisco IOS System, 15 SY
+  version:
+    - Cisco IOS System, 15 SY
   references:
     - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg.pdf
     - https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
@@ -67,4 +68,3 @@ normalize:
       OR _outcome==Deny)
     map:
       event.outcome: denied
-
