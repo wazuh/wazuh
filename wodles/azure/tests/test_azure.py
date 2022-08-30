@@ -627,30 +627,31 @@ def test_start_storage_ko_credentials(mock_logging):
     mock_logging.assert_called_once()
 
 
-@pytest.mark.parametrize('blob_date, min_date, max_date, desired_date, extension, reparse, json_file, inline, send_events', [
+@pytest.mark.parametrize(
+    'blob_date, min_date, max_date, desired_date, extension, reparse, json_file, inline, send_events, prefix', [
     # blob_date < desired_date - Blobs should be skipped
-    (PRESENT_DATE, PAST_DATE, PAST_DATE, FUTURE_DATE, None, False, False, False, False),
+    (PRESENT_DATE, PAST_DATE, PAST_DATE, FUTURE_DATE, None, False, False, False, False, None),
     # blob_date > desired_date, min_date == blob_date and blob_date < max_date - Blobs should be skipped
-    (PRESENT_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False),
+    (PRESENT_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False, None),
     # blob_date > desired_date, min_date < blob_date and blob_date == max_date - Blobs should be skipped
-    (FUTURE_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False),
+    (FUTURE_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False, None),
     # blob_date > desired_date, min_date < blob_date and blob_date < max_date - Blobs should be skipped
-    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False),
+    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False, None),
     # blob_date < min_datetime - Blobs must be processed
-    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, True),
+    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, True, None),
     # blob_date > max_datetime - Blobs must be processed
-    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, None, False, False, True, True),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, None, False, False, True, True, None),
     # Reparse old logs
-    (FUTURE_DATE, FUTURE_DATE, FUTURE_DATE, FUTURE_DATE, None, True, False, True, True),
+    (FUTURE_DATE, FUTURE_DATE, FUTURE_DATE, FUTURE_DATE, None, True, False, True, True, None),
     # Only .json files must be processed
-    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, False, False, True),
-    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, False, True, True),
-    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, True, False, True),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, False, False, True, None),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, False, True, True, None),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, True, False, True, None),
 ])
 @patch('azure-logs.update_row_object')
 @patch('azure-logs.send_message')
 def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desired_date, extension, reparse, json_file,
-                   inline, send_events):
+                   inline, send_events, prefix):
     """Test get_blobs obtains the blobs from a container and send their content to the socket."""
     azure.args = MagicMock(blobs=extension, json_file=json_file, json_inline=inline, reparse=reparse,
                            storage_tag="tag")
@@ -684,7 +685,7 @@ def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desire
     azure.get_blobs(container_name=container_name, blob_service=blob_service, md5_hash=md5_hash, next_marker=marker,
                     min_datetime=parse(min_date), max_datetime=parse(max_date), desired_datetime=parse(desired_date))
 
-    blob_service.list_blobs.assert_called_with(container_name, marker=marker)
+    blob_service.list_blobs.assert_called_with(container_name, prefix=prefix, marker=marker)
     blob_service.get_blob_to_text.assert_has_calls(
         [call(container_name, blob.name) for blob in blob_list if extension and extension in blob.name])
     if send_events:
@@ -706,6 +707,47 @@ def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desire
         mock_send.assert_has_calls(calls)
         assert mock_update.call_count == len(blob_list) if not extension else len(
             [blob.name for blob in blob_list if extension in blob.name])
+
+
+@patch('azure-logs.update_row_object')
+@patch('azure-logs.send_message')
+def test_get_blobs_only_with_prefix(mock_send, mock_update):
+    """Test get_blobs obtains the blobs only with prefix from a container and send their content to the socket."""
+    azure.args = MagicMock(
+        blobs=None, json_file=False, json_inline=False, reparse=False
+    )
+
+    prefix = "test_prefix"
+    blob_date_str = parse(FUTURE_DATE)
+
+    blob_list = [create_mocked_blob(blob_name=f"blob_{i}", last_modified=blob_date_str) for i in range(5)] + [
+        create_mocked_blob(blob_name=f"{prefix}/blob_{i}", last_modified=blob_date_str) for i in range(5)
+    ]
+
+    # The first iteration will contain a full blob list and a none next_marker
+    blob_service_iter_1 = MagicMock(next_marker=None)
+    blob_service_iter_1.__iter__ = MagicMock(return_value=iter(blob_list))
+    blob_service = MagicMock()
+    blob_service.list_blobs.return_value = blob_service_iter_1
+
+
+    with open(os.path.join(TEST_DATA_PATH, "storage_events_plain")) as f:
+        contents = f.read()
+        blob_service.get_blob_to_text.return_value = MagicMock(content=contents)
+
+    container_name = "container"
+    md5_hash = "hash"
+
+
+    azure.get_blobs(
+        container_name=container_name, blob_service=blob_service, md5_hash=md5_hash, min_datetime=parse(PAST_DATE),
+        max_datetime=parse(PRESENT_DATE), desired_datetime=parse(FUTURE_DATE), prefix=prefix
+    )
+
+    blob_service.list_blobs.assert_called_with(container_name, prefix=prefix, marker=None)
+    blob_service.get_blob_to_text.assert_has_calls(
+        [call(container_name, blob.name) for blob in blob_list if prefix in blob.name]
+    )
 
 
 @patch('azure-logs.logging.error')
