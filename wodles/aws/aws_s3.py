@@ -2837,7 +2837,7 @@ class AWSInspector(AWSService):
                                                                                'endDate': date_current}})
             self.send_describe_findings(response['findingArns'])
 
-        if self.sent_events:        
+        if self.sent_events:
             debug(f"+++ {self.sent_events} events collected and processed in {self.inspector_region}", 1)
         else:
             debug(f'+++ There are no new events in the "{self.inspector_region}" region', 1)
@@ -3027,9 +3027,9 @@ class AWSCloudWatchLogs(AWSService):
                     token = None
 
                     if db_values:
-                        if self.reparse: 
+                        if self.reparse:
                             result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                         token=None, start_time=start_time, 
+                                                                         token=None, start_time=start_time,
                                                                          end_time=None)
 
                         elif db_values['start_time'] and db_values['start_time'] > start_time:
@@ -3286,10 +3286,9 @@ class AWSCloudWatchLogs(AWSService):
         """
 
         result_list = list()
+        debug('Getting log streams for "{}" log group'.format(log_group), 1)
         for _ in range(AWSCloudWatchLogs.CONNECTION_ATTEMPTS_ALLOWED):
             try:
-                debug('Getting log streams for "{}" log group'.format(log_group), 1)
-
                 # Get all log streams using the token of the previous call to describe_log_streams
                 response = self.client.describe_log_streams(logGroupName=log_group)
                 log_streams = response['logStreams']
