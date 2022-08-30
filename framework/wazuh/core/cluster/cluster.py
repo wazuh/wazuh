@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import contextlib
 import errno
 import itertools
 import json
@@ -78,9 +79,8 @@ def check_cluster_config(config):
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
 
     if len(config['nodes']) > 1:
-        logger.warning(
-            "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-                format(config['nodes'][0]))
+        logger.warning(f"Found more than one node in configuration. Only master node should be specified. "
+                       f"Using {config['nodes'][0]} as master.")
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
@@ -287,15 +287,13 @@ def update_cluster_control(failed_file, ko_files, exists=True):
         Whether the file to be removed exists in the master. If it does not exist, but it is in the 'shared' list,
         it should be moved to the 'extra' files list.
     """
-    try:
+    with contextlib.suppress(KeyError, AttributeError, TypeError):
         if failed_file in ko_files['missing']:
             ko_files['missing'].pop(failed_file, None)
         elif failed_file in ko_files['shared']:
             if not exists:
                 ko_files['extra'][failed_file] = ko_files['shared'][failed_file]
             ko_files['shared'].pop(failed_file, None)
-    except (KeyError, AttributeError, TypeError):
-        pass
 
 
 def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None):
@@ -415,8 +413,8 @@ def decompress_files(compress_path, ko_files_name="files_metadata.json"):
     """
     ko_files = ''
     compressed_data = b''
-    window_size = 1024*1024*10   # 10 MiB
-    decompress_dir = compress_path + 'dir'
+    window_size = 1024 * 1024 * 10   # 10 MiB
+    decompress_dir = f"{compress_path}dir"
 
     try:
         mkdir_with_mode(decompress_dir)
@@ -454,7 +452,7 @@ def decompress_files(compress_path, ko_files_name="files_metadata.json"):
             shutil.rmtree(decompress_dir)
         raise e
     finally:
-        # Once read all files, remove the compress file.
+        # Once all files are read, remove the compressed file.
         remove(compress_path)
 
     return ko_files, decompress_dir
