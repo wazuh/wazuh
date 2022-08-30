@@ -114,6 +114,7 @@
 #define ANALYSISD_LIST_NOT_LOADED               "(7616): List '%s' could not be loaded. Rule '%d' will be ignored."
 #define ANALYSISD_SIG_ID_NOT_FOUND              "(7617): Signature ID '%d' was not found and will be ignored "\
                                                         "in the '%s' option of rule '%d'."
+#define ANALYSISD_INVALID_IF_SID                "(7618): Invalid 'if_sid' value: '%s'. Rule '%d' will be ignored."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \

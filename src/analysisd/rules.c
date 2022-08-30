@@ -1609,6 +1609,20 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     }
                 }
 
+                /* Check syntax if_sid */
+                if (config_ruleinfo->if_sid) {
+                    w_expression_t * invalidation_regex = NULL;
+                    w_calloc_expression_t(&invalidation_regex, EXP_TYPE_PCRE2);
+                    // matches if it contains any invalid characters
+                    w_expression_compile(invalidation_regex, "[^\\d, ]", 0);
+
+                    if (w_expression_match(invalidation_regex, config_ruleinfo->if_sid, NULL, NULL)) {
+                        do_skip_rule = true;
+                        smwarn(log_msg, ANALYSISD_INVALID_IF_SID, config_ruleinfo->if_sid, config_ruleinfo->sigid);
+                    }
+                    w_free_expression_t(&invalidation_regex);
+                }
+
                 // Skip rule, without having to abort analysisd execution
                 if (do_skip_rule) {
                     w_free_rules_tmp_params(&rule_tmp_params);
