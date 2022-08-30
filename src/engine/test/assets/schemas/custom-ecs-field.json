@@ -67,6 +67,726 @@
         "boolean"
       ]
     },
+    "auditd.log.a0": {
+      "description": "Linux auditd logs a0 field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.addr": {
+      "description": "Linux auditd logs addr field",
+      "ecs_type": "ip",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.audit_failure": {
+      "description": "Linux auditd logs audit_failure field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.cipher": {
+      "description": "Linux auditd logs cipher field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.data": {
+      "description": "Linux auditd logs data field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.default-context": {
+      "description": "Linux auditd logs auditd's context field.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.dev": {
+      "description": "Linux auditd logs dev field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.direction": {
+      "description": "Linux auditd logs direction field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.dst_prefixlen": {
+      "description": "Linux auditd logs dst_prefixlen field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.entries": {
+      "description": "Linux auditd logs entries field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.family": {
+      "description": "Linux auditd logs family field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.fe": {
+      "description": "Linux auditd logs fe field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.fi": {
+      "description": "Linux auditd logs fi field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.format": {
+      "description": "Linux auditd logs format field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.fp": {
+      "description": "Linux auditd logs fp field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.fver": {
+      "description": "Linux auditd logs fver field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.gpg_res": {
+      "description": "Linux auditd logs gpg_res field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.hostname": {
+      "description": "Linux auditd logs hostname field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.id": {
+      "description": "Linux auditd logs id field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.img-ctx": {
+      "description": "Linux auditd logs auditd's ctx field.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.inode": {
+      "description": "Linux auditd logs inode field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.item": {
+      "description": "Linux auditd logs item field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.items": {
+      "description": "Linux auditd logs items field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.kernel": {
+      "description": "Linux auditd logs kernel field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.key_enforce": {
+      "description": "Linux auditd logs key_enforce field",
+      "ecs_type": "boolean",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.kind": {
+      "description": "Linux auditd logs kind field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.ksize": {
+      "description": "Linux auditd logs ksize field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.laddr": {
+      "description": "Linux auditd logs laddr field",
+      "ecs_type": "ip",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.list": {
+      "description": "Linux auditd logs list field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.lport": {
+      "description": "Linux auditd logs lport field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.major": {
+      "description": "Linux auditd logs major field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.minor": {
+      "description": "Linux auditd logs minor field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.mode": {
+      "description": "Linux auditd logs mode field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.model": {
+      "description": "Linux auditd logs model field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.name": {
+      "description": "Linux auditd logs name field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.new-level": {
+      "description": "Linux auditd logs auditd's level field.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.new_auid": {
+      "description": "Linux auditd logs new_auid field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.new_pe": {
+      "description": "Linux auditd logs new_pe field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.new_pi": {
+      "description": "Linux auditd logs new_pi field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.new_pp": {
+      "description": "Linux auditd logs new_pp field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.new_ses": {
+      "description": "Linux auditd logs new_ses field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.node": {
+      "description": "Linux auditd logs node field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.obj": {
+      "description": "Linux auditd logs obj field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.objtype": {
+      "description": "Linux auditd logs objtype field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old": {
+      "description": "Linux auditd logs old field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old-level": {
+      "description": "Linux auditd logs auditd's level field.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old_auid": {
+      "description": "Linux auditd logs old_auid field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old_pe": {
+      "description": "Linux auditd logs old_pe field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old_pi": {
+      "description": "Linux auditd logs old_pi field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old_pp": {
+      "description": "Linux auditd logs old_pp field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.old_ses": {
+      "description": "Linux auditd logs old_ses field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.op": {
+      "description": "Linux auditd logs op field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.pfs": {
+      "description": "Linux auditd logs pfs field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.proctitle": {
+      "description": "Linux auditd logs proctitle field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.rdev": {
+      "description": "Linux auditd logs rdev field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.reason": {
+      "description": "Linux auditd logs reason field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.record_type": {
+      "description": "Linux auditd logs record_type field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.reset": {
+      "description": "Linux auditd logs reset field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.root_dir": {
+      "description": "Linux auditd logs root_dir field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.rport": {
+      "description": "Linux auditd logs rport field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.saddr": {
+      "description": "Linux auditd logs saddr field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.selected-context": {
+      "description": "Linux auditd logs auditd's context field.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.sequence": {
+      "description": "Linux auditd logs sequence field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.ses": {
+      "description": "Linux auditd logs ses field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.spid": {
+      "description": "Linux auditd logs spid field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.src_prefixlen": {
+      "description": "Linux auditd logs src_prefixlen field",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.subj": {
+      "description": "Linux auditd logs subj field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.success": {
+      "description": "Linux auditd logs success field",
+      "ecs_type": "boolean",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.sw": {
+      "description": "Linux auditd logs sw field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.sw_type": {
+      "description": "Linux auditd logs sw_type field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.syscall": {
+      "description": "Linux auditd logs syscall field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.table": {
+      "description": "Linux auditd logs table field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.tty": {
+      "description": "Linux auditd logs tty field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.uid": {
+      "description": "Linux auditd logs uid field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.unit": {
+      "description": "Linux auditd logs unit field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.uuid": {
+      "description": "Linux auditd logs uuid field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.ver": {
+      "description": "Linux auditd logs ver field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.virt": {
+      "description": "Linux auditd logs virt field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.vm": {
+      "description": "Linux auditd logs vm field",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "auditd.log.vm-ctx": {
+      "description": "Linux auditd logs auditd's ctx field.",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
     "aws.cloudtrail.additional_eventdata": {
       "description": "AWS CloudTrail additional_eventdata. Please visit https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-examples.html for more information.",
       "ecs_type": "flattened",
