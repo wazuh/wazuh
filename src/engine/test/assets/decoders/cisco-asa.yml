@@ -6,7 +6,8 @@ parents:
 
 metadata:
   description: "Cisco Secure Firewall ASA Series, Facility Code: ASA"
-  version: Cisco IOS System, 15 SY
+  version:
+    - Cisco ASA version 9.10
   references:
     - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.pdf
     - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/about.html
