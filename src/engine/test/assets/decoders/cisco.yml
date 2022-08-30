@@ -6,6 +6,9 @@ parents:
 
 metadata:
   description: Generic Cisco Syslog decoder
+  version:
+    - Cisco IOS System, 15 SY
+    - Cisco ASA version 9.10
   references:
     - https://www.cisco.com/c/en/us/td/docs/ios/15_0sy/system/messages/15sysmg.pdf
     - https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
