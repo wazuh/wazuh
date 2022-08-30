@@ -3708,6 +3708,11 @@ components:
         <td><code>&lt;analysisd&gt;</code></td>
         </tr>
         <tr>
+        <td>analysis</td>
+        <td>rule_test</td>
+        <td><code>&lt;rule_test&gt;</code></td>
+        </tr>
+        <tr>
         <td>auth</td>
         <td>auth</td>
         <td><code>&lt;auth&gt;</code></td>
@@ -3852,6 +3857,7 @@ components:
         - syscheck
         - rootcheck
         - wmodules
+        - rule_test
     cve:
       in: query
       name: cve
