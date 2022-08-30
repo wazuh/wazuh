@@ -695,7 +695,7 @@ def get_blobs(
     try:
         # Get the blob list
         logging.info("Storage: Getting blobs.")
-        blobs = blob_service.list_blobs(container_name, prefix, marker=next_marker)
+        blobs = blob_service.list_blobs(container_name, prefix=prefix, marker=next_marker)
     except AzureException as e:
         logging.error(f"Storage: Error getting blobs from '{container_name}': '{e}'.")
         raise e
@@ -706,7 +706,6 @@ def get_blobs(
         for blob in blobs:
             # Skip the blob if nested under prefix but prefix is not setted
             if prefix is None and len(blob.name.split("/")) > 1:
-                logging.debug(f"Skipping {blob.name}")
                 continue
             # Skip the blob if its name has not the expected format
             if args.blobs and args.blobs not in blob.name:
