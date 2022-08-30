@@ -26,8 +26,8 @@ decoders:
   - postgresql-csv
 
 # rules:
-#   - source_malicious_ip
-#   - destination_malicious_ip
+  # - source_malicious_ip
+  # - destination_malicious_ip
 
 outputs:
   - file-output
