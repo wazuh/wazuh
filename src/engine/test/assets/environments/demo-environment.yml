@@ -12,9 +12,10 @@ decoders:
   - windows-security
   - apache-error
   - apache-access
+  - aws
+  - aws-cloudtrail
   - aws-elb
-  - aws_cloudtrail
-  - aws_s3
+  - aws-s3
   # Exclusive Syslog decoders
   - default_syslog_queue
   - cisco
