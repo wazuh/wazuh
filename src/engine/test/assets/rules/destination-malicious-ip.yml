@@ -1,4 +1,4 @@
-name: destination_malicious_ip
+name: destination-malicious-ip
 
 check:
   - destination.ip: +exists
@@ -6,7 +6,7 @@ check:
 
 normalize:
   - map:
-      rule.id: "destination_malicious_ip"
+      rule.id: "destination-malicious-ip"
       rule.author: "Wazuh"
       rule.description: "Detected malicious IP activity from destination"
       _threat.indicator.ip: $destination.ip

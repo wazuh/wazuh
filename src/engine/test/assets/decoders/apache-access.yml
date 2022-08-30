@@ -1,5 +1,5 @@
 ---
-name: apache_access
+name: apache-access
 
 metadata:
   description: Parses Apache HTTPD access logs in its Common Log Format
