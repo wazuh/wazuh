@@ -105,21 +105,23 @@ char * wstr_chr(char * str, int character);
 /* Escape a specific character from a character string
  *
  * dststr must be a valid pointer to a char buffer where escaped string will be stored.
+ * dst_size must be an unsigned int value, to control the size of the buffer.
  * str must be a valid pointer to a string to escape.
  * scape int is the value of the operator used to escape.
  * toscape int is the value to scape.
  * Returns pointer to dststr if success, or NULL if fail.
  */
-char * wstr_escape(char *dststr, char *str, int scape, int toscape);
+unsigned int wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape);
 
 /* Unescape a specific character from a character string
  *
  * dststr must be a valid pointer to a char buffer where unescaped string will be stored.
+ * dst_size must be an unsigned int value, to control the size of the buffer.
  * str must be a valid pointer to a string to unescape.
  * scape int is the value of the operator used to unescape.
- * Returns pointer to dststr if success, or NULL if fail.
+ * Returns the size of the dststr if success, or 0 if fail.
  */
-char * wstr_unescape(char *dststr, char *str, int scape);
+unsigned int wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape);
 
 // Free string array
 void free_strarray(char ** array);

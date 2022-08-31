@@ -328,42 +328,46 @@ char * wstr_chr(char * str, int character) {
 
 // Escape a specific character from a character string
 
-char * wstr_escape(char *dststr, char *str, int scape, int toscape) {
+unsigned int wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape) {
 
-    char * str_cpy = str;
+    char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
-        return NULL;
+        return 0;
     }
 
     unsigned int a = 0;
-    while(*str_cpy != '\0') {
+    while (*str_cpy != '\0' && a < dst_size -1) {
         if (*str_cpy == toscape || *str_cpy == scape) {
             dststr[a++] = scape;
         }
         dststr[a++] = *str_cpy++;
     }
     dststr[a] = '\0';
-    return dststr;
+    return a;
 }
 
 // Unescape a specific character from a character string
 
-char * wstr_unescape(char *dststr, char *str, int scape) {
+unsigned int wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape) {
 
-    char * str_cpy = str;
+    char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
-        return NULL;
+        return 0;
     }
 
     unsigned int a = 0;
-    while(*str_cpy != '\0') {
+    while (*str_cpy != '\0' && a < dst_size -1) {
         if (*str_cpy == scape) {
             str_cpy++;
         }
-        dststr[a++] = *str_cpy++;
+        if (*str_cpy != '\0') {
+            dststr[a++] = *str_cpy++;
+        } else {
+            break;
+        }
     }
     dststr[a] = '\0';
-    return dststr;
+    return a;
 }
 
 #ifdef WIN32

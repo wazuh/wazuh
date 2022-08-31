@@ -81,12 +81,12 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
 STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1] = {0};
-    char loc_buff[OS_BUFFER_SIZE + 1] = {0};
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
     static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
 
-    if (NULL == wstr_escape(loc_buff, (char *) locmsg, '\\', ':')) {
+    if (0 == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '\\', ':')) {
         merror(FORMAT_ERROR);
         return (0);
     }

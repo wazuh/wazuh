@@ -25,10 +25,10 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
-    char loc_buff[OS_BUFFER_SIZE + 1] = {0};
+    char loc_buff[OS_SIZE_8192 + OS_SIZE_256 + 3] = {0};
     size_t loglen;
     char *pieces;
-    char * msg_cpy;
+    char *msg_cpy;
     struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
@@ -48,7 +48,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     *pieces = '\0';
     pieces++;
 
-    if (NULL == wstr_unescape(loc_buff, msg, '\\')) {
+    if (0 == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '\\')) {
         merror(FORMAT_ERROR);
         return (-1);
     }

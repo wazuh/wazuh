@@ -260,7 +260,7 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     location = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_LOCATION);
     location_str = cJSON_GetStringValue(location);
 
-    if (NULL == wstr_escape(loc_buff, location_str, '\\', ':')) {
+    if (0 == wstr_escape(loc_buff, sizeof(loc_buff), location_str, '\\', ':')) {
         if (event_json) os_free(event_str);
         return -1;
     }
