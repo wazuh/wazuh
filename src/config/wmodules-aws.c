@@ -56,6 +56,7 @@ static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
+static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
 
 // Parse XML
 
@@ -238,7 +239,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         }
                     } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
                         if (strlen(children[j]->content) != 0) {
-                            mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", children[j]->element, WM_AWS_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
+                            mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
                             free(cur_bucket->access_key);
                             os_strdup(children[j]->content, cur_bucket->access_key);
                         }
@@ -249,7 +250,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         }
                     } else if (!strcmp(children[j]->element, XML_SECRET_KEY)) {
                         if (strlen(children[j]->content) != 0) {
-                            mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", children[j]->element, WM_AWS_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
+                            mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
                             free(cur_bucket->secret_key);
                             os_strdup(children[j]->content, cur_bucket->secret_key);
                         }
@@ -386,7 +387,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     os_strdup(children[j]->content, cur_service->aws_account_id);
                 } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
                     if (strlen(children[j]->content) != 0) {
-                        mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", children[j]->element, WM_AWS_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
+                        mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
                         free(cur_service->access_key);
                         os_strdup(children[j]->content, cur_service->access_key);
                     }
@@ -397,7 +398,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     }
                 } else if (!strcmp(children[j]->element, XML_SECRET_KEY)) {
                     if (strlen(children[j]->content) != 0) {
-                        mwarn("Deprecated tag <%s> found at module '%s'. This tag was deprecated in 4.4. Please, use a different authentication method. Check %s for more information.", children[j]->element, WM_AWS_CONTEXT.name, AUTHENTICATION_OPTIONS_URL);
+                        mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
                         free(cur_service->secret_key);
                         os_strdup(children[j]->content, cur_service->secret_key);
                     }
