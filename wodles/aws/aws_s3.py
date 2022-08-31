@@ -25,6 +25,7 @@
 #   16 - Throttling error
 #   17 - Invalid key format
 #   18 - Invalid prefix
+#   19 - The server datetime and datetime of the AWS environment differ
 
 import argparse
 import signal
@@ -69,6 +70,11 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 
 # Enable/disable debug mode
 debug_level = 0
+INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
+INVALID_REQUEST_TIME_ERROR = "RequestTimeTooSkewed"
+
+INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
+INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
 
 ################################################################################
 # Classes
@@ -1083,14 +1089,24 @@ class AWSBucket(WazuhIntegration):
             else:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
-        except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == 'ThrottlingException':
+
+        except botocore.exceptions.ClientError as error:
+            error_message = "Unknown"
+            exit_number = 1
+            error_code = error.response.get("Error", {}).get("Code")
+
+            if error_code == 'ThrottlingException':
                 debug(f'Error: The "check_bucket" request was denied due to request throttling. ', 2)
                 sys.exit(16)
-            else:
-                print("ERROR: Invalid credentials to access S3 Bucket")
-                exit(3)
+            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
+                error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
+                exit_number = 3
+            elif error_code == INVALID_REQUEST_TIME_ERROR:
+                error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
+                exit_number = 19
 
+            print(f"ERROR: {error_message}")
+            exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
             print(f"ERROR: {str(e)}")
             exit(15)
@@ -1598,7 +1614,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 flow_log_id,
                 log_key,
                 processed_date,
-                created_date) 
+                created_date)
             VALUES (
                 :bucket_path,
                 :aws_account_id,
@@ -2005,7 +2021,7 @@ class AWSCustomBucket(AWSBucket):
                 aws_account_id,
                 log_key,
                 processed_date,
-                created_date) 
+                created_date)
             VALUES (
                 :bucket_path,
                 :aws_account_id,
@@ -2562,9 +2578,23 @@ class AWSServerAccess(AWSCustomBucket):
             if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/'):
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
-        except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "check_bucket" request failed: {err}', 1)
-            sys.exit(16)
+        except botocore.exceptions.ClientError as error:
+            error_message = "Unknown"
+            exit_number = 1
+            error_code = error.response.get("Error", {}).get("Code")
+
+            if error_code == 'ThrottlingException':
+                debug(f'ERROR: The "check_bucket" request failed: {error}', 1)
+                sys.exit(16)
+            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
+                error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
+                exit_number = 3
+            elif error_code == INVALID_REQUEST_TIME_ERROR:
+                error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
+                exit_number = 19
+
+            print(f"ERROR: {error_message}")
+            exit(exit_number)
 
     def load_information_from_file(self, log_key):
         """Load data from a S3 access log file."""
