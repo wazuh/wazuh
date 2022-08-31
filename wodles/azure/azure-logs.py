@@ -19,7 +19,7 @@
 import logging
 import sys
 from argparse import ArgumentParser
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import md5
 from json import dumps, loads, JSONDecodeError
 from os.path import abspath, dirname
@@ -30,7 +30,6 @@ from azure.storage.blob import BlockBlobService
 from azure.storage.common._error import AzureSigningError
 from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
-from pytz import UTC
 from requests import get, post, HTTPError, RequestException
 
 import orm
@@ -839,11 +838,11 @@ def offset_to_datetime(offset: str):
     unit = offset[len(offset) - 1:]
 
     if unit == 'h':
-        return datetime.utcnow().replace(tzinfo=UTC) - timedelta(hours=value)
+        return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=value)
     if unit == 'm':
-        return datetime.utcnow().replace(tzinfo=UTC) - timedelta(minutes=value)
+        return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=value)
     if unit == 'd':
-        return datetime.utcnow().replace(tzinfo=UTC) - timedelta(days=value)
+        return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=value)
 
     logging.error("Invalid offset format. Use 'h', 'm' or 'd' time unit.")
     exit(1)

@@ -174,7 +174,7 @@ class WazuhIntegration:
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
-        self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
     def migrate_from_38(self, **kwargs):
         self.db_maintenance(**kwargs)
