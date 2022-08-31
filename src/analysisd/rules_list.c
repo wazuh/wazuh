@@ -133,7 +133,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 
         const char * sid_ptr = read_rule->if_sid;
         bool id_found = false;     // True if sid_ptr points to a sid (number)
-        bool addedAsChild = false; // True if the rule was added as a child of at least one rule
+        bool added_as_child = false; // True if the rule was added as a child of at least one rule
 
         /* Loop to read all the rules (comma or space separated) */
         do {
@@ -148,11 +148,15 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
                     int if_sid_rule_id = atoi(sid_ptr);
 
                     if (_AddtoRule(if_sid_rule_id, 0, 0, NULL, *r_node, read_rule) == 0) {
-
-                        smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND, if_sid_rule_id,
-                               read_rule->if_matched_sid != 0 ? "if_matched_sid" : "if_sid", read_rule->sigid);
+                        if (read_rule->if_matched_sid != 0) {
+                            // if_matched_sid is not a list of sid, but a single sid
+                            smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND_MID, if_sid_rule_id, read_rule->sigid);
+                            return -1;
+                        } else {
+                            smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND, if_sid_rule_id, read_rule->sigid);
+                        }
                     } else {
-                        addedAsChild = true;
+                        added_as_child = true;
                     }
                 }
 
@@ -160,14 +164,13 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
                 // This should not happen if the if_sid was validated on loading
                 smwarn(log_msg, ANALYSISD_INV_SIG_ID, read_rule->if_matched_sid != 0 ? "if_matched_sid" : "if_sid",
                        read_rule->sigid);
-                return addedAsChild ? 0 : -1;
+                return added_as_child ? 0 : -1;
             }
         } while (*sid_ptr++ != '\0');
 
         // If the rule was not added as a child of at least one rule, return error
-        if (!addedAsChild) {
-            smwarn(log_msg, ANALYSISD_EMPTY_SID, read_rule->if_matched_sid != 0 ? "if_matched_sid" : "if_sid",
-                   read_rule->sigid);
+        if (!added_as_child) {
+            smwarn(log_msg, ANALYSISD_EMPTY_SID, read_rule->sigid);
             return -1;
         }
     }
