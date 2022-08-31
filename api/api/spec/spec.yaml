@@ -1648,6 +1648,7 @@ components:
         timestamp:
           type: string
           format: date-time
+          description: "Daemon stats request time"
         name:
           type: string
           description: "Daemon name"
@@ -1661,6 +1662,7 @@ components:
               uptime:
                 type: string
                 format: date-time
+                description: "When the count of the metrics started"
               id:
                 type: integer
                 format: int32
@@ -1735,6 +1737,7 @@ components:
         timestamp:
           type: string
           format: date-time
+          description: "Daemon stats request time"
         name:
           type: string
           description: "Daemon name"
@@ -1748,6 +1751,7 @@ components:
               uptime:
                 type: string
                 format: date-time
+                description: "When the count of the metrics started"
               id:
                 type: integer
                 format: int32
@@ -2310,9 +2314,11 @@ components:
         uptime:
           type: string
           format: date-time
+          description: "When the count of the metrics started"
         timestamp:
           type: string
           format: date-time
+          description: "Daemon stats request time"
         name:
           type: string
           description: "Daemon name"
@@ -2437,9 +2443,11 @@ components:
         uptime:
           type: string
           format: date-time
+          description: "When the count of the metrics started"
         timestamp:
           type: string
           format: date-time
+          description: "Daemon stats request time"
         name:
           type: string
           description: "Daemon name"
@@ -2922,9 +2930,11 @@ components:
         uptime:
           type: string
           format: date-time
+          description: "When the count of the metrics started"
         timestamp:
           type: string
           format: date-time
+          description: "Daemon stats request time"
         name:
           type: string
           description: "Daemon name"
@@ -10451,7 +10461,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - uptime: 2022-07-27T14:09:20+00:00
+                    - uptime: 2022-07-21T10:09:20+00:00
                       timestamp: 2022-07-21T10:48:32+00:00
                       name: wazuh-remoted
                       metrics:
@@ -11947,7 +11957,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - uptime: 2022-07-27T14:09:20+00:00
+                    - uptime: 2022-07-21T10:09:20+00:00
                       timestamp: 2022-07-21T10:47:59+00:00
                       name: wazuh-db
                       metrics:
