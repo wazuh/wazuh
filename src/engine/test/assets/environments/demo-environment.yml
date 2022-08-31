@@ -16,6 +16,8 @@ decoders:
   - aws-cloudtrail
   - aws-elb
   - aws-s3
+  - aws-s3-parse-region
+  - aws-s3-parse-tls
   # Exclusive Syslog decoders
   - default_syslog_queue
   - cisco
