@@ -753,121 +753,183 @@ void test_strarray_size(void ** state) {
 
 void test_wstr_escape_dststr_null(void ** state) {
 
-    char * ret = wstr_escape(NULL, "test string without colons", '\\', ':');
-    assert_null(ret);
+    unsigned int ret = wstr_escape(NULL, 0, "test string without colons", '\\', ':');
+    assert_int_equal(ret, 0);
 }
 
 void test_wstr_escape_str_null(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_escape(dststr, NULL, '\\', ':');
-    assert_null(ret);
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), NULL, '\\', ':');
+    assert_int_equal(ret, 0);
 }
 
 void test_wstr_escape_not_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_escape(dststr, "test string without colons", '\\', ':');
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "test string without colons", '\\', ':');
     assert_string_equal(dststr, "test string without colons");
-    assert_non_null(ret);
+    assert_int_equal(ret, 26);
 }
 
 void test_wstr_escape_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_escape(dststr, "test string with one : colons", '\\', ':');
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "test string with one : colons", '\\', ':');
     assert_string_equal(dststr, "test string with one \\: colons");
-    assert_non_null(ret);
+    assert_int_equal(ret, 30);
 }
 
 void test_wstr_escape_corner_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_escape(dststr, ":::test string with multi : colons:::", '\\', ':');
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), ":::test string with multi : colons:::", '\\', ':');
     assert_string_equal(dststr, "\\:\\:\\:test string with multi \\: colons\\:\\:\\:");
-    assert_non_null(ret);
+    assert_int_equal(ret, 44);
 }
 
 void test_wstr_escape_backslash_and_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_escape(dststr, "\\ \\ \\\\ \\: \\", '\\', ':');
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "\\ \\ \\\\ \\: \\", '\\', ':');
     assert_string_equal(dststr, "\\\\ \\\\ \\\\\\\\ \\\\\\: \\\\");
-    assert_non_null(ret);
+    assert_int_equal(ret, 18);
 }
 
 void test_wstr_escape_at_sign_and_asterisk(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_escape(dststr, "@ @@ * # * @@ @", '*', '@');
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "@ @@ * # * @@ @", '*', '@');
     assert_string_equal(dststr, "*@ *@*@ ** # ** *@*@ *@");
-    assert_non_null(ret);
+    assert_int_equal(ret, 23);
+}
+
+void test_wstr_escape_buff_overflow(void ** state) {
+
+    char dststr[10];
+
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "1 2 3 4 5 6 7", '*', '@');
+    assert_string_equal(dststr, "1 2 3 4 5");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_escape_buff_overflow_escape(void ** state) {
+
+    char dststr[10];
+
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "1 : 3 : 5 6 7", '\\', ':');
+    assert_string_equal(dststr, "1 \\: 3 \\:");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_escape_one_scape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    unsigned int ret = wstr_escape(dststr, sizeof(dststr), "\\", '\\', ':');
+    assert_string_equal(dststr, "\\\\");
+    assert_int_equal(ret, 2);
 }
 
 void test_wstr_unescape_dststr_null(void ** state) {
 
-    char * ret = wstr_unescape(NULL, "test string without colons", '\\');
-    assert_null(ret);
+    unsigned int ret = wstr_unescape(NULL, 0, "test string without colons", '\\');
+    assert_int_equal(ret, 0);
 }
 
 void test_wstr_unescape_str_null(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_unescape(dststr, NULL, '\\');
-    assert_null(ret);
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), NULL, '\\');
+    assert_int_equal(ret, 0);
 }
 
 void test_wstr_unescape_not_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_unescape(dststr, "test string without colons", '\\');
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "test string without colons", '\\');
     assert_string_equal(dststr, "test string without colons");
-    assert_non_null(ret);
+    assert_int_equal(ret, 26);
 }
 
 void test_wstr_unescape_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_unescape(dststr, "test string with one \\: colons", '\\');
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "test string with one \\: colons", '\\');
     assert_string_equal(dststr, "test string with one : colons");
-    assert_non_null(ret);
+    assert_int_equal(ret, 29);
 }
 
 void test_wstr_unescape_corner_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_unescape(dststr, "\\:\\:\\:test string with multi \\: colons\\:\\:\\:", '\\');
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "\\:\\:\\:test string with multi \\: colons\\:\\:\\:", '\\');
     assert_string_equal(dststr, ":::test string with multi : colons:::");
-    assert_non_null(ret);
+    assert_int_equal(ret, 37);
 }
 
 void test_wstr_unescape_backslash_and_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    char * ret = wstr_unescape(dststr, "\\\\ \\\\ \\\\\\\\ \\\\\\: \\\\", '\\');
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "\\\\ \\\\ \\\\\\\\ \\\\\\: \\\\", '\\');
     assert_string_equal(dststr, "\\ \\ \\\\ \\: \\");
-    assert_non_null(ret);
+    assert_int_equal(ret, 11);
 }
 
 void test_wstr_unescape_at_sign_and_asterisk(void ** state) {
 
-    char * ret = NULL;
     char dststr[OS_BUFFER_SIZE];
 
-    ret = wstr_unescape(dststr, "*@ *@*@ ** # ** *@*@ *@", '*');
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "*@ *@*@ ** # ** *@*@ *@", '*');
     assert_string_equal(dststr, "@ @@ * # * @@ @");
-    assert_non_null(ret);
+    assert_int_equal(ret, 15);
+}
+
+void test_wstr_unescape_buff_overflow(void ** state) {
+
+    char dststr[10];
+
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "1 2 3 4 5 6 7", '*');
+    assert_string_equal(dststr, "1 2 3 4 5");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_unescape_buff_overflow_escape(void ** state) {
+
+    char dststr[10];
+
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "1 \\: 3 \\: 5 6 7", '\\');
+    assert_string_equal(dststr, "1 : 3 : 5");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_unescape_one_scape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "\\", '\\');
+    assert_string_equal(dststr, "");
+    assert_int_equal(ret, 0);
+}
+
+void test_wstr_unescape_end_scape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    unsigned int ret = wstr_unescape(dststr, sizeof(dststr), "test \\a b\\", '\\');
+    assert_string_equal(dststr, "test a b");
+    assert_int_equal(ret, 8);
 }
 
 void test_wstr_chr_str_eof(void ** state) {
@@ -984,6 +1046,9 @@ int main(void) {
         cmocka_unit_test(test_wstr_escape_corner_colons_escape),
         cmocka_unit_test(test_wstr_escape_backslash_and_colons_escape),
         cmocka_unit_test(test_wstr_escape_at_sign_and_asterisk),
+        cmocka_unit_test(test_wstr_escape_buff_overflow),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape),
+        cmocka_unit_test(test_wstr_escape_one_scape),
         // Test wstr_unescape
         cmocka_unit_test(test_wstr_unescape_dststr_null),
         cmocka_unit_test(test_wstr_unescape_str_null),
@@ -992,6 +1057,10 @@ int main(void) {
         cmocka_unit_test(test_wstr_unescape_corner_colons_escape),
         cmocka_unit_test(test_wstr_unescape_backslash_and_colons_escape),
         cmocka_unit_test(test_wstr_unescape_at_sign_and_asterisk),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_escape),
+        cmocka_unit_test(test_wstr_unescape_one_scape),
+        cmocka_unit_test(test_wstr_unescape_end_scape),
         // Test wstr_chr
         cmocka_unit_test(test_wstr_chr_str_eof),
         cmocka_unit_test(test_wstr_chr_str_without_character),
