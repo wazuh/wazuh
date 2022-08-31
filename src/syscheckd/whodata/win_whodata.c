@@ -31,7 +31,6 @@
 #define criteria (DELETE | modify_criteria)
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 #define FILETIME_SECOND 10000000
-#define WHODATA_START_DELAY 10
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
@@ -436,7 +435,6 @@ int run_whodata_scan() {
     }
 
     set_subscription_query(query);
-    sleep(WHODATA_START_DELAY); // sleep to avoid processing policy change events.
     // Set the whodata callback
 
     evt_subscribe_handle = EvtSubscribe(NULL,
@@ -1264,6 +1262,10 @@ void set_subscription_query(wchar_t *query) {
                                                         "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE921D-69AE-11D9-BED3-505054503030}'" \
                                                     "or " \
                                                         "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE922F-69AE-11D9-BED3-505054503030}'" \
+                                                    ")" \
+                                                "and " \
+                                                    "( " \
+                                                        "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448'" \
                                                     ")" \
                                             ") " \
                                         ") " \
