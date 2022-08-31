@@ -10,3 +10,4 @@ test-key:"value:1"
 test-key4:"value:::4"
 "https://wazuh":"wazuh"
 "wazuh":"https://wazuh"
+
