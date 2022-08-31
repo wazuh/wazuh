@@ -200,7 +200,7 @@ def validate_cdb_list(content):
     WazuhError
         If the CDB list content is not valid or content is empty.
     """
-    regex_cdb = re.compile(r'(?:^"([\w\-:]+?)"|^[^:"\s]+):(?:"([\w\-:]*?)"$|[^:\"]*$)')
+    regex_cdb = re.compile(r'(?:^"([/\\\w\-:]+?)"|^[^:"\s]+):(?:"([/\\\w\-:]*?)"$|[^:\"]*$)')
 
     if len(content) == 0:
         raise WazuhError(1112)
