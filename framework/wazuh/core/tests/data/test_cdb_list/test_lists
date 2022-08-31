@@ -8,3 +8,5 @@ test-key:"value:1"
 "test-key:2":"value:2"
 "test-key::::::3":value3
 test-key4:"value:::4"
+"https://wazuh":"wazuh"
+"wazuh":"https://wazuh"
