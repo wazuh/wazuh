@@ -688,8 +688,8 @@
         "boolean"
       ]
     },
-    "aws.s3access.bucket_owner": {
-      "description": "AWS S3 server access bucket_owner. Please visit https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html for more information.",
+    "aws.s3access.bucket": {
+      "description": "AWS S3 server access bucket. Please visit https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html for more information.",
       "ecs_type": "keyword",
       "type": [
         "string",
@@ -697,8 +697,8 @@
         "boolean"
       ]
     },
-    "aws.s3access.bucket": {
-      "description": "AWS S3 server access bucket. Please visit https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html for more information.",
+    "aws.s3access.bucket_owner": {
+      "description": "AWS S3 server access bucket_owner. Please visit https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html for more information.",
       "ecs_type": "keyword",
       "type": [
         "string",

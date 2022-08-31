@@ -8,7 +8,7 @@ parents:
   - json
 
 check:
-  - _json.integration: +r_match/^aws
+  - _json.integration: +s_starts/aws
 
 normalize:
   - map:
