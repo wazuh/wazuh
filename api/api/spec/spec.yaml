@@ -801,8 +801,12 @@ components:
               type: array
               description: "Items that successfully applied the API call action"
               items:
-                $ref: '#/components/schemas/WazuhDaemonStatsItem'
+                oneOf:
+                  - $ref: '#/components/schemas/WazuhRemotedStatsItem'
+                  - $ref: '#/components/schemas/WazuhAnalysisdStatsItem'
+                  - $ref: '#/components/schemas/WazuhDBStatsItem'
         - $ref: '#/components/schemas/AllItemsResponse'
+
 
     AllItemsResponseWazuhDaemonStatsAgents:
       allOf:
@@ -814,7 +818,9 @@ components:
               type: array
               description: "Items that successfully applied the API call action"
               items:
-                $ref: '#/components/schemas/WazuhDaemonStatsAgentsItem'
+                oneOf:
+                  - $ref: '#/components/schemas/WazuhRemotedStatsAgentsItem'
+                  - $ref: '#/components/schemas/WazuhAnalysisdStatsAgentsItem'
         - $ref: '#/components/schemas/AllItemsResponse'
 
     AllItemsResponseGroups:
@@ -1636,7 +1642,7 @@ components:
           description: "Time the agent must has been registered to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
           format: timeframe
 
-    WazuhDaemonStatsAgentsItem:
+    WazuhRemotedStatsAgentsItem:
       type: object
       properties:
         timestamp:
@@ -1646,7 +1652,6 @@ components:
           type: string
           description: "Daemon name"
           enum:
-            - wazuh-analysisd
             - wazuh-remoted
         agents:
           type: array
@@ -1659,8 +1664,234 @@ components:
               id:
                 type: integer
                 format: int32
+                description: "Agent ID"
               metrics:
                 type: object
+                properties:
+                  messages:
+                    type: object
+                    properties:
+                      received_breakdown:
+                        type: object
+                        properties:
+                          control:
+                            type: integer
+                            format: int32
+                            description: "Control messages received from agent"
+                          control_breakdown:
+                            type: object
+                            properties:
+                              keepalive:
+                                type: integer
+                                format: int32
+                                description: "Keepalive messages from agent"
+                              request:
+                                type: integer
+                                format: int32
+                                description: "Request messages (for example, WPK responses) from agent"
+                              shutdown:
+                                type: integer
+                                format: int32
+                                description: "Shutdown messages from agent"
+                              startup:
+                                type: integer
+                                format: int32
+                                description: "Startup messages from agent"
+                          event:
+                            type: integer
+                            format: int32
+                            description: "Event messages (syscheck, syscollector, logcollector, etc.) received from agent"
+                      sent_breakdown:
+                        type: object
+                        properties:
+                          ack:
+                            type: integer
+                            format: int32
+                            description: "ACK messages (response to keepalive, startup and shutdown) sent to agent"
+                          ar:
+                            type: integer
+                            format: int32
+                            description: "Active response messages sent to agent"
+                          discarded:
+                            type: integer
+                            format: int32
+                            description: "Messages discarded because the send queue was full (for this agent)"
+                          request:
+                            type: integer
+                            format: int32
+                            description: "Request messages (for example, WPK chunks) sent to agent"
+                          sca:
+                            type: integer
+                            format: int32
+                            description: "SCA messages sent to agent"
+                          shared:
+                            type: integer
+                            format: int32
+                            description: "Shared configuration messages (merged.mg) sent to agent"
+
+    WazuhAnalysisdStatsAgentsItem:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          type: string
+          description: "Daemon name"
+          enum:
+            - wazuh-analysisd
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              uptime:
+                type: string
+                format: date-time
+              id:
+                type: integer
+                format: int32
+                description: "Agent ID"
+              metrics:
+                type: object
+                properties:
+                  events:
+                    type: object
+                    properties:
+                      processed:
+                        type: integer
+                        format: int32
+                        description: "Total processed events (analyzed by rules) from agent"
+                      received_breakdown:
+                        type: object
+                        properties:
+                          decoded_breakdown:
+                            type: object
+                            properties:
+                              agent:
+                                type: integer
+                                format: int32
+                                description: "Events coming from agentd (this agent)"
+                              dbsync:
+                                type: integer
+                                format: int32
+                                description: "Synchronization events (this agent)"
+                              integrations_breakdown:
+                                type: object
+                                properties:
+                                  virustotal:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from VirusTotal (this agent)"
+                              modules_breakdown:
+                                type: object
+                                properties:
+                                  aws:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from AWS module (this agent)"
+                                  azure:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from Azure module (this agent)"
+                                  ciscat:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from CIS-CAT module (this agent)"
+                                  command:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from command module (this agent)"
+                                  docker:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from Docker module (this agent)"
+                                  gcp:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from GCP module (this agent)"
+                                  github:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from GitHub module (this agent)"
+                                  logcollector_breakdown:
+                                    type: object
+                                    properties:
+                                      eventchannel:
+                                        type: integer
+                                        format: int32
+                                        description: "EventChannel events collected by logcollector (this agent)"
+                                      eventlog:
+                                        type: integer
+                                        format: int32
+                                        description: "EventLog events collected by logcollector (this agent)"
+                                      macos:
+                                        type: integer
+                                        format: int32
+                                        description: "MacOS events collected by logcollector (this agent)"
+                                      others:
+                                        type: integer
+                                        format: int32
+                                        description: "Other events collected by logcollector (this agent)"
+                                  office365:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from Office365 module (this agent)"
+                                  oscap:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from OSCAP module (this agent)"
+                                  osquery:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from OSQuery module (this agent)"
+                                  rootcheck:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from rootcheck (syscheckd) (this agent)"
+                                  sca:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from SCA module (this agent)"
+                                  syscheck:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from syscheckd (this agent)"
+                                  syscollector:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from syscollector module (this agent)"
+                                  upgrade:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from upgrade agent module (this agent)"
+                                  vulnerability:
+                                    type: integer
+                                    format: int32
+                                    description: "Events coming from vulnerability detector (this agent)"
+                              monitor:
+                                type: integer
+                                format: int32
+                                description: "Events coming from monitord (this agent)"
+                              remote:
+                                type: integer
+                                format: int32
+                                description: "Events coming from remoted (this agent)"
+                      written_breakdown:
+                        type: object
+                        properties:
+                          alerts:
+                            type: integer
+                            format: int32
+                            description: "Alerts written in alerts log file (this agent)"
+                          archives:
+                            type: integer
+                            format: int32
+                            description: "Alerts written in archives log file (this agent)"
+                          firewall:
+                            type: integer
+                            format: int32
+                            description: "Alerts written in firewall log file (this agent)"
 
     ## CisCat models
     CiscatResults:
@@ -2073,7 +2304,134 @@ components:
           description: "User's JWT token"
 
     # Cluster and manager models
-    WazuhDaemonStatsItem:
+    WazuhRemotedStatsItem:
+      type: object
+      properties:
+        uptime:
+          type: string
+          format: date-time
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          type: string
+          description: "Daemon name"
+          enum:
+            - wazuh-remoted
+        metrics:
+          type: object
+          properties:
+            bytes:
+              type: object
+              properties:
+                received:
+                  type: integer
+                  format: int32
+                  description: "Bytes received from agents"
+                sent:
+                  type: integer
+                  format: int32
+                  description: "Bytes sent to agents"
+            keys_reload_count:
+              type: integer
+              format: int32
+              description: "Number of times keys were reloaded into memory"
+            messages:
+              type: object
+              properties:
+                received_breakdown:
+                  type: object
+                  properties:
+                    control:
+                      type: integer
+                      format: int32
+                      description: "Control messages received from agents"
+                    control_breakdown:
+                      type: object
+                      properties:
+                        keepalive:
+                          type: integer
+                          format: int32
+                          description: "Keepalive messages from agents"
+                        request:
+                          type: integer
+                          format: int32
+                          description: "Request messages (for example, WPK responses) from agents"
+                        shutdown:
+                          type: integer
+                          format: int32
+                          description: "Shutdown messages from agents"
+                        startup:
+                          type: integer
+                          format: int32
+                          description: "Startup messages from agents"
+                    dequeued_after:
+                      type: integer
+                      format: int32
+                      description: "Messages dequeued after newer messages (counter < current counter)"
+                    discarded:
+                      type: integer
+                      format: int32
+                      description: "Messages discarded because the received queue was full"
+                    event:
+                      type: integer
+                      format: int32
+                      description: "Event messages (syscheck, syscollector, logcollector, etc.) received from agents"
+                    ping:
+                      type: integer
+                      format: int32
+                      description: "Ping messages received"
+                    unknown:
+                      type: integer
+                      format: int32
+                      description: "Not recognized messages"
+                sent_breakdown:
+                  type: object
+                  properties:
+                    ack:
+                      type: integer
+                      format: int32
+                      description : "ACK messages (response to keepalive, startup and shutdown) sent to agents"
+                    ar:
+                      type: integer
+                      format: int32
+                      description: "Active response messages sent to agents"
+                    discarded:
+                      type: integer
+                      format: int32
+                      description: "Messages discarded because the send queue was full"
+                    request:
+                      type: integer
+                      format: int32
+                      description: "Request messages (for example, WPK chunks) sent to agents"
+                    sca:
+                      type: integer
+                      format: int32
+                      description: "SCA messages sent to agents"
+                    shared:
+                      type: integer
+                      format: int32
+                      description: "Shared configuration messages (merged.mg) sent to agents"
+            queues:
+              type: object
+              properties:
+                received:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of received messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the received queue (count)"
+            tcp_sessions:
+              type: integer
+              format: int32
+              description: "Current active TCP sessions (agents)"
+
+    WazuhAnalysisdStatsItem:
       type: object
       properties:
         uptime:
@@ -2087,10 +2445,1146 @@ components:
           description: "Daemon name"
           enum:
             - wazuh-analysisd
-            - wazuh-remoted
+        metrics:
+          type: object
+          properties:
+            bytes:
+              type: object
+              properties:
+                received:
+                  type: integer
+                  format: int32
+                  description: "Bytes received from agents and local modules"
+            eps:
+              type: object
+              properties:
+                available_credits:
+                  type: integer
+                  format: int32
+                  description: "Available credits to process events in the current timeframe"
+                events_dropped:
+                  type: integer
+                  format: int32
+                  description: "Events discarded because the EPS limit was reached and queues were full"
+                seconds_over_limit:
+                  type: integer
+                  format: int32
+                  description: "Time in seconds the EPS limit was exceeded"
+            events:
+              type: object
+              properties:
+                processed:
+                  type: integer
+                  format: int32
+                  description: "Total processed events (analyzed by rules)"
+                received:
+                  type: integer
+                  format: int32
+                  description: "Total received events from agents and local modules"
+                received_breakdown:
+                  type: object
+                  properties:
+                    decoded_breakdown:
+                      type: object
+                      properties:
+                        agent:
+                          type: integer
+                          format: int32
+                          description: "Events coming from agentd"
+                        agentless:
+                          type: integer
+                          format: int32
+                          description: "Events coming from agentlessd"
+                        dbsync:
+                          type: integer
+                          format: int32
+                          description: "Synchronization events"
+                        integrations_breakdown:
+                          type: object
+                          properties:
+                            virustotal:
+                              type: integer
+                              format: int32
+                              description: "Events coming from VirusTotal integration"
+                        modules_breakdown:
+                          type: object
+                          properties:
+                            aws:
+                              type: integer
+                              format: int32
+                              description: "Events coming from AWS module"
+                            azure:
+                              type: integer
+                              format: int32
+                              description: "Events coming from Azure module"
+                            ciscat:
+                              type: integer
+                              format: int32
+                              description: "Events coming from CIS-CAT module"
+                            command:
+                              type: integer
+                              format: int32
+                              description: "Events coming from command module"
+                            docker:
+                              type: integer
+                              format: int32
+                              description: "Events coming from Docker module"
+                            gcp:
+                              type: integer
+                              format: int32
+                              description: "Events coming from GCP module"
+                            github:
+                              type: integer
+                              format: int32
+                              description: "Events coming from GitHub module"
+                            logcollector_breakdown:
+                              type: object
+                              properties:
+                                eventchannel:
+                                  type: integer
+                                  format: int32
+                                  description: "EventChannel events collected by logcollector"
+                                eventlog:
+                                  type: integer
+                                  format: int32
+                                  description: "EventLog events collected by logcollector"
+                                macos:
+                                  type: integer
+                                  format: int32
+                                  description: "MacOS events collected by logcollector"
+                                others:
+                                  type: integer
+                                  format: int32
+                                  description: "Other events collected by logcollector"
+                            office365:
+                              type: integer
+                              format: int32
+                              description: "Events coming from Office365 module"
+                            oscap:
+                              type: integer
+                              format: int32
+                              description: "Events coming from OSCAP module"
+                            osquery:
+                              type: integer
+                              format: int32
+                              description: "Events coming from OSQuery module"
+                            rootcheck:
+                              type: integer
+                              format: int32
+                              description: "Events coming from rootcheck (syscheckd)"
+                            sca:
+                              type: integer
+                              format: int32
+                              description: "Events coming from SCA module"
+                            syscheck:
+                              type: integer
+                              format: int32
+                              description: "Events coming from syscheckd"
+                            syscollector:
+                              type: integer
+                              format: int32
+                              description: "Events coming from syscollector module"
+                            upgrade:
+                              type: integer
+                              format: int32
+                              description: "Events coming from upgrade agent module (upgrade responses)"
+                            vulnerability:
+                              type: integer
+                              format: int32
+                              description: "Events coming from vulnerability detector module"
+                        monitor:
+                          type: integer
+                          format: int32
+                          description: "Events coming from monitord"
+                        remote:
+                          type: integer
+                          format: int32
+                          description: "Events coming from remoted"
+                        syslog:
+                          type: integer
+                          format: int32
+                          description: "Events coming from syslog remoted"
+                    dropped_breakdown:
+                      type: object
+                      properties:
+                        agent:
+                          type: integer
+                          format: int32
+                          description: "Events discarded from agentd because the queue was full"
+                        agentless:
+                          type: integer
+                          format: int32
+                          description: "Events discarded from agentlessd because the queue was full"
+                        dbsync:
+                          type: integer
+                          format: int32
+                          description: "Synchronization events discarded because the queue was full"
+                        integrations_breakdown:
+                          type: object
+                          properties:
+                            virustotal:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from VirusTotal integration because the queue was full"
+                        modules_breakdown:
+                          type: object
+                          properties:
+                            aws:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from AWS module because the queue was full"
+                            azure:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from Azure module because the queue was full"
+                            ciscat:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from CIS-CAT module because the queue was full"
+                            command:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from command module because the queue was full"
+                            docker:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from Docker module because the queue was full"
+                            gcp:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from GCP module because the queue was full"
+                            github:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from GitHub module because the queue was full"
+                            logcollector_breakdown:
+                              type: object
+                              properties:
+                                eventchannel:
+                                  type: integer
+                                  format: int32
+                                  description: "EventChannel events collected by logcollector discarded because the queue was full"
+                                eventlog:
+                                  type: integer
+                                  format: int32
+                                  description: "EventLog events collected by logcollector discarded because the queue was full"
+                                macos:
+                                  type: integer
+                                  format: int32
+                                  description: "MacOS events collected by logcollector discarded because the queue was full"
+                                others:
+                                  type: integer
+                                  format: int32
+                                  description: "Other events collected by logcollector discarded because the queue was full"
+                            office365:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from Office365 module because the queue was full"
+                            oscap:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from OSCAP module because the queue was full"
+                            osquery:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from OSQuery module because the queue was full"
+                            rootcheck:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from rootcheck (syscheckd) because the queue was full"
+                            sca:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from SCA module because the queue was full"
+                            syscheck:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from syscheckd because the queue was full"
+                            syscollector:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from syscollector module because the queue was full"
+                            upgrade:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from upgrade agent module because the queue was full"
+                            vulnerability:
+                              type: integer
+                              format: int32
+                              description: "Events discarded from vulnerability detector module because the queue was full"
+                        monitor:
+                          type: integer
+                          format: int32
+                          description: "Events discarded from monitord because the queue was full"
+                        remote:
+                          type: integer
+                          format: int32
+                          description: "Events discarded from remoted because the queue was full"
+                        syslog:
+                          type: integer
+                          format: int32
+                          description: "Events discarded from syslog remoted because the queue was full"
+                written_breakdown:
+                  type: object
+                  properties:
+                    alerts:
+                      type: integer
+                      format: int32
+                      description: "Alerts written in alerts log file"
+                    archives:
+                      type: integer
+                      format: int32
+                      description: "Alerts written in archives log file"
+                    firewall:
+                      type: integer
+                      format: int32
+                      description: "Alerts written in firewall log file"
+                    fts:
+                      type: integer
+                      format: int32
+                      description: "Alerts written in FTS queue file"
+                    stats:
+                      type: integer
+                      format: int32
+                      description: "Alerts written in stats files"
+            queues:
+              type: object
+              properties:
+                alerts:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of alerts messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the alerts queue (percentage)"
+                archives:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of archives messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the archives queue (percentage)"
+                dbsync:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of dbsync messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the dbsync queue (percentage)"
+                eventchannel:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of eventchannel messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the eventchannel queue (percentage)"
+                firewall:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of firewall messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the firewall queue (percentage)"
+                fts:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of FTS messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the FTS queue (percentage)"
+                hostinfo:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of hostinfo messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the hostinfo queue (percentage)"
+                others:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of other events messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the other events queue (percentage)"
+                processed:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of processed messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the processed queue (percentage)"
+                rootcheck:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of rootcheck messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the rootcheck queue (percentage)"
+                sca:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of SCA messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the SCA queue (percentage)"
+                stats:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of stats messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the stats queue (percentage)"
+                syscheck:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of syscheck messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the syscheck queue (percentage)"
+                syscollector:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of syscollector messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the syscollector queue (percentage)"
+                upgrade:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      format: int32
+                      description: "Size of upgrade messages queue"
+                    usage:
+                      type: integer
+                      format: int32
+                      description: "Current usage of the upgrade queue (percentage)"
+
+    WazuhDBStatsItem:
+      type: object
+      properties:
+        uptime:
+          type: string
+          format: date-time
+        timestamp:
+          type: string
+          format: date-time
+        name:
+          type: string
+          description: "Daemon name"
+          enum:
             - wazuh-db
         metrics:
           type: object
+          properties:
+            queries:
+              type: object
+              properties:
+                received:
+                  type: integer
+                  format: int32
+                  description: "Total of queries through WazuhDB socket"
+                received_breakdown:
+                  type: object
+                  properties:
+                    agent:
+                      type: integer
+                      format: int32
+                      description: "Number of agent queries through WazuhDB socket"
+                    agent_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Number of queries per operation"
+                          properties:
+                            begin:
+                              type: integer
+                              format: int32
+                            close:
+                              type: integer
+                              format: int32
+                            commit:
+                              type: integer
+                              format: int32
+                            remove:
+                              type: integer
+                              format: int32
+                            sql:
+                              type: integer
+                              format: int32
+                        tables:
+                          type: object
+                          description: "Number of queries per table"
+                          properties:
+                            ciscat:
+                              type: object
+                              properties:
+                                ciscat:
+                                  type: integer
+                                  format: int32
+                            rootcheck:
+                              type: object
+                              properties:
+                                rootcheck:
+                                  type: integer
+                                  format: int32
+                            sca:
+                              type: object
+                              properties:
+                                sca:
+                                  type: integer
+                                  format: int32
+                            sync:
+                              type: object
+                              properties:
+                                dbsync:
+                                  type: integer
+                                  format: int32
+                            syscheck:
+                              type: object
+                              properties:
+                                fim_file:
+                                  type: integer
+                                  format: int32
+                                fim_registry:
+                                  type: integer
+                                  format: int32
+                                syscheck:
+                                  type: integer
+                                  format: int32
+                            syscollector:
+                              type: object
+                              properties:
+                                syscollector_hotfixes:
+                                  type: integer
+                                  format: int32
+                                syscollector_hwinfo:
+                                  type: integer
+                                  format: int32
+                                syscollector_network_address:
+                                  type: integer
+                                  format: int32
+                                syscollector_network_iface:
+                                  type: integer
+                                  format: int32
+                                syscollector_network_protocol:
+                                  type: integer
+                                  format: int32
+                                syscollector_osinfo:
+                                  type: integer
+                                  format: int32
+                                syscollector_packages:
+                                  type: integer
+                                  format: int32
+                                syscollector_ports:
+                                  type: integer
+                                  format: int32
+                                syscollector_processes:
+                                  type: integer
+                                  format: int32
+                                deprecated:
+                                  type: object
+                                  properties:
+                                    hardware:
+                                      type: integer
+                                      format: int32
+                                    hotfix:
+                                      type: integer
+                                      format: int32
+                                    netaddr:
+                                      type: integer
+                                      format: int32
+                                    netinfo:
+                                      type: integer
+                                      format: int32
+                                    netproto:
+                                      type: integer
+                                      format: int32
+                                    osinfo:
+                                      type: integer
+                                      format: int32
+                                    package:
+                                      type: integer
+                                      format: int32
+                                    port:
+                                      type: integer
+                                      format: int32
+                                    process:
+                                      type: integer
+                                      format: int32
+                            vulnerability:
+                              type: object
+                              properties:
+                                vuln_cves:
+                                  type: integer
+                                  format: int32
+                    global:
+                      type: integer
+                      format: int32
+                      description: "Number of global queries through WazuhDB socket"
+                    global_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Number of queries per operation"
+                          properties:
+                            backup:
+                              type: integer
+                              format: int32
+                            sql:
+                              type: integer
+                              format: int32
+                        tables:
+                          type: object
+                          description: "Number of queries per operation in tables"
+                          properties:
+                            agent:
+                              type: object
+                              properties:
+                                delete-agent:
+                                  type: integer
+                                  format: int32
+                                disconnect-agents:
+                                  type: integer
+                                  format: int32
+                                find-agent:
+                                  type: integer
+                                  format: int32
+                                get-agent-info:
+                                  type: integer
+                                  format: int32
+                                get-agents-by-connection-status:
+                                  type: integer
+                                  format: int32
+                                get-all-agents:
+                                  type: integer
+                                  format: int32
+                                get-groups-integrity:
+                                  type: integer
+                                  format: int32
+                                insert-agent:
+                                  type: integer
+                                  format: int32
+                                reset-agents-connection:
+                                  type: integer
+                                  format: int32
+                                select-agent-group:
+                                  type: integer
+                                  format: int32
+                                select-agent-name:
+                                  type: integer
+                                  format: int32
+                                set-agent-groups:
+                                  type: integer
+                                  format: int32
+                                sync-agent-groups-get:
+                                  type: integer
+                                  format: int32
+                                sync-agent-info-get:
+                                  type: integer
+                                  format: int32
+                                sync-agent-info-set":
+                                  type: integer
+                                  format: int32
+                                update-agent-data:
+                                  type: integer
+                                  format: int32
+                                update-agent-name:
+                                  type: integer
+                                  format: int32
+                                update-connection-status:
+                                  type: integer
+                                  format: int32
+                                update-keepalive:
+                                  type: integer
+                                  format: int32
+                            belongs:
+                              type: object
+                              properties:
+                                get-group-agents:
+                                  type: integer
+                                  format: int32
+                                select-group-belong:
+                                  type: integer
+                                  format: int32
+                            group:
+                              type: object
+                              properties:
+                                delete-group:
+                                  type: integer
+                                  format: int32
+                                find-group:
+                                  type: integer
+                                  format: int32
+                                insert-agent-group:
+                                  type: integer
+                                  format: int32
+                                select-groups:
+                                  type: integer
+                                  format: int32
+                            labels:
+                              type: object
+                              properties:
+                                get-labels:
+                                  type: integer
+                                  format: int32
+                    mitre:
+                      type: integer
+                      format: int32
+                      description: "Number of mitre queries through WazuhDB socket"
+                    mitre_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Number of queries per operation"
+                          properties:
+                            sql:
+                              type: integer
+                              format: int32
+                    task:
+                      type: integer
+                      format: int32
+                      description: "Number of task queries through WazuhDB socket"
+                    task_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Number of queries per operation"
+                          properties:
+                            sql:
+                              type: integer
+                              format: int32
+                        tables:
+                          type: object
+                          description: "Number of queries per operation in tables"
+                          properties:
+                            tasks:
+                              type: object
+                              properties:
+                                delete_old:
+                                  type: integer
+                                  format: int32
+                                set_timeout:
+                                  type: integer
+                                  format: int32
+                                upgrade:
+                                  type: integer
+                                  format: int32
+                                upgrade_cancel_tasks:
+                                  type: integer
+                                  format: int32
+                                upgrade_custom:
+                                  type: integer
+                                  format: int32
+                                upgrade_get_status:
+                                  type: integer
+                                  format: int32
+                                upgrade_result:
+                                  type: integer
+                                  format: int32
+                                upgrade_update_status:
+                                  type: integer
+                                  format: int32
+                    wazuhdb:
+                      type: integer
+                      format: int32
+                      description: "Number of wazuhdb queries through WazuhDB socket"
+                    wazuhdb_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Number of queries per operation"
+                          properties:
+                            remove:
+                              type: integer
+                              format: int32
+            time:
+              type: object
+              properties:
+                execution:
+                  type: integer
+                  format: int32
+                  description: "Total time taken by all the queries (milliseconds)"
+                execution_breakdown:
+                  type: object
+                  properties:
+                    agent:
+                      type: integer
+                      format: int32
+                      description: "Time taken by all agent queries (milliseconds)"
+                    agent_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Time taken by all queries per operation (milliseconds)"
+                          properties:
+                            begin:
+                              type: integer
+                              format: int32
+                            close:
+                              type: integer
+                              format: int32
+                            commit:
+                              type: integer
+                              format: int32
+                            remove:
+                              type: integer
+                              format: int32
+                            sql:
+                              type: integer
+                              format: int32
+                        tables:
+                          type: object
+                          description: "Time taken by all queries per table (milliseconds)"
+                          properties:
+                            ciscat:
+                              type: object
+                              properties:
+                                ciscat:
+                                  type: integer
+                                  format: int32
+                            rootcheck:
+                              type: object
+                              properties:
+                                rootcheck:
+                                  type: integer
+                                  format: int32
+                            sca:
+                              type: object
+                              properties:
+                                sca:
+                                  type: integer
+                                  format: int32
+                            sync:
+                              type: object
+                              properties:
+                                dbsync:
+                                  type: integer
+                                  format: int32
+                            syscheck:
+                              type: object
+                              properties:
+                                fim_file:
+                                  type: integer
+                                  format: int32
+                                fim_registry:
+                                  type: integer
+                                  format: int32
+                                syscheck:
+                                  type: integer
+                                  format: int32
+                            syscollector:
+                              type: object
+                              properties:
+                                syscollector_hotfixes:
+                                  type: integer
+                                  format: int32
+                                syscollector_hwinfo:
+                                  type: integer
+                                  format: int32
+                                syscollector_network_address:
+                                  type: integer
+                                  format: int32
+                                syscollector_network_iface:
+                                  type: integer
+                                  format: int32
+                                syscollector_network_protocol:
+                                  type: integer
+                                  format: int32
+                                syscollector_osinfo:
+                                  type: integer
+                                  format: int32
+                                syscollector_packages:
+                                  type: integer
+                                  format: int32
+                                syscollector_ports:
+                                  type: integer
+                                  format: int32
+                                syscollector_processes:
+                                  type: integer
+                                  format: int32
+                                deprecated:
+                                  type: object
+                                  properties:
+                                    hardware:
+                                      type: integer
+                                      format: int32
+                                    hotfix:
+                                      type: integer
+                                      format: int32
+                                    netaddr:
+                                      type: integer
+                                      format: int32
+                                    netinfo:
+                                      type: integer
+                                      format: int32
+                                    netproto:
+                                      type: integer
+                                      format: int32
+                                    osinfo:
+                                      type: integer
+                                      format: int32
+                                    package:
+                                      type: integer
+                                      format: int32
+                                    port:
+                                      type: integer
+                                      format: int32
+                                    process:
+                                      type: integer
+                                      format: int32
+                            vulnerability:
+                              type: object
+                              properties:
+                                vuln_cves:
+                                  type: integer
+                                  format: int32
+                    global:
+                      type: integer
+                      format: int32
+                      description: "Time taken by all global queries (milliseconds)"
+                    global_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Time taken by all queries per operation (milliseconds)"
+                          properties:
+                            backup:
+                              type: integer
+                              format: int32
+                            sql:
+                              type: integer
+                              format: int32
+                        tables:
+                          type: object
+                          description: "Time taken by all queries per operation in tables (milliseconds)"
+                          properties:
+                            agent:
+                              type: object
+                              properties:
+                                delete-agent:
+                                  type: integer
+                                  format: int32
+                                disconnect-agents:
+                                  type: integer
+                                  format: int32
+                                find-agent:
+                                  type: integer
+                                  format: int32
+                                get-agent-info:
+                                  type: integer
+                                  format: int32
+                                get-agents-by-connection-status:
+                                  type: integer
+                                  format: int32
+                                get-all-agents:
+                                  type: integer
+                                  format: int32
+                                get-groups-integrity:
+                                  type: integer
+                                  format: int32
+                                insert-agent:
+                                  type: integer
+                                  format: int32
+                                reset-agents-connection:
+                                  type: integer
+                                  format: int32
+                                select-agent-group:
+                                  type: integer
+                                  format: int32
+                                select-agent-name:
+                                  type: integer
+                                  format: int32
+                                set-agent-groups:
+                                  type: integer
+                                  format: int32
+                                sync-agent-groups-get:
+                                  type: integer
+                                  format: int32
+                                sync-agent-info-get:
+                                  type: integer
+                                  format: int32
+                                sync-agent-info-set":
+                                  type: integer
+                                  format: int32
+                                update-agent-data:
+                                  type: integer
+                                  format: int32
+                                update-agent-name:
+                                  type: integer
+                                  format: int32
+                                update-connection-status:
+                                  type: integer
+                                  format: int32
+                                update-keepalive:
+                                  type: integer
+                                  format: int32
+                            belongs:
+                              type: object
+                              properties:
+                                get-group-agents:
+                                  type: integer
+                                  format: int32
+                                select-group-belong:
+                                  type: integer
+                                  format: int32
+                            group:
+                              type: object
+                              properties:
+                                delete-group:
+                                  type: integer
+                                  format: int32
+                                find-group:
+                                  type: integer
+                                  format: int32
+                                insert-agent-group:
+                                  type: integer
+                                  format: int32
+                                select-groups:
+                                  type: integer
+                                  format: int32
+                            labels:
+                              type: object
+                              properties:
+                                get-labels:
+                                  type: integer
+                                  format: int32
+                    mitre:
+                      type: integer
+                      format: int32
+                      description: "Time taken by all mitre queries (milliseconds)"
+                    mitre_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Time taken by all queries per operation (milliseconds)"
+                          properties:
+                            sql:
+                              type: integer
+                              format: int32
+                    task:
+                      type: integer
+                      format: int32
+                      description: "Time taken by all task queries (milliseconds)"
+                    task_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Time taken by all queries per operation (milliseconds)"
+                          properties:
+                            sql:
+                              type: integer
+                              format: int32
+                        tables:
+                          type: object
+                          description: "Time taken by all queries per operation in tables (milliseconds)"
+                          properties:
+                            tasks:
+                              type: object
+                              properties:
+                                delete_old:
+                                  type: integer
+                                  format: int32
+                                set_timeout:
+                                  type: integer
+                                  format: int32
+                                upgrade:
+                                  type: integer
+                                  format: int32
+                                upgrade_cancel_tasks:
+                                  type: integer
+                                  format: int32
+                                upgrade_custom:
+                                  type: integer
+                                  format: int32
+                                upgrade_get_status:
+                                  type: integer
+                                  format: int32
+                                upgrade_result:
+                                  type: integer
+                                  format: int32
+                                upgrade_update_status:
+                                  type: integer
+                                  format: int32
+                    wazuhdb:
+                      type: integer
+                      format: int32
+                      description: "Time taken by all wazuhdb queries (milliseconds)"
+                    wazuhdb_breakdown:
+                      type: object
+                      properties:
+                        db:
+                          type: object
+                          description: "Time taken by all queries per operation (milliseconds)"
+                          properties:
+                            remove:
+                              type: integer
+                              format: int32
 
     WazuhDaemonsStatus:
       type: object
