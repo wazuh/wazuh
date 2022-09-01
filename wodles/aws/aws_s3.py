@@ -230,7 +230,7 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     def default_config(self, args):
-        if path.exists("".join([path.expanduser('~'), '/.aws/config'])):
+        if not path.exists("".join([path.expanduser('~'), '/.aws/config'])):
             args['config'] = Config(
                 retries={
                     'max_attempts': 10,
