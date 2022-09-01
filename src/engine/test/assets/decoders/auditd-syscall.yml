@@ -15,7 +15,7 @@ check:
 
 parse:
   logql:
-    - _auditd.log.payload: >-
+    - _kv_msg: >-
         arch=<host.architecture> syscall=<auditd.log.syscall>
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
@@ -26,7 +26,7 @@ parse:
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
         tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
         exe="<process.executable>" subj=<auditd.log.subj> key=<_auditd.log.key>
-    - _auditd.log.payload: >-
+    - _kv_msg: >-
         arch=<host.architecture> syscall=<auditd.log.syscall>
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
@@ -37,7 +37,7 @@ parse:
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
         tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
         exe=<process.executable> subj=<auditd.log.subj> key=<_auditd.log.key>
-    - _auditd.log.payload: >-
+    - _kv_msg: >-
         arch=<host.architecture> syscall=<auditd.log.syscall>
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
