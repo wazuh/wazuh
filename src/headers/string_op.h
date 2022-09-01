@@ -109,7 +109,7 @@ char * wstr_chr(char * str, int character);
  * str must be a valid pointer to a string to escape.
  * scape int is the value of the operator used to escape.
  * toscape int is the value to scape.
- * Returns a ssize_t, represents the size of the dststr if success, or -1 if fail.
+ * Returns a ssize_t, represents the size of the dststr if success, or OS_INVALID if fail.
  */
 ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape);
 
@@ -119,7 +119,7 @@ ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int sc
  * dst_size must be an unsigned int value, to avoid overflow the buffer.
  * str must be a valid pointer to a string to unescape.
  * scape int is the value of the operator used to unescape.
- * Returns a ssize_t, represents the size of the dststr if success, or -1 if fail.
+ * Returns a ssize_t, represents the size of the dststr if success, or OS_INVALID if fail.
  */
 ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape);
 

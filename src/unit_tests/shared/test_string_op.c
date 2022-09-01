@@ -754,7 +754,7 @@ void test_strarray_size(void ** state) {
 void test_wstr_escape_dststr_null(void ** state) {
 
     ssize_t ret = wstr_escape(NULL, 0, "test string without colons", '\\', ':');
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, OS_INVALID);
 }
 
 void test_wstr_escape_str_null(void ** state) {
@@ -762,7 +762,7 @@ void test_wstr_escape_str_null(void ** state) {
     char dststr[OS_BUFFER_SIZE];
 
     ssize_t ret = wstr_escape(dststr, sizeof(dststr), NULL, '\\', ':');
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, OS_INVALID);
 }
 
 void test_wstr_escape_not_escape(void ** state) {
@@ -840,7 +840,7 @@ void test_wstr_escape_one_scape(void ** state) {
 void test_wstr_unescape_dststr_null(void ** state) {
 
     ssize_t ret = wstr_unescape(NULL, 0, "test string without colons", '\\');
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, OS_INVALID);
 }
 
 void test_wstr_unescape_str_null(void ** state) {
@@ -848,7 +848,7 @@ void test_wstr_unescape_str_null(void ** state) {
     char dststr[OS_BUFFER_SIZE];
 
     ssize_t ret = wstr_unescape(dststr, sizeof(dststr), NULL, '\\');
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, OS_INVALID);
 }
 
 void test_wstr_unescape_not_escape(void ** state) {

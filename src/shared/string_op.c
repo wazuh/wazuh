@@ -332,7 +332,7 @@ ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int sc
 
     char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
-        return -1;
+        return OS_INVALID;
     }
 
     unsigned int a = 0;
@@ -352,7 +352,7 @@ ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int 
 
     char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
-        return -1;
+        return OS_INVALID;
     }
 
     unsigned int a = 0;
