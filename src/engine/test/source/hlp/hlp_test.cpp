@@ -678,11 +678,11 @@ TEST(hlpTests_Timestamp, kitchen)
 // {"POSTGRES", {"%Y-%m-%d %T %Z", "2021-02-14 10:45:33.257 UTC"}},
 TEST(hlpTests_Timestamp, POSTGRES)
 {
-    static const char* logQl =
+    const char* logQl =
         "[<timestamp/POSTGRES>] - [<_t/timestamp/POSTGRES_MS>] - "
         "(<postgresql.log.session_start_time/POSTGRES>) - "
         "[<_stamp/timestamp/POSTGRES_MS>] [<postgresql.log.session_start_time/POSTGRES>]";
-    static const char* event =
+    const char* event =
         "[2021-02-14 10:45:14 UTC] - [2021-02-14 10:45:14.123 UTC] - (2021-02-14 "
         "10:45:14 UTC) - [2021-02-14 10:45:14.123456 UTC] [2021-02-14 10:45:14 UTC]";
 
@@ -690,7 +690,7 @@ TEST(hlpTests_Timestamp, POSTGRES)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(static_cast<bool>(parseOp));
 }
 
 // Test: domain parsing

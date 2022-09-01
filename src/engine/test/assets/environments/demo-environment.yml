@@ -20,7 +20,7 @@ decoders:
   - cisco-ios-sec
   - cisco-ios-grandchild
   - cisco-asa
-  - postgresql_csv
+  - postgresql-csv
 
 # rules:
 #   - source_malicious_ip
