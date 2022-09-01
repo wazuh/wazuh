@@ -75,11 +75,6 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
-        /* Check ignore and restrict log regex, if configured. */
-        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
-            continue;
-        }
-
         /* MySQL messages have the following format:
          * 070823 21:01:30 xx
          */
@@ -246,8 +241,9 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
 
         mdebug2("Reading mysql messages: '%s'", buffer);
 
-        /* Send message to queue */
-        if (drop_it == 0) {
+        /* Check ignore and restrict log regex, if configured. */
+        if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, buffer)) {
+            /* Send message to queue */
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
     }

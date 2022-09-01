@@ -18,7 +18,10 @@
 /* Send MS SQL message and check the return code */
 static void __send_mssql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading MSSQL message: '%s'", buffer);
-    if (drop_it == 0) {
+
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        /* Send message to queue */
         w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
     }
 }
@@ -86,11 +89,6 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 #endif
-
-        /* Check ignore and restrict log regex, if configured. */
-        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
-            continue;
-        }
 
         /* MS SQL messages have the following formats:
          * 2009-03-25 04:47:30.01 Server

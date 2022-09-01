@@ -120,11 +120,6 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
             need_clear = 1;
         }
 
-        /* Check ignore and restrict log regex, if configured. */
-        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
-            continue;
-        }
-
         /* Multilog messages have the following format:
          * @40000000463246020c2ca16c xx...
          */
@@ -179,6 +174,11 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
 
         else {
             mdebug2("Invalid DJB log: '%s'", str);
+            continue;
+        }
+
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
             continue;
         }
 

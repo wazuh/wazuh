@@ -91,11 +91,6 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
-        /* Check ignore and restrict log regex, if configured. */
-        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
-            continue;
-        }
-
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
 
         /* Send message to queue */
@@ -127,7 +122,10 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
                 continue;
             }
 
-            w_msg_hash_queues_push(utf8_string, lf->file, utf8_bytes, lf->log_target, LOCALFILE_MQ);
+            if (!check_log_regex(lf->regex_ignore, lf->regex_restrict, utf8_string)) {
+                w_msg_hash_queues_push(utf8_string, lf->file, utf8_bytes, lf->log_target, LOCALFILE_MQ);
+            }
+
             os_free(utf8_string);
         }
         /* Incorrect message size */

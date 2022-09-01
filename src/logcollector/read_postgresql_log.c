@@ -18,7 +18,10 @@
 /* Send pgsql message and check the return code */
 static void __send_pgsql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading PostgreSQL message: '%s'", buffer);
-    if (drop_it == 0) {
+
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        /* Send message to queue */
         w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
     }
 }
@@ -83,11 +86,6 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 #endif
-
-        /* Check ignore and restrict log regex, if configured. */
-        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
-            continue;
-        }
 
         /* PostgreSQL messages have the following format:
          * [2007-08-31 19:17:32.186 ADT] 192.168.2.99:db_name
