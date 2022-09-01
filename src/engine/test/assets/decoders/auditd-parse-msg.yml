@@ -1,0 +1,27 @@
+---
+name: auditd-parse-msg
+
+metadata:
+  description: Decoder for parsing the msg field of Linux auditd logs
+  references:
+    - https://docs.elastic.co/en/integrations/auditd
+  product.name: auditd
+
+parents:
+  - auditd
+
+check:
+  - _kv_msg: +exists
+  - event.action: +s_ne/syscall
+
+parse:
+  logql:
+    - _kv_msg: <auditd.log/map/ /=>
+
+normalize:
+  - map:
+      auditd.log.old_auid: $auditd.log.old-auid
+      auditd.log.old-auid: +delete_field
+      auditd.log.old_ses: $auditd.log.old-ses
+      auditd.log.old-ses: +delete_field
+      _kv_msg: +delete_field
