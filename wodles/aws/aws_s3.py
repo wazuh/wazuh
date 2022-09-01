@@ -37,7 +37,6 @@ except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
 import botocore
-from botocore.config import Config
 import json
 import csv
 import gzip
@@ -236,7 +235,7 @@ class WazuhIntegration:
     def default_config():
         args = {}
         if not path.exists("".join([path.expanduser('~'), '/.aws/config'])):
-            args['config'] = Config(
+            args['config'] = botocore.config.Config(
                 retries={
                     'max_attempts': 10,
                     'mode': 'standard'
