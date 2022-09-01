@@ -5341,6 +5341,267 @@
         "boolean"
       ]
     },
+    "postgresql.log.application_name": {
+      "description": "Name of the application of this event. It is defined by the client.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.backend_type": {
+      "description": "Type of backend of this event. Possible types are autovacuum launcher, autovacuum worker, logical replication launcher, logical replication worker, parallel worker, background writer, client backend, checkpointer, startup, walreceiver, walsender and walwriter. In addition, background workers registered by extensions may have additional types.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.client_addr": {
+      "description": "Host where the connection originated from.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.client_port": {
+      "description": "Port where the connection originated from.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.command_tag": {
+      "description": "Type of session's current command. The complete list can be found at: src/include/tcop/cmdtaglist.h\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.context": {
+      "description": "Error context.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.core_id": {
+      "description": "Core id. (deprecated, there is no core_id in PostgreSQL logs, this is actually session_line_number).\n",
+      "ecs_type": "alias",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.database": {
+      "description": "Name of database.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.detail": {
+      "description": "More information about the message, parameters in case of a parametrized query. e.g. 'Role \\\"user\\\" does not exist.', 'parameters: $1 = 42', etc.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.error.code": {
+      "description": "Error code returned by Postgres (if any). Deprecated: errors can have letters. Use sql_state_code instead.\n",
+      "ecs_type": "alias",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.hint": {
+      "description": "A possible solution to solve an error.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.internal_query": {
+      "description": "Internal query that led to the error (if any).\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.internal_query_pos": {
+      "description": "Character count of the internal query (if any).\n",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.level": {
+      "description": "Valid values are DEBUG5, DEBUG4, DEBUG3, DEBUG2, DEBUG1, INFO, NOTICE, WARNING, ERROR, LOG, FATAL, and PANIC.\n",
+      "ecs_type": "alias",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.location": {
+      "description": "Location of the error in the PostgreSQL source code (if log_error_verbosity is set to verbose).\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.message": {
+      "description": "Not available",
+      "ecs_type": "alias",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.query": {
+      "description": "Query statement. In the case of CSV parse, look at command_tag to get more context.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.query_name": {
+      "description": "Name given to a query when using extended query protocol. If it is \"<unnamed>\", or not present, this field is ignored.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.query_pos": {
+      "description": "Character count of the error position (if any).\n",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.query_step": {
+      "description": "Statement step when using extended query protocol (one of statement, parse, bind or execute).\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.session_id": {
+      "description": "PostgreSQL session.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.session_line_number": {
+      "description": "Line number inside a session. (%l in `log_line_prefix`).\n",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.session_start_time": {
+      "description": "Time when this session started.\n",
+      "ecs_type": "date",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.sql_state_code": {
+      "description": "State code returned by Postgres (if any). See also https://www.postgresql.org/docs/current/errcodes-appendix.html\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.timestamp": {
+      "description": "The timestamp from the log line.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.timezone": {
+      "description": "Not available",
+      "ecs_type": "alias",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.transaction_id": {
+      "description": "The id of current transaction.\n",
+      "ecs_type": "long",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.user": {
+      "description": "Not available",
+      "ecs_type": "alias",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "postgresql.log.virtual_transaction_id": {
+      "description": "Backend local transaction id.\n",
+      "ecs_type": "keyword",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
     "process.args": {
       "description": "Array of process arguments, starting with the absolute path to the executable.\nMay be filtered to protect sensitive information.",
       "ecs_type": "keyword",
