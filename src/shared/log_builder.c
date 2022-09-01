@@ -49,10 +49,12 @@ log_builder_t * log_builder_init(bool update) {
         pthread_rwlockattr_init(&attr);
         g_ip_update_interval = getDefine_Int("logcollector","ip_update_interval", 0, 3600);
 #ifdef __linux__
+#ifndef ALPINE
         /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
         * Do not use recursive locking.
         */
         pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
 #endif
 
         w_rwlock_init(&builder->rwlock, &attr);

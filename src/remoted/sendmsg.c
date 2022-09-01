@@ -24,10 +24,12 @@ void key_lock_init()
     pthread_rwlockattr_init(&attr);
 
 #ifdef __linux__
+#ifndef ALPINE
     /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
      * Do not use recursive locking.
      */
     pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
 #endif
 
     w_rwlock_init(&keyupdate_rwlock, &attr);
