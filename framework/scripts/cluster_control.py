@@ -11,6 +11,7 @@ import logging
 import operator
 import sys
 from os import path
+from typing import Union
 
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
@@ -19,14 +20,31 @@ from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_strptime
 
 
-def __print_table(data, headers, show_header=False):
-    """
-    Pretty print list of lists
+def __print_table(data: map, headers: dict, show_header: bool = False):
+    """Pretty print list of lists.
+
+    Paramaters
+    ----------
+    data : map
+        Data to be printed.
+    headers : dict
+        Table headers.
+    show_header : bool
+        Whether to show the table header or not.
     """
 
-    def get_max_size_cols(l):
-        """
-        For each column of the table, return the size of the biggest element
+    def get_max_size_cols(l: map) -> list:
+        """For each column of the table, return the size of the biggest element.
+
+        Parameters
+        ----------
+        l : map
+            Table.
+
+        Returns
+        -------
+        list
+            List containing the biggest element size of each column of the given table.
         """
         return list(map(lambda x: max(map(lambda y: len(y) + 2, x)), map(list, zip(*l))))
 
@@ -43,7 +61,16 @@ def __print_table(data, headers, show_header=False):
     print(table_str)
 
 
-async def print_agents(filter_status, filter_node):
+async def print_agents(filter_status: list, filter_node: list):
+    """Print table with the agents information.
+
+    Parameters
+    ----------
+    filter_node : list
+        Nodes to return.
+    filter_status : list
+        Agent connection statuses to filter by.
+    """
     lc = local_client.LocalClient()
     result = await control.get_agents(lc, filter_node=filter_node, filter_status=filter_status)
     headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
@@ -52,7 +79,14 @@ async def print_agents(filter_status, filter_node):
     __print_table(data, list(headers.values()), True)
 
 
-async def print_nodes(filter_node):
+async def print_nodes(filter_node: list):
+    """Print table with the cluster nodes.
+
+    Parameters
+    ----------
+    filter_node : list
+        Nodes to return.
+    """
     lc = local_client.LocalClient()
     result = await control.get_nodes(lc, filter_node=filter_node)
     headers = ["Name", "Type", "Version", "Address"]
@@ -60,7 +94,7 @@ async def print_nodes(filter_node):
     __print_table(data, headers, True)
 
 
-async def print_health(config, more, filter_node):
+async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
     """Print the current status of the cluster as well as additional information.
 
     Parameters
@@ -69,11 +103,11 @@ async def print_health(config, more, filter_node):
         Cluster current configuration.
     more : bool
         Indicate whether additional information is desired or not.
-    filter_node : str, list
+    filter_node : Union[str, list]
         Node to return.
     """
 
-    def calculate_seconds(start_time, end_time):
+    def calculate_seconds(start_time: str, end_time: str):
         """Calculate the time difference between two dates.
 
         Parameters
