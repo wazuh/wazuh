@@ -328,11 +328,11 @@ char * wstr_chr(char * str, int character) {
 
 // Escape a specific character from a character string
 
-unsigned int wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape) {
+ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape) {
 
     char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
-        return 0;
+        return -1;
     }
 
     unsigned int a = 0;
@@ -348,24 +348,21 @@ unsigned int wstr_escape(char *dststr, unsigned int dst_size, const char *str, i
 
 // Unescape a specific character from a character string
 
-unsigned int wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape) {
+ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape) {
 
     char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
-        return 0;
+        return -1;
     }
 
     unsigned int a = 0;
     while (*str_cpy != '\0' && a < dst_size -1) {
-        if (*str_cpy == scape) {
+        if (*str_cpy == scape && *(str_cpy + 1) != '\0') {
             str_cpy++;
         }
-        if (*str_cpy != '\0') {
-            dststr[a++] = *str_cpy++;
-        } else {
-            break;
-        }
+        dststr[a++] = *str_cpy++;
     }
+
     dststr[a] = '\0';
     return a;
 }

@@ -48,7 +48,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     *pieces = '\0';
     pieces++;
 
-    if (0 == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '\\')) {
+    if (-1 == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '\\')) {
         merror(FORMAT_ERROR);
         return (-1);
     }
