@@ -98,6 +98,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperStringConcat, "helper.s_concat");
     Registry::registerBuilder(builders::opBuilderHelperStringFromArray,
                               "helper.s_fromArray");
+    Registry::registerBuilder(builders::opBuilderHelperStringFromHexa,
+                              "helper.s_fromHex");
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
     Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,
