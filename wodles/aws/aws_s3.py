@@ -155,6 +155,8 @@ class WazuhIntegration:
         # GovCloud regions
         self.gov_regions = {'us-gov-east-1', 'us-gov-west-1'}
 
+        self.connection_config = self.default_config()
+        
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
                                       profile=aws_profile,
@@ -166,6 +168,7 @@ class WazuhIntegration:
                                       service_endpoint=service_endpoint,
                                       iam_role_duration=iam_role_duration
                                       )
+
 
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
@@ -229,7 +232,9 @@ class WazuhIntegration:
             elif 'trail_progress' in table:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
-    def default_config(self, args):
+    @staticmethod
+    def default_config():
+        args = {}
         if not path.exists("".join([path.expanduser('~'), '/.aws/config'])):
             args['config'] = Config(
                 retries={
@@ -237,14 +242,20 @@ class WazuhIntegration:
                     'mode': 'standard'
                 }
             )
+            debug('Generating default configuration for retries: mode {} - max_attempts {}'.format(
+                args['config'].retries['mode'],
+                args['config'].retries['max_attempts']), 2)
+        else:
+            debug('Found configuration for connection retries in ~/.aws/config', 2)
+
+        return args
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name,
                    bucket, region=None,
                    sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+
         conn_args = {}
 
-        extra_client_args = {}
-        self.default_config(extra_client_args)
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
@@ -267,7 +278,7 @@ class WazuhIntegration:
         try:
             if iam_role_arn:
 
-                sts_client = boto_session.client('sts', endpoint_url=sts_endpoint, **extra_client_args)
+                sts_client = boto_session.client('sts', endpoint_url=sts_endpoint, **self.connection_config)
 
                 assume_role_kwargs = {'RoleArn': iam_role_arn,
                                       'RoleSessionName': 'WazuhLogParsing'
@@ -283,10 +294,10 @@ class WazuhIntegration:
                                             region_name=conn_args.get('region_name'))
 
                 client = sts_session.client(service_name=service_name, endpoint_url=service_endpoint,
-                                            **extra_client_args)
+                                            **self.connection_config)
             else:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
-                                             **extra_client_args)
+                                             **self.connection_config)
 
         except botocore.exceptions.ClientError as e:
             print("ERROR: Access error: {}".format(e))
@@ -295,9 +306,6 @@ class WazuhIntegration:
 
     def get_sts_client(self, access_key, secret_key, profile=None):
         conn_args = {}
-
-        extra_client_args = {}
-        self.default_config(extra_client_args)
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
@@ -308,7 +316,7 @@ class WazuhIntegration:
         boto_session = boto3.Session(**conn_args)
 
         try:
-            sts_client = boto_session.client(service_name='sts', **extra_client_args)
+            sts_client = boto_session.client(service_name='sts', **self.connection_config)
 
         except Exception as e:
             print("Error getting STS client: {}".format(e))
@@ -1706,9 +1714,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         conn_args = {}
         conn_args['region_name'] = region
 
-        extra_client_args = {}
-        self.default_config(extra_client_args)
-
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
@@ -1718,7 +1723,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         boto_session = boto3.Session(**conn_args)
 
         try:
-            ec2_client = boto_session.client(service_name='ec2', **extra_client_args)
+            ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
             print("Error getting EC2 client: {}".format(e))
             sys.exit(3)
@@ -3263,7 +3268,7 @@ class AWSCloudWatchLogs(AWSService):
 
             if values['end_time'] is not None:
                 result['end_time'] = max_end_time if max_end_time is not None and max_end_time > values['end_time'] else \
-                values['end_time']
+                    values['end_time']
             else:
                 result['end_time'] = max_end_time
             return result
