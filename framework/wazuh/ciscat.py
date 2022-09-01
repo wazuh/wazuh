@@ -4,28 +4,45 @@
 
 from wazuh.core import common
 from wazuh.core.agent import get_agents_info
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, merge
 from wazuh.core.syscollector import WazuhDBQuerySyscollector
 from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["ciscat:read"], resources=["agent:id:{agent_list}"])
-def get_ciscat_results(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, select=None, search=None, sort=None,
-                       filters=None, nested=True, array=True, q=''):
-    """ Get CIS-CAT results for a list of agents
+def get_ciscat_results(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
+                       select: list = None, search: str = None, sort: dict = None, filters: dict = None,
+                       nested: bool = True, array: bool = True, q: str = '') -> AffectedItemsWazuhResult:
+    """Get CIS-CAT results for a list of agents
 
-    :param agent_list: list of Agent ID to get scan results from. Currently, only first item will be considered
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return
-    :param search: Looks for items with the specified string. Begins with '-' for a complementary search
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param filters: Fields to filter by
-    :param nested: Nested fields
-    :param array: Array
-    :param q: Defines query to filter in DB.
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        List of Agent ID to get scan results from. Currently, only first item will be considered.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : list
+        Select which fields to return.
+    search : str
+        Looks for items with the specified string. Begins with '-' for a complementary search.
+    sort : dict
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    filters : dict
+        Fields to filter by.
+    nested : bool
+        Nested fields.
+    array : bool
+        Array.
+    q : str
+        Defines query to filter in DB.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Paths of all CDB lists.
     """
     result = AffectedItemsWazuhResult(
         all_msg='All CISCAT results were returned',

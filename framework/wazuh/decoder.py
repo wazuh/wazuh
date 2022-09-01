@@ -19,27 +19,48 @@ from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
 from wazuh.rbac.decorators import expose_resources
 
 
-def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,
-                 limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True, search_text=None,
-                 complementary_search=False, search_in_fields=None, q=''):
-    """Gets a list of available decoders.
+def get_decoders(names: list = None, status: str = None, filename: list = None, relative_dirname: str = None,
+                 parents: bool = False, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
+                 sort_by: list = None, sort_ascending: bool = True, search_text: str = None,
+                 complementary_search: bool = False, search_in_fields: list = None,
+                 q: str = '') -> AffectedItemsWazuhResult:
+    """Get a list of available decoders.
 
-    :param names: Filters by decoder name.
-    :param filename: List of filenames to filter by.
-    :param status: Filters by status: enabled, disabled, all.
-    :param relative_dirname: Filters by relative dirname.
-    :param parents: Just parent decoders.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param select: List of selected fields to return
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :param q: Defines query to filter.
+    Parameters
+    ----------
+    names : list
+        Filters by decoder name.
+    filename : list
+        List of filenames to filter by.
+    status : str
+        Filters by status: enabled, disabled, all.
+    parents : bool
+        Just parent decoders.
+    relative_dirname : str
+        Filters by relative dirname.
+    search_text : str
+        Text to search.
+    complementary_search : bool
+        Find items without the text to search. Default: False
+    search_in_fields : list
+        Fields to search in.
+    select : list
+        List of selected fields to return
+    sort_by : list
+        Fields to sort the items by.
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order. Default: True
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    q : str
+        Defines query to filter.
 
-    :return: AffectedItemsWazuhResult
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       some_msg='Some decoders were not returned',
@@ -54,7 +75,8 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
     status = check_status(status)
     status = ['enabled', 'disabled'] if status == 'all' else [status]
-    parameters = {'relative_dirname': relative_dirname, 'filename': filename, 'name': names, 'parents': parents, 'status': status}
+    parameters = {'relative_dirname': relative_dirname, 'filename': filename, 'name': names, 'parents': parents,
+                  'status': status}
     decoders = list(all_decoders)
     no_existent_files = names[:]
     for d in all_decoders:
@@ -88,22 +110,44 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
 
 @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
-def get_decoders_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
-                       sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
-                       search_in_fields=None):
-    """Gets a list of the available decoder files.
+def get_decoders_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
+                       limit: int = common.DATABASE_LIMIT, sort_by: list = None, sort_ascending: bool = True,
+                       search_text: str = None, complementary_search: bool = False,
+                       search_in_fields: list = None) -> AffectedItemsWazuhResult:
+    """Get a list of the available decoder files.
 
-    :param status: Filters by status: enabled, disabled, all.
-    :param relative_dirname: Filters by relative dirname.
-    :param filename: List of filenames to filter by.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    filename : list
+        List of filenames to filter by.
+    status : str
+        Filters by status: enabled, disabled, all.
+    relative_dirname : str
+        Filters by relative dirname.
+    search_text : str
+        Text to search.
+    complementary_search : bool
+        Find items without the text to search. Default: False
+    search_in_fields : list
+        Fields to search in.
+    sort_by : list
+        Fields to sort the items by.
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order. Default: True
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+
+    Raises
+    ------
+    WazuhInternalError(1500)
+        Error reading decoders from ossec.conf.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(none_msg='No decoder files were returned',
                                       some_msg='Some decoder files were not returned',
@@ -136,7 +180,7 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
 
 
 def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
-    """Read content of specified file.
+    """Read content of a specified file.
 
     Parameters
     ----------
@@ -147,7 +191,7 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
 
     Returns
     -------
-    str or dict
+    Union[str, AffectedItemsWazuhResult]
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
@@ -168,7 +212,7 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
                 result.total_affected_items = 1
         except ExpatError as e:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"     
+                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"
                                                                         f" {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
@@ -196,6 +240,7 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     Returns
     -------
     AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
@@ -238,6 +283,7 @@ def delete_decoder_file(filename: str) -> AffectedItemsWazuhResult:
     Returns
     -------
     AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
                                       none_msg='Could not delete decoder file'
