@@ -76,6 +76,16 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition);
  */
 base::Expression opBuilderHelperStringFromArray(const std::any& definition);
 
+/**
+ * @brief Transforms a string of hexa digits into an ASCII string
+ * i.e: 'targetField: +s_fromHexa/48656C6C6F20776F726C6421' then 'targetField' would be
+ * 'Hello world!'
+ * @param definition The transformation definition.
+ * @throw std::runtime_error if the parameter is not a reference
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperStringFromHexa(const std::any& definition);
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
@@ -132,7 +142,6 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition);
  * @throw std::runtime_error if the parameters are empty.
  */
 base::Expression opBuilderHelperAppendString(const std::any& definition);
-
 
 /**
  * @brief Append splitted strings to array field.

@@ -12,6 +12,9 @@ decoders:
   - windows-security
   - apache-error
   - apache-access
+  - auditd
+  - auditd-syscall
+  - auditd-parse-msg
   - aws
   - aws-cloudtrail
   - aws-elb
