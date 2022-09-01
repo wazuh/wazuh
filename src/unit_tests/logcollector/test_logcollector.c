@@ -2297,8 +2297,6 @@ void check_log_regex_not_ignored(void ** state) {
 
     int ret = check_log_regex(regex_config->regex_ignore, regex_config->regex_restrict, str_test);
 
-    w_free_expression_t(&regex_config->regex_ignore);
-
     assert_false(ret);
 }
 
@@ -2306,7 +2304,7 @@ void check_log_regex_ignored(void ** state) {
 
     logreader *regex_config = *state;
     char *str_test = "testing log with ignore word";
-    char *aux[2]   ;
+    char *aux[2];
     aux[0] = str_test;
     aux[1] = str_test+1;
 
@@ -2321,8 +2319,6 @@ void check_log_regex_ignored(void ** state) {
 
     int ret = check_log_regex(regex_config->regex_ignore, regex_config->regex_restrict, str_test);
 
-    w_free_expression_t(&regex_config->regex_ignore);
-
     assert_true(ret);
 }
 
@@ -2330,7 +2326,7 @@ void check_log_regex_not_restricted(void ** state) {
 
     logreader *regex_config = *state;
     char *str_test = "testing log with restrict word";
-    char *aux[2]   ;
+    char *aux[2];
     aux[0] = str_test;
     aux[1] = str_test+1;
 

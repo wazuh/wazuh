@@ -1678,6 +1678,59 @@ void test_read_multiline_regex_invalid_context(void ** state) {
     assert_null(ml_confg.ctxt);
 }
 
+void test_read_multiline_regex_log_ignored(void ** state) {
+
+    logreader lf = {0};
+    int rc = 0;
+    int drop_it = 0;
+    w_calloc_expression_t(&lf.regex_ignore, EXP_TYPE_PCRE2);
+    w_expression_compile(lf.regex_ignore, "ignore.*", 0);
+
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = 500;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    lf.multiline = &ml_confg;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 5);
+    will_return(__wrap_w_get_hash_context, true);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "ignore this log\n");
+    will_return(__wrap_w_expression_match, true);
+
+    will_return(__wrap_w_expression_match, true);
+    expect_string(__wrap__mdebug2, formatted_msg, "(1976): Avoiding the log line 'ignore this log' due to ignore config: 'ignore.*'.");
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, 0);
+
+    will_return(__wrap_fread, "test0");
+    will_return(__wrap_fread, 5);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+    will_return(__wrap_w_update_file_status, 0);
+
+    void * retval = read_multiline_regex(&lf, &rc, drop_it);
+
+    w_free_expression_t(&lf.regex_ignore);
+    assert_ptr_equal(retval, NULL);
+    assert_null(ml_confg.ctxt);
+}
+
 // Test get_file_chunk
 void test_get_file_chunk_fseek_fail(void ** state) {
 
@@ -1818,6 +1871,7 @@ int main(void) {
         cmocka_unit_test(test_read_multiline_regex_log_process),
         cmocka_unit_test(test_read_multiline_regex_cant_read),
         cmocka_unit_test(test_read_multiline_regex_invalid_context),
+        cmocka_unit_test(test_read_multiline_regex_log_ignored),
         // Test get_file_chunk
         cmocka_unit_test(test_get_file_chunk_fseek_fail),
         cmocka_unit_test(test_get_file_chunk_size_reduce),
