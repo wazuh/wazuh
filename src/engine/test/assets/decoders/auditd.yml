@@ -8,11 +8,11 @@ metadata:
   product.name: auditd
 
 definitions:
-  TYPE_FIELD: type=<auditd.log.record_type>
+  TYPE_FIELD: type=<_log.record_type>
   NODE_FIELD: node=<auditd.log.node>
-  LOG_EPOCH: <auditd.log.epoch>
+  LOG_log.EPOCH: <_log.epoch>
   LOG_SEQUENCE: <auditd.log.sequence>
-  EPOCH_SEQ_FIELD: "($LOG_EPOCH:$LOG_SEQUENCE):"
+  EPOCH_SEQ_FIELD: "($LOG_log.EPOCH:$LOG_SEQUENCE):"
   MSG_FIELD: msg=audit$EPOCH_SEQ_FIELD
 
 check:
@@ -24,31 +24,72 @@ check:
 parse:
   logql:
     # Logs that start with "type="
-    - event.original: >
-        $TYPE_FIELD $MSG_FIELD <_auditd.log.payload> old
-        auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid> old
-        ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
-    - event.original: >
-        $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
-        msg=<_auditd.log.sub_payload>
-    - event.original: $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
-    - event.original: $TYPE_FIELD $MSG_FIELD
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD <_log.msg>
+        old auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid>
+        old ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD <_log.msg>
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD
 
     # Logs that start with "node="
-    - event.original: >
-        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_auditd.log.payload> old
-        auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid> old
-        ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
-    - event.original: >
-        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
-        msg=<_auditd.log.sub_payload>
-    - event.original: $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_auditd.log.payload>
-    - event.original: $NODE_FIELD $TYPE_FIELD $MSG_FIELD
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_log.msg>
+        old auid=<auditd.log.old_auid> new auid=<auditd.log.new_auid>
+        old ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD
+        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD
+        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD
+        $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD
+        $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_log.msg>
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD $MSG_FIELD
 
 normalize:
+  - check:
+      - _log.msg: +exists
+      - _log.sub_msg: +exists
+    map:
+      _kv_msg: +s_concat/$_log.msg/ /$_log.sub_msg
+
+  - check:
+      - _log.sub_msg: +not_exists
+      - _log.msg: +exists
+    map:
+      _kv_msg: $_log.msg
+
   - map:
-      timestamp: $auditd.log.epoch
-      auditd.log.epoch: +delete_field
       event.kind: event
-      event.action: +s_lo/$auditd.log.record_type
-      auditd.log.record_type: +delete_field
+      timestamp: $_log.epoch
+      event.action: +s_lo/$_log.record_type
+      _log: +delete_field
