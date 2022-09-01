@@ -1,7 +1,7 @@
 name: postgresql-csv
 
 metadata:
-  description: Parses postgresql csv logs in its Common Log Format
+  description: Decoder for postgresql in csv log format
   references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
   product.name: postgresql
   product.versions:
@@ -62,7 +62,6 @@ normalize:
       _temp_timestamp: "+s_to_array/$timestamp/ "
       event.timezone: $_temp_timestamp/2
       #log.offset: XXX                   #TODO: where to get this value?
-      # _message: +delete_field
 
   - check:
       - user.name: +exists
@@ -73,7 +72,6 @@ normalize:
       - _internal_query_pos: +exists
     map:
       postgresql.internal_query: $_internal_query_pos
-      _internal_query_pos: +delete_field
 
   #TODO: see Table 20.2. Message Severity Levels (https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG)
   # we're loosing warning type and double check state_code comparisson
@@ -93,19 +91,3 @@ normalize:
       - postgresql.log.sql_state_code: +s_eq/00000
     map:
       event.type: +s_append/info
-
-  # Cleanup
-  - check:
-      - _temp_timestamp: +exists
-    map:
-      _temp_timestamp: +delete_field
-
-  - check:
-      - _: +exists
-    map:
-      _: +delete_field
-
-  - check:
-      - _query_pos: +exists
-    map:
-      _query_pos: +delete_field
