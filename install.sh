@@ -66,17 +66,17 @@ Install()
     MAKEBIN=make
     ## Find make/gmake
     if [ "X$NUNAME" = "XOpenBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XFreeBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XNetBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XDragonflyBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XBitrig" ]; then
-  	    MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XSunOS" ]; then
-	      MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XHP-UX" ]; then
           MAKEBIN=/usr/local/bin/gmake
     elif [ "X$NUNAME" = "XAIX" ]; then
@@ -84,7 +84,6 @@ Install()
     fi
     if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
         ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
-        ALPINE="ALPINE=1"
     fi
 
     # On CentOS <= 5 we need to disable syscollector compilation
@@ -114,7 +113,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} ${ALPINE} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
