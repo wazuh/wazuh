@@ -78,8 +78,6 @@ class WazuhIntegration:
     :param access_key: AWS access key id
     :param secret_key: AWS secret access key
     :param aws_profile: AWS profile
-    :param retry_mode: AWS Retry Configuration mode
-    :param retry_max_attempts: AWS Retry Configuration max attempts allowed
     :param iam_role_arn: IAM Role
     :param service name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
@@ -87,7 +85,7 @@ class WazuhIntegration:
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
     """
 
-    def __init__(self, access_key, secret_key, retry_mode, retry_max_attempts, aws_profile, iam_role_arn,
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
                  discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         # SQL queries
@@ -159,8 +157,6 @@ class WazuhIntegration:
 
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
-                                      retry_mode=retry_mode,
-                                      retry_max_attempts=retry_max_attempts,
                                       profile=aws_profile,
                                       iam_role_arn=iam_role_arn,
                                       service_name=service_name,
@@ -233,23 +229,26 @@ class WazuhIntegration:
             elif 'trail_progress' in table:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
-    def get_client(self, access_key, secret_key, retry_mode, retry_max_attempts, profile, iam_role_arn, service_name, bucket, region=None,
+    def default_config(self, args):
+        if path.exists("".join([path.expanduser('~'), '/.aws/config'])):
+            args['config'] = Config(
+                retries={
+                    'max_attempts': 10,
+                    'mode': 'standard'
+                }
+            )
+
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name,
+                   bucket, region=None,
                    sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         conn_args = {}
 
         extra_client_args = {}
+        self.default_config(extra_client_args)
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
-
-        if retry_max_attempts is not None and retry_mode is not None:
-            extra_client_args['config'] = Config(
-                retries={
-                    'max_attempts': int(retry_max_attempts),
-                    'mode': retry_mode
-                }
-            )
 
         if profile is not None:
             conn_args['profile_name'] = profile
@@ -267,7 +266,9 @@ class WazuhIntegration:
         # If using a role, create session using that
         try:
             if iam_role_arn:
+
                 sts_client = boto_session.client('sts', endpoint_url=sts_endpoint, **extra_client_args)
+
                 assume_role_kwargs = {'RoleArn': iam_role_arn,
                                       'RoleSessionName': 'WazuhLogParsing'
                                       }
@@ -279,27 +280,24 @@ class WazuhIntegration:
                 sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
                                             aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
-                                            region_name=conn_args.get('region_name')
-                                            )
-                client = sts_session.client(service_name=service_name, endpoint_url=service_endpoint, **extra_client_args)
+                                            region_name=conn_args.get('region_name'))
+
+                client = sts_session.client(service_name=service_name, endpoint_url=service_endpoint,
+                                            **extra_client_args)
             else:
-                client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint, **extra_client_args)
+                client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
+                                             **extra_client_args)
+
         except botocore.exceptions.ClientError as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
         return client
 
-    def get_sts_client(self, access_key, secret_key, retry_mode, retry_max_attempts, profile=None):
+    def get_sts_client(self, access_key, secret_key, profile=None):
         conn_args = {}
-        extra_client_args = {}
 
-        if retry_max_attempts is not None and retry_mode is not None:
-            extra_client_args['config'] = Config(
-                retries={
-                    'max_attempts': int(retry_max_attempts),
-                    'mode': retry_mode
-                }
-            )
+        extra_client_args = {}
+        self.default_config(extra_client_args)
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
@@ -311,6 +309,7 @@ class WazuhIntegration:
 
         try:
             sts_client = boto_session.client(service_name='sts', **extra_client_args)
+
         except Exception as e:
             print("Error getting STS client: {}".format(e))
             sys.exit(3)
@@ -423,7 +422,7 @@ class AWSBucket(WazuhIntegration):
         The format that the service uses to store the date in the bucket's path.
     """
 
-    def __init__(self, reparse, access_key, secret_key, retry_mode, retry_max_attempts, profile, iam_role_arn,
+    def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  prefix, suffix, delete_file, aws_organization_id, region,
                  discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
@@ -538,8 +537,6 @@ class AWSBucket(WazuhIntegration):
         self.db_name = 's3_cloudtrail'
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
-                                  retry_mode=retry_mode,
-                                  retry_max_attempts=retry_max_attempts,
                                   aws_profile=profile,
                                   iam_role_arn=iam_role_arn,
                                   bucket=bucket,
@@ -1580,8 +1577,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.service = 'vpcflowlogs'
         self.access_key = kwargs['access_key']
         self.secret_key = kwargs['secret_key']
-        self.retry_max_attempts = kwargs.get('retry_max_attempts', None),
-        self.retry_mode = kwargs.get('retry_mode', None),
         self.profile_name = kwargs['profile']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
@@ -1707,19 +1702,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
             return result
 
-    def get_ec2_client(self, access_key, secret_key, retry_mode, retry_max_attempts, region, profile_name=None):
+    def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
         conn_args = {}
         conn_args['region_name'] = region
 
         extra_client_args = {}
-
-        if retry_max_attempts is not None and retry_mode is not None:
-            extra_client_args['config'] = Config(
-                retries={
-                    'max_attempts': int(retry_max_attempts),
-                    'mode': retry_mode
-                }
-            )
+        self.default_config(extra_client_args)
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
@@ -1737,8 +1725,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key, retry_mode, retry_max_attempts, region, profile_name=None):
-        ec2_client = self.get_ec2_client(access_key, secret_key, retry_mode, retry_max_attempts, region, profile_name=profile_name)
+    def get_flow_logs_ids(self, access_key, secret_key, region, profile_name=None):
+        ec2_client = self.get_ec2_client(access_key, secret_key, region,
+                                         profile_name=profile_name)
         flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         return flow_logs_ids
 
@@ -1804,7 +1793,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 # get flow log ids for the current region
                 flow_logs_ids = self.get_flow_logs_ids(self.access_key,
                                                        self.secret_key,
-                                                       self.retry_mode, self.retry_max_attempts,
                                                        aws_region, profile_name=self.profile_name)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
@@ -2007,10 +1995,8 @@ class AWSCustomBucket(AWSBucket):
         # get STS client
         access_key = kwargs.get('access_key', None)
         secret_key = kwargs.get('secret_key', None)
-        retry_max_attempts = kwargs.get('retry_max_attempts', None),
-        retry_mode = kwargs.get('retry_mode', None),
         profile = kwargs.get('profile', None)
-        self.sts_client = self.get_sts_client(access_key, secret_key, retry_mode, retry_max_attempts, profile=profile)
+        self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
         self.macie_location_pattern = re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
@@ -2688,7 +2674,7 @@ class AWSService(WazuhIntegration):
     :param region: Region of service
     """
 
-    def __init__(self, reparse, access_key, secret_key, retry_mode, retry_max_attempts, aws_profile, iam_role_arn,
+    def __init__(self, reparse, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None,
                  discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
                  iam_role_duration=None):
@@ -2699,14 +2685,13 @@ class AWSService(WazuhIntegration):
         self.reparse = reparse
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  retry_mode=retry_mode, retry_max_attempts=retry_max_attempts,
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                   service_name=service_name, region=region, discard_field=discard_field,
                                   discard_regex=discard_regex, sts_endpoint=sts_endpoint,
                                   service_endpoint=service_endpoint, iam_role_duration=iam_role_duration)
 
         # get sts client (necessary for getting account ID)
-        self.sts_client = self.get_sts_client(access_key, secret_key, retry_mode, retry_max_attempts, aws_profile)
+        self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         # get account ID
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.only_logs_after = only_logs_after
@@ -2811,7 +2796,7 @@ class AWSInspector(AWSService):
         The number of events collected and sent to analysisd.
     """
 
-    def __init__(self, reparse, access_key, secret_key, retry_mode, retry_max_attempts, aws_profile,
+    def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups=None,
                  remove_log_streams=None, discard_field=None, discard_regex=None,
                  sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
@@ -2820,7 +2805,6 @@ class AWSInspector(AWSService):
         self.inspector_region = region
 
         AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
-                            retry_max_attempts=retry_max_attempts, retry_mode=retry_mode,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
                             remove_log_streams=remove_log_streams, discard_field=discard_field,
@@ -2957,7 +2941,6 @@ class AWSCloudWatchLogs(AWSService):
     """
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
-                 retry_mode, retry_max_attempts,
                  iam_role_arn, only_logs_after, region, aws_log_groups,
                  remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
                  iam_role_duration=None):
@@ -3031,7 +3014,6 @@ class AWSCloudWatchLogs(AWSService):
                                 aws_log_stream='{aws_log_stream}';"""
 
         AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
-                            retry_mode=retry_mode, retry_max_attempts=retry_max_attempts,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             region=region, aws_log_groups=aws_log_groups, remove_log_streams=remove_log_streams,
                             service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex,
@@ -3180,9 +3162,8 @@ class AWSCloudWatchLogs(AWSService):
                 debug(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
                       f'available. Attempting again.', 1)
             except botocore.exceptions.ClientError as err:
-                    debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
-                    sys.exit(1)
-
+                debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
+                sys.exit(1)
 
             # Update token
             token = response['nextForwardToken']
@@ -3282,7 +3263,7 @@ class AWSCloudWatchLogs(AWSService):
 
             if values['end_time'] is not None:
                 result['end_time'] = max_end_time if max_end_time is not None and max_end_time > values['end_time'] else \
-                    values['end_time']
+                values['end_time']
             else:
                 result['end_time'] = max_end_time
             return result
@@ -3493,8 +3474,6 @@ def get_script_arguments():
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
     parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
     parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secret key credential', default=None)
-    parser.add_argument('-rM', '--retry_mode', dest='retry_mode', help='Configuration retry mode', default=None)
-    parser.add_argument('-rm', '--retry_max_attempts', dest='retry_max_attempts', help='Configuration retry max attempts', default=None)
     # Beware, once you delete history it's gone.
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)
@@ -3587,8 +3566,6 @@ def main(argv):
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
-                                 retry_mode=options.retry_mode,
-                                 retry_max_attempts=options.retry_max_attempts,
                                  profile=options.aws_profile,
                                  iam_role_arn=options.iam_role_arn,
                                  bucket=options.logBucket,
@@ -3628,8 +3605,6 @@ def main(argv):
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
                                        secret_key=options.secret_key,
-                                       retry_mode=options.retry_mode,
-                                       retry_max_attempts=options.retry_max_attempts,
                                        aws_profile=options.aws_profile,
                                        iam_role_arn=options.iam_role_arn,
                                        only_logs_after=options.only_logs_after,
