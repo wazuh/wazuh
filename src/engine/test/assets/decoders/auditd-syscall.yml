@@ -11,7 +11,7 @@ parents:
   - auditd
 
 check:
-  - event.action: syscall
+  - event.action: +s_eq/syscall
 
 parse:
   logql:
@@ -24,8 +24,9 @@ parse:
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
-        tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
-        exe="<process.executable>" subj=<auditd.log.subj> key=<_auditd.log.key>
+        tty=<auditd.log.tty> ses=<auditd.log.ses> comm=<process.name/quoted/"/">
+        exe=<process.executable/quoted/"/"> subj=<auditd.log.subj>
+        key=<_auditd.log.key>
     - _kv_msg: >-
         arch=<host.architecture> syscall=<auditd.log.syscall>
         success=<_auditd.log.success> exit=<process.exit_code>
@@ -35,7 +36,7 @@ parse:
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
-        tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
+        tty=<auditd.log.tty> ses=<auditd.log.ses> comm=<process.name/quoted/"/">
         exe=<process.executable> subj=<auditd.log.subj> key=<_auditd.log.key>
     - _kv_msg: >-
         arch=<host.architecture> syscall=<auditd.log.syscall>
@@ -46,7 +47,7 @@ parse:
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
-        tty=<auditd.log.tty> ses=<auditd.log.ses> comm="<process.name>"
+        tty=<auditd.log.tty> ses=<auditd.log.ses> comm=<process.name/quoted/"/">
         exe=<process.executable> key=<_auditd.log.key>
 
 normalize:
