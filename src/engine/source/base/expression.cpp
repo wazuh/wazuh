@@ -6,7 +6,7 @@ using Expression = std::shared_ptr<Formula>;
 
 unsigned int Formula::generateId()
 {
-    unsigned int id = 0;
+    static unsigned int id = 0;
     return id++;
 }
 
@@ -230,14 +230,18 @@ std::string toGraphvizStr(Expression expression)
             int i = 0;
             for (auto& child : operation->getOperands())
             {
-                ss << fmt::format("{} -> {} [ltail=cluster_{} lhead=cluster_{} label={} "
-                                  "fontcolor=\"red\"];\n",
-                                  current->getId(),
-                                  child->getId(),
-                                  current->getId(),
-                                  child->getId(),
-                                  i++);
-                visitRef(child, visitRef);
+                if (child)
+                {
+                    ss << fmt::format(
+                        "{} -> {} [ltail=cluster_{} lhead=cluster_{} label={} "
+                        "fontcolor=\"red\"];\n",
+                        current->getId(),
+                        child->getId(),
+                        current->getId(),
+                        child->getId(),
+                        i++);
+                    visitRef(child, visitRef);
+                }
             }
         }
     };
