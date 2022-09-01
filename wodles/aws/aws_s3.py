@@ -3161,7 +3161,7 @@ class AWSCloudWatchLogs(AWSService):
             try:
                 response = self.client.get_log_events(
                     **{param: value for param, value in parameters.items() if value is not None})
-                break
+
             except botocore.exceptions.EndpointConnectionError:
                 debug(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
                       f'available. Attempting again.', 1)
