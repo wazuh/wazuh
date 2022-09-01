@@ -258,15 +258,19 @@ TEST(rxbkFactoryTest, rxFactoryOneTermWithTrace)
         "test",
         rx::make_subscriber<std::string>([=](const std::string& message)
                                          { ASSERT_EQ(message, traceEvent); }));
+
+    auto gotEvent = false;
     output.subscribe(
-        [=](RxEvent e)
+        [=, &gotEvent](RxEvent e)
         {
+            gotEvent = true;
             ASSERT_TRUE(e->success());
             ASSERT_EQ(e->payload(), event);
             ASSERT_EQ(e->trace(), trace);
         });
 
     inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    ASSERT_TRUE(gotEvent);
     inputSubj.get_subscriber().on_completed();
 }
 
@@ -295,24 +299,37 @@ TEST(rxbkFactoryTest, rxFactoryAndOfTerms)
     std::unordered_set<std::string> names;
 
     // All success
+    auto gotEvent1 = false;
     auto output1 =
         rxFactory(inputSubj.get_observable(),
                   names,
                   base::And::create("And1", {termSuccess, termSuccess, termSuccess}),
                   controller,
                   [](auto s) {});
-    output1.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output1.subscribe(
+        [&](auto e)
+        {
+            gotEvent1 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Failure last
+    auto gotEvent2 = false;
     auto output2 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::And::create("And2", {termSuccess, termSuccess, termFailure}),
                   controller,
                   [](auto s) {});
-    output2.subscribe([](auto e) { ASSERT_TRUE(e->failure()); });
+    output2.subscribe(
+        [&](auto e)
+        {
+            gotEvent2 = true;
+            ASSERT_TRUE(e->failure());
+        });
 
     // Failure middle
+    auto gotEvent3 = false;
     auto output3 =
         rxFactory(inputSubj.get_observable(),
                   {},
@@ -320,9 +337,16 @@ TEST(rxbkFactoryTest, rxFactoryAndOfTerms)
                   controller,
                   [](auto s) {});
     output3.subscribe(
-        [](auto e) { ASSERT_TRUE(e->failure()); }, [](auto) { FAIL(); }, []() {});
+        [&](auto e)
+        {
+            gotEvent3 = true;
+            ASSERT_TRUE(e->failure());
+        },
+        [](auto) { FAIL(); },
+        []() {});
 
     // Failure first
+    auto gotEvent4 = false;
     auto output4 =
         rxFactory(inputSubj.get_observable(),
                   {},
@@ -330,9 +354,19 @@ TEST(rxbkFactoryTest, rxFactoryAndOfTerms)
                   controller,
                   [](auto s) {});
     output4.subscribe(
-        [](auto e) { ASSERT_TRUE(e->failure()); }, [](auto) { FAIL(); }, []() {});
+        [&](auto e)
+        {
+            gotEvent4 = true;
+            ASSERT_TRUE(e->failure());
+        },
+        [](auto) { FAIL(); },
+        []() {});
 
     inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    ASSERT_TRUE(gotEvent1);
+    ASSERT_TRUE(gotEvent2);
+    ASSERT_TRUE(gotEvent3);
+    ASSERT_TRUE(gotEvent4);
     inputSubj.get_subscriber().on_completed();
 }
 
@@ -361,41 +395,69 @@ TEST(rxbkFactoryTest, rxFactoryOrOfTerms)
     std::unordered_set<std::string> names;
 
     // All failure
+    auto gotEvent1 = false;
     auto output1 =
         rxFactory(inputSubj.get_observable(),
                   names,
                   base::Or::create("Or1", {termFailure, termFailure, termFailure}),
                   controller,
                   [](auto s) {});
-    output1.subscribe([](auto e) { ASSERT_TRUE(e->failure()); });
+    output1.subscribe(
+        [&](auto e)
+        {
+            gotEvent1 = true;
+            ASSERT_TRUE(e->failure());
+        });
 
     // Success last
+    auto gotEvent2 = false;
     auto output2 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Or::create("Or2", {termFailure, termFailure, termSuccess}),
                   controller,
                   [](auto s) {});
-    output2.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output2.subscribe(
+        [&](auto e)
+        {
+            gotEvent2 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Success middle
+    auto gotEvent3 = false;
     auto output3 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Or::create("Or3", {termFailure, termSuccess, termError}),
                   controller,
                   [](auto s) {});
-    output3.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output3.subscribe(
+        [&](auto e)
+        {
+            gotEvent3 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Success first
+    auto gotEvent4 = false;
     auto output4 = rxFactory(inputSubj.get_observable(),
                              {},
                              base::Or::create("Or4", {termSuccess, termError, termError}),
                              controller,
                              [](auto s) {});
-    output4.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output4.subscribe(
+        [&](auto e)
+        {
+            gotEvent4 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    ASSERT_TRUE(gotEvent1);
+    ASSERT_TRUE(gotEvent2);
+    ASSERT_TRUE(gotEvent3);
+    ASSERT_TRUE(gotEvent4);
     inputSubj.get_subscriber().on_completed();
 }
 
@@ -424,42 +486,70 @@ TEST(rxbkFactoryTest, rxFactoryChainOfTerms)
     std::unordered_set<std::string> names;
 
     // All success
+    auto gotEvent1 = false;
     auto output1 =
         rxFactory(inputSubj.get_observable(),
                   names,
                   base::Chain::create("Chain1", {termSuccess, termSuccess, termSuccess}),
                   controller,
                   [](auto s) {});
-    output1.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output1.subscribe(
+        [&](auto e)
+        {
+            gotEvent1 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Failure last
+    auto gotEvent2 = false;
     auto output2 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Chain::create("Chain2", {termSuccess, termSuccess, termFailure}),
                   controller,
                   [](auto s) {});
-    output2.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output2.subscribe(
+        [&](auto e)
+        {
+            gotEvent2 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Failure middle
+    auto gotEvent3 = false;
     auto output3 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Chain::create("Chain3", {termSuccess, termFailure, termFailure}),
                   controller,
                   [](auto s) {});
-    output3.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output3.subscribe(
+        [&](auto e)
+        {
+            gotEvent3 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // All failure
+    auto gotEvent4 = false;
     auto output4 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Chain::create("Chain4", {termFailure, termFailure, termFailure}),
                   controller,
                   [](auto s) {});
-    output4.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output4.subscribe(
+        [&](auto e)
+        {
+            gotEvent4 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    ASSERT_TRUE(gotEvent1);
+    ASSERT_TRUE(gotEvent2);
+    ASSERT_TRUE(gotEvent3);
+    ASSERT_TRUE(gotEvent4);
     inputSubj.get_subscriber().on_completed();
 }
 
@@ -489,42 +579,70 @@ TEST(rxbkFactoryTest, rxFactoryBroadcastOfTerms)
     std::unordered_set<std::string> names;
 
     // All success
+    auto gotEvent1 = false;
     auto output1 = rxFactory(
         inputSubj.get_observable(),
         names,
         base::Broadcast::create("Broadcast1", {termSuccess, termSuccess, termSuccess}),
         controller,
         [](auto s) {});
-    output1.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output1.subscribe(
+        [&](auto e)
+        {
+            gotEvent1 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Failure last
+    auto gotEvent2 = false;
     auto output2 = rxFactory(
         inputSubj.get_observable(),
         {},
         base::Broadcast::create("Broadcast2", {termSuccess, termSuccess, termFailure}),
         controller,
         [](auto s) {});
-    output2.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output2.subscribe(
+        [&](auto e)
+        {
+            gotEvent2 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Failure middle
+    auto gotEvent3 = false;
     auto output3 = rxFactory(
         inputSubj.get_observable(),
         {},
         base::Broadcast::create("Broadcast3", {termSuccess, termFailure, termFailure}),
         controller,
         [](auto s) {});
-    output3.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output3.subscribe(
+        [&](auto e)
+        {
+            gotEvent3 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // All failure
+    auto gotEvent4 = false;
     auto output4 = rxFactory(
         inputSubj.get_observable(),
         {},
         base::Broadcast::create("Broadcast4", {termFailure, termFailure, termFailure}),
         controller,
         [](auto s) {});
-    output4.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output4.subscribe(
+        [&](auto e)
+        {
+            gotEvent4 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    ASSERT_TRUE(gotEvent1);
+    ASSERT_TRUE(gotEvent2);
+    ASSERT_TRUE(gotEvent3);
+    ASSERT_TRUE(gotEvent4);
     inputSubj.get_subscriber().on_completed();
 }
 
@@ -553,33 +671,54 @@ TEST(rxbkFactoryTest, rxFactoryImplicationOfTerms)
     std::unordered_set<std::string> names;
 
     // Condition success, consequence success
+    auto gotEvent1 = false;
     auto output1 =
         rxFactory(inputSubj.get_observable(),
                   names,
                   base::Implication::create("Implication1", termSuccess, termSuccess),
                   controller,
                   [](auto s) {});
-    output1.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output1.subscribe(
+        [&](auto e)
+        {
+            gotEvent1 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Condition success, consequence failure
+    auto gotEvent2 = false;
     auto output2 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Implication::create("Implication2", termSuccess, termFailure),
                   controller,
                   [](auto s) {});
-    output2.subscribe([](auto e) { ASSERT_TRUE(e->success()); });
+    output2.subscribe(
+        [&](auto e)
+        {
+            gotEvent2 = true;
+            ASSERT_TRUE(e->success());
+        });
 
     // Condition failure
+    auto gotEvent3 = false;
     auto output3 =
         rxFactory(inputSubj.get_observable(),
                   {},
                   base::Implication::create("Implication3", termFailure, termError),
                   controller,
                   [](auto s) {});
-    output3.subscribe([](auto e) { ASSERT_TRUE(e->failure()); });
+    output3.subscribe(
+        [&](auto e)
+        {
+            gotEvent3 = true;
+            ASSERT_TRUE(e->failure());
+        });
 
     inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    ASSERT_TRUE(gotEvent1);
+    ASSERT_TRUE(gotEvent2);
+    ASSERT_TRUE(gotEvent3);
     inputSubj.get_subscriber().on_completed();
 }
 
@@ -593,4 +732,46 @@ TEST(rxbkFactoryTest, BuildRxPipelineUseCase)
 {
     // TODO: implement with a realistic environment
     GTEST_SKIP();
+}
+
+// Originally when a named expression has multiple parents, it was visited multiple times
+// and tried to add duplicated tracers. Ensure tracers are not duplicated.
+TEST(rxbkFactoryTest, MultipleParentsOfNamedExpression)
+{
+    Controller controller;
+    rx::subjects::subject<RxEvent> inputSubj;
+    Observable output;
+    std::unordered_set<std::string> names;
+
+    // Shared child
+    auto op = base::Term<base::EngineOp>::create(
+        "", [](base::Event e) { return base::result::makeSuccess(e, "Got event"); });
+    auto child = base::And::create("NamedChild", {op});
+    names.insert(child->getName());
+
+    // Parents
+    auto parent1 = base::Chain::create("Parent1", {});
+    parent1->getOperands().push_back(child);
+    names.insert(parent1->getName());
+    auto parent2 = base::Chain::create("Parent2", {});
+    parent2->getOperands().push_back(child);
+    names.insert(parent2->getName());
+
+    ASSERT_NO_THROW(output = rxFactory(inputSubj.get_observable(),
+                                       names,
+                                       base::Chain::create("", {parent1, parent2}),
+                                       controller,
+                                       [](auto s) {}));
+
+    auto nEvents = 0;
+    auto subscriber = rx::make_subscriber<std::string>([&](auto s) { nEvents++; });
+    controller.listenOnTrace(child->getName(), subscriber);
+    output.subscribe();
+
+    auto event = std::make_shared<json::Json>(R"({"field": "value"})");
+    auto rxEvent = std::make_shared<base::result::Result<base::Event>>(
+        base::result::makeSuccess<base::Event>(event));
+    inputSubj.get_subscriber().on_next(std::move(rxEvent));
+    inputSubj.get_subscriber().on_completed();
+    ASSERT_EQ(nEvents, 2);
 }
