@@ -355,10 +355,11 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Get trim type
-    char trimType = parameters[0].m_value == "begin"  ? 's'
-                    : parameters[0].m_value == "end"  ? 'e'
-                    : parameters[0].m_value == "both" ? 'b'
-                                                      : '\0';
+    char trimType = parameters[0].m_value == "begin"
+                        ? 's'
+                        : parameters[0].m_value == "end"
+                              ? 'e'
+                              : parameters[0].m_value == "both" ? 'b' : '\0';
     if ('\0' == trimType)
     {
         throw std::runtime_error("Invalid trim type for s_trim operator");
@@ -561,6 +562,88 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
                 utils::string::join(stringArray, separator)};
 
             event->setString(composedValueString, targetField);
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+// field: +s_fromHexa/$<hex_reference>
+base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
+{
+    const auto [targetField, name, rawParameters] =
+        helper::base::extractDefinition(definition);
+    const auto parameters = helper::base::processParameters(rawParameters);
+    helper::base::checkParametersSize(parameters, 1);
+
+    const auto sourceField = parameters.at(0);
+
+    const auto traceName =
+        helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", traceName);
+    const auto failureTrace1 = fmt::format(
+        "[{}] -> Failure: parameter is not a string or it doesn't exist", traceName);
+    const auto failureTrace2 = fmt::format(
+        "[{}] -> Failure: hexa string has not a pair number of digits", traceName);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        traceName,
+        [=,
+         targetField = std::move(targetField),
+         sourceField = std::move(sourceField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            std::string strHex;
+
+            if (helper::base::Parameter::Type::REFERENCE == sourceField.m_type)
+            {
+                // Getting string field from a reference
+                const auto refStrHEX = event->getString(sourceField.m_value);
+                if (!refStrHEX.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace1);
+                }
+
+                strHex = refStrHEX.value();
+            }
+            else
+            {
+                strHex = sourceField.m_value;
+            }
+
+            const auto lenStrHex = strHex.length();
+
+            if (lenStrHex % 2)
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            std::string strASCII = "";
+            strASCII.resize((lenStrHex / 2) + 1);
+
+            for (int i = 0; i < lenStrHex; i += 2)
+            {
+                char* err = nullptr;
+
+                std::string byte = strHex.substr(i, 2);
+                char chr = (char)strtol(byte.c_str(), &err, 16);
+
+                if (err != nullptr && *err != 0)
+                {
+                    return base::result::makeFailure(
+                        event,
+                        fmt::format(
+                            "[{}] -> Failure: Character '{}' is not a valid hexa digit",
+                            traceName,
+                            err));
+                }
+
+                strASCII += chr;
+            }
+
+            event->setString(strASCII, targetField);
+
             return base::result::makeSuccess(event, successTrace);
         });
 }
