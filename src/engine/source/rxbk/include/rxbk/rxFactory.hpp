@@ -57,7 +57,7 @@ public:
      * @return std::function<void(const std::string&)> A function that can be used to log
      * a trace message.
      */
-    std::function<void(const std::string&)> getTracerFn(std::string name);
+    std::function<void(const std::string&)> getTracerFn(std::string name) const;
 
     /**
      * @brief Subscribe to the output of the tracer.
@@ -163,6 +163,24 @@ public:
      * @return rx::composite_subscription Aggregated subscription to the outputs.
      */
     rx::composite_subscription listenOnAllTrace(rxcpp::subscriber<std::string> s);
+
+    /**
+     * @brief Check if controller has specific tracer.
+     *
+     * @param name Name of the tracer to check.
+     * @return true if controller has tracer.
+     * @return false otherwise.
+     */
+    bool hasTracer(const std::string& name) const;
+
+    /**
+     * @brief Get the Tracer object
+     *
+     * @param name Name of the tracer to get.
+     * @return const Tracer& The tracer object.
+     * @throw std::out_of_range If the tracer does not exist.
+     */
+    const Tracer& getTracer(const std::string& name) const;
 };
 
 /**

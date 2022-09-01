@@ -13,7 +13,7 @@ Tracer::Tracer()
 {
 }
 
-std::function<void(const std::string&)> Tracer::getTracerFn(std::string name)
+std::function<void(const std::string&)> Tracer::getTracerFn(std::string name) const
 {
     return [=](const std::string& message)
     {
@@ -103,6 +103,16 @@ rx::composite_subscription Controller::listenOnAllTrace(rx::subscriber<std::stri
     return cs;
 }
 
+bool Controller::hasTracer(const std::string& name) const
+{
+    return m_tracers.end() != m_tracers.find(name);
+}
+
+const Tracer& Controller::getTracer(const std::string& name) const
+{
+    return m_tracers.at(name);
+}
+
 Observable rxFactory(const Observable& input,
                      const std::unordered_set<std::string>& assetNames,
                      base::Expression expression,
@@ -111,7 +121,17 @@ Observable rxFactory(const Observable& input,
 {
     if (assetNames.end() != assetNames.find(expression->getName()))
     {
-        tracerFn = controller.addTracer(expression->getName(), Tracer {});
+        // If the expression has been visited before, there is no need to create the
+        // tracer again, just retreive it
+        if (controller.hasTracer(expression->getName()))
+        {
+            tracerFn = controller.getTracer(expression->getName())
+                           .getTracerFn(expression->getName());
+        }
+        else
+        {
+            tracerFn = controller.addTracer(expression->getName(), Tracer {});
+        }
     }
 
     // Handle pipelines
@@ -163,7 +183,7 @@ Observable rxFactory(const Observable& input,
                             .filter([=](RxEvent result) { return result->failure(); });
             }
             step2.subscribe();
-            return step1.filter([=](RxEvent result) { return result->success(); });
+            return step1;
         }
         else if (expression->isImplication())
         {
@@ -174,9 +194,13 @@ Observable rxFactory(const Observable& input,
             step1 =
                 rxFactory(step1, assetNames, op->getOperands()[0], controller, tracerFn)
                     .filter(
-                        [condition](RxEvent result)
+                        [condition, tracer = tracerFn](RxEvent result)
                         {
                             *condition = result->success();
+                            // TODO: temporal fix to display history of assets, we need to
+                            // rethink tracers
+                            tracer(std::string {fmt::format(
+                                "[condition]:{}", *condition ? "success" : "failure")});
                             return result->success();
                         });
             rxFactory(step1, assetNames, op->getOperands()[1], controller, tracerFn)
@@ -215,12 +239,10 @@ Controller buildRxPipeline(const builder::Environment& environment)
 {
     Controller controller;
     std::unordered_set<std::string> assetNames;
-    std::transform(environment.assets().begin(), environment.assets().end(),
+    std::transform(environment.assets().begin(),
+                   environment.assets().end(),
                    std::inserter(assetNames, assetNames.begin()),
-                   [](const auto& pair)
-                   {
-                       return pair.first;
-                   });
+                   [](const auto& pair) { return pair.first; });
     auto output = rxFactory(controller.getInternalInput(),
                             assetNames,
                             environment.getExpression(),
