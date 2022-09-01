@@ -3,6 +3,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import argparse
 import asyncio
 import logging
@@ -11,13 +12,28 @@ import signal
 import sys
 
 from wazuh.core.utils import clean_pid_files
+from wazuh.core.wlogging import WazuhLogger
 
 
 #
 # Aux functions
 #
 
-def set_logging(foreground_mode=False, debug_mode=0):
+def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
+    """Set cluster logger.
+
+    Parameters
+    ----------
+    foreground_mode : bool
+        Whether to log in the standard output or not.
+    debug_mode : int
+        Debug mode.
+
+    Returns
+    -------
+    WazuhLogger
+        Cluster logger.
+    """
     cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
                                                  debug_level=debug_mode,
                                                  tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
@@ -26,6 +42,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
 
 
 def print_version():
+    """Print Wazuh metadata."""
     from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
     print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
 
@@ -51,7 +68,20 @@ def exit_handler(signum, frame):
 #
 # Master main
 #
-async def master_main(args, cluster_config, cluster_items, logger):
+async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
+    """Start main process of the master node.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Script arguments.
+    cluster_config : dict
+        Cluster configuration.
+    cluster_items : dict
+        Content of the cluster.json file.
+    logger : WazuhLogger
+        Cluster logger.
+    """
     from wazuh.core.cluster import master, local_server
     cluster_utils.context_tag.set('Master')
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
@@ -70,7 +100,20 @@ async def master_main(args, cluster_config, cluster_items, logger):
 #
 # Worker main
 #
-async def worker_main(args, cluster_config, cluster_items, logger):
+async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
+    """Start main process of a worker node.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Script arguments.
+    cluster_config : dict
+        Cluster configuration.
+    cluster_items : dict
+        Content of the cluster.json file.
+    logger : WazuhLogger
+        Cluster logger.
+    """
     from wazuh.core.cluster import worker, local_server
     from concurrent.futures import ProcessPoolExecutor
     cluster_utils.context_tag.set('Worker')
@@ -105,12 +148,12 @@ async def worker_main(args, cluster_config, cluster_items, logger):
             await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
 
 
-def get_script_arguments():
+def get_script_arguments() -> argparse.Namespace:
     """Get script arguments.
 
     Returns
     -------
-    ArgumentParser object
+    argparse.Namespace
         Arguments passed to the script.
     """
 
@@ -145,7 +188,7 @@ def get_script_arguments():
 
 
 def main():
-    """Main function of the wazuh_clusterd script in charge of starting the cluster process."""
+    """Main function of the wazuh-clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
 
     # Set correct permissions on cluster.log file
