@@ -115,12 +115,8 @@ add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
 target_include_directories(main
     PRIVATE
-    ${ENGINE_SOURCE_DIR}/router
-    ${ENGINE_SOURCE_DIR}/rxcppBackend
-    ${CameronQueue_SOURCE_DIR}
     ${CLI11_SOURCE_DIR}/include
 )
-
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
@@ -132,9 +128,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rxbk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cmds)
 
 #TODO isolate rxcpp
-target_link_libraries(main base builders catalog rxbk json wdb server)
+target_link_libraries(main base cmds)
 
 # Build test
 if(ENGINE_BUILD_TEST)
