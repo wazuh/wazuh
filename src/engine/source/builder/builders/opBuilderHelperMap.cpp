@@ -571,8 +571,13 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] =
         helper::base::extractDefinition(definition);
+
     const auto parameters = helper::base::processParameters(rawParameters);
+
     helper::base::checkParametersSize(parameters, 1);
+
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
 
     const auto sourceField = parameters.at(0);
 
@@ -583,18 +588,18 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
     const auto failureTrace1 = fmt::format(
         "[{}] -> Failure: parameter is not a string or it doesn't exist", traceName);
-    const auto failureTrace2 = fmt::format(
+    const auto failureTrace2 =
+        fmt::format("[{}] -> Failure: parameter is not a reference", traceName);
+    const auto failureTrace3 = fmt::format(
         "[{}] -> Failure: hexa string has not a pair number of digits", traceName);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         traceName,
-        [=,
-         targetField = std::move(targetField),
-         sourceField = std::move(sourceField)](
+        [=, targetField = std::move(targetField), sourceField = std::move(sourceField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            std::string strHex;
+            std::string strHex {};
 
             if (helper::base::Parameter::Type::REFERENCE == sourceField.m_type)
             {
@@ -609,25 +614,25 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
             }
             else
             {
-                strHex = sourceField.m_value;
-            }
-
-            const auto lenStrHex = strHex.length();
-
-            if (lenStrHex % 2)
-            {
                 return base::result::makeFailure(event, failureTrace2);
             }
 
-            std::string strASCII = "";
-            strASCII.resize((lenStrHex / 2) + 1);
+            const auto lenHex = strHex.length();
 
-            for (int i = 0; i < lenStrHex; i += 2)
+            if (lenHex % 2)
+            {
+                return base::result::makeFailure(event, failureTrace3);
+            }
+
+            std::string strASCII {};
+            strASCII.resize((lenHex / 2) + 1);
+
+            for (int iHex = 0, iASCII = 0; iHex < lenHex; iHex += 2, iASCII++)
             {
                 char* err = nullptr;
 
-                std::string byte = strHex.substr(i, 2);
-                char chr = (char)strtol(byte.c_str(), &err, 16);
+                std::string byte = strHex.substr(iHex, 2);
+                char chr = (char)strtol(byte.c_str(), &err, 16);    // BASE: 16 (Hexa)
 
                 if (err != nullptr && *err != 0)
                 {
@@ -639,7 +644,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
                             err));
                 }
 
-                strASCII += chr;
+                strASCII[iASCII] = chr;
             }
 
             event->setString(strASCII, targetField);
