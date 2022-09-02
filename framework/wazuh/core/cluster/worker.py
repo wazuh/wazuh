@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import contextlib
 import errno
 import json
 import os
@@ -15,7 +16,7 @@ from wazuh.core.cluster import local_client, client, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.exception import WazuhClusterError
 from wazuh.core.utils import safe_move
-from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.wdb import AsyncWazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -212,10 +213,10 @@ class SyncWazuhdb(SyncTask):
         try:
             # Retrieve information from local wazuh-db
             get_chunks_start_time = time.time()
-            chunks = self.data_retriever(self.get_data_command)
+            chunks = await self.data_retriever(self.get_data_command)
             self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(time.time() - get_chunks_start_time):.3f}s.")
         except exception.WazuhException as e:
-            self.logger.error(f"Error obtaining data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
             return
 
         if chunks:
@@ -646,7 +647,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         and sent to the master's wazuh-db.
         """
         logger = self.task_loggers["Agent-info sync"]
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = AsyncWazuhDBConnection(self.loop)
+        await wdb_conn.open_connection()
         synced = True
         agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_a_w_m', data_retriever=wdb_conn.run_wdb_command,
                                  get_data_command='global sync-agent-info-get ',
@@ -660,6 +662,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         logger.info("Starting.")
                         self.agent_info_sync_status['date_start'] = start_time
                         await agent_info.sync(start_time=start_time)
+            except ConnectionError as e:
+                logger.error(f"Error in connection with wazuh-db: {e}.")
+                with contextlib.suppress(Exception):
+                    await wdb_conn.open_connection()
             except Exception as e:
                 logger.error(f"Error synchronizing agent info: {e}")
 

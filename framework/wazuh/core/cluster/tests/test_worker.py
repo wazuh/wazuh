@@ -5,7 +5,7 @@ import asyncio
 import logging
 import os
 import sys
-from unittest.mock import patch, mock_open, MagicMock, call
+from unittest.mock import patch, MagicMock, call
 
 import pytest
 import uvloop
@@ -22,7 +22,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster import client, worker
-        from wazuh.core import common
 
 old_basic_ck = """001 test1 any 54cfda3bfcc817aadc8f317b3f05d676d174cdf893aa2f9ee2a302ef17ae6794
 002 test2 any 7a9c0990dadeca159c239a06031b04d462d6d28dd59628b41dc7e13cc4d3a344
@@ -156,20 +155,20 @@ async def test_SyncWazuhdb(create_log, caplog):
 
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
-                                     data_retriever=lambda x: [])
+                                     data_retriever=AsyncMock(return_value=[]))
     await check_message(mock=b'True', expected_messages=["(0 chunks sent)",
                                                          "Obtained 0 chunks of data in"], start_time=123.456)
 
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
-                                     data_retriever=lambda x: ['test0', 'test1'])
+                                     data_retriever=AsyncMock(return_value=['test0', 'test1']))
     await check_message(mock=b'True', expected_messages=["All chunks sent.",
                                                          "Obtained 2 chunks of data in"], start_time=123.456)
 
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: exec('raise(WazuhException(1000))'))
-    await check_message(mock=b'True', expected_messages=["Error obtaining data from wazuh-db"], start_time=123.456)
+    await check_message(mock=b'True', expected_messages=["Could not obtain data from wazuh-db"], start_time=123.456)
 
 
 @pytest.mark.asyncio

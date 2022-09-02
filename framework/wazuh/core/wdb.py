@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
 import datetime
 import json
 import re
@@ -16,18 +17,125 @@ from wazuh.core.exception import WazuhInternalError, WazuhError
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 
+class AsyncWazuhDBConnection:
+    """
+    Represents an async connection to the wdb socket.
+    """
+
+    def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
+        """Class constructor.
+
+        Parameters
+        ----------
+        loop : asyncio.AbstractEventLoopPolicy
+            Event loop. It's optional and can always be determined automatically when self.open_connection() is
+            awaited from a coroutine.
+        """
+        self.socket_path = common.wdb_socket_path
+        self.loop = loop
+        self._reader = None
+        self._writer = None
+
+    async def open_connection(self):
+        """Establish a Unix socket connection."""
+        self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path, loop=self.loop)
+
+    def close(self):
+        if self._writer is not None:
+            self._writer.close()
+
+    def __del__(self):
+        self.close()
+
+    async def _send(self, msg, raw=False):
+        """Format and send message to wazuh-db socket without blocking event loop.
+
+        Parameters
+        ----------
+        msg : str
+            Message to be sent to wazuh-db.
+        raw : bool
+            If `True`, the status message from wazuh-db is included in the response.
+
+        Returns
+        -------
+        str, list
+            Result for the request sent to wazuh-db.
+        """
+        if None in [self._writer, self._reader]:
+            raise WazuhInternalError(2005)
+
+        # Send message.
+        encoded_msg = msg.encode(encoding='utf-8')
+        packed_msg = struct.pack('<I', len(encoded_msg)) + encoded_msg
+        self._writer.write(packed_msg)
+        await self._writer.drain()
+
+        # Read the response when it's ready.
+        try:
+            data = await self._reader.readexactly(4)
+            data_size = struct.unpack('<I', data[0:4])[0]
+            data = await self._reader.readexactly(data_size)
+            data = data.decode(encoding='utf-8', errors='ignore').split(" ", 1)
+        except asyncio.IncompleteReadError as e:
+            raise WazuhInternalError(2010, extra_message=e)
+
+        if raw:
+            return data
+        elif data[0] == "err":
+            raise WazuhError(2003, data[1])
+        else:
+            return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+
+    async def run_wdb_command(self, command):
+        """Run command in wdb and return list of retrieved information.
+
+        The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
+        State value can be:
+            ok {payload}    -> Successful query with no pending data
+            due {payload}   -> Successful query with pending data
+            err {message}   -> Unsuccessful query
+
+        Parameters
+        ----------
+        command : str
+            Command to be executed inside wazuh-db
+
+        Returns
+        -------
+        response : list
+            List with JSON results
+        """
+        response = []
+
+        while True:
+            status, payload = await self._send(command, raw=True)
+            if status == 'err':
+                raise WazuhInternalError(2007, extra_message=payload)
+            if payload != '[]':
+                response.append(payload)
+            # Exit if there are no items left to return
+            if status == 'ok':
+                break
+
+        return response
+
+
 class WazuhDBConnection:
     """
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, request_slice=500, max_size=6144):
-        """
-        Constructor
+    def __init__(self, request_slice=500):
+        """Class constructor.
+
+        Parameters
+        ----------
+        request_slice : int
+            Maximum number of items to request from wazuh-db on the first call.
         """
         self.socket_path = common.wdb_socket_path
         self.request_slice = request_slice
-        self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.__conn.connect(self.socket_path)
@@ -163,39 +271,6 @@ class WazuhDBConnection:
         - DB not found
         """
         return self._send(f"wazuhdb remove {' '.join(agents_id)}")
-
-    def run_wdb_command(self, command):
-        """Run command in wdb and return list of retrieved information.
-
-        The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
-        State value can be:
-            ok {payload}    -> Successful query with no pending data
-            due {payload}   -> Successful query with pending data
-            err {message}   -> Unsuccessful query
-
-        Parameters
-        ----------
-        command : str
-            Command to be executed inside wazuh-db
-
-        Returns
-        -------
-        response : list
-            List with JSON results
-        """
-        response = []
-
-        while True:
-            status, payload = self._send(command, raw=True)
-            if status == 'err':
-                raise WazuhInternalError(2007, extra_message=payload)
-            if payload != '[]':
-                response.append(payload)
-            # Exit if there are no items left to return
-            if status == 'ok':
-                break
-
-        return response
 
     def send(self, query, raw=True):
         """Send a message to the wdb socket.
