@@ -41,6 +41,7 @@ class AsyncWazuhDBConnection:
         self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path, loop=self.loop)
 
     def close(self):
+        """Close writer socket."""
         if self._writer is not None:
             self._writer.close()
 
@@ -63,7 +64,7 @@ class AsyncWazuhDBConnection:
             Result for the request sent to wazuh-db.
         """
         if None in [self._writer, self._reader]:
-            raise WazuhInternalError(2005)
+            raise ConnectionError('There is no connection established with the socket')
 
         # Send message.
         encoded_msg = msg.encode(encoding='utf-8')

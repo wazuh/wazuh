@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import asyncio  # noqa
 import struct
 from unittest.mock import patch, AsyncMock, MagicMock, call
 
@@ -71,7 +72,7 @@ async def test_async_send_ko():
     async_wdb = AsyncWazuhDBConnection()
 
     # Reader and writer are None.
-    with pytest.raises(exception.WazuhInternalError, match=r'\b2005\b'):
+    with pytest.raises(ConnectionError):
         await async_wdb._send('test')
 
     # EOF reached before n can be read.

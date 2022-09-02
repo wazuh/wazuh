@@ -648,7 +648,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         logger = self.task_loggers["Agent-info sync"]
         wdb_conn = AsyncWazuhDBConnection(self.loop)
-        await wdb_conn.open_connection()
+        try:
+            await wdb_conn.open_connection()
+        except FileNotFoundError:
+            logger.error('Could not connect to wazuh-db.')
         synced = True
         agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_a_w_m', data_retriever=wdb_conn.run_wdb_command,
                                  get_data_command='global sync-agent-info-get ',
