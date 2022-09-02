@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from typing import Union
 from wazuh import common
 from wazuh.core.agent import get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
@@ -14,17 +13,17 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
-def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
+def run(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Run a rootcheck scan in the specified agents.
 
     Parameters
     ----------
-    agent_list : Union[list, None]
+    agent_list : list
          List of the agents IDs to run the scan for.
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         JSON containing the affected agents.
     """
     result = AffectedItemsWazuhResult(all_msg='Rootcheck scan was restarted on returned agents',
@@ -63,7 +62,7 @@ def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["rootcheck:clear"], resources=["agent:id:{agent_list}"])
-def clear(agent_list=None):
+def clear(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Clear the rootcheck database for a list of agents.
 
     Parameters
@@ -73,7 +72,7 @@ def clear(agent_list=None):
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         JSON containing the affected agents.
     """
     result = AffectedItemsWazuhResult(all_msg='Rootcheck database was cleared on returned agents',
@@ -102,17 +101,17 @@ def clear(agent_list=None):
 
 
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
-def get_last_scan(agent_list):
-    """Get the last rootcheck scan of the agent.
+def get_last_scan(agent_list: list) -> AffectedItemsWazuhResult:
+    """Get the last rootcheck scan of an agent.
 
     Parameters
     ----------
     agent_list : list
-        Agent ID to get the last scan date from.
+        List with the agent ID to get the last scan date from.
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         JSON containing the scan date.
     """
     result = AffectedItemsWazuhResult(all_msg='Last rootcheck scan of the agent was returned',
@@ -125,8 +124,9 @@ def get_last_scan(agent_list):
 
 
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
-def get_rootcheck_agent(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
-                        filters=None, q='', distinct=None):
+def get_rootcheck_agent(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: str = None,
+                        search: str = None, select: str = None, filters: dict = None, q: str = '',
+                        distinct: bool = None) -> AffectedItemsWazuhResult:
     """Return a list of events from the rootcheck database.
 
     Parameters
@@ -153,7 +153,7 @@ def get_rootcheck_agent(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, 
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         JSON containing the rootcheck events.
     """
     if filters is None:
