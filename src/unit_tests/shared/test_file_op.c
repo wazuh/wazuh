@@ -441,7 +441,7 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
     will_return(__wrap_fseek, 0);
 
     will_return(__wrap_ftell, 0);
-    expect_string(__wrap__mwarn, formatted_msg, "file '/test/shared/default/test.txt' is empty.");
+    expect_string(__wrap__mwarn, formatted_msg, "File '/test/shared/default/test.txt' is empty.");
 
     expect_value(__wrap_fprintf, __stream, 5);
     expect_string(__wrap_fprintf, formatted_msg, "#TAG_test\n");
@@ -460,6 +460,58 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
 
     expect_value(__wrap_fclose, _File, 6);
     will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalpath, file, tag, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_diff_ftell(void **state) {
+
+    char * finalpath = "/test/shared/default/merged.mg";
+    char * file = "/test/shared/default/test.txt";
+    char * tag = "TAG_test";
+    int path_offset = 0;
+    int ret;
+
+    expect_string(__wrap_fopen, path, finalpath);
+    expect_string(__wrap_fopen, mode, "a");
+    will_return(__wrap_fopen, 5);
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_ftell, 25);
+
+    expect_value(__wrap_fprintf, __stream, 5);
+    expect_string(__wrap_fprintf, formatted_msg, "#TAG_test\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fprintf, __stream, 5);
+    expect_string(__wrap_fprintf, formatted_msg, "!25 /test/shared/default/test.txt\n");
+    will_return(__wrap_fprintf, 0);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 1);
+
+    will_return(__wrap_fwrite, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 0);
+
+    will_return(__wrap_ftell, 33);
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_fclose, _File, 5);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "File '/test/shared/default/test.txt' was modified after getting its size.");
 
     ret = MergeAppendFile(finalpath, file, tag, path_offset);
     assert_int_equal(ret, 0);
@@ -502,6 +554,8 @@ void test_MergeAppendFile_success(void **state) {
 
     will_return(__wrap_fread, "test.txt");
     will_return(__wrap_fread, 0);
+
+    will_return(__wrap_ftell, 25);
 
     expect_value(__wrap_fclose, _File, 6);
     will_return(__wrap_fclose, 1);
@@ -1200,6 +1254,7 @@ int main(void) {
         cmocka_unit_test(test_MergeAppendFile_open_fail),
         cmocka_unit_test(test_MergeAppendFile_fseek_fail),
         cmocka_unit_test(test_MergeAppendFile_fseek2_fail),
+        cmocka_unit_test(test_MergeAppendFile_diff_ftell),
         cmocka_unit_test(test_MergeAppendFile_success),
 #endif
         // w_compress_gzfile

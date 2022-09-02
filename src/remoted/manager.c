@@ -45,101 +45,6 @@ static OSHash *invalid_files;
 
 /* Internal functions prototypes */
 
-static void read_controlmsg(const char *agent_id, char *msg, char *group);
-static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
-
-/**
- * @brief Process group, update file sum structure and create merged.mg file
- * @param group Group name
- * @param _f_sum File sum structure to update
- * @param sharedcfg_dir Group directory
- * @param create_merged Flag indicating if merged.mg needs to be created
- */
-STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged);
-
-/**
- * @brief Process multigroup, update file sum structure and create merged.mg file
- * @param multi_group Multigroup name
- * @param _f_sum File sum structure to update
- * @param hash_multigroup Multigroup hash
- * @param create_merged Flag indicating if merged.mg needs to be created
- */
-STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool create_merged);
-
-/**
- * @brief Process groups and multigroups files
- */
-STATIC void c_files(void);
-
-/**
- * @brief Analize and generate new groups, update existing groups
- */
-STATIC void process_groups();
-
-/**
- * @brief Analize and generate new multigroups, update existing multigroups
- */
-STATIC void process_multi_groups();
-
-/**
- * @brief Delete all groups that no longer exist
- */
-STATIC void process_deleted_groups();
-
-/**
- * @brief Delete all multigroups that no longer exist
- */
-STATIC void process_deleted_multi_groups();
-
-/**
- * @brief Find a group structure from its name
- * @param group Group name
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group(const char *group);
-
-/**
- * @brief Find a multigroup structure from its name
- * @param multigroup Multigroup name
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group(const char *multigroup);
-
-/**
- * @brief Find a group structure from a file name and md5
- * @param file File name
- * @param md5 MD5 of the file
- * @param group Array to store the group name if exists
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]);
-
-/**
- * @brief Find a multigroup structure from a file name and md5
- * @param file File name
- * @param md5 MD5 of the file
- * @param multigroup Array to store the multigroup name if exists
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]);
-
-/**
- * @brief Compare and check if the file sum has changed
- * @param old_sum File sum of previous scan
- * @param new_sum File sum of new scan
- * @return true Changed
- * @return false Didn't change
- */
-STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
-
-/**
- * @brief Check if any group of a given multigroup has changed
- * @param multi_group Multigroup name
- * @return true Any group changed
- * @return false Groups didn't change
- */
-STATIC bool group_changed(const char *multi_group);
-
 /**
  * @brief Process group, update file sum structure and create merged.mg file
  * @param group Group name
@@ -262,8 +167,9 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
  * @param f_size File size variable to update
  * @param create_merged Flag indicating if merged.mg needs to be created
  * @param path_offset Variable that indicates the necessary offset for the MergeAppendFile function
+ * @return 1 on shared file creation success, 0 on shared file creation failure
  */
-STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset);
+STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset);
 
 /**
  * @brief Copy the contents of one directory to another
@@ -575,6 +481,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 /* Generate merged file for groups */
 STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged) {
     os_md5 md5sum;
+    int merged_ok = 1;
     unsigned int f_size = 0;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
@@ -669,29 +576,37 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
         if (create_merged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
             // First call, truncate merged file
-            MergeAppendFile(merged_tmp, NULL, group, -1);
+            if (merged_ok = MergeAppendFile(merged_tmp, NULL, group, -1), merged_ok == 0) {
+                unlink(merged_tmp);
+                return;
+            }
         }
 
         // Merge ar.conf always
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
+            if (create_merged) {
+                if (merged_ok = MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1), merged_ok == 0) {
+                    unlink(merged_tmp);
+                    return;
+                }
+            }
             os_realloc((*_f_sum), (f_size + 2) * sizeof(file_sum *), (*_f_sum));
             os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
             snprintf((*_f_sum)[f_size]->sum, sizeof((*_f_sum)[f_size]->sum), "%s", md5sum);
             os_strdup(DEFAULTAR_FILE, (*_f_sum)[f_size]->name);
             (*_f_sum)[f_size + 1] = NULL;
-
-            if (create_merged) {
-                MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
-            }
-
             f_size++;
         }
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
-        validate_shared_files(group_path, group, merged_tmp, _f_sum, &f_size, create_merged, -1);
+        merged_ok = validate_shared_files(group_path, group, merged_tmp, _f_sum, &f_size, create_merged, -1);
 
         if (create_merged) {
+            if (merged_ok == 0) {
+                unlink(merged_tmp);
+                return;
+            }
             OS_MoveFile(merged_tmp, merged);
         }
 
@@ -1070,9 +985,10 @@ STATIC void process_deleted_multi_groups() {
     }
 }
 
-STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset) {
+STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset) {
     char ** files;
     char file[MAX_SHARED_PATH + 1];
+    int merged_ok = 1;
     unsigned int i;
     os_md5 md5sum;
 
@@ -1081,7 +997,7 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
         if (errno != ENOTDIR) {
             mdebug1("At validate_shared_files(): Could not open directory '%s'", src_path);
         }
-        return;
+        return 1;
     }
 
     /* Read directory */
@@ -1125,7 +1041,10 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
         }
 
         if (S_ISDIR(attrib.st_mode)) {
-            validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset);
+            if (merged_ok = validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset), merged_ok == 0) {
+                free_strarray(files);
+                return 0;
+            }
         } else {
             // Is a file
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
@@ -1172,22 +1091,24 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
             }
 
             if (!ignored) {
+                if (create_merged) {
+                    if (merged_ok = MergeAppendFile(merged_tmp, file, NULL, path_offset), merged_ok == 0) {
+                        (*f_sum)[*f_size] = NULL;
+                        free_strarray(files);
+                        return 0;
+                    }
+                }
                 os_realloc(*f_sum, ((*f_size) + 2) * sizeof(file_sum *), *f_sum);
                 os_calloc(1, sizeof(file_sum), (*f_sum)[(*f_size)]);
                 snprintf((*f_sum)[*f_size]->sum, sizeof((*f_sum)[*f_size]->sum), "%s", md5sum);
                 os_strdup(file, (*f_sum)[(*f_size)]->name);
-
-                if (create_merged) {
-                    MergeAppendFile(merged_tmp, file, NULL, path_offset);
-                }
-
                 (*f_size) = (*f_size) + 1;
             }
         }
     }
     (*f_sum)[*f_size] = NULL;
     free_strarray(files);
-    return;
+    return 1;
 }
 
 STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration) {

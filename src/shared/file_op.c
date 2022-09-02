@@ -839,6 +839,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 {
     size_t n = 0;
     long files_size = 0;
+    long files_final_size = 0;
     char buf[2048 + 1];
     FILE *fp = NULL;
     FILE *finalfp = NULL;
@@ -902,7 +903,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
     files_size = ftell(fp);
     if (files_size == 0) {
-        mwarn("file '%s' is empty.", files);
+        mwarn("File '%s' is empty.", files);
     }
 
     if (tag != NULL) {
@@ -923,8 +924,15 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         fwrite(buf, n, 1, finalfp);
     }
 
+    files_final_size = ftell(fp);
+
     fclose(fp);
     fclose(finalfp);
+
+    if (files_size != files_final_size) {
+        merror("File '%s' was modified after getting its size.", files);
+        return (0);
+    }
 
     return (1);
 }
