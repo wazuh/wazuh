@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "date/date.h"
 #include "hlpDetails.hpp"
@@ -19,6 +20,32 @@
 #include <profile/profile.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
+// Complementary functions for JSON parser //
+enum class JSON_TYPE
+{
+    J_ANY,
+    J_STRING,
+    J_BOOL,
+    J_NUMBER,
+    J_OBJECT,
+    J_ARRAY,
+    J_NULL
+};
+
+static const std::unordered_map<std::string, JSON_TYPE> jsonTypes = {
+    {"string", JSON_TYPE::J_STRING},
+    {"bool", JSON_TYPE::J_BOOL},
+    {"number", JSON_TYPE::J_NUMBER},
+    {"object", JSON_TYPE::J_OBJECT},
+    {"array", JSON_TYPE::J_ARRAY},
+    {"null", JSON_TYPE::J_NULL},
+    {"any", JSON_TYPE::J_ANY}};
+
+bool validJsonType(const std::string& type)
+{
+    return jsonTypes.find(type) != jsonTypes.end();
+}
 
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work
@@ -39,7 +66,7 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         {"RFC3154_ID_TIMEZONE", {"%b %d %R:%6S %Z", "Mar  1 18:48:50.483 UTC"}},
         {"RFC3154_TIMEZONE", {"%b %d %T %Z", "Mar  1 18:48:50 UTC"}},
         {"24H_LOCALTIME", {"%T", "15:16:01"}},
-        {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}}, //TODO specify the RCF, rfc3164?
+        {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}}, // TODO specify the RCF, rfc3164?
         {"ISO8601", {"%Y-%d-%mT%T%z", "2018-08-14T14:30:02.203151+02:00"}},
         {"ISO8601_Z", {"%Y-%d-%mT%TZ", "2018-08-14T14:30:02.203151Z"}},
         {"HTTPDATE", {"%d/%b/%Y:%T %z", "26/Dec/2016:16:22:14 +0000"}},
@@ -183,6 +210,43 @@ bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& 
     return true;
 }
 
+bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& args)
+{
+    // If no arguments parse object
+    if (args.empty())
+    {
+        parser.options.push_back("object");
+    }
+    else
+    {
+        // If one argument, it must be a valid json type or "any"
+        if (args.size() == 1)
+        {
+            if (validJsonType(std::string {args[0]}))
+            {
+                parser.options.push_back(std::string {args[0]});
+            }
+            else
+            {
+                const auto msg = fmt::format("[HLP] Invalid arguments for json Parser. "
+                                             "Expected one of [string, bool, number, "
+                                             "object, array, null, any], got [{}]",
+                                             args[0]);
+                throw std::runtime_error(msg);
+            }
+        }
+        else
+        {
+            // If more than one argument then is an error
+            const auto msg = fmt::format("[HLP] Invalid quantity of arguments for json "
+                                         "Parser. Expected one got [{}]",
+                                         args.size());
+            throw std::runtime_error(msg);
+        }
+    }
+    return true;
+}
+
 bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
 {
     auto start = *it;
@@ -272,7 +336,7 @@ bool parseFilePath(const char** it, Parser const& parser, ParseResult& result)
         (*it)++;
     }
 
-    std::string_view filePath {start, (size_t) ((*it) - start)};
+    std::string_view filePath {start, (size_t)((*it) - start)};
     auto& folderSeparator = parser.options[0];
     // TODO hack
     bool hasDriveLetter = (parser.options.size() == 2);
@@ -309,18 +373,68 @@ bool parseJson(const char** it, Parser const& parser, ParseResult& result)
 {
     rapidjson::Reader reader;
     rapidjson::StringStream ss {*it};
-    auto h = rapidjson::BaseReaderHandler {};
-    if (reader.Parse<rapidjson::kParseStopWhenDoneFlag>(ss, h).IsError())
+    rapidjson::Document doc;
+
+    // Parse the json and stop at the end of the json object, if error return false
+    // TODO: see if there is a way to specify the root JSON type
+    doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
+    if (doc.HasParseError())
     {
         return false;
     }
 
-    hlp::JsonString json {{*it, ss.Tell()}};
-    *it += ss.Tell();
+    // If no errors assert root is the correct type
+    bool valid = false;
+    switch (jsonTypes.at(parser.options[0]))
+    {
+        case JSON_TYPE::J_ANY: valid = true; break;
+        case JSON_TYPE::J_STRING:
+            if (doc.IsString())
+            {
+                valid = true;
+            }
+            break;
+        case JSON_TYPE::J_BOOL:
+            if (doc.IsBool())
+            {
+                valid = true;
+            }
+            break;
+        case JSON_TYPE::J_NUMBER:
+            if (doc.IsNumber())
+            {
+                valid = true;
+            }
+            break;
+        case JSON_TYPE::J_OBJECT:
+            if (doc.IsObject())
+            {
+                valid = true;
+            }
+            break;
+        case JSON_TYPE::J_ARRAY:
+            if (doc.IsArray())
+            {
+                valid = true;
+            }
+            break;
+        case JSON_TYPE::J_NULL:
+            if (doc.IsNull())
+            {
+                valid = true;
+            }
+            break;
+    }
 
-    result[parser.name] = json;
+    // Extract the json string and update the pointer
+    if (valid)
+    {
+        hlp::JsonString json {{*it, ss.Tell()}};
+        result[parser.name] = json;
+        *it += ss.Tell();
+    }
 
-    return true;
+    return valid;
 }
 
 bool parseMap(const char** it, Parser const& parser, ParseResult& result)
@@ -403,7 +517,7 @@ bool parseIPaddress(const char** it, Parser const& parser, ParseResult& result)
         (*it)++;
     }
 
-    std::string srcip {start, (size_t) ((*it) - start)};
+    std::string srcip {start, (size_t)((*it) - start)};
     if (inet_pton(AF_INET, srcip.c_str(), &ip))
     {
         // TODO check if we can get away with a string_view
@@ -455,8 +569,8 @@ bool parseTimeStamp(const char** it, Parser const& parser, ParseResult& result)
         auto tsFormat = std::get<0>(kTimeStampFormatMapper.at(tsName));
 
         const char* start = *it;
-        //TODO: instead of defining the size directly we could look for the first
-        // occurrence of the endToken between all sizes of the tsExample
+        // TODO: instead of defining the size directly we could look for the first
+        //  occurrence of the endToken between all sizes of the tsExample
         for (auto i = 0; i < tsSize; i++, (*it)++)
         {
             if (**it == '\0')
@@ -638,7 +752,7 @@ bool parseDomain(const char** it, Parser const& parser, ParseResult& result)
     {
         (*it)++;
     }
-    std::string_view str {start, (size_t) ((*it) - start)};
+    std::string_view str {start, (size_t)((*it) - start)};
 
     size_t protocolEnd = str.find("://");
     size_t domainStart = 0;
@@ -976,7 +1090,7 @@ bool parseBoolean(const char** it, Parser const& parser, ParseResult& result)
     {
         (*it)++;
     }
-    std::string_view str {start, (size_t) ((*it) - start)};
+    std::string_view str {start, (size_t)((*it) - start)};
 
     auto& trueVal = parser.options[0];
     result[parser.name] = bool {str == trueVal};
