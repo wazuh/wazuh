@@ -1230,7 +1230,7 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
     for (i = 0; groups[i]; i++) {
         f_sum = groups[i]->f_sum;
 
-        if (f_sum) {
+        if (f_sum && f_sum[0] && f_sum[0]->name) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
                     snprintf(group, OS_SIZE_65536, "%s", groups[i]->name);
@@ -1249,7 +1249,7 @@ STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, 
     for (i = 0; multi_groups[i]; i++) {
         f_sum = multi_groups[i]->f_sum;
 
-        if (f_sum) {
+        if (f_sum && f_sum[0] && f_sum[0]->name) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
                     snprintf(multigroup, OS_SIZE_65536, "%s", multi_groups[i]->name);
@@ -1270,6 +1270,16 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
             return false;
         } else {
             return true;
+        }
+    }
+
+    if (old_sum[0] && new_sum[0]) {
+        if (!old_sum[0]->name || !new_sum[0]->name) {
+            if (!old_sum[0]->name && !new_sum[0]->name) {
+                return false;
+            } else {
+                return true;
+            }
         }
     }
 
