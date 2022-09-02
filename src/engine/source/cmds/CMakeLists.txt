@@ -1,0 +1,22 @@
+add_library(cmds STATIC
+    src/cmdGraph.cpp
+    src/cmdRun.cpp
+    src/cmdTest.cpp
+)
+
+target_link_libraries(cmds PRIVATE
+    base
+    json
+    builders
+    catalog
+    rxbk
+    server
+)
+
+target_include_directories(cmds PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_include_directories(cmds PRIVATE
+    ${CameronQueue_SOURCE_DIR}
+)

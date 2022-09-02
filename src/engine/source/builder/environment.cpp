@@ -34,9 +34,9 @@ void Environment::buildGraph(
     Asset::Type type)
 {
     auto graphPos = std::find_if(m_graphs.begin(),
-                                     m_graphs.end(),
-                                     [&graphName](const auto& graph)
-                                     { return std::get<0>(graph) == graphName; });
+                                 m_graphs.end(),
+                                 [&graphName](const auto& graph)
+                                 { return std::get<0>(graph) == graphName; });
     auto& graph = std::get<1>(*graphPos);
     for (auto& [name, json] : assetsDefinitons)
     {
@@ -119,6 +119,19 @@ std::string Environment::getGraphivzStr()
        << std::endl;
     ss << "environment [label=\"" << m_name << "\", shape=Mdiamond];" << std::endl;
 
+    auto removeHyphen = [](const std::string& text)
+    {
+        auto ret = text;
+        auto pos = ret.find("-");
+        while (pos != std::string::npos)
+        {
+            ret.erase(pos, 1);
+            pos = ret.find("-");
+        }
+
+        return ret;
+    };
+
     for (auto& [name, graph] : m_graphs)
     {
         ss << std::endl;
@@ -129,13 +142,14 @@ std::string Environment::getGraphivzStr()
         ss << fmt::format("node [style=filled,color=white];") << std::endl;
         for (auto& [name, asset] : graph.nodes())
         {
-            ss << name << " [label=\"" << name << "\"];" << std::endl;
+            ss << removeHyphen(name) << " [label=\"" << name << "\"];" << std::endl;
         }
         for (auto& [parent, children] : graph.edges())
         {
             for (auto& child : children)
             {
-                ss << parent << " -> " << child << ";" << std::endl;
+                ss << removeHyphen(parent) << " -> " << removeHyphen(child) << ";"
+                   << std::endl;
             }
         }
         ss << "}" << std::endl;
