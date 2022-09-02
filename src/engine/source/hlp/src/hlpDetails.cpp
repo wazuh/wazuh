@@ -8,7 +8,7 @@ const parserConfigFuncPtr kParsersConfig[] = {
     nullptr,
     configureTsParser,
     nullptr,
-    nullptr,
+    configureJsonParser,
     configureMapParser,
     configureDomainParser,
     configureFilepathParser,
