@@ -67,6 +67,16 @@ bool configureQuotedString(Parser& parser, std::vector<std::string_view> const& 
  * @return always true
  */
 bool configureBooleanParser(Parser& parser, std::vector<std::string_view> const& args);
+
+/**
+ * @brief Method for pre-configure JSON parsing
+ *
+ * @param args json type format being the possibilities: "string", "bool", "number",
+ * "object", "array", "null" or "any".
+ * @return true if one of the possibles types was matched.
+ * @throws std::runtime_error if args not in list or wrong quantity.
+ */
+bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& args);
 /**
  * @brief Parse an unspecified element until an endtoken character is found
  *
