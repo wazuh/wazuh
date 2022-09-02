@@ -130,40 +130,6 @@ class OssecTester(object):
                 print("\n\n")
 
 
-    def print_results(self):
-        template = "|{: ^25}|{: ^10}|{: ^10}|{: ^10}|"
-        print(template.format("File", "Passed", "Failed", "Status"))
-        print(template.format("--------", "--------", "--------", "--------"))
-        template = "|{: <25}|{: ^10}|{: ^10}|{: ^10}|"
-        for test_name in self._execution_data:
-            passed_count = self._execution_data[test_name]["passed"]
-            failed_count = self._execution_data[test_name]["failed"]
-            status = u'\u274c'.encode('utf-8') if (failed_count > 0) else u'\u2705'.encode('utf-8')
-            print(template.format(test_name, passed_count, failed_count, status))
-
-        if len(self._failed_tests):
-            template = "|{: <10} |{: ^25}|{: ^25}|"
-            print("\n\nFailing tests summary:")
-            for failed_test in self._failed_tests:
-                if failed_test["actual_decoder"] == "":
-                    summary = "Log was unable to be decoded"
-                elif failed_test["actual_decoder"] != failed_test["expected_decoder"]:
-                    summary = "Log decoded by unexpected decoder. Expected: " + failed_test["expected_decoder"] + ". Got: " + failed_test["actual_decoder"]
-                elif failed_test["actual_rule"] != failed_test["expected_rule"]:
-                    summary = "Hit a different rule. Expected: " + failed_test["expected_rule"] + ". Got: " + failed_test["actual_rule"]
-                elif failed_test["actual_level"] != failed_test["expected_level"]:
-                    summary["summary"] = "Unexpected alert level. Expected: " + failed_test["expected_level"] + ". Got: " + failed_test["actual_level"]
-
-                print("----------------------------------------")
-                print("Failed test: " + failed_test["line_name"])
-                print("Summary: " + summary)
-                print(template.format("", "Expected", "Result"))
-                print(template.format("------", "------", "------"))
-                print(template.format("Decoder", failed_test["expected_decoder"], failed_test["actual_decoder"]))
-                print(template.format("Rule", failed_test["expected_rule"], failed_test["actual_rule"]))
-                print(template.format("Level", failed_test["expected_level"], failed_test["actual_level"]))
-
-
 def cleanup(*args):
     sys.exit(0)
 
@@ -204,7 +170,6 @@ if __name__ == "__main__":
 #     print(template.format("Decoders", len(OT.tested_decoders), len(decoders), len(OT.tested_decoders)/len(decoders)))
 #     print("\n")
 
-#    OT.print_results()
 
     if error:
         sys.exit(1)
