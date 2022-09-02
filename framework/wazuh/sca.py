@@ -18,8 +18,9 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
-def get_sca_list(agent_list=None, q="", offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
-                 filters=None):
+def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: int = common.DATABASE_LIMIT,
+                 sort: str = None, search: str = None, select: str = None,
+                 filters: str = None) -> AffectedItemsWazuhResult:
     """ Get a list of policies analyzed in the configuration assessment for a given agent
 
     Parameters
@@ -44,6 +45,7 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.DATABASE_LIMIT, s
     Returns
     -------
     AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected sca information was returned',
                                       some_msg='Some sca information was not returned',
@@ -67,9 +69,10 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.DATABASE_LIMIT, s
 
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
-def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None,
-                   select=None, filters=None):
-    """ Get a list of checks analyzed for a policy
+def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", offset: int = 0,
+                   limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
+                   select: dict = None, filters: dict = None) -> AffectedItemsWazuhResult:
+    """Get a list of checks analyzed for a policy.
 
     Parameters
     ----------
@@ -83,18 +86,24 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
         First item to return.
     limit : int
         Maximum number of items to return.
-    sort : str
+    sort : dict
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    search : str
+    search : dict
         Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    select : str
+    select : dict
         Select fields to return. Format: {"fields":["field1","field2"]}.
-    filters : str
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+
+    Raises
+    ------
+    WazuhInternalError(2007)
+        If there was an error retrieving data from Wazuh DB.
 
     Returns
     -------
     AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information was returned',
                                       some_msg='Some sca/policy information was not returned',
