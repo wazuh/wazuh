@@ -44,7 +44,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
                             -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
                             -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
-                            -Wl,--wrap,wdb_get_agent_group \
+                            -Wl,--wrap,wdb_get_agent_group -Wl,--wrap,compare_wazuh_versions \
                             -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \
                             -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info \
                             -Wl,--wrap,rem_inc_send_ack -Wl,--wrap,rem_inc_recv_ctrl_request -Wl,--wrap,rem_inc_recv_ctrl_keepalive \

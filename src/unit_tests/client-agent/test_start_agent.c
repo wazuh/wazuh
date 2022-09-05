@@ -251,7 +251,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(wrap_recv, SERVER_ENC_ACK);
     #endif
     will_return(__wrap_wnet_select, 1);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -280,7 +280,8 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    // expect_string(__wrap_send_msg, msg, startup_msg);
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -309,7 +310,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_send_msg, msg, "1:wazuh-agent:ossec: Agent started: 'agent0->any'.");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
@@ -343,7 +344,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 23);
     will_return(__wrap_wnet_select, 0);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
 
     expect_any(__wrap__mwarn, formatted_msg);
 
@@ -363,7 +364,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(wrap_recv, SERVER_WRONG_ACK);
 #endif
     will_return(__wrap_wnet_select, 1);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);

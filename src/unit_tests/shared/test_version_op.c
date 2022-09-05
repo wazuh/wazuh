@@ -1752,6 +1752,116 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(23), "Unknown");
 }
 
+void test_compare_wazuh_versions_equal_patch(void **state)
+{
+    (void) state;
+    char *v1 = "v4.0.0";
+    char *v2 = "v4.0.0";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_wazuh_versions_equal_minor(void **state)
+{
+    (void) state;
+    char *v1 = "3.13";
+    char *v2 = "3.13";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_wazuh_versions_equal_major(void **state)
+{
+    (void) state;
+    char *v1 = "4";
+    char *v2 = "v4";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_wazuh_versions_greater_patch(void **state)
+{
+    (void) state;
+    char *v1 = "4.0.1";
+    char *v2 = "v4.0.0";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_wazuh_versions_greater_minor(void **state)
+{
+    (void) state;
+    char *v1 = "2.15";
+    char *v2 = "2";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_wazuh_versions_greater_major(void **state)
+{
+    (void) state;
+    char *v1 = "v5";
+    char *v2 = "4.9";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_wazuh_versions_lower_patch(void **state)
+{
+    (void) state;
+    char *v1 = "v4.0.1";
+    char *v2 = "v4.0.3";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_compare_wazuh_versions_lower_minor(void **state)
+{
+    (void) state;
+    char *v1 = "2.15.1";
+    char *v2 = "2.18";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_compare_wazuh_versions_lower_major(void **state)
+{
+    (void) state;
+    char *v1 = "v5";
+    char *v2 = "v6.1";
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_compare_wazuh_versions_null(void **state)
+{
+    (void) state;
+    char *v1 = NULL;
+    char *v2 = NULL;
+
+    int ret = compare_wazuh_versions(v1, v2);
+
+    assert_int_equal(ret, 0);
+}
+
 #endif
 
 int main(void) {
@@ -1783,6 +1893,17 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_aix, delete_os_info),
             cmocka_unit_test(test_OSX_ReleaseName),
 #endif
+            // compare_wazuh_versions
+            cmocka_unit_test(test_compare_wazuh_versions_equal_patch),
+            cmocka_unit_test(test_compare_wazuh_versions_equal_minor),
+            cmocka_unit_test(test_compare_wazuh_versions_equal_major),
+            cmocka_unit_test(test_compare_wazuh_versions_greater_patch),
+            cmocka_unit_test(test_compare_wazuh_versions_greater_minor),
+            cmocka_unit_test(test_compare_wazuh_versions_greater_major),
+            cmocka_unit_test(test_compare_wazuh_versions_lower_patch),
+            cmocka_unit_test(test_compare_wazuh_versions_lower_minor),
+            cmocka_unit_test(test_compare_wazuh_versions_lower_major),
+            cmocka_unit_test(test_compare_wazuh_versions_null)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
