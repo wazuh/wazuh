@@ -1205,8 +1205,10 @@ class Master(server.AbstractServer):
                         f'seconds.')
                     await asyncio.sleep(
                         self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"])
-                await asyncio.sleep(
-                    self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_time"])
+                else:
+                    sleep_time = self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_time"]
+                    logger.info(f'Finished stability iteration. Sleeping {sleep_time} seconds.')
+                    await asyncio.sleep(sleep_time)
 
             try:
                 # Check agents balance
