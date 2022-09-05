@@ -3199,7 +3199,6 @@ class AWSCloudWatchLogs(AWSService):
                   '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
 
             # Try to get CloudWatch Log events until the request succeeds or the allowed number of attempts is reached
-
             try:
                 response = self.client.get_log_events(
                     **{param: value for param, value in parameters.items() if value is not None})
