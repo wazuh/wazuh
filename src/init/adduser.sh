@@ -45,6 +45,9 @@ else
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/sbin/nologin"
+    elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+        GROUPADD="/usr/sbin/groupadd"
+        USERADD="/usr/sbin/useradd"
     else
     # All current linux distributions should support system accounts for
     # users/groups. If not, leave the GROUPADD/USERADD as it was before
