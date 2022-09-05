@@ -95,7 +95,7 @@ bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args
 bool configureKVMapParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     size_t argsSize = args.size();
-    if (argsSize != 2)
+    if (argsSize != 2 || args[0].empty() || args[1].empty())
     {
         const auto msg = fmt::format(
             "[HLP] Invalid arguments for map Parser. Expected 2, got [{}]",
