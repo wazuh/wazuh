@@ -47,8 +47,6 @@ OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNod
 
 cJSON* __wrap_wm_agent_upgrade_get_agent_ids();
 
-int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2);
-
 bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id);
 
 int __wrap_wm_agent_upgrade_validate_id(int agent_id);

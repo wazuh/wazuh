@@ -381,12 +381,15 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                         char msg_err[OS_FLSIZE + 1] = "";
                         snprintf(msg_err, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_INVALID_VERSION);
                         send_msg(key->id, msg_err, -1);
+                        cJSON_Delete(agent_info);
+                        os_free(clean);
                         return;
                     }
                 } else {
                     merror("Error getting version from agent '%s'", key->id);
                 }
             }
+            cJSON_Delete(agent_info);
             is_startup = 1;
         } else {
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
