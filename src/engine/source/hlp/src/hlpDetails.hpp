@@ -19,7 +19,7 @@ enum class ParserType
     Ts,
     URL,
     JSON,
-    Map,
+    KVMap,
     Domain,
     FilePath,
     UserAgent,

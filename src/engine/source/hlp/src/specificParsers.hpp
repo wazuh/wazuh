@@ -15,7 +15,7 @@ struct Parser;
  * @param args List with the options for configuring the map parser
  * @return true on success. false on error
  */
-bool configureMapParser(Parser& parser, std::vector<std::string_view> const& args);
+bool configureKVMapParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method to pre-configure a TimeStamp parser at build stage to be used
@@ -125,7 +125,7 @@ bool parseJson(const char** it, Parser const& parser, ParseResult& result);
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseMap(const char** it, Parser const& parser, ParseResult& result);
+bool parseKVMap(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse an IP string
