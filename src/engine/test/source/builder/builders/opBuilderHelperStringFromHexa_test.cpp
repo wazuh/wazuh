@@ -39,13 +39,18 @@ TEST(opBuilderHelperStringFromHexa, buildNoTargetError)
     ASSERT_THROW(opBuilderHelperStringFromHexa(tuple), std::runtime_error);
 }
 
+TEST(opBuilderHelperStringFromHexa, buildNoHelperFunctionError)
+{
+    const std::vector<std::string> arguments {};
+    const auto tuple = std::make_tuple(targetField, "", arguments);
+
+    ASSERT_THROW(opBuilderHelperStringFromHexa(tuple), std::runtime_error);
+}
+
 TEST(opBuilderHelperStringFromHexa, buildHexaValueError)
 {
     const std::vector<std::string> arguments {"48656C6C6F20776F726C6421"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
-
-    auto event =
-        std::make_shared<json::Json>(R"({"dummy_field": "dummy_value"})");
 
     ASSERT_THROW(opBuilderHelperStringFromHexa(tuple), std::runtime_error);
 }
