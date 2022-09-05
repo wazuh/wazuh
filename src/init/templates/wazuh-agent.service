@@ -10,8 +10,7 @@ ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
 ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control reload
 
-KillMode=mixed
-SendSIGKILL=no
+KillMode=process
 RemainAfterExit=yes
 
 [Install]
