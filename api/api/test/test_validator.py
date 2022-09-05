@@ -191,6 +191,8 @@ def test_is_safe_path():
     assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
     assert not is_safe_path('../etc/rules/rule.xml', relative=False)
     assert not is_safe_path('../etc/rules/rule.xml')
+    assert not is_safe_path('/..')
+    assert not is_safe_path('\\..')
     assert not is_safe_path('..\\etc\\rules\\rule.xml')
     assert not is_safe_path('../ruleset/decoders/decoder.xml./', relative=False)
 

@@ -241,7 +241,7 @@ def is_safe_path(path: str, basedir: str = common.wazuh_path, relative: bool = T
         True if path is correct. False otherwise.
     """
     # Protect path
-    forbidden_paths = ["../", "..\\"]
+    forbidden_paths = ["../", "..\\", "/..", "\\.."]
     if any([forbidden_path in path for forbidden_path in forbidden_paths]):
         return False
 
