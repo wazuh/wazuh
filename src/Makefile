@@ -1014,11 +1014,11 @@ PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
 ifeq (${CHECK_ALPINE},YES)
-alpine_debug := "-DPATH_MAX=4096"
+ALPINE_DEBUG := "-DPATH_MAX=4096"
 endif
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${alpine_debug} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${ALPINE_DEBUG} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
 	${OSSEC_LINK} $@ $^
