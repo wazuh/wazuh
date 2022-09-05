@@ -16,7 +16,7 @@ check:
 
 parse:
   logql:
-    - _kv_msg: <auditd.log/map/ /=>
+    - _kv_msg: <auditd.log/kv_map/=/ >
 
 normalize:
   - map:
