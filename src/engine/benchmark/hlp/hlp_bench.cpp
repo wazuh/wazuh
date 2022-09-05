@@ -347,7 +347,7 @@ static void map_parse(benchmark::State& state)
     for (auto _ : state)
     {
         const char* eventIt = ev.c_str();
-        if (!parseMap(&eventIt, p, result))
+        if (!parseKVMap(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }

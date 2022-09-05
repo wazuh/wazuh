@@ -34,7 +34,7 @@ void configureParserMappings(const std::string &config)
             {"date", ParserType::Ts},
             {"url", ParserType::URL},
             {"json", ParserType::JSON},
-            {"map", ParserType::Map},
+            {"kv_map", ParserType::KVMap},
             {"domain", ParserType::Domain},
             {"filepath", ParserType::FilePath},
             {"useragent", ParserType::UserAgent},
@@ -82,7 +82,7 @@ void configureParserMappings(const std::string &config)
 
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"json", ParserType::JSON},
-    {"map", ParserType::Map},
+    {"kv_map", ParserType::KVMap},
     {"timestamp", ParserType::Ts},
     {"domain", ParserType::Domain},
     {"filepath", ParserType::FilePath},

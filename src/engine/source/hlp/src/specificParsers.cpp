@@ -92,22 +92,22 @@ bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args
     }
 }
 
-bool configureMapParser(Parser& parser, std::vector<std::string_view> const& args)
+bool configureKVMapParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     size_t argsSize = args.size();
-    if (argsSize < 2 || argsSize > 3)
+    if (argsSize != 2)
     {
         const auto msg = fmt::format(
-            "[HLP] Invalid arguments for map Parser. Expected 2 or 3, got [{}]",
+            "[HLP] Invalid arguments for map Parser. Expected 2, got [{}]",
             argsSize);
         throw std::runtime_error(msg);
     }
 
-    char opt[4] = {0};
-    opt[0] = args[0][0];
-    opt[1] = args[1][0];
-    opt[2] = (argsSize == 3) ? args[2][0] : parser.endToken;
-    parser.options.push_back(opt);
+    // Key-Value Separator
+    parser.options.push_back(std::string{args[0]});
+    // Pair Separator
+    parser.options.push_back(std::string{args[1]});
+
 
     return true;
 }
@@ -401,74 +401,252 @@ bool parseJson(const char** it, Parser const& parser, ParseResult& result)
     return valid;
 }
 
-bool parseMap(const char** it, Parser const& parser, ParseResult& result)
+bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
 {
     WAZUH_TRACE_FUNCTION;
-    char pairSeparator = parser.options[0][0];
-    char kvSeparator = parser.options[0][1];
-    char endMapToken = parser.options[0][2];
 
-    const char* start = *it;
-    while (**it != '\0' && **it != endMapToken)
-    {
-        (*it)++;
-    }
+    std::string_view kvSeparator = parser.options[0];
+    std::string_view pairSeparator = parser.options[1];
+    const char scapeChar = '\\';
+    const char endMapToken = parser.endToken;
 
-    std::string_view map_str {start, static_cast<size_t>((*it) - start)};
-    *it += (endMapToken
-            != parser.endToken); // Theres probably the special case where they where
-                                 // the same but the endMapToken was specified
+    // Pointer after last found pair, nullptr if not found
+    const char* lastFoundOk = *it;
 
+    /* Json Key-value */
     rapidjson::Document output_doc;
     output_doc.SetObject();
     auto& allocator = output_doc.GetAllocator();
 
-    size_t tuple_start_pos = 0;
-    bool done = false;
-    while (!done)
+    /* -----------------------------------------------
+                    Helpers lambdas
+     ----------------------------------------------- */
+
+    /*
+      Return the pointer to the first `quoteChar` not escaped by `scapeChar` and the
+      quoted string If there is no end quoteChar, return a nullptr. WARNING: This function
+      can access 1 bytes before the start of the `str`
+    */
+    const auto getQuoted =
+        [&scapeChar](const char* c_str) -> std::pair<const char*, std::string_view>
     {
-        size_t separator_pos = map_str.find(kvSeparator, tuple_start_pos);
-        if (separator_pos == std::string::npos)
+        const char quoteChar = c_str[0];
+        const char* ptr = c_str + 1;
+        std::pair<const char*, std::string_view> result = {nullptr, ""};
+
+        while (ptr = strchrnul(ptr, quoteChar), *ptr != '\0')
         {
-            // TODO Log error: Missing Separator
+            // Is not posible that ptr-2 < str
+            bool escaped = (*(ptr - 1) == scapeChar);
+            escaped = escaped && (*(ptr - 2) != scapeChar);
+
+            if (!escaped)
+            {
+                result = {ptr, std::string_view(c_str + 1, ptr - c_str - 1)};
+                break;
+            }
+            ptr++;
+        }
+        return result;
+    };
+
+    /*
+      Return the pointer to the first `kvSeparator` not escaped by `scapeChar`.
+      If there is no kvSeparator, return NULL
+    */
+    const auto getSeparator = [&kvSeparator, &scapeChar](const char* c_str)
+    {
+        const char* ptr = c_str;
+        while (ptr = strstr(ptr, kvSeparator.data()), ptr != nullptr)
+        {
+            bool escaped = false;
+            // worst cases:
+            //    [=\0], [\=\0],[\\=\0],
+            if (ptr + 1 >= c_str)
+            {
+                escaped = (*(ptr - 1) == scapeChar);
+                if (escaped && (ptr + 2 >= c_str))
+                {
+                    escaped = (*(ptr - 2) != scapeChar);
+                }
+            }
+            if (!escaped)
+            {
+                break;
+            }
+            ptr++;
+        }
+
+        return ptr;
+    };
+
+    /*
+      Returns a pair with the pointer to the start value (After key value separator)
+      and the string_view to the Key.
+      Rerturns a nullptr if there is no key value separator
+    */
+    const auto getKey =
+        [&kvSeparator, &pairSeparator, &scapeChar, &getQuoted, &getSeparator](
+            const char* c_str)
+    {
+        std::string_view key {};
+        const char* ptr = c_str;
+        if (*ptr == '"' || *ptr == '\'')
+        {
+            auto [endQuote, quoted] = getQuoted(ptr);
+            // The key is valid only if valid only is followed by kvSeparator
+            if (endQuote != nullptr
+                && kvSeparator.compare(
+                       1, kvSeparator.size(), endQuote, kvSeparator.size())
+                       == 0)
+            {
+                key = std::move(quoted);
+                ptr = endQuote + kvSeparator.size() + 1;
+            }
+        }
+        else
+        {
+            ptr = getSeparator(ptr);
+
+            if (ptr != nullptr)
+            {
+                // The key is valid only if no there a pairSeparator in the middle
+                auto tmpKey = std::string_view(c_str, ptr - c_str);
+                if (tmpKey.find(pairSeparator) == std::string_view::npos)
+                {
+                    key = std::move(tmpKey);
+                    ptr += kvSeparator.size();
+                }
+                else
+                {
+                    ptr = nullptr;
+                }
+            }
+        }
+        return std::pair<const char*, std::string_view> {ptr, key};
+    };
+
+    /* -----------------------------------------------
+                    Start parsing
+     ----------------------------------------------- */
+    bool isSearchComplete = false; // True if the search is complete successfully
+    while (!isSearchComplete)
+    {
+        /* Get Key */
+        auto [strParsePtr, key] = getKey(lastFoundOk);
+        if (strParsePtr == nullptr || key.empty())
+        {
+            isSearchComplete = true;
+            // Fail to get key
             break;
         }
-        size_t tuple_end_pos = map_str.find(pairSeparator, separator_pos);
-        std::string key_str(
-            map_str.substr(tuple_start_pos, separator_pos - tuple_start_pos));
-        std::string value_str(
-            map_str.substr(separator_pos + 1, tuple_end_pos - (separator_pos + 1)));
 
-        if (key_str.empty() || value_str.empty())
+        // Get value
+        std::string_view value {};
+        // Check if value is quoted
+        if (*strParsePtr == '"' || *strParsePtr == '\'')
         {
-            // TODO Log error: Empty map fields
-            break;
+            auto [endQuotePtr, quotedValue] = getQuoted(strParsePtr);
+            if (endQuotePtr != nullptr)
+            {
+                value = std::move(quotedValue);
+                // Point to the next char after the end quote
+                strParsePtr = endQuotePtr + 1;
+                // Check if the next string is a pairSeparator
+                if (pairSeparator.compare(
+                        0, pairSeparator.size(), strParsePtr, pairSeparator.size())
+                    == 0)
+                {
+                    // Go to the next pair (next char after the pairSeparator)
+                    strParsePtr += pairSeparator.size();
+                }
+                else
+                {
+                    // If there is no pairSeparator, the search is finished
+                    isSearchComplete = true;
+                }
+            }
+            else
+            {
+                // Fail to get value
+                break;
+            }
         }
-        else if (tuple_end_pos == std::string::npos)
+        else
         {
-            // Map ended
-            done = true;
-        }
-        tuple_start_pos = tuple_end_pos + 1;
+            // Search for pairSeparator
+            auto endValuePtr = strstr(strParsePtr, pairSeparator.data());
+            if (endValuePtr != nullptr)
+            {
+                value = std::string_view(strParsePtr, endValuePtr - strParsePtr);
+                // if there a endMapToken before the pairSeparator, the search is finished
+                auto splitValue = value.find(endMapToken);
+                if (splitValue != std::string_view::npos)
+                {
+                    value = value.substr(0, splitValue);
+                    // Point to the endMapToken
+                    strParsePtr = strParsePtr + splitValue;
+                    isSearchComplete = true;
+                } else {
+                    // Point to the next char after the pairSeparator
+                    strParsePtr = endValuePtr + pairSeparator.size();
+                }
 
-        output_doc.AddMember(rapidjson::Value(key_str.c_str(), allocator),
-                             rapidjson::Value(value_str.c_str(), allocator),
+            }
+            // No pairSeparator, search for endMapToken
+            else if (endValuePtr = strchr(strParsePtr, endMapToken), endValuePtr != nullptr)
+            {
+                value = std::string_view(strParsePtr, endValuePtr - strParsePtr);
+                strParsePtr = endValuePtr;
+                isSearchComplete = true;
+                // Point to the next char after the endMapToken
+                // No fail but search is complete ok
+            }
+            else
+            {
+                // No endMapToken, no pairSeparator, no end quoteChar
+                break;
+            }
+        }
+        // Print key and value and iterator
+        lastFoundOk = strParsePtr;
+        // std::cout << "Key: '" << key << "', Value: '" << value << "', Iterator: '" << strParsePtr
+        //           << "'" << std::endl;
+
+        output_doc.AddMember(rapidjson::Value(std::string(key).c_str(), allocator),
+                             rapidjson::Value(std::string(value).c_str(), allocator),
                              allocator);
     }
 
-    if (!done)
+    // Validate if the map is valid with the endMapToken
+    if (isSearchComplete)
     {
-        // TODO report error
-        return false;
+        // If the pairSeparator is equal to the endMapToken, the go back one char
+        if (pairSeparator.size() == 1 && pairSeparator[0] == endMapToken)
+        {
+            lastFoundOk--;
+        }
+        // Invalid endMapToken
+        if (endMapToken != *lastFoundOk)
+        {
+            lastFoundOk = nullptr;
+        }
+    }
+    else
+    {
+        lastFoundOk = nullptr; // Fail to parse the map
     }
 
-    rapidjson::StringBuffer s;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(s);
-    output_doc.Accept(writer);
+    if (lastFoundOk)
+    {
+        rapidjson::StringBuffer s;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+        output_doc.Accept(writer);
+        result[parser.name] = hlp::JsonString {s.GetString()};
+        *it = lastFoundOk;
+    }
 
-    result[parser.name] = hlp::JsonString {s.GetString()};
-
-    return true;
+    return lastFoundOk == nullptr ? false : true;
 }
 
 bool parseIPaddress(const char** it, Parser const& parser, ParseResult& result)
