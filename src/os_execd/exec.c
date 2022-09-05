@@ -83,10 +83,10 @@ int ReadExecConfig()
         *tmp_str = '\0';
         tmp_str += 3;
 
-        // Directory transversal test
+        // Directory traversal test
 
         if (w_ref_parent_folder(str_pt)) {
-            merror("Active response command '%s' vulnerable to directory transversal attack. Ignoring.", str_pt);
+            merror("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", str_pt);
             exec_cmd[exec_size][0] = '\0';
         } else {
             /* Write the full command path */
