@@ -536,7 +536,11 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         auto [strParsePtr, key] = getKey(lastFoundOk);
         if (strParsePtr == nullptr || key.empty())
         {
-            isSearchComplete = true;
+            // Goback to the last valid pair
+            if (lastFoundOk > *it) {
+                isSearchComplete = true;
+                lastFoundOk = lastFoundOk - pairSeparator.size();
+            }
             // Fail to get key
             break;
         }
@@ -621,11 +625,6 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     // Validate if the map is valid with the endMapToken
     if (isSearchComplete)
     {
-        // If the pairSeparator is equal to the endMapToken, the go back one char
-        if (pairSeparator.size() == 1 && pairSeparator[0] == endMapToken)
-        {
-            lastFoundOk--;
-        }
         // Invalid endMapToken
         if (endMapToken != *lastFoundOk)
         {
