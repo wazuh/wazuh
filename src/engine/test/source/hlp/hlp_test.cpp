@@ -6,23 +6,32 @@
 
 using namespace hlp;
 
+TEST(hlpTests_logQL, literal_matching)
+{
+    std::string logQl_expression = R"(-server\ - {"data":"this is a json"} - [Mon, 02 Jan 2006 ñ)";
+    const char* event = "-server\\ - {\"data\":\"this is a json\"} - [Mon, 02 Jan 2006 ñ) ";
+
+    auto parseOp = getParserOp(logQl_expression);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(parseOp);
+}
+
+TEST(hlpTests_logQL, literal_matching_escaped_bar)
+{
+    std::string logQl_expression = R"( - \\\\\ - )";
+    const char* event = " - \\\\\\\\\\ - ";
+
+    auto parseOp = getParserOp(logQl_expression);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(parseOp);
+}
+
 TEST(hlpTests_logQL, logQL_expression)
 {
-    auto* config = "{"
-                   "\"source.address\": \"keyword\","
-                   "\"event.created\": \"timestamp\","
-                   "\"http.version\": \"number\","
-                   "\"http.request.method\": \"keyword\","
-                   "\"http.request.status_code\": \"number\","
-                   "\"http.response.bytes\": \"number\","
-                   "\"host\": \"url\","
-                   "\"agent.ip\": \"ip\","
-                   "\"client.user_agent\": \"useragent\","
-                   "\"file.created\": \"timestamp\""
-                   "}";
-
-    configureParserMappings(config);
-
     const char* logQl_expression =
         "<source.address> - <_json/json> - [<event.created/RFC1123>] "
         "\"<http.request.method> <host> "
@@ -46,29 +55,10 @@ TEST(hlpTests_logQL, logQL_expression)
     ASSERT_TRUE(parseOp);
     ASSERT_EQ("{\"data\":\"this is a json\"}",
               std::any_cast<JsonString>(result["_json"]).jsonString);
-    ASSERT_EQ(2006, std::any_cast<int>(result["event.created.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["event.created.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["event.created.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["event.created.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["event.created.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["event.created.seconds"]));
-    ASSERT_EQ("wazuh.com", std::any_cast<std::string>(result["host.domain"]));
-    ASSERT_EQ("fragment", std::any_cast<std::string>(result["host.fragment"]));
-    ASSERT_EQ("password", std::any_cast<std::string>(result["host.password"]));
-    ASSERT_EQ("/status", std::any_cast<std::string>(result["host.path"]));
-    ASSERT_EQ(8080, std::any_cast<int>(result["host.port"]));
-    ASSERT_EQ("query=%22a%20query%20with%20a%20space%22",
-              std::any_cast<std::string>(result["host.query"]));
-    ASSERT_EQ("https", std::any_cast<std::string>(result["host.scheme"]));
-    ASSERT_EQ("user", std::any_cast<std::string>(result["host.username"]));
+    ASSERT_EQ("Mon, 02 Jan 2006 15:04:05 MST", std::any_cast<std::string>(result["event.created"]));
+    ASSERT_EQ("https://user:password@wazuh.com:8080/status?query=%22a%20query%20with%20a%20space%22#fragment", std::any_cast<std::string>(result["host"]));
     ASSERT_EQ("127.0.0.1", std::any_cast<std::string>(result["agent.ip"]));
-    ASSERT_EQ(2006, std::any_cast<int>(result["file.created.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["file.created.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["file.created.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["file.created.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["file.created.minutes"]));
-    ASSERT_EQ(0, std::any_cast<double>(result["file.created.seconds"]));
-    ASSERT_EQ("-0700", std::any_cast<std::string>(result["file.created.timezone"]));
+    ASSERT_EQ("02 Jan 06 15:04 -0700", std::any_cast<std::string>(result["file.created"]));
 }
 
 TEST(hlpTests_logQL, invalid_logql_expression)
