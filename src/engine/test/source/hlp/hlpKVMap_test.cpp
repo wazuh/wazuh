@@ -125,7 +125,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseI)
     const char* event = "keyX: valueX";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -143,7 +143,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseII)
     const char* event = "keyX: valueX";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -161,7 +161,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseIII)
     const char* event = "keyX: valueX ";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -176,7 +176,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseIV)
     const char* event = "keyX: valueX;";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -194,7 +194,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseV)
     const char* event = "keyX: valueX";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -209,7 +209,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseVI)
     const char* event = "keyX:valueX";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -224,7 +224,7 @@ TEST(parseKVMap, singleKVPairMultipleCharKVSeparatorMatchCaseVII)
     const char* event = "keyX: valueX ";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -239,7 +239,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseI)
     const char* event = "key1: value1,key2: value2";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -257,7 +257,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseII)
     const char* event = "key1: value1 key2: value2";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -275,7 +275,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseIII)
     const char* event = "key1: value1 key2: value2 ";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -290,7 +290,7 @@ TEST(parseKVMap, twoKVPairMultipleCharKVSeparatorMatchCaseIV)
     const char* event = "key1: value1,key2: value2;";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -323,7 +323,7 @@ TEST(parseKVMap, twoKVPairsMultipleCharKVSeparatorMatchCaseVI)
     const char* event = "key1:value1,key2:value2";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -443,7 +443,7 @@ TEST(parseKVMap, noEndStringCaseI)
     const char* event = "keyX:valueX";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -488,7 +488,7 @@ TEST(parseKVMap, noEndStringCaseIV)
     const char* event = "keyX:";
 
     ParserFn op {};
-    ASSERT_NO_THROW(op = getParserOp(defaultLogQLExpression));
+    ASSERT_NO_THROW(op = getParserOp(customLogQLExpression));
     ASSERT_TRUE(static_cast<bool>(op));
 
     ParseResult result {};
@@ -660,7 +660,7 @@ TEST(parseKVMap, generalCaseIII)
 
 TEST(parseKVMap, generalCaseIV)
 {
-    const char* customLogQLExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogQLExpression {"<_kv/kv_map/:/,>,"};
     const char* event = "key1:value1,key2:value2,";
 
     ParserFn op {};
@@ -678,7 +678,7 @@ TEST(parseKVMap, generalCaseIV)
 
 TEST(parseKVMap, generalCaseV)
 {
-    const char* customLogQLExpression {"<_kv/kv_map/:/,>"};
+    const char* customLogQLExpression {"<_kv/kv_map/:/,>,"};
     const char* event = "key1:value1,key2:value2,";
 
     ParserFn op {};
