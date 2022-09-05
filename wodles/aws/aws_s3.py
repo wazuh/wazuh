@@ -155,7 +155,7 @@ class WazuhIntegration:
         self.gov_regions = {'us-gov-east-1', 'us-gov-west-1'}
 
         self.connection_config = self.default_config()
-        
+
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
                                       profile=aws_profile,
@@ -234,7 +234,7 @@ class WazuhIntegration:
     @staticmethod
     def default_config():
         args = {}
-        if not path.exists("".join([path.expanduser('~'), '/.aws/config'])):
+        if not path.exists(path.join(path.expanduser('~'), '.aws', 'config')):
             args['config'] = botocore.config.Config(
                 retries={
                     'max_attempts': 10,
@@ -243,7 +243,7 @@ class WazuhIntegration:
             )
             debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
         else:
-            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}', 2)
+            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
 
         return args
 
@@ -782,23 +782,41 @@ class AWSBucket(WazuhIntegration):
                 if self.prefix_regex.match(account_id):
                     accounts.append(account_id)
             return accounts
+
+        except botocore.exceptions.ClientError as err:
+            if err.response['Error']['Code'] == 'ThrottlingException':
+                debug(f'Error: The "find_account_ids" request was denied due to request throttling. ', 2)
+                sys.exit(16)
+            else:
+                debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
+                sys.exit(1)
+
         except KeyError:
             bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
                   f"type and this bucket does not contain log files from this type. Try with other type: "
-                  f"{bucket_types - {get_script_arguments().type.lower()} }")
+                  f"{bucket_types - {get_script_arguments().type.lower()}}")
             sys.exit(12)
 
     def find_regions(self, account_id):
-        regions = self.client.list_objects_v2(Bucket=self.bucket,
-                                              Prefix=self.get_service_prefix(account_id=account_id),
-                                              Delimiter='/')
+        try:
+            regions = self.client.list_objects_v2(Bucket=self.bucket,
+                                                  Prefix=self.get_service_prefix(account_id=account_id),
+                                                  Delimiter='/')
 
-        if 'CommonPrefixes' in regions:
-            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
-        else:
-            debug(f"+++ No regions found for AWS Account {account_id}", 1)
-            return []
+            if 'CommonPrefixes' in regions:
+                return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
+            else:
+                debug(f"+++ No regions found for AWS Account {account_id}", 1)
+                return []
+
+        except botocore.exceptions.ClientError as err:
+            if err.response['Error']['Code'] == 'ThrottlingException':
+                debug(f'Error: The "find_regions" request was denied due to request throttling. ', 2)
+                sys.exit(16)
+            else:
+                debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
+                sys.exit(1)
 
     def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
         filter_marker = ''
@@ -928,6 +946,8 @@ class AWSBucket(WazuhIntegration):
                 sys.exit(8)
         else:
             return io.TextIOWrapper(raw_object)
+
+
 
     def load_information_from_file(self, log_key):
         """
@@ -1078,6 +1098,14 @@ class AWSBucket(WazuhIntegration):
                 else:
                     break
 
+        except botocore.exceptions.ClientError as err:
+            if err.response['Error']['Code'] == 'ThrottlingException':
+                debug(f'Error: The "iter_files_in_bucket" request was denied due to request throttling. ', 2)
+                sys.exit(16)
+            else:
+                debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+                sys.exit(1)
+
         except Exception as err:
             if hasattr(err, 'message'):
                 debug(f"+++ Unexpected error: {err.message}", 2)
@@ -1097,9 +1125,14 @@ class AWSBucket(WazuhIntegration):
             else:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
-        except botocore.exceptions.ClientError:
-            print("ERROR: Invalid credentials to access S3 Bucket")
-            exit(3)
+        except botocore.exceptions.ClientError as err:
+            if err.response['Error']['Code'] == 'ThrottlingException':
+                debug(f'Error: The "check_bucket" request was denied due to request throttling. ', 2)
+                sys.exit(16)
+            else:
+                print("ERROR: Invalid credentials to access S3 Bucket")
+                exit(3)
+
         except botocore.exceptions.EndpointConnectionError as e:
             print(f"ERROR: {str(e)}")
             exit(15)
@@ -1484,6 +1517,10 @@ class AWSConfigBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
+
+        except botocore.exceptions.ClientError as err:
+            debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+            sys.exit(16)
 
         except Exception as err:
             if hasattr(err, 'message'):
@@ -1954,6 +1991,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
+
+        except botocore.exceptions.ClientError as err:
+            debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+            sys.exit(16)
 
         except Exception as err:
             if hasattr(err, 'message'):
@@ -2606,9 +2647,9 @@ class AWSServerAccess(AWSCustomBucket):
             if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/'):
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
-        except botocore.exceptions.ClientError:
-            print("ERROR: Invalid credentials to access S3 Bucket")
-            exit(3)
+        except botocore.exceptions.ClientError as err:
+            debug(f'ERROR: The "check_bucket" request failed: {err}', 1)
+            sys.exit(16)
 
     def load_information_from_file(self, log_key):
         """Load data from a S3 access log file."""
@@ -3108,6 +3149,9 @@ class AWSCloudWatchLogs(AWSService):
         try:
             debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
+        except botocore.exceptions.ClientError as err:
+            debug(f'ERROR: The "remove_aws_log_stream" request failed: {err}', 1)
+            sys.exit(16)
         except Exception:
             debug('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group), 0)
 
@@ -3165,7 +3209,7 @@ class AWSCloudWatchLogs(AWSService):
                       f'available. Attempting again.', 1)
             except botocore.exceptions.ClientError as err:
                 debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
-                sys.exit(1)
+                sys.exit(16)
 
             # Update token
             token = response['nextForwardToken']
@@ -3340,7 +3384,7 @@ class AWSCloudWatchLogs(AWSService):
             print(f'ERROR: {str(e)}')
         except botocore.exceptions.ClientError as err:
             debug(f'ERROR: The "get_log_streams" request failed: {err}', 1)
-            sys.exit(1)
+            sys.exit(16)
         except Exception:
             debug(
                 '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
