@@ -14,7 +14,7 @@ from api.validator import (check_exp, check_xml, _alphanumeric_param,
                            _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
                            allowed_fields, is_safe_path, _wazuh_version, _symbols_alphanumeric_param, _base64,
                            _group_names, _group_names_or_all, _iso8601_date, _iso8601_date_time, _numbers_or_all,
-                           _cdb_filename_path, _xml_filename_path, _xml_filename)
+                           _cdb_filename_path, _xml_filename_path, _xml_filename, _active_response_command)
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -72,6 +72,8 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('security-eventchannel', _cdb_filename_path),
     ('local_rules.xml', _xml_filename_path),
     ('local_rules1.xml,local_rules2.xml', _xml_filename),
+    ('scripts/active_response', _active_response_command),
+    ('!scripts/active_response', _active_response_command),
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
     # version
@@ -129,6 +131,8 @@ def test_validation_check_exp_ok(exp, regex_name):
     # paths
     ('/var/ossec/etc/internal_options$', _paths),
     ('/var/ossec/etc/rules/local_rules.xml()', _paths),
+    ('!scripts/active_response()', _active_response_command),
+    ('scripts\\active_response$', _active_response_command),
     # relative paths
     ('etc/internal_options', _get_dirnames_path),
     ('../../path', _get_dirnames_path),
@@ -179,13 +183,16 @@ def test_allowed_fields():
 def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path('/api/configuration/api.yaml')
+    assert is_safe_path('c:\\api\\configuration\\api.yaml')
     assert is_safe_path('etc/rules/local_rules.xml', relative=False)
     assert is_safe_path('etc/ossec.conf', relative=True)
     assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
     assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
-    assert not is_safe_path('./etc/rules/rule.xml', relative=False)
-    assert not is_safe_path('./ruleset/decoders/decoder.xml./', relative=False)
+    assert not is_safe_path('../etc/rules/rule.xml', relative=False)
+    assert not is_safe_path('../etc/rules/rule.xml')
+    assert not is_safe_path('..\\etc\\rules\\rule.xml')
+    assert not is_safe_path('../ruleset/decoders/decoder.xml./', relative=False)
 
 
 @pytest.mark.parametrize('value, format', [
