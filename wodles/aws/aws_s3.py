@@ -241,11 +241,9 @@ class WazuhIntegration:
                     'mode': 'standard'
                 }
             )
-            debug('Generating default configuration for retries: mode {} - max_attempts {}'.format(
-                args['config'].retries['mode'],
-                args['config'].retries['max_attempts']), 2)
+            debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
         else:
-            debug('Found configuration for connection retries in ~/.aws/config', 2)
+            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}', 2)
 
         return args
 
