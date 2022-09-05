@@ -4,6 +4,8 @@
 
 
 from copy import deepcopy
+from typing import Union
+
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
@@ -542,20 +544,27 @@ class WazuhException(Exception):
                                     'The error message will be the output of upgrade module'}
                    for key in range(1811, 1900)})
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
-                 type=None):
-        """
-        Creates a Wazuh Exception.
+    def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
+                 dapi_errors: dict = None, title: str = None, type: str = None):
+        """Create a WazuhException object.
 
-        :param code: Exception code.
-        :param extra_message: Adds an extra message to the error description.
-        :param extra_remediation: Adds an extra description to remediation
-        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        :param dapi_errors: dict with details about node and logfile. I.e.:
-                            {'master-node': {'error': 'Wazuh Internal error',
-                                             'logfile': WAZUH_HOME/logs/api.log}
-                            }
-        :param title: Name of the exception to be shown
+        Parameters
+        ----------
+        code : int
+            Exception code.
+        extra_message : str
+            Adds an extra message to the error description.
+        extra_remediation : str
+            Adds an extra description to remediation.
+        cmd_error : bool
+            If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        dapi_errors : dict
+            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
+            'logfile': WAZUH_HOME/logs/api.log}}
+        title : str
+            Name of the exception to be shown.
+        type : str
+            Type of the exception.
         """
         self._type = type if type else 'about:blank'
         self._title = title if title else self.__class__.__name__
@@ -623,7 +632,7 @@ class WazuhException(Exception):
         obj.__dict__ = deepcopy(dict(self.__dict__))
         return obj
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {'type': self._type,
                 'title': self._title,
                 'code': self._code,
@@ -674,19 +683,29 @@ class WazuhInternalError(WazuhException):
     _default_type = "about:blank"
     _default_title = "Wazuh Internal Error"
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
-                 title=None, type=None):
-        """Creates a WazuhInternalError exception.
+    def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
+                 dapi_errors: dict = None, ids: Union[list, set] = None, title: str = None, type: str = None):
+        """Create a WazuhInternalError exception.
 
-        :param code: Exception code.
-        :param extra_message: Adds an extra message to the error description.
-        :param extra_remediation: Adds an extra description to remediation
-        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        :param dapi_errors: dict with details about node and logfile. I.e.:
-                            {'master-node': {'error': 'Wazuh Internal error',
-                                             'logfile': WAZUH_HOME/logs/api.log}
-                            }
-        :param ids: List or set with the ids involved in the exception
+        Parameters
+        ----------
+        code : int
+            Exception code.
+        extra_message : str
+            Adds an extra message to the error description.
+        extra_remediation : str
+            Adds an extra description to remediation.
+        cmd_error : bool
+            If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        dapi_errors : dict
+            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
+            'logfile': WAZUH_HOME/logs/api.log}}
+        title : str
+            Name of the exception to be shown.
+        type : str
+            Type of the exception.
+        ids : Union[list, set]
+            List or set with the ids involved in the exception
         """
 
         super().__init__(code, extra_message=extra_message,
@@ -710,24 +729,34 @@ class WazuhClusterError(WazuhInternalError):
 class WazuhError(WazuhException):
     """
     This type of exception is raised as a controlled response to a bad request from user
-    that cannot be performed properly
+    that cannot be performed properly.
     """
     _default_type = "about:blank"
     _default_title = "Bad Request"
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, ids=None,
-                 title=None, type=None):
-        """Creates a WazuhError exception.
+    def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
+                 dapi_errors: dict = None, ids: Union[list, set] = None, title: str = None, type: str = None):
+        """Create a WazuhError exception.
 
-        :param code: Exception code.
-        :param extra_message: Adds an extra message to the error description.
-        :param extra_remediation: Adds an extra description to remediation
-        :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
-        :param dapi_errors: dict with details about node and logfile. I.e.:
-                            {'master-node': {'error': 'Wazuh Internal error',
-                                             'logfile': WAZUH_HOME/logs/api.log}
-                            }
-        :param ids: List or set with the ids involved in the exception
+        Parameters
+        ----------
+        code : int
+            Exception code.
+        extra_message : str
+            Adds an extra message to the error description.
+        extra_remediation : str
+            Adds an extra description to remediation.
+        cmd_error : bool
+            If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        dapi_errors : dict
+            Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
+            'logfile': WAZUH_HOME/logs/api.log}}
+        title : str
+            Name of the exception to be shown.
+        type : str
+            Type of the exception.
+        ids : Union[list, set]
+            List or set with the ids involved in the exception
         """
 
         super().__init__(code, extra_message=extra_message,
@@ -750,7 +779,7 @@ class WazuhError(WazuhException):
                 result._ids = self.ids | other.ids
         return result
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         result = super().to_dict()
         result['ids'] = list(self.ids)
 
