@@ -105,7 +105,8 @@ static std::vector<std::string> splitSlashSeparatedField(std::string_view str)
 
 static bool parseCapture(Tokenizer& tk, ExpressionList& expresions)
 {
-    //<name> || <?name> || <name1>?<name2>
+    // Available options: <name> || <?name> || <name1>?<name2>
+    // Forbidden options: <name  || <name>? || <name><name>
     Token token = getToken(tk);
     bool optional = false;
     if (token.type == TokenType::QuestionMark)
@@ -155,6 +156,13 @@ static bool parseCapture(Tokenizer& tk, ExpressionList& expresions)
             auto& currentCapture = expresions.back();
             currentCapture.endToken = endToken;
             prevCapture.endToken = endToken;
+        }
+        else if (peekToken(tk).type == TokenType::OpenAngle)
+        {
+            // By definition can't have two consecutive fields
+            // TODO: we should specify what's causing the error
+            return false;
+
         }
         else
         {
