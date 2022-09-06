@@ -15,6 +15,7 @@ namespace cmd
  * @param threads Number of environment threads.
  * @param fileStorage Path to asset folders.
  * @param environment Name of the environment to be loaded.
+ * @param logLevel Log level.
  */
 void run(const std::string& kvdbPath,
          const std::string& endpoint,

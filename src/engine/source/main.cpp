@@ -123,12 +123,20 @@ void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
             "-l, --protocol_location", args::protocol_location, "Protocol location.")
         ->default_val("/dev/stdin");
 
+    // Log level
+    logtest
+        ->add_option("--log_level",
+                     args::log_level,
+                     "Log level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
+        ->default_val(3);
+
     // Debug levels
-    auto debug = logtest->add_flag("-d, --debug",
-                                   args::debug_level,
-                                   "Enable debug mode [0-2]. "
-                                   "0: No debug, 1: Asset history, 2: 1 + "
-                                   "Full tracing.");
+    auto debug =
+        logtest->add_flag("-d, --debug",
+                          args::debug_level,
+                          "Enable debug mode [0-2]. Flag can appear multiple times. "
+                          "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
+                          "Full tracing.");
 
     // Trace
     logtest
@@ -219,6 +227,7 @@ int main(int argc, char* argv[])
         cmd::test(args::kvdb_path,
                   args::file_storage,
                   args::environment,
+                  args::log_level,
                   args::debug_level,
                   TraceAll,
                   assetTrace,

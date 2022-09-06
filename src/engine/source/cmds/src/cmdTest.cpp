@@ -25,6 +25,7 @@ namespace cmd
 void test(const std::string& kvdbPath,
           const std::string& fileStorage,
           const std::string& environment,
+          int logLevel,
           int debugLevel,
           bool traceAll,
           const std::vector<std::string>& assetTrace,
@@ -32,9 +33,15 @@ void test(const std::string& kvdbPath,
           const std::string& protocolLocation)
 {
     // Init logging
-    // TODO: add cmd to config logging level
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = logging::LogLevel::Debug;
+    switch (logLevel)
+    {
+        case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
+        case 1: logConfig.logLevel = logging::LogLevel::Info; break;
+        case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
+        case 3: logConfig.logLevel = logging::LogLevel::Error; break;
+        default: WAZUH_LOG_ERROR("Invalid log level: {}", logLevel);
+    }
     logging::loggingInit(logConfig);
 
     KVDBManager::init(kvdbPath);
@@ -106,9 +113,7 @@ void test(const std::string& kvdbPath,
     std::stringstream output;
     auto stderrSubscriber = rxcpp::make_subscriber<rxbk::RxEvent>(
         [&](const rxbk::RxEvent& event)
-        {
-            output << event->payload()->prettyStr() << std::endl;
-        });
+        { output << event->payload()->prettyStr() << std::endl; });
     controller.getOutput().subscribe(stderrSubscriber);
 
     // Tracer subscriber for history
