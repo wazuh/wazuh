@@ -102,26 +102,34 @@ char * wstr_replace(const char * string, const char * search, const char * repla
 // Locate first occurrence of non escaped character in string
 char * wstr_chr(char * str, int character);
 
+/* Locate first occurrence of non escaped character in string
+ *
+ * str must be a valid pointer to a string where look for a non escaped character.
+ * character int is the value of the non escaped character.
+ * escape int is the value of the operator used to escape.
+ * Returns a char *, represents the position of the non escaped character, or NULL if fail.
+ */char * wstr_chr_escape(char * str, int character, int escape);
+
 /* Escape a specific character from a character string
  *
  * dststr must be a valid pointer to a char buffer where escaped string will be stored.
  * dst_size must be an unsigned int value, to avoid overflow the buffer.
  * str must be a valid pointer to a string to escape.
- * scape int is the value of the operator used to escape.
- * toscape int is the value to scape.
+ * escape int is the value of the operator used to escape.
+ * toescape int is the value to escape.
  * Returns a ssize_t, represents the size of the dststr if success, or OS_INVALID if fail.
  */
-ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape);
+ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int escape, int toescape);
 
 /* Unescape a specific character from a character string
  *
  * dststr must be a valid pointer to a char buffer where unescaped string will be stored.
  * dst_size must be an unsigned int value, to avoid overflow the buffer.
  * str must be a valid pointer to a string to unescape.
- * scape int is the value of the operator used to unescape.
+ * escape int is the value of the operator used to unescape.
  * Returns a ssize_t, represents the size of the dststr if success, or OS_INVALID if fail.
  */
-ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape);
+ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int escape);
 
 // Free string array
 void free_strarray(char ** array);

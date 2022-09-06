@@ -787,8 +787,8 @@ void test_wstr_escape_corner_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    ssize_t ret = wstr_escape(dststr, sizeof(dststr), ":::test string with multi : colons:::", '\\', ':');
-    assert_string_equal(dststr, "\\:\\:\\:test string with multi \\: colons\\:\\:\\:");
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), ":::test string with multi : colons:::", '|', ':');
+    assert_string_equal(dststr, "|:|:|:test string with multi |: colons|:|:|:");
     assert_int_equal(ret, 44);
 }
 
@@ -873,7 +873,7 @@ void test_wstr_unescape_corner_colons_escape(void ** state) {
 
     char dststr[OS_BUFFER_SIZE];
 
-    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "\\:\\:\\:test string with multi \\: colons\\:\\:\\:", '\\');
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "|:|:|:test string with multi |: colons|:|:|:", '|');
     assert_string_equal(dststr, ":::test string with multi : colons:::");
     assert_int_equal(ret, 37);
 }
@@ -934,21 +934,21 @@ void test_wstr_unescape_end_scape(void ** state) {
 
 void test_wstr_chr_str_eof(void ** state) {
 
-    char * ret = wstr_chr("\0", ':');
+    char * ret = wstr_chr_escape("\0", ':', '\\');
     assert_null(ret);
 }
 
 void test_wstr_chr_str_without_character(void ** state) {
 
     char str[OS_BUFFER_SIZE] = "test string without colons";
-    char * ret = wstr_chr(str, ':');
+    char * ret = wstr_chr_escape(str, ':', '\\');
     assert_null(ret);
 }
 
 void test_wstr_chr_str_without_escaped_colons(void ** state) {
 
     char str[OS_BUFFER_SIZE] = "test string with : escaped colons";
-    char * ret = wstr_chr(str, ':');
+    char * ret = wstr_chr_escape(str, ':', '\\');
     assert_non_null(ret);
     assert_ptr_equal(ret, str+17);
     assert_int_equal(*ret, str[17]);
@@ -957,7 +957,7 @@ void test_wstr_chr_str_without_escaped_colons(void ** state) {
 void test_wstr_chr_str_with_escaped_colons(void ** state) {
 
     char str[OS_BUFFER_SIZE] = "test string with \\: escaped : colons";
-    char * ret = wstr_chr(str, ':');
+    char * ret = wstr_chr_escape(str, ':', '\\');
     assert_non_null(ret);
     assert_ptr_equal(ret, str+28);
     assert_int_equal(*ret, str[28]);

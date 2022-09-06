@@ -41,14 +41,14 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Look for the first non scape ":" */
     msg_cpy = msg;
-    if (pieces = wstr_chr(msg_cpy, ':'), pieces == NULL) {
+    if (pieces = wstr_chr_escape(msg_cpy, ':', '|'), pieces == NULL) {
         merror(FORMAT_ERROR);
         return (-1);
     }
     *pieces = '\0';
     pieces++;
 
-    if (OS_INVALID == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '\\')) {
+    if (OS_INVALID == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '|')) {
         merror(FORMAT_ERROR);
         return (-1);
     }

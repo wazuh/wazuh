@@ -305,9 +305,16 @@ char * wstr_replace(const char * string, const char * search, const char * repla
     return result;
 }
 
-// Locate first occurrence of non escaped character in string
+// Locate first occurrence of non '\\' escaped character in string
 
 char * wstr_chr(char * str, int character) {
+
+    return wstr_chr_escape(str, character, '\\');
+}
+
+// Locate first occurrence of non escaped character in string
+
+char * wstr_chr_escape(char * str, int character, int escape) {
     char escaped = 0;
 
     for (;*str != '\0'; str++) {
@@ -315,7 +322,7 @@ char * wstr_chr(char * str, int character) {
             if (*str == character) {
                 return str;
             }
-            if (*str == '\\') {
+            if (*str == escape) {
                 escaped = 1;
             }
         } else {
@@ -328,7 +335,7 @@ char * wstr_chr(char * str, int character) {
 
 // Escape a specific character from a character string
 
-ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int scape, int toscape) {
+ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int escape, int toescape) {
 
     char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
@@ -337,8 +344,8 @@ ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int sc
 
     unsigned int a = 0;
     while (*str_cpy != '\0' && a < dst_size -1) {
-        if (*str_cpy == toscape || *str_cpy == scape) {
-            dststr[a++] = scape;
+        if (*str_cpy == toescape || *str_cpy == escape) {
+            dststr[a++] = escape;
         }
         dststr[a++] = *str_cpy++;
     }
@@ -348,7 +355,7 @@ ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int sc
 
 // Unescape a specific character from a character string
 
-ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int scape) {
+ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int escape) {
 
     char * str_cpy = (char *) str;
     if (str_cpy == NULL || dststr == NULL) {
@@ -357,7 +364,7 @@ ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int 
 
     unsigned int a = 0;
     while (*str_cpy != '\0' && a < dst_size -1) {
-        if (*str_cpy == scape && *(str_cpy + 1) != '\0') {
+        if (*str_cpy == escape && *(str_cpy + 1) != '\0') {
             str_cpy++;
         }
         dststr[a++] = *str_cpy++;

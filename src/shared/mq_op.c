@@ -86,7 +86,7 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
 
     tmpstr[OS_MAXSTR] = '\0';
 
-    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '\\', ':')) {
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
         merror(FORMAT_ERROR);
         return (0);
     }

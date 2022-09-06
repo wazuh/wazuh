@@ -160,7 +160,7 @@ static void test_OS_CleanMSG_syslog_ipv6_msg(void **state) {
 
     char *msg;
     os_calloc(OS_BUFFER_SIZE, sizeof(char), msg);
-    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '2', "0000\\:0000\\:0000\\:0000\\:0000\\:0000\\:0000\\:0001", "payload test");
+    snprintf(msg, OS_BUFFER_SIZE, "%c:%s:%s", '2', "0000|:0000|:0000|:0000|:0000|:0000|:0000|:0001", "payload test");
 
     int value = OS_CleanMSG(msg, lf);
 
