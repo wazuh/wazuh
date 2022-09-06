@@ -252,7 +252,7 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     q_filter : dict
         Query to filter in database.
     """
-    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
+    equal_regex = r"\(',' || [\w`]+ || ','\) GLOB :\w+"
     not_equal_regex = f"NOT {equal_regex}"
     like_regex = r"[\w`]+ LIKE :\w+"
 
