@@ -143,10 +143,10 @@ void test(const std::string& kvdbPath,
         {
             auto assetNamePattern = std::make_shared<RE2>(R"(^\[([^\]]+)\].+)");
             controller.listenOnAllTrace(rxcpp::make_subscriber<std::string>(
-                [&](const std::string& trace)
+                [assetNamePattern, &traceBuffer](const std::string& trace)
                 {
                     std::string asset;
-                    auto matched = RE2::FullMatch(trace, *assetNamePattern, &asset);
+                    auto matched = RE2::PartialMatch(trace, *assetNamePattern, &asset);
                     traceBuffer[asset] << trace << std::endl;
                 }));
         }
