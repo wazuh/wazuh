@@ -19,7 +19,7 @@ DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 class AsyncWazuhDBConnection:
     """
-    Represents an async connection to the wdb socket.
+    Represent an async connection to the wdb socket.
     """
 
     def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
@@ -124,7 +124,7 @@ class AsyncWazuhDBConnection:
 
 class WazuhDBConnection:
     """
-    Represents a connection to the wdb socket
+    Represent a connection to the wdb socket.
     """
 
     def __init__(self, request_slice=500):
