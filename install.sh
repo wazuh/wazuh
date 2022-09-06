@@ -83,7 +83,6 @@ Install()
           MAKEBIN=/opt/freeware/bin/gmake
     fi
     if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
-        ln -s /usr/include/linux/a.out.h /usr/include/a.out.h
         ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
     fi
 
