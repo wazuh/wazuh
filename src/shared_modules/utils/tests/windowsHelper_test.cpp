@@ -188,7 +188,7 @@ TEST_F(WindowsHelperTest, normalizeTimestampShortValue)
 {
     std::string value = "202202";
     std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected = UNKNOWN_VALUE;
+    std::string expected;
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 
@@ -199,7 +199,7 @@ TEST_F(WindowsHelperTest, normalizeTimestampLongValue)
 {
     std::string value = "2022021516";
     std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected = UNKNOWN_VALUE;
+    std::string expected;
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 
@@ -208,9 +208,9 @@ TEST_F(WindowsHelperTest, normalizeTimestampLongValue)
 
 TEST_F(WindowsHelperTest, normalizeTimestampUnknownValue)
 {
-    std::string value = UNKNOWN_VALUE;
+    std::string value;
     std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected = UNKNOWN_VALUE;
+    std::string expected;
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 
@@ -243,7 +243,7 @@ TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp1)
 {
     std::string value = "a0220215";
     std::string timestamp = "2022/02/15 23:59:59";
-    std::string expected = UNKNOWN_VALUE;
+    std::string expected;
 
     std::string result = Utils::normalizeTimestamp(value, timestamp);
 

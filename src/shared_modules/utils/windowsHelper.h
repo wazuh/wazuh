@@ -27,7 +27,6 @@
 #include "mem_op.h"
 #include "stringHelper.h"
 #include "encodingWindowsHelper.h"
-#include "../../data_provider/src/sharedDefs.h"
 #include "timeHelper.h"
 
 #pragma GCC diagnostic push
@@ -195,7 +194,7 @@ namespace Utils
 
     static std::string normalizeTimestamp(const std::string& timestamp1, const std::string& timestamp2)
     {
-        std::string ret = UNKNOWN_VALUE;
+        std::string normalizedTimestamp;
 
         if (timestamp1.size() == INSTALLDATE_REGISTRY_VALUE_SIZE)
         {
@@ -216,7 +215,7 @@ namespace Utils
                     {
                         if (date2_trimmed.compare(timestamp1) == 0)
                         {
-                            ret = timestamp2;
+                            normalizedTimestamp = timestamp2;
                         }
                         else
                         {
@@ -231,14 +230,14 @@ namespace Utils
 
                             time_t local_time = mktime(local_time_s.get());
 
-                            ret = Utils::getTimestamp(local_time, false);
+                            normalizedTimestamp = Utils::getTimestamp(local_time, false);
                         }
                     }
                 }
             }
         }
 
-        return ret;
+        return normalizedTimestamp;
     }
 
     /* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
