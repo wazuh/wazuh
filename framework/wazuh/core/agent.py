@@ -155,8 +155,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             valid_group_operators = {'=', '!=', '~'}
 
             if q_filter['operator'] == '=':
-                self.query += f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.query += f"(',' || {self.fields[field_name]} || ',') GLOB :{field_filter}"
+                self.request[field_filter] = f"*,{q_filter['value']},*"
             elif q_filter['operator'] == '!=':
                 self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
                 self.request[field_filter] = f"%,{q_filter['value']},%"
