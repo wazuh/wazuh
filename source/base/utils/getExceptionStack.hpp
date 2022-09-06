@@ -26,9 +26,6 @@ inline std::string getExceptionStack(const std::exception& e, int level = 0)
     {
         ss << getExceptionStack(nestedException, level + 1);
     }
-    catch (...)
-    {
-    }
 
     return ss.str();
 }
