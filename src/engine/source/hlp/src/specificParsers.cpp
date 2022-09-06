@@ -98,16 +98,14 @@ bool configureKVMapParser(Parser& parser, std::vector<std::string_view> const& a
     if (argsSize != 2 || args[0].empty() || args[1].empty())
     {
         const auto msg = fmt::format(
-            "[HLP] Invalid arguments for map Parser. Expected 2, got [{}]",
-            argsSize);
+            "[HLP] Invalid arguments for map Parser. Expected 2, got [{}]", argsSize);
         throw std::runtime_error(msg);
     }
 
     // Key-Value Separator
-    parser.options.push_back(std::string{args[0]});
+    parser.options.push_back(std::string {args[0]});
     // Pair Separator
-    parser.options.push_back(std::string{args[1]});
-
+    parser.options.push_back(std::string {args[1]});
 
     return true;
 }
@@ -537,7 +535,8 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         if (strParsePtr == nullptr || key.empty())
         {
             // Goback to the last valid pair
-            if (lastFoundOk > *it) {
+            if (lastFoundOk > *it)
+            {
                 isSearchComplete = true;
                 lastFoundOk = lastFoundOk - pairSeparator.size();
             }
@@ -591,14 +590,16 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
                     // Point to the endMapToken
                     strParsePtr = strParsePtr + splitValue;
                     isSearchComplete = true;
-                } else {
+                }
+                else
+                {
                     // Point to the next char after the pairSeparator
                     strParsePtr = endValuePtr + pairSeparator.size();
                 }
-
             }
             // No pairSeparator, search for endMapToken
-            else if (endValuePtr = strchr(strParsePtr, endMapToken), endValuePtr != nullptr)
+            else if (endValuePtr = strchr(strParsePtr, endMapToken),
+                     endValuePtr != nullptr)
             {
                 value = std::string_view(strParsePtr, endValuePtr - strParsePtr);
                 strParsePtr = endValuePtr;
@@ -614,11 +615,38 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         }
         // Print key and value and iterator
         lastFoundOk = strParsePtr;
-        // std::cout << "Key: '" << key << "', Value: '" << value << "', Iterator: '" << strParsePtr
-        //           << "'" << std::endl;
+        // std::cout << "Key: '" << key << "', Value: '" << value << "', Iterator: '" <<
+        // strParsePtr << "'" << std::endl;
 
+        // Check the value type and cast it
+        auto jsonValue {rapidjson::Value(rapidjson::kNullType)};
+        if (!value.empty())
+        {
+
+            // Check if the value maybe is a negative number
+            bool negativeNumber = value[0] == '-' && value.size() > 1;
+
+            if (value.find_first_not_of("0123456789.", negativeNumber ? 1 : 0)
+                == std::string_view::npos)
+            {
+                // Number
+                if (value.find('.') != std::string_view::npos)
+                {
+                    jsonValue.SetDouble(std::stod(std::string(value)));
+                }
+                else
+                {
+                    jsonValue.SetInt64(std::stoll(std::string(value)));
+                }
+            }
+            else
+            {
+                // Add string value
+                jsonValue = rapidjson::Value(std::string(value).c_str(), allocator);
+            }
+        }
         output_doc.AddMember(rapidjson::Value(std::string(key).c_str(), allocator),
-                             rapidjson::Value(std::string(value).c_str(), allocator),
+                             jsonValue.Move(),
                              allocator);
     }
 
