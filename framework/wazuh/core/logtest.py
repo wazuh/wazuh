@@ -10,7 +10,7 @@ from wazuh.core.common import LOGTEST_SOCKET, DECIMALS_DATE_FORMAT, origin_modul
 from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
 
 
-def send_logtest_msg(command: str = None, parameters: dict = None):
+def send_logtest_msg(command: str = None, parameters: dict = None) -> dict:
     """Connect and send a message to the logtest socket.
 
     Parameters
