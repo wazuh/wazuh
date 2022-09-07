@@ -90,36 +90,22 @@ STATIC void process_deleted_groups();
 STATIC void process_deleted_multi_groups();
 
 /**
- * @brief Find a group structure from its name
- * @param group Group name
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group(const char *group);
-
-/**
- * @brief Find a multigroup structure from its name
- * @param multigroup Multigroup name
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group(const char *multigroup);
-
-/**
  * @brief Find a group structure from a file name and md5
  * @param file File name
  * @param md5 MD5 of the file
- * @param group Array to store the group name if exists
+ * @param group_name Array to store the group name if exists
  * @return Group structure if exists, NULL otherwise
  */
-STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]);
+STATIC group_t* find_group_from_file(const char * file, const char * md5, char group_name[OS_SIZE_65536]);
 
 /**
  * @brief Find a multigroup structure from a file name and md5
  * @param file File name
  * @param md5 MD5 of the file
- * @param multigroup Array to store the multigroup name if exists
+ * @param multigroup_name Array to store the multigroup name if exists
  * @return Multigroup structure if exists, NULL otherwise
  */
-STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]);
+STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup_name[OS_SIZE_65536]);
 
 /**
  * @brief Compare and check if the file sum has changed
@@ -181,11 +167,9 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
  */
 STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration);
 
-/* Groups structures and sizes */
-static group_t **groups;
-static group_t **multi_groups;
-static int groups_size = 0;
-static int multi_groups_size = 0;
+/* Groups structures */
+static OSHash *groups;
+static OSHash *multi_groups;
 
 static time_t _stime;
 int INTERVAL;
@@ -397,8 +381,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
                 w_mutex_lock(&files_mutex);
 
-                if (aux = find_group(data->group), !aux || !aux->f_sum) {
-                    if (aux = find_multi_group(data->group), !aux || !aux->f_sum) {
+                if (aux = OSHash_Get_ex(groups, data->group), !aux || !aux->f_sum) {
+                    if (aux = OSHash_Get_ex(multi_groups, data->group), !aux || !aux->f_sum) {
                         mdebug1("No such group '%s' for agent '%s'", data->group, key->id);
                     }
                 }
@@ -745,17 +729,18 @@ STATIC void process_groups() {
         }
 
         group_t *group = NULL;
-        if (group = find_group(entry->d_name), !group) {
+        if (group = OSHash_Get_ex(groups, entry->d_name), !group) {
             // New group
-            os_realloc(groups, (groups_size + 2) * sizeof(group_t *), groups);
-            os_calloc(1, sizeof(group_t), groups[groups_size]);
-            groups[groups_size]->name = strdup(entry->d_name);
-            c_group(entry->d_name, &groups[groups_size]->f_sum, SHAREDCFG_DIR, !logr.nocmerged);
-            groups[groups_size]->has_changed = true;
-            groups[groups_size]->exists = true;
-            groups[groups_size + 1] = NULL;
-            groups_size++;
-
+            os_calloc(1, sizeof(group_t), group);
+            if (OSHash_Add_ex(groups, entry->d_name, group) != 2) {
+                os_free(group);
+                merror("Couldn't add group '%s' to hash table 'groups'", entry->d_name);
+            } else {
+                group->name = strdup(entry->d_name);
+                c_group(entry->d_name, &group->f_sum, SHAREDCFG_DIR, !logr.nocmerged);
+                group->has_changed = true;
+                group->exists = true;
+            }
         } else {
             file_sum **old_sum = group->f_sum;
             group->f_sum = NULL;
@@ -858,16 +843,17 @@ STATIC void process_multi_groups() {
         }
 
         group_t *multigroup = NULL;
-        if (multigroup = find_multi_group(key), !multigroup) {
+        if (multigroup = OSHash_Get_ex(multi_groups, key), !multigroup) {
             // New multigroup
-            os_realloc(multi_groups, (multi_groups_size + 2) * sizeof(group_t *), multi_groups);
-            os_calloc(1, sizeof(group_t), multi_groups[multi_groups_size]);
-            multi_groups[multi_groups_size]->name = strdup(key);
-            c_multi_group(key, &multi_groups[multi_groups_size]->f_sum, data, !logr.nocmerged);
-            multi_groups[multi_groups_size]->exists = true;
-            multi_groups[multi_groups_size + 1] = NULL;
-            multi_groups_size++;
-
+            os_calloc(1, sizeof(group_t), multigroup);
+            if (OSHash_Add_ex(multi_groups, key, multigroup) != 2) {
+                os_free(multigroup);
+                merror("Couldn't add multigroup '%s' to hash table 'multi_groups'", key);
+            } else {
+                multigroup->name = strdup(key);
+                c_multi_group(key, &multigroup->f_sum, data, !logr.nocmerged);
+                multigroup->exists = true;
+            }
         } else {
             if (group_changed(key)) {
                 // Multigroup needs to be updated
@@ -903,96 +889,65 @@ STATIC void process_multi_groups() {
 }
 
 STATIC void process_deleted_groups() {
-    bool update = 0;
+    OSHashNode *my_node;
     unsigned int i;
 
-    for (i = 0; groups[i]; i++) {
-        if (!groups[i]->exists) {
-            update = true;
-            break;
+    my_node = OSHash_Begin(groups, &i);
+
+    while (my_node) {
+        char *key = NULL;
+        group_t *group = my_node->data;
+
+        os_strdup(my_node->key, key);
+
+        my_node = OSHash_Next(groups, &i, my_node);
+
+        if (group->exists) {
+            group->has_changed = false;
+            group->exists = false;
+        } else {
+            OSHash_Delete_ex(groups, key);
+            free_file_sum(group->f_sum);
+            os_free(group->name);
+            os_free(group);
         }
-    }
 
-    if (update) {
-        group_t **old_groups = NULL;
-
-        old_groups = groups;
-        groups = NULL;
-
-        os_calloc(1, sizeof(group_t *), groups);
-        groups_size = 0;
-
-        for (i = 0; old_groups[i]; i++) {
-            if (old_groups[i]->exists) {
-                os_realloc(groups, (groups_size + 2) * sizeof(group_t *), groups);
-                groups[groups_size] = old_groups[i];
-                groups[groups_size]->has_changed = false;
-                groups[groups_size]->exists = false;
-                groups[groups_size + 1] = NULL;
-                groups_size++;
-            } else {
-                free_file_sum(old_groups[i]->f_sum);
-                os_free(old_groups[i]->name);
-                os_free(old_groups[i]);
-            }
-        }
-        os_free(old_groups);
-
-    } else {
-        for (i = 0; groups[i]; i++) {
-            groups[i]->has_changed = false;
-            groups[i]->exists = false;
-        }
+        os_free(key);
     }
 }
 
 STATIC void process_deleted_multi_groups() {
     char multi_path[PATH_MAX] = {0};
     os_sha256 multi_group_hash;
-    bool update = 0;
+    OSHashNode *my_node;
     unsigned int i;
 
     OSHash_Clean(m_hash, cleaner);
     m_hash = OSHash_Create();
 
-    for (i = 0; multi_groups[i]; i++) {
-        if (!multi_groups[i]->exists) {
-            update = true;
-            break;
+    my_node = OSHash_Begin(multi_groups, &i);
+
+    while (my_node) {
+        char *key = NULL;
+        group_t *multigroup = my_node->data;
+
+        os_strdup(my_node->key, key);
+
+        my_node = OSHash_Next(multi_groups, &i, my_node);
+
+        if (multigroup->exists) {
+            multigroup->exists = false;
+        } else {
+            OS_SHA256_String(multigroup->name, multi_group_hash);
+            snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
+            rmdir_ex(multi_path);
+            OSHash_Delete_ex(multi_groups, key);
+            free_file_sum(multigroup->f_sum);
+            os_free(multigroup->name);
+            os_free(multigroup);
         }
-    }
 
-    if (update) {
-        group_t **old_multi_groups = NULL;
-
-        old_multi_groups = multi_groups;
-        multi_groups = NULL;
-
-        os_calloc(1, sizeof(group_t *), multi_groups);
-        multi_groups_size = 0;
-
-        for (i = 0; old_multi_groups[i]; i++) {
-            if (old_multi_groups[i]->exists) {
-                os_realloc(multi_groups, (multi_groups_size + 2) * sizeof(group_t *), multi_groups);
-                multi_groups[multi_groups_size] = old_multi_groups[i];
-                multi_groups[multi_groups_size]->exists = false;
-                multi_groups[multi_groups_size + 1] = NULL;
-                multi_groups_size++;
-            } else {
-                OS_SHA256_String(old_multi_groups[i]->name, multi_group_hash);
-                snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
-                rmdir_ex(multi_path);
-                free_file_sum(old_multi_groups[i]->f_sum);
-                os_free(old_multi_groups[i]->name);
-                os_free(old_multi_groups[i]);
-            }
-        }
-        os_free(old_multi_groups);
-
-    } else {
-        for (i = 0; multi_groups[i]; i++) {
-            multi_groups[i]->exists = false;
-        }
+        os_free(key);
     }
 }
 
@@ -1212,63 +1167,65 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
     return;
 }
 
-STATIC group_t* find_group(const char *group) {
-    unsigned int i;
-
-    for (i = 0; groups[i]; i++) {
-        if (!strcmp(groups[i]->name, group)) {
-            return groups[i];
-        }
-    }
-    return NULL;
-}
-
-STATIC group_t* find_multi_group(const char *multigroup) {
-    unsigned int i;
-
-    for (i = 0; multi_groups[i]; i++) {
-        if (!strcmp(multi_groups[i]->name, multigroup)) {
-            return multi_groups[i];
-        }
-    }
-    return NULL;
-}
-
-STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]) {
-    file_sum ** f_sum;
+STATIC group_t* find_group_from_file(const char * file, const char * md5, char group_name[OS_SIZE_65536]) {
+    group_t *group;
+    file_sum **f_sum;
+    OSHashNode *my_node;
     unsigned int i, j;
 
-    for (i = 0; groups[i]; i++) {
-        f_sum = groups[i]->f_sum;
+    my_node = OSHash_Begin(groups, &i);
+
+    while (my_node) {
+        group = my_node->data;
+        f_sum = group->f_sum;
 
         if (f_sum && f_sum[0] && f_sum[0]->name) {
             for (j = 0; f_sum[j]; j++) {
-                if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    snprintf(group, OS_SIZE_65536, "%s", groups[i]->name);
-                    return groups[i];
+                if (!strcmp(f_sum[j]->name, file)) {
+                    if (!strcmp(f_sum[j]->sum, md5)) {
+                        snprintf(group_name, OS_SIZE_65536, "%s", group->name);
+                        return group;
+                    } else {
+                        break;
+                    }
                 }
             }
         }
+
+        my_node = OSHash_Next(groups, &i, my_node);
     }
+
     return NULL;
 }
 
-STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]) {
-    file_sum ** f_sum;
+STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup_name[OS_SIZE_65536]) {
+    group_t *multigroup;
+    file_sum **f_sum;
+    OSHashNode *my_node;
     unsigned int i, j;
 
-    for (i = 0; multi_groups[i]; i++) {
-        f_sum = multi_groups[i]->f_sum;
+    my_node = OSHash_Begin(multi_groups, &i);
+
+    while (my_node) {
+        multigroup = my_node->data;
+        f_sum = multigroup->f_sum;
 
         if (f_sum && f_sum[0] && f_sum[0]->name) {
             for (j = 0; f_sum[j]; j++) {
-                if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    snprintf(multigroup, OS_SIZE_65536, "%s", multi_groups[i]->name);
-                    return multi_groups[i];
+                if (!strcmp(f_sum[j]->name, file)) {
+                    if (!strcmp(f_sum[j]->sum, md5)) {
+                        snprintf(multigroup_name, OS_SIZE_65536, "%s", multigroup->name);
+                        return multigroup;
+                    } else {
+                        break;
+                    }
                 }
             }
         }
+
+        my_node = OSHash_Next(multi_groups, &i, my_node);
     }
+
     return NULL;
 }
 
@@ -1329,7 +1286,7 @@ STATIC bool group_changed(const char *multi_group) {
     for (i = 0; mgroups[i]; i++) {
         group_t *group = NULL;
 
-        if (group = find_group(mgroups[i]), !group || !group->exists || group->has_changed) {
+        if (group = OSHash_Get_ex(groups, mgroups[i]), !group || !group->exists || group->has_changed) {
             free_strarray(mgroups);
             return true;
         }
@@ -1625,8 +1582,8 @@ void manager_init()
 
     mdebug1("Running manager_init");
 
-    os_calloc(1, sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t *), multi_groups);
+    groups = OSHash_Create();
+    multi_groups = OSHash_Create();
 
     /* Clean multigroups directory */
     if (!logr.nocmerged) {
@@ -1641,7 +1598,9 @@ void manager_init()
     pending_queue = linked_queue_init();
     pending_data = OSHash_Create();
 
-    if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");
+    if (!m_hash || !invalid_files || !groups || !multi_groups || !pending_data) {
+        merror_exit("At manager_init(): OSHash_Create() failed");
+    }
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }
