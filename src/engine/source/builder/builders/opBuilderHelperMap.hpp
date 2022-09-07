@@ -109,10 +109,19 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition);
  * @brief Delete a field of the json event
  *
  * @param def The transformation definition.
- * i.e : '<field>: +delete_field/<string1>/<string2>'
+ * i.e : '<field>: +delete_field
  * @return base::Expression The lifter with the `delete_field` transformation.
  */
 base::Expression opBuilderHelperDeleteField(const std::any& definition);
+
+/**
+ * @brief Renames a field of the json event
+ *
+ * @param def The transformation definition.
+ * i.e : '<field>: +rename_field/$<sourceField>
+ * @return base::Expression The lifter with the `rename_field` transformation.
+ */
+base::Expression opBuilderHelperRenameField(const std::any& definition);
 
 //*************************************************
 //*           Regex tranform                      *
