@@ -62,6 +62,10 @@ if sys.version_info[0] == 3:
 # Constants
 ################################################################################
 
+CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
+DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
+                     'Please use another authentication method instead. Check {url} for more information.'
+
 # Enable/disable debug mode
 debug_level = 0
 
@@ -255,6 +259,7 @@ class WazuhIntegration:
 
 
         if access_key is not None and secret_key is not None:
+            print(DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=CREDENTIALS_URL))
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
 
@@ -3500,7 +3505,6 @@ def arg_valid_iam_role_duration(arg_string):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
     return int(arg_string)
 
-
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3517,8 +3521,12 @@ def get_script_arguments():
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
-    parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
-    parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secret key credential', default=None)
+    parser.add_argument('-a', '--access_key', dest='access_key', default=None,
+                        help='S3 Access key credential. '
+                             f'{DEPRECATED_MESSAGE.format(name="access_key", release="4.4", url=CREDENTIALS_URL)}')
+    parser.add_argument('-k', '--secret_key', dest='secret_key', default=None,
+                        help='S3 Access key credential. '
+                             f'{DEPRECATED_MESSAGE.format(name="secret_key", release="4.4", url=CREDENTIALS_URL)}')
     # Beware, once you delete history it's gone.
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)
