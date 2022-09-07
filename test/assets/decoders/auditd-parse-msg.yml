@@ -19,9 +19,102 @@ parse:
     - _kv_msg: <auditd.log/kv_map/=/ >
 
 normalize:
+  - check:
+      auditd.log.record_type: +s_eq/SYSTEM_BOOT
+    map:
+      event.category: host
+      event.type: info
+
+  - check:
+      auditd.log.record_type: +s_eq/SYSTEM_SHUTDOWN
+    map:
+      event.category: host
+      event.type: info
+
+  - check:
+      auditd.log.record_type: +s_eq/VIRT_CONTROL
+    map:
+      event.category: host
+
+  - check:
+      auditd.log.record_type: +s_eq/VIRT_MACHINE_ID
+    map:
+      event.category: host
+
+  - check:
+      auditd.log.op: +s_eq/start
+      auditd.log.record_type: +s_eq/VIRT_CONTROL
+    map:
+      event.type: start
+
+  - check:
+      auditd.log.op: +s_eq/stop
+      auditd.log.record_type: +s_eq/VIRT_CONTROL
+    map:
+      event.type: end
+
+  - check:
+      auditd.log.op: +s_eq/create
+      auditd.log.record_type: +s_eq/VIRT_CONTROL
+    map:
+      event.type: creation
+
+  - check:
+      auditd.log.op: +s_eq/delete
+      auditd.log.record_type: +s_eq/VIRT_CONTROL
+    map:
+      event.type: deletion
+
+  - check:
+      auditd.log.record_type: +s_eq/VIRT_MACHINE_ID
+    map:
+      event.type: creation
+      container.name: auditd.log.vm
+      container.runtime: auditd.log.virt
+
+  - check:
+      auditd.log.user: +not_exists
+    map:
+      user.name: auditd.log.acct
+
+  - check:
+      auditd.log.src: +not_exists
+    map:
+      source.address: auditd.log.addr
+
   - map:
       auditd.log.old_auid: $auditd.log.old-auid
-      auditd.log.old-auid: +delete_field
       auditd.log.old_ses: $auditd.log.old-ses
+      auditd.log.old-auid: +delete_field
       auditd.log.old-ses: +delete_field
+      destination.address: auditd.log.dst
+      event.action: +s_lo/auditd.log.record_type
+      event.outcome: auditd.log.res
+      host.architecture: auditd.log.arch
+      message: auditd.log.msg
+      process.args_count: auditd.log.argc
+      process.args: +s_to_array/$auditd.log.cmd/ # It ends with a space
+      process.executable: auditd.log.exe
+      process.exit_code: auditd.log.exit
+      process.name: auditd.log.comm
+      process.parent.pid: auditd.log.ppid
+      process.pid: auditd.log.pid
+      process.working_directory: auditd.log.cwd
+      source.address: auditd.log.src
+      source.as.number: source.as.asn
+      source.as.organization.name: source.as.organization_name
+      user.audit.group.id: auditd.log.agid
+      user.audit.id: auditd.log.auid
+      user.effective.group.id: auditd.log.egid
+      user.effective.id: auditd.log.euid
+      user.filesystem.group.id: auditd.log.fsgid
+      user.filesystem.id: auditd.log.fsuid
+      user.group.id: auditd.log.gid
+      user.id: auditd.log.uid
+      user.name: auditd.log.user
+      user.owner.group.id: auditd.log.ogid
+      user.owner.id: auditd.log.ouid
+      user.saved.group.id: auditd.log.sgid
+      user.saved.id: auditd.log.suid
+      user.terminal: auditd.log.terminal
       _kv_msg: +delete_field
