@@ -888,6 +888,54 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         });
 }
 
+// field: +rename_field/$sourceField
+base::Expression opBuilderHelperRenameField(const std::any& definition)
+{
+    // Extract parameters from any
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters {helper::base::processParameters(raw_parameters)};
+    // Assert expected number and type of parameters
+    helper::base::checkParametersSize(parameters, 1);
+    auto sourceField = parameters[0];
+    helper::base::checkParameterType(sourceField,
+                                     helper::base::Parameter::Type::REFERENCE);
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing messages
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const auto failureTrace1 {fmt::format(
+        "[{}] -> Failure: field '{}' does not exist.", name, sourceField.m_value)};
+    const auto failureTrace2 {fmt::format(
+        "[{}] -> Failure: field '{}' could not be removed.", name, sourceField.m_value)};
+
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField), sourceField = std::move(sourceField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            if (event->exists(sourceField.m_value))
+            {
+                event->set(targetField, sourceField.m_value);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            if (event->erase(sourceField.m_value))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+        });
+}
+
 //*************************************************
 //*              IP tranform                      *
 //*************************************************
