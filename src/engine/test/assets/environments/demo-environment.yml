@@ -13,7 +13,7 @@ decoders:
   - apache-error
   - apache-access
   - auditd
-  - auditd-parse-msg
+  - auditd-decode-kv
   - aws
   - aws-cloudtrail
   - aws-elb

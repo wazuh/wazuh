@@ -1,5 +1,5 @@
 ---
-name: auditd-parse-msg
+name: auditd-decode-kv
 
 metadata:
   description: Decoder for parsing the msg field of Linux auditd logs
