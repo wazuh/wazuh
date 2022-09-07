@@ -19,55 +19,55 @@ parse:
     #     <system.auth.ssh.event> <system.auth.ssh.method> for (invalid user) <?user.name>
     #     from <source.ip> port <source.port>
 
-    # Feb 21 21:56:12 localhost sshd[3430]: Invalid user test from 10.0.2.2
+    # Jul 10 10:11:12 somehostname sshd[6969]: Invalid user test from 192.20.30.40
     - message: >-
         <_system.auth.ssh.event> user <user.name> from <source.ip>
 
-    # Feb 19 15:30:04 slave22 sshd[18406]: Did not receive identification string from 2.125.160.217
+    # Jul 10 10:11:12 somehostname sshd[6969]: Did not receive identification string from 192.50.60.70
     - message: >-
         Did not receive identification string from <source.ip>
 
-    # Feb 24 00:13:02 precise32 sudo:      tsg : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/ls
+    # Jul 10 10:11:12 somehostname sudo:      tsg : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/ls
     - message: >-
         <_/ ><user.name> <_system.auth.sudo.error/quoted/: / ;> TTY=<_system.auth.sudo.tty> ; PWD=<system.auth.sudo.pwd> ;
         USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>
 
-    # Feb 24 09:20:10 precise32 sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /var/log/auth.log
+    # Jul 10 10:11:12 somehostname sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /var/log/auth.log
     - message: >-
         <_/ ><user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ;
         USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>
 
-    # Feb 24 09:19:55 precise32 groupadd[7996]: new group: name=mysql, GID=111
+    # Jul 10 10:11:12 somehostname groupadd[6969]: new group: name=mysql, GID=666
     - message: >-
         new group: name=<group.name>, GID=<group.id>
 
-    # Feb 24 09:19:55 precise32 useradd[8002]: new user: name=mysql, UID=106, GID=111, home=/nonexistent, shell=/bin/false
+    # Jul 10 10:11:12 somehostname useradd[6969]: new user: name=mysql, UID=101, GID=666, home=/nonexistent, shell=/bin/false
     - message: >-
         new user: name=<user.name>, UID=<user.id>, GID=<group.id>,
         home=<_system.auth.useradd.home>, shell=<_system.auth.useradd.shell>
 
-    # Feb 21 21:54:44 localhost sshd[3402]: Accepted publickey for vagrant from 10.0.2.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84
+    # Jul 10 10:11:12 somehostname sshd[6969]: Accepted publickey for vagrant from 255.0.1.2 port 55555 ssh2: RSA 11:22:33:aa:bb:cc:dd:ee:ff:1a:2b:3c:4b:5c:6d:7e
     - message: >-
         <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.name> from <source.ip> port
         <source.port> ssh2: <_system.auth.ssh.signature/any>
 
-    #Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2
+    # Jul 10 10:11:12 somehostname sshd[6969]: Failed password for root from 210.111.222.0 port 6969 ssh2
     - message: >-
         <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.name> from <source.ip> port
         <source.port> <_>
 
-    # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session opened for user root by vagrant(uid=1000)
+    # Jul 10 10:11:12 somehostname sudo: pam_unix(sudo:session): session opened for user root by vagrant(uid=1000)
     - message: >-
         pam_unix(sudo:session): <_system.auth.sudo.event> <_system.auth.sudo.method> for user <user.effective.name> by <user.name>(uid=<user.id>)
-    # Feb  9 21:20:03 precise32 sshd[8317]: subsystem request for sftp by user vagrant
+    # Jul 10 10:11:12 somehostname sshd[6969]: subsystem request for sftp by user vagrant
     - message: >-
         <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.effective.name> by user <user.name>
-    # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session closed for user root
+    # Jul 10 10:11:12 somehostname sudo: pam_unix(sudo:session): session closed for user root
     - message: >-
         pam_unix(sudo:session): <_system.auth.sudo.event> <_system.auth.sudo.method> for <user.name>
 
 normalize:
-  # Feb 21 21:54:44 localhost sshd[3402]: Accepted publickey for vagrant from 10.0.2.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84
+  # Jul 10 10:11:12 somehostname sshd[6969]: Accepted publickey for vagrant from 100.0.1.0 port 55555 ssh2: RSA 11:22:33:aa:bb:cc:dd:ee:ff:1a:2b:3c:4b:5c:6d:7e
   - check:
       - _system.auth.ssh.event: Accepted
     map:
@@ -76,7 +76,7 @@ normalize:
       event.action: ssh_login
       event.outcome: success
 
-  # Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2"
+  # Jul 10 10:11:12 somehostname sshd[6969]: Failed password for root from 200.100.5.69 port 2911 ssh2"
   - check: _system.auth.ssh.event==Invalid OR _system.auth.ssh.event==Failed
     map:
       event.type: +s_append/authentication_failure/info
@@ -84,7 +84,7 @@ normalize:
       event.action: ssh_login
       event.outcome: failure
 
-  # Feb 24 09:20:10 precise32 sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /var/log/auth.log
+  # Jul 10 10:11:12 somehostname sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /path/file.log
   - check: >-
       +exists/process.name AND (
       process.name==groupadd
@@ -107,7 +107,7 @@ normalize:
     map:
       event.type: +s_append/user
 
-  # Feb 24 09:19:55 precise32 groupadd[7996]: new group: name=mysql, GID=111
+  # Jul 10 10:11:12 somehostname groupadd[6969]: new group: name=mysql, GID=222
   - check: >-
       +exists/process.name AND (
       process.name==groupadd

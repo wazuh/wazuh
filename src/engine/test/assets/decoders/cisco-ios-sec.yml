@@ -22,8 +22,8 @@ check: >-
 parse:
   logql:
 
-    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1024) -> 192.168.2.1(22), 1 packet
-    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1024) -> 192.168.2.1(22), 9 packets
+    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.10.20.30(6969) -> 192.11.22.33(22), 1 packet
+    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.10.20.30(6969) -> 192.11.22.33(22), 9 packets
     - message: >-
         list <cisco.ios.access_list> <_outcome> <network.transport> <source.address>(<source.port>) -> <destination.ip>(<destination.port>), <network.packets> packet
 
@@ -31,12 +31,12 @@ parse:
     - message: >-
           list <cisco.ios.access_list> <_outcome> <network.transport> <source.address> -> <destination.ip>, <network.packets> packet
 
-    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1025) (Ethernet0/0 000e.9b5a.9839) -> 192.168.2.1(22), 1 packet
-    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.168.1.3(1025) (Ethernet0/0 000e.9b5a.9839) -> 192.168.2.1(22), 9 packets
+    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.10.20.30(6969) (Ethernet0/0 507a.bebe.600b) -> 192.11.22.33(22), 1 packet
+    # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.10.20.30(6969) (Ethernet0/0 507a.bebe.600b) -> 192.11.22.33(22), 9 packets
     - message: >-
         list <cisco.ios.access_list> <_outcome> <network.transport> <source.address>(<source.port>) (<observer.ingress.interface.name> <_observer.ingress.interface.mac>) -> <destination.ip>(<destination.port>), <network.packets> packet
 
-    # %SEC-6-IPACCESSLOGSP: list INBOUND-ON-F11 denied igmp 198.51.100.2 -> 224.0.0.2 (20), 1 packet
+    # %SEC-6-IPACCESSLOGSP: list INBOUND-ON-F11 denied igmp 192.10.20.30 -> 192.11.22.33 (20), 1 packet
     - message: >-
         list <cisco.ios.access_list> <_outcome> <network.transport> <source.address> -> <destination.ip> (<_igmp_type>), <network.packets> packet
 
