@@ -20,7 +20,7 @@ parse:
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
         a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
-        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        pid=<process.pid> auid=<auditd.log.auid> uid=<auditd.log.uid>
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
@@ -32,7 +32,7 @@ parse:
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
         a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
-        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        pid=<process.pid> auid=<auditd.log.auid> uid=<auditd.log.uid>
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
@@ -43,7 +43,7 @@ parse:
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
         a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
-        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        pid=<process.pid> auid=<auditd.log.auid> uid=<auditd.log.uid>
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
@@ -54,7 +54,7 @@ parse:
         success=<_auditd.log.success> exit=<process.exit_code>
         a0=<auditd.log.a0> a1=<auditd.log.a1> a2=<auditd.log.a2>
         a3=<auditd.log.a3> items=<auditd.log.items> ppid=<process.parent.pid>
-        pid=<process.pid> auid=4294967295 uid=<auditd.log.uid>
+        pid=<process.pid> auid=<auditd.log.auid> uid=<auditd.log.uid>
         gid=<user.group.id> euid=<user.effective.id> suid=<user.saved.id>
         fsuid=<user.filesystem.id> egid=<user.effective.group.id>
         sgid=<user.saved.group.id> fsgid=<user.filesystem.group.id>
