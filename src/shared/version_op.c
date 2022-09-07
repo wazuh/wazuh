@@ -663,12 +663,18 @@ os_info *get_unix_version()
 
                 if (cmd_output_ver = popen("system_profiler SPSoftwareDataType -detailLevel mini", "r"), cmd_output_ver)
                 {
-                    fread(buff, 1, sizeof(buff), cmd_output_ver);
-                    char *aux = strtok(buff, "\n");
-                    aux = strtok(NULL, "\n");
-                    aux = strtok(NULL, ":");
-                    aux = strtok(NULL, " ");
-                    w_strdup(aux, info->os_name);
+                    if (fread(buff, 1, sizeof(buff), cmd_output_ver) > 0)
+                    {
+                        char *aux = strtok(buff, "\n");
+                        aux = strtok(NULL, "\n");
+                        aux = strtok(NULL, ":");
+                        aux = strtok(NULL, " ");
+                        w_strdup(aux, info->os_name);
+                    }
+                    else
+                    {
+                        mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType -detailLevel mini).");
+                    }
                     pclose(cmd_output_ver);
                 }
                 if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {

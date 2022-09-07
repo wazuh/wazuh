@@ -400,7 +400,7 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
     };
     std::stringstream data{in};
     const auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, output) };
-    output["os_name"] = Utils::split(output["os_name"].get<std::string>(), ' ').at(0);
+    output["os_name"] = Utils::split(output["os_name"].get_ref<const std::string&>(), ' ').at(0);
 
     return ret;
 }
