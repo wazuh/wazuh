@@ -1987,6 +1987,18 @@ stages:
       json:
         <<: *error_spec
 
+  - name: Request error on invalid component and configuration pair
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/wmodules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 1128
+
 ---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration} (only cluster configuration)
 

@@ -591,7 +591,8 @@ async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.cluster_controller.remove_nones_to_dict')
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_node_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+@patch('api.controllers.cluster_controller.check_component_configuration_pair')
+async def test_get_node_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_node_config' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         kwargs_param = {'configuration': 'configuration_value'
@@ -615,8 +616,9 @@ async def test_get_node_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                                           nodes=mock_exc.return_value
                                           )
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
+                                   call(mock_check_pair.return_value),
                                    call(mock_dfunc.return_value)])
-        assert mock_exc.call_count == 2
+        assert mock_exc.call_count == 3
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, web_response.Response)
 

@@ -14,7 +14,9 @@ from api.validator import (check_exp, check_xml, _alphanumeric_param,
                            _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
                            allowed_fields, is_safe_path, _wazuh_version,
                            _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
-                           _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename)
+                           _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename,
+                           check_component_configuration_pair)
+from wazuh import WazuhError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -277,3 +279,18 @@ def test_validation_json_ko(value, format):
                     schema={'type': 'object',
                             'properties': {'key': {'type': 'string', 'format': format}}},
                     format_checker=js.draft4_format_checker)
+
+
+@pytest.mark.parametrize("component, configuration, expected_response", [
+    ("agent", "client", None),
+    ("agent", "wmodules", WazuhError(1128))
+])
+def test_check_component_configuration_pair(component, configuration, expected_response):
+    """Verify that `check_component_configuration_pair` function returns an exception when the configuration does
+    not belong to a Wazuh component."""
+    response = check_component_configuration_pair(component, configuration)
+    if isinstance(response, Exception):
+        assert isinstance(response, expected_response.__class__)
+        assert response.code == expected_response.code
+    else:
+        assert response is expected_response

@@ -184,11 +184,10 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             os_strdup(vu_feed_tag[FEED_BUSTER], upd->version);
             upd->dist_tag_ref = FEED_BUSTER;
             upd->dist_ext = vu_feed_ext[FEED_BUSTER];
-        } else if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
-            os_index = CVE_STRETCH;
-            os_strdup(vu_feed_tag[FEED_STRETCH], upd->version);
-            upd->dist_tag_ref = FEED_STRETCH;
-            upd->dist_ext = vu_feed_ext[FEED_STRETCH];
+        } else if (!strcmp(version, "9") || strcasestr(version, "STRETCH")) {
+            mwarn("Debian Stretch is no longer supported.");
+            retval = OS_DEPRECATED;
+            goto end;
         } else if (!strcmp(version, "8") || strcasestr(version, "JESSIE")) {
             mwarn("Debian Jessie is no longer supported.");
             retval = OS_DEPRECATED;
