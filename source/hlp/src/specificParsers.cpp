@@ -33,7 +33,7 @@ enum class JSON_TYPE
     J_NULL
 };
 
-static const std::unordered_map<std::string, JSON_TYPE> jsonTypes = {
+static const std::unordered_map<std::string_view, JSON_TYPE> jsonTypes = {
     {"string", JSON_TYPE::J_STRING},
     {"bool", JSON_TYPE::J_BOOL},
     {"number", JSON_TYPE::J_NUMBER},
@@ -42,7 +42,7 @@ static const std::unordered_map<std::string, JSON_TYPE> jsonTypes = {
     {"null", JSON_TYPE::J_NULL},
     {"any", JSON_TYPE::J_ANY}};
 
-bool validJsonType(const std::string& type)
+bool validJsonType(std::string_view type)
 {
     return jsonTypes.find(type) != jsonTypes.end();
 }
@@ -222,7 +222,7 @@ bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& ar
         // If one argument, it must be a valid json type or "any"
         if (args.size() == 1)
         {
-            if (validJsonType(std::string {args[0]}))
+            if (validJsonType(args[0]))
             {
                 parser.options.push_back(std::string {args[0]});
             }
@@ -385,42 +385,12 @@ bool parseJson(const char** it, Parser const& parser, ParseResult& result)
     switch (jsonTypes.at(parser.options[0]))
     {
         case JSON_TYPE::J_ANY: valid = true; break;
-        case JSON_TYPE::J_STRING:
-            if (doc.IsString())
-            {
-                valid = true;
-            }
-            break;
-        case JSON_TYPE::J_BOOL:
-            if (doc.IsBool())
-            {
-                valid = true;
-            }
-            break;
-        case JSON_TYPE::J_NUMBER:
-            if (doc.IsNumber())
-            {
-                valid = true;
-            }
-            break;
-        case JSON_TYPE::J_OBJECT:
-            if (doc.IsObject())
-            {
-                valid = true;
-            }
-            break;
-        case JSON_TYPE::J_ARRAY:
-            if (doc.IsArray())
-            {
-                valid = true;
-            }
-            break;
-        case JSON_TYPE::J_NULL:
-            if (doc.IsNull())
-            {
-                valid = true;
-            }
-            break;
+        case JSON_TYPE::J_STRING: valid = doc.IsString(); break;
+        case JSON_TYPE::J_BOOL: valid = doc.IsBool(); break;
+        case JSON_TYPE::J_NUMBER: valid = doc.IsNumber(); break;
+        case JSON_TYPE::J_OBJECT: valid = doc.IsObject(); break;
+        case JSON_TYPE::J_ARRAY: valid = doc.IsArray(); break;
+        case JSON_TYPE::J_NULL: valid = doc.IsNull(); break;
     }
 
     // Extract the json string and update the pointer
