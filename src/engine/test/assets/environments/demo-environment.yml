@@ -13,7 +13,6 @@ decoders:
   - apache-error
   - apache-access
   - auditd
-  - auditd-syscall
   - auditd-parse-msg
   - aws
   - aws-cloudtrail
