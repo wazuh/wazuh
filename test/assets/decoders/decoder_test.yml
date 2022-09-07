@@ -6,7 +6,7 @@ check:
 
 parse:
   logql:
-    # [Mon Jan 2 15:04:05 2006] {"test":"valuestr", "test2":"valuestr", "innerJson": {"intest":"val", "intest2":23}} host test_decoder_example[1234]: Test_example for acceptation test #17
+    # [Fri Jul 10 10:11:12 1992] {"test":"valuestr", "test2":"valuestr", "innerJson": {"intest":"val", "intest2":23}} host test_decoder_example[1234]: Test_example for acceptation test #17
     - message: "[<event.created/ANSIC>] <labels> <host> <log.origin.file.name>[<log.origin.file.line>]: <error.message>"
 
 normalize:

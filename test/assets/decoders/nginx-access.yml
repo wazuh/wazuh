@@ -9,7 +9,7 @@ check:
 
 parse:
   logql:
-    # "lessons.example.com 192.168.0.1 - - [09/Jun/2020:12:10:39 -0700] \"GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1\" 206 7648063 \"http://lessons.example.com/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4\" \"Mozilla/5.0 (Linux; Android 5.1.1; KFFOWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/81.2.16 like Chrome/81.0.4044.138 Safari/537.36\""
+    # "lessons.example.com 192.168.10.111 - - [10/Jul/1992:10:11:12 -0700] \"GET /SOMEWEB/RANGE/coolvideo.mp4 HTTP/1.1\" 206 7654321 \"http://web.com/SOMEWEB/RANGE/coolvideo.mp4\" \"Mozilla/5.0 (Linux; Android 5.1.1; KFFOWI) AppleWebKit/527.36 (KHTML, like Gecko) Silk/81.2.16 like Chrome/81.0.404.123 Safari/527.36\""
     - event.original: >-
         <destination.domain> <source.ip> - <user.name> [<timestamp/HTTPDATE>] "<http.request.method>
         <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes>

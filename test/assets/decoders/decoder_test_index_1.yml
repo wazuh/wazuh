@@ -5,7 +5,7 @@ parents:
 check:
   - index: +s_eq/one
 
-# [Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: user#one
+# [Fri Jul 10 10:11:12 1992] host test_decoder_example[1234]: user#one
 normalize:
   - check:
       - index: +s_eq/one
