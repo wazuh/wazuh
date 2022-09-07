@@ -30,16 +30,16 @@ parse:
         old ses=<auditd.log.old_ses> new ses=<auditd.log.new_ses>
 
     - event.original: >-
-        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
-
-    - event.original: >-
-        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
-
-    - event.original: >-
         $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
 
     - event.original: >-
         $TYPE_FIELD $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
+
+    - event.original: >-
+        $TYPE_FIELD $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
 
     - event.original: >-
         $TYPE_FIELD $MSG_FIELD <_log.msg>
@@ -55,19 +55,19 @@ parse:
 
     - event.original: >-
         $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
-        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
-
-    - event.original: >-
-        $NODE_FIELD $TYPE_FIELD
         $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
 
     - event.original: >-
         $NODE_FIELD $TYPE_FIELD
         $MSG_FIELD <_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD
+        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/'/'>
+
+    - event.original: >-
+        $NODE_FIELD $TYPE_FIELD
+        $MSG_FIELD<_log.msg/quoted/ / msg=><_log.sub_msg/quoted/"/">
 
     - event.original: >-
         $NODE_FIELD $TYPE_FIELD $MSG_FIELD <_log.msg>
