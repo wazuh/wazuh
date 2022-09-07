@@ -255,7 +255,7 @@ class AgentsReconnect:
                     unbalanced_agents[node] = {}
                 unbalanced_agents[node]['agents'] = 0
                 unbalanced_agents[node]['total'] = agents
-                if difference > 1:
+                if difference > 0:
                     unbalanced_agents[node]['agents'] = difference
 
             return unbalanced_agents
@@ -405,7 +405,7 @@ class AgentsReconnect:
         Returns
         -------
         dict
-            Agents' IDs to reconnect, number of rounds necessary and whether there are enough agents to achieve balancing.
+            Agents' IDs to reconnect, number of rounds necessary and whether there are enough agents to balance.
         """
         total_agents = sum(len(info['agents']) for info in nodes_info.values())
         nodes_info_cpy = copy.deepcopy(nodes_info)
@@ -490,10 +490,11 @@ class AgentsReconnect:
             bool
                 True if the difference is within tolerable limits, False otherwise.
             """
+            agents_per_worker = [worker['total'] for worker in self.env_status.values()]
+            mean = sum(agents_per_worker) / len(agents_per_worker)
+            tolerance_window = max(floor(mean * tolerance), 2)
             biggest_node = max(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
             smallest_node = min(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
-            mean = (self.env_status[biggest_node]['total'] + self.env_status[smallest_node]['total']) / 2
-            tolerance_window = max(floor(mean * tolerance), 3)
 
             return self.env_status[biggest_node]['total'] - self.env_status[smallest_node]['total'] <= tolerance_window
 
@@ -503,7 +504,7 @@ class AgentsReconnect:
             return
 
         self.current_phase = AgentsReconnectionPhases.RECONNECT_AGENTS
-        if (total_agents_to_reconnect := sum(len(info['agents']) for info in self.env_status.values())) == 0:
+        if (total_reconnect := sum(len(info['agents']) for info in self.env_status.values())) == 0:
             self.logger.warning('The cluster is unbalanced but none of the agents that should be redistributed support '
                                 'the reconnection feature (introduced in v4.3.0).')
             return
@@ -517,8 +518,12 @@ class AgentsReconnect:
             total_active_agents = sum(info['total'] for info in self.env_status.values())
             max_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
             predict_info = self.predict_distribution(self.env_status, max_assigns)
-            self.logger.info(f'It will take {self.expected_rounds} rounds to reconnect {total_agents_to_reconnect} '
-                             f'agents. Starting a test round for {len(predict_info["agents"])} agents.')
+            # If test round is as big as a normal round, count itself as a normal round.
+            self.round_counter += 1 if len(predict_info["agents"]) in [max_assignments_per_node, total_reconnect] else 0
+            self.logger.info(f'It can take up to {self.expected_rounds} rounds to reconnect {total_reconnect} agents.')
+            self.logger.info(f'Reconnecting {len(predict_info["agents"])} agents (' +
+                             (f'test round' if self.round_counter != self.expected_rounds else
+                              f'round {self.round_counter}/{self.expected_rounds}') + ').')
 
         elif self.round_counter < self.expected_rounds:
             self.round_counter += 1
@@ -535,7 +540,8 @@ class AgentsReconnect:
             predict_info = self.predict_distribution(self.env_status, max_assignments_per_node)
             self.previous_deviation = current_deviation
             self.expected_deviation = self.absolute_deviation(predict_info['distribution'])
-            self.logger.info(f'Reconnecting agents (round {self.round_counter}/{self.expected_rounds}).')
+            self.logger.info(f'Reconnecting {len(predict_info["agents"])} agents '
+                             f'(round {self.round_counter}/{self.expected_rounds}).')
 
         else:
             self.reconnected_agents = []
