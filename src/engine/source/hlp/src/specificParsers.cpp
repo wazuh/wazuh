@@ -308,12 +308,9 @@ bool parseAny(const char** it, Parser const& parser, ParseResult& result)
 bool matchLiteral(const char** it, Parser const& parser, ParseResult&)
 {
     size_t i = 0;
-    bool escaped = false;
     for (; (**it) && (i < parser.name.size());)
     {
-        // Skip over the escaping '\'
-        escaped = *it[0] == '\\';
-        if (!escaped && **it != parser.name[i])
+        if (**it != parser.name[i])
         {
             return false;
         }
