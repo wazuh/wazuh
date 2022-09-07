@@ -1049,6 +1049,10 @@ int wdb_remove_agent_db(int id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
 
+    if (NULL == name || *name == '\0' || id <= 0) {
+        return OS_INVALID;
+    }
+
     snprintf(path, PATH_MAX, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
 
     if (!remove(path)) {

@@ -16,6 +16,7 @@ import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
+from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -669,6 +670,8 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                 }
 
     nodes = raise_if_exc(await get_system_nodes())
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
+
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',

@@ -14,6 +14,7 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.models.group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
+from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -328,6 +329,8 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
                 'component': component,
                 'config': kwargs.get('configuration', None)
                 }
+
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
     dapi = DistributedAPI(f=agent.get_agent_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

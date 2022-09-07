@@ -53,6 +53,25 @@ int* __wrap_wdb_get_all_agents(bool include_manager, __attribute__((unused)) int
     return mock_ptr_type(int*);
 }
 
+int __wrap_wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
+    check_expected(id);
+    check_expected(connection_status);
+    check_expected(sync_status);
+    return mock();
+}
+
+int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unused)) int *sock) {
+    check_expected(agent_data);
+    return mock();
+}
+
+int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
+    check_expected(id);
+    check_expected(connection_status);
+    check_expected(sync_status);
+    return mock();
+}
+
 int __wrap_wdb_set_agent_groups_csv(int id,
                                     __attribute__((unused)) char *groups_csv,
                                     __attribute__((unused)) char *mode,
@@ -73,27 +92,24 @@ int __wrap_wdb_set_agent_groups(int id,
     return mock();
 }
 
-int __wrap_wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
-    check_expected(id);
-    check_expected(connection_status);
-    check_expected(sync_status);
-    return mock();
-}
-
 char* __wrap_wdb_get_agent_group(int id,
                                  __attribute__((unused)) int *wdb_sock) {
     check_expected(id);
     return mock_type(char *);
 }
 
-int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unused)) int *sock) {
-    check_expected(agent_data);
-    return mock();
+
+
+char* __wrap_wdb_get_agent_name(int id,
+                                __attribute__((unused)) int *wdb_sock) {
+    check_expected(id);
+    return mock_type(char *);
 }
 
-int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
+int __wrap_wdb_remove_agent_db(int id, const char* name) {
     check_expected(id);
-    check_expected(connection_status);
-    check_expected(sync_status);
+    if (name) {
+        check_expected(name);
+    }
     return mock();
 }
