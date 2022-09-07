@@ -8,26 +8,68 @@ using namespace hlp;
 
 TEST(hlpTests_logQL, literal_matching)
 {
-    std::string logQl_expression = R"(-server\ - {"data":"this is a json"} - [Mon, 02 Jan 2006 ñ)";
-    const char* event = "-server\\ - {\"data\":\"this is a json\"} - [Mon, 02 Jan 2006 ñ) ";
+    std::string logQl_expression =
+        R"(123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:;?@[\]^_`{|}~>=)";
+    const char* event =
+        R"(123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:;?@[\]^_`{|}~>=)";
 
     auto parseOp = getParserOp(logQl_expression);
     ParseResult result;
-    bool ret = parseOp(event, result);
 
-    ASSERT_TRUE(parseOp);
+    ASSERT_TRUE(parseOp(event, result));
 }
 
-TEST(hlpTests_logQL, literal_matching_escaped_bar)
+TEST(hlpTests_logQL, literal_matching_escaped_cases)
 {
-    std::string logQl_expression = R"( - \\\\\ - )";
-    const char* event = " - \\\\\\\\\\ - ";
+    std::string logQl_expression = R"( - \\a\b\f\n\r\t\v\'\"\?\0 - )";
+    const char* event = R"( - \\a\b\f\n\r\t\v\'\"\?\0 - )";
 
     auto parseOp = getParserOp(logQl_expression);
     ParseResult result;
-    bool ret = parseOp(event, result);
 
-    ASSERT_TRUE(parseOp);
+    ASSERT_TRUE(parseOp(event, result));
+}
+
+TEST(hlpTests_logQL, literal_not_matching)
+{
+    std::string expression = R"(\\\A\\B - 12369 )";
+    const char* event1 = R"(\\\/A\\B - 12369 )";
+    const char* event2 = R"(\\\a\\b - 12369 )";
+    const char* event3 = R"( \\\A\\B - 12369 )";
+    const char* event4 = R"(\\\\A\\B - 12369 )";
+    const char* event5 = R"(\\\A\\B)";
+
+    auto parseOp = getParserOp(expression);
+    ParseResult result;
+
+    ASSERT_FALSE(parseOp(event1, result));
+    ASSERT_FALSE(parseOp(event2, result));
+    ASSERT_FALSE(parseOp(event3, result));
+    ASSERT_FALSE(parseOp(event4, result));
+    ASSERT_FALSE(parseOp(event5, result));
+}
+
+TEST(hlpTests_logQL, literal_not_matching_longer_logQlExpre)
+{
+    std::string logQl_expression = R"( ABC - ABC)";
+    const char* event = R"( ABC - )";
+
+    auto parseOp = getParserOp(logQl_expression);
+    ParseResult result;
+
+    ASSERT_FALSE(parseOp(event, result));
+}
+
+// The logQL expression matches altough the event is longer
+TEST(hlpTests_logQL, literal_matching_longer_event)
+{
+    std::string logQl_expression = R"( ABC -)";
+    const char* event = R"( ABC - ABC)";
+
+    auto parseOp = getParserOp(logQl_expression);
+    ParseResult result;
+
+    ASSERT_TRUE(parseOp(event, result));
 }
 
 TEST(hlpTests_logQL, logQL_expression)
