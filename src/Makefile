@@ -712,12 +712,12 @@ BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
-	cp $< $@ || :
-	${STRIP_TOOL} -x $@ || :
+	cp $< $@
+	${STRIP_TOOL} -x $@
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
-	cp $< $@ || :
-	${STRIP_TOOL} -x $@ || :
+	cp $< $@
+	${STRIP_TOOL} -x $@
 
 .PHONY: server local hybrid agent selinux
 
