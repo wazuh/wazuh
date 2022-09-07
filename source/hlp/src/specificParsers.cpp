@@ -95,10 +95,21 @@ bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args
 bool configureKVMapParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     size_t argsSize = args.size();
+
     if (argsSize != 2 || args[0].empty() || args[1].empty())
     {
         const auto msg = fmt::format(
             "[HLP] Invalid arguments for map Parser. Expected 2, got [{}]", argsSize);
+        throw std::runtime_error(msg);
+    }
+
+    if (args[0] == args[1])
+    {
+        const auto msg =
+            fmt::format("[HLP] Invalid arguments for map Parser. Key-Value separator "
+                        "({}) cannot be the same as the pairs separator ({}).",
+                        args[0],
+                        args[1]);
         throw std::runtime_error(msg);
     }
 
