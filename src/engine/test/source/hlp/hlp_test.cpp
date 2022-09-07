@@ -255,9 +255,10 @@ TEST(hlpTests_json, object_success)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ("{\"key1\":\"value1\",\"key2\":\"value2\"}",
-              std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    const auto expectedResult {R"({"key1":"value1","key2":"value2"})"};
+    ASSERT_STREQ(expectedResult,
+                 std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, object_failure_cases)
@@ -292,11 +293,11 @@ TEST(hlpTests_json, success_parsing_object_by_default)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ("{\"String\":\"This is a string\"}",
-              std::any_cast<JsonString>(result["_field1"]).jsonString);
-    ASSERT_EQ("{\"String\":\"This is another string\"}",
-              std::any_cast<JsonString>(result["_field2"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("{\"String\":\"This is a string\"}",
+              std::any_cast<JsonString>(result["_field1"]).jsonString.data());
+    ASSERT_STREQ("{\"String\":\"This is another string\"}",
+              std::any_cast<JsonString>(result["_field2"]).jsonString.data());
 }
 
 TEST(hlpTests_json, several_results_different_types)
@@ -314,12 +315,14 @@ TEST(hlpTests_json, several_results_different_types)
     bool retObj = parseOpObj(event, result);
     ASSERT_TRUE(retObj);
     ASSERT_FALSE(result.find("_json1") == result.end());
-    ASSERT_EQ("{\"String\":\"This is a string\"}", std::any_cast<JsonString>(result["_json1"]).jsonString);
+    ASSERT_STREQ("{\"String\":\"This is a string\"}",
+                 std::any_cast<JsonString>(result["_json1"]).jsonString.data());
 
     bool retAny = parseOpAny(event, result);
     ASSERT_TRUE(retAny);
     ASSERT_FALSE(result.find("_json2") == result.end());
-    ASSERT_EQ("{\"String\":\"This is a string\"}", std::any_cast<JsonString>(result["_json2"]).jsonString);
+    ASSERT_STREQ("{\"String\":\"This is a string\"}",
+                 std::any_cast<JsonString>(result["_json2"]).jsonString.data());
 
     bool retString = parseOpString(event, result);
     ASSERT_FALSE(retString);
@@ -341,17 +344,18 @@ TEST(hlpTests_json, success_matching_string_and_any)
     bool retObj = parseOpObj(event, result);
     ASSERT_FALSE(retObj);
     ASSERT_TRUE(result.find("_json1") == result.end());
-    // ASSERT_EQ("{\"String\":\"This is a string\"}", std::any_cast<JsonString>(result["_json1"]).jsonString);
 
     bool retAny = parseOpAny(event, result);
     ASSERT_TRUE(retAny);
     ASSERT_FALSE(result.find("_json2") == result.end());
-    ASSERT_EQ("\"String\"", std::any_cast<JsonString>(result["_json2"]).jsonString);
+    ASSERT_STREQ("\"String\"",
+                 std::any_cast<JsonString>(result["_json2"]).jsonString.data());
 
     bool retString = parseOpString(event, result);
     ASSERT_TRUE(retString);
     ASSERT_FALSE(result.find("_json3") == result.end());
-    ASSERT_EQ("\"String\"", std::any_cast<JsonString>(result["_json3"]).jsonString);
+    ASSERT_STREQ("\"String\"",
+                 std::any_cast<JsonString>(result["_json3"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_array_in_object)
@@ -364,10 +368,10 @@ TEST(hlpTests_json, success_array_in_object)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ("{\"String\": [ {\"SecondString\":\"This is a "
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("{\"String\": [ {\"SecondString\":\"This is a "
               "string\"}, {\"ThirdString\":\"This is a string\"} ] }",
-              std::any_cast<JsonString>(result["_json"]).jsonString);
+              std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, failed_not_string)
@@ -379,7 +383,7 @@ TEST(hlpTests_json, failed_not_string)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_TRUE(result.find("_json") == result.end());
 }
 
@@ -392,10 +396,9 @@ TEST(hlpTests_json, success_array)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    //Isarray
-    ASSERT_EQ("[ {\"A\":\"1\"}, {\"B\":\"2\"}, {\"C\":\"3\"} ]",
-              std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("[ {\"A\":\"1\"}, {\"B\":\"2\"}, {\"C\":\"3\"} ]",
+              std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_any)
@@ -407,9 +410,9 @@ TEST(hlpTests_json, success_any)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    //Isarray
-    ASSERT_EQ("{\"C\":\"3\"}", std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("{\"C\":\"3\"}",
+                 std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_string)
@@ -421,9 +424,9 @@ TEST(hlpTests_json, success_string)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    //Isarray
-    ASSERT_EQ("\"string\"", std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("\"string\"",
+                 std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_bool)
@@ -435,9 +438,8 @@ TEST(hlpTests_json, success_bool)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    //Isarray
-    ASSERT_EQ("true", std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("true", std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_number)
@@ -449,9 +451,8 @@ TEST(hlpTests_json, success_number)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    //Isarray
-    ASSERT_EQ("123", std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("123", std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_null)
@@ -463,9 +464,8 @@ TEST(hlpTests_json, success_null)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-    //Isarray
-    ASSERT_EQ("null", std::any_cast<JsonString>(result["_json"]).jsonString);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ("null", std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 // Test: parsing maps objects
