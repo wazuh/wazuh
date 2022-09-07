@@ -243,6 +243,7 @@ nlohmann::json SysInfo::getOsInfo() const
     struct utsname uts {};
     MacOsParser parser;
     parser.parseSwVersion(Utils::exec("sw_vers"), ret);
+    parser.parseSystemProfiler(Utils::exec("system_profiler SPSoftwareDataType"), ret);
     parser.parseUname(Utils::exec("uname -r"), ret);
 
     if (uname(&uts) >= 0)

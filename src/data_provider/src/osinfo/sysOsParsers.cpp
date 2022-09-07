@@ -376,7 +376,6 @@ bool MacOsParser::parseSwVersion(const std::string& in, nlohmann::json& output)
     constexpr auto SEPARATOR{':'};
     static const std::map<std::string, std::string> KEY_MAP
     {
-        {"ProductName",     "os_name"},
         {"ProductVersion",  "os_version"},
         {"BuildVersion",    "os_build"},
     };
@@ -388,6 +387,20 @@ bool MacOsParser::parseSwVersion(const std::string& in, nlohmann::json& output)
     {
         findMajorMinorVersionInString(output["os_version"], output);
     }
+
+    return ret;
+}
+
+bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& output)
+{
+    constexpr auto SEPARATOR{':'};
+    static const std::map<std::string, std::string> KEY_MAP
+    {
+        {"System Version", "os_name"},
+    };
+    std::stringstream data{in};
+    const auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, output) };
+    output["os_name"] = Utils::split(output["os_name"].get<std::string>(), ' ').at(0);
 
     return ret;
 }

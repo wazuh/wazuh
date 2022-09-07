@@ -661,12 +661,14 @@ os_info *get_unix_version()
             } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
 
-                if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
-                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                        mdebug1("Cannot read from command output (sw_vers -productName).");
-                    } else {
-                        w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_name);
-                    }
+                if (cmd_output_ver = popen("system_profiler SPSoftwareDataType -detailLevel mini", "r"), cmd_output_ver)
+                {
+                    fread(buff, 1, sizeof(buff), cmd_output_ver);
+                    char *aux = strtok(buff, "\n");
+                    aux = strtok(NULL, "\n");
+                    aux = strtok(NULL, ":");
+                    aux = strtok(NULL, " ");
+                    w_strdup(aux, info->os_name);
                     pclose(cmd_output_ver);
                 }
                 if (cmd_output_ver = popen("sw_vers -productVersion", "r"), cmd_output_ver) {
