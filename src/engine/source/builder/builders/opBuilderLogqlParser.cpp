@@ -13,8 +13,8 @@
 
 #include "baseTypes.hpp"
 #include "expression.hpp"
-#include <json/json.hpp>
 #include <hlp/hlp.hpp>
+#include <json/json.hpp>
 #include <logging/logging.hpp>
 
 namespace builder::internals::builders
@@ -67,6 +67,18 @@ static bool any2Json(std::any const& anyVal, std::string const& path, base::Even
         }
 
         event->set(path, val);
+    }
+    // Json in shared_ptr (to avoid copies, we could use move semantics here instead)
+    else if (typeid(std::shared_ptr<json::Json>) == type)
+    {
+        try
+        {
+            event->set(path, *std::any_cast<std::shared_ptr<json::Json>>(anyVal));
+        }
+        catch (const std::exception& e)
+        {
+            return false;
+        }
     }
     else
     {
