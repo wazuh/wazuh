@@ -33,7 +33,7 @@ static const char *XML_CONTAINER = "container";
 static const char *XML_CONTAINER_NAME = "name";
 static const char *XML_CONTAINER_BLOBS = "blobs";
 static const char *XML_CONTAINER_TYPE="content_type";
-static const char *XML_PREFIX = "prefix";
+static const char *XML_PATH = "path";
 
 static const char *XML_REQUEST_QUERY = "query";
 static const char *XML_TIME_OFFSET = "time_offset";
@@ -533,7 +533,7 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
     container->blobs = NULL;
     container->time_offset = NULL;
     container->content_type = NULL;
-    container->prefix = NULL;
+    container->path = NULL;
 
     for (i = 0; nodes[i]; i++) {
 
@@ -578,11 +578,11 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
                 return OS_INVALID;
             }
 
-        } else if (!strcmp(nodes[i]->element, XML_PREFIX)) {
+        } else if (!strcmp(nodes[i]->element, XML_PATH)) {
             if (strlen(nodes[i]->content) != 0) {
-                os_strdup(nodes[i]->content, container->prefix);
+                os_strdup(nodes[i]->content, container->path);
             } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'", XML_PREFIX, WM_AZURE_CONTEXT.name);
+                merror("Empty content for tag '%s' at module '%s'", XML_PATH, WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
 
