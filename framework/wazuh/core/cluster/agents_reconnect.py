@@ -515,12 +515,15 @@ class AgentsReconnect:
             if predict_info['partial_balance']:
                 self.logger.warning('Not all agents that should reconnect support that feature (introduced in v4.3.0). '
                                     'The cluster could remain unbalanced.')
+
             total_active_agents = sum(info['total'] for info in self.env_status.values())
-            max_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
-            predict_info = self.predict_distribution(self.env_status, max_assigns)
+            max_test_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
+            predict_info = self.predict_distribution(self.env_status, max_test_assigns)
             self.logger.info(f'It can take up to {self.expected_rounds} rounds to reconnect {total_reconnect} agents.')
             # If test round is as big as a normal round, count itself as a normal round.
-            self.round_counter += 1 if len(predict_info["agents"]) in [max_assignments_per_node, total_reconnect] else 0
+            if max_test_assigns == max_assignments_per_node or len(predict_info["agents"]) == total_reconnect:
+                self.round_counter += 1
+
             self.logger.info(f'Reconnecting {len(predict_info["agents"])} agents (' +
                              (f'test round' if self.round_counter == 0 else
                               f'round {self.round_counter}/{self.expected_rounds}') + ').')
