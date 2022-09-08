@@ -45,20 +45,8 @@ log_builder_t * log_builder_init(bool update) {
     os_calloc(1, sizeof(log_builder_t), builder);
 
     {
-        pthread_rwlockattr_t attr;
-        pthread_rwlockattr_init(&attr);
         g_ip_update_interval = getDefine_Int("logcollector","ip_update_interval", 0, 3600);
-#ifdef __linux__
-#ifndef ALPINE
-        /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
-        * Do not use recursive locking.
-        */
-        pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-#endif
-#endif
-
-        w_rwlock_init(&builder->rwlock, &attr);
-        pthread_rwlockattr_destroy(&attr);
+        rwlock_init(&builder->rwlock);
     }
 
     if (update) {
@@ -73,7 +61,7 @@ log_builder_t * log_builder_init(bool update) {
 
 // Free a log builder structure.
 void log_builder_destroy(log_builder_t * builder) {
-    pthread_rwlock_destroy(&builder->rwlock);
+    rwlock_destroy(&builder->rwlock);
     free(builder);
 }
 
@@ -113,7 +101,7 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     os_malloc(OS_MAXSTR, final);
     os_strdup(pattern, _pattern);
 
-    w_rwlock_rdlock(&builder->rwlock);
+    rwlock_lock_read(&builder->rwlock);
 
     for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end) {
         field = NULL;
@@ -209,7 +197,7 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
         goto fail;
     }
 
-    w_rwlock_unlock(&builder->rwlock);
+    rwlock_unlock(&builder->rwlock);
 
     strncpy(final + n, cur, OS_MAXSTR - n);
     final[n + z] = '\0';
@@ -218,7 +206,7 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     return final;
 
 fail:
-    w_rwlock_unlock(&builder->rwlock);
+    rwlock_unlock(&builder->rwlock);
 
     mdebug1("Too long message format");
     strncpy(final, logmsg ? logmsg : "Too long message format", OS_MAXSTR - 1);
@@ -232,7 +220,7 @@ fail:
 int log_builder_update_hostname(log_builder_t * builder) {
     int retval = 0;
 
-    w_rwlock_wrlock(&builder->rwlock);
+    rwlock_lock_write(&builder->rwlock);
 
     if (gethostname(builder->host_name, LOG_BUILDER_HOSTNAME_LEN) != 0) {
         strncpy(builder->host_name, "localhost", LOG_BUILDER_HOSTNAME_LEN - 1);
@@ -240,7 +228,7 @@ int log_builder_update_hostname(log_builder_t * builder) {
         retval = -1;
     }
 
-    w_rwlock_unlock(&builder->rwlock);
+    rwlock_unlock(&builder->rwlock);
     return retval;
 }
 
@@ -282,7 +270,7 @@ int log_builder_update_host_ip(log_builder_t * builder) {
         }
 #endif
     }
-    w_rwlock_wrlock(&builder->rwlock);
+    rwlock_lock_write(&builder->rwlock);
     if (*host_ip != '\0' && strcmp(host_ip, "Err")) {
         strcpy(builder->host_ip, host_ip);
     } else {
@@ -290,7 +278,7 @@ int log_builder_update_host_ip(log_builder_t * builder) {
     }
 
     builder->host_ip[IPSIZE - 1] = '\0';
-    w_rwlock_unlock(&builder->rwlock);
+    rwlock_unlock(&builder->rwlock);
 
     return 0;
 }
