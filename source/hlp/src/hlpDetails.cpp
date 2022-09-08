@@ -18,6 +18,7 @@ const parserConfigFuncPtr kParsersConfig[] = {
     configureBooleanParser,
     nullptr,
     configureIgnoreParser,
+    nullptr
 };
 
 const parserFuncPtr kAvailableParsers[] = {
@@ -37,4 +38,5 @@ const parserFuncPtr kAvailableParsers[] = {
     parseBoolean,
     nullptr,
     parseIgnore,
+    parseXml
 };
