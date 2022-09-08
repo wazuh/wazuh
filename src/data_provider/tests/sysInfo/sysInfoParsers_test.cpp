@@ -441,6 +441,24 @@ TEST_F(SysInfoParsersTest, MacOS)
         BuildVersion:   16G29
         )"
     };
+    constexpr auto MACOS_SYSTEM_PROFILER
+    {
+        R"(
+        Software:
+
+          System Software Overview:
+
+            System Version: macOS 10.15.5 (19F101)
+            Kernel Version: Darwin 19.5.0
+            Boot Volume: catalina
+            Boot Mode: Normal
+            Computer Name: User’s iMac (2)
+            User Name: User (macos-catalina)
+            Secure Virtual Memory: Enabled
+            System Integrity Protection: Enabled
+            Time since boot: 3 minutes
+        )"
+    };
     constexpr auto MACOS_UNAME
     {
         "16.7.0"
@@ -448,9 +466,10 @@ TEST_F(SysInfoParsersTest, MacOS)
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
+    EXPECT_TRUE(parser.parseSystemProfiler(MACOS_SYSTEM_PROFILER, output));
     EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
     EXPECT_EQ("10.12.6", output["os_version"]);
-    EXPECT_EQ("Mac OS X", output["os_name"]);
+    EXPECT_EQ("macOS", output["os_name"]);
     EXPECT_EQ("darwin", output["os_platform"]);
     EXPECT_EQ("16G29", output["os_build"]);
     EXPECT_EQ("Sierra", output["os_codename"]);
