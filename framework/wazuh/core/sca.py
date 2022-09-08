@@ -47,10 +47,45 @@ default_query_sca_check = 'SELECT {0} FROM sca_check a LEFT JOIN sca_check_compl
 
 
 class WazuhDBQuerySCA(WazuhDBQuery):
+    """Class used to query SCA items."""
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
-                 get_data, default_sort_field='policy_id', filters=None, fields=fields_translation_sca,
-                 default_query=default_query_sca, count_field='policy_id'):
+    def __init__(self, agent_id: str, offset: int, limit: int, sort: dict, search: dict, select: list, query: str,
+                 count: bool, get_data: bool, default_sort_field: str = 'policy_id', filters: dict = None,
+                 fields: dict = fields_translation_sca, default_query: str = default_query_sca,
+                 count_field: str = 'policy_id'):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+        search : dict
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str
+            Query to filter in database. Format: field operator value.
+        default_sort_field : str
+            By default, return elements sorted by this field. Default: 'policy_id'
+        count : bool
+            Whether to compute totalItems or not.
+        get_data : bool
+            Whether to return data or not.
+        fields : dict
+            SCA fields.
+        default_query : str
+            Default query. Default: default_query_sca
+        count_field : str
+            Field to apply count. Default: 'policy_id'
+        """
         self.agent_id = agent_id
         self.default_query = default_query
         self.count_field = count_field
