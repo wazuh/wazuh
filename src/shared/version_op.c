@@ -661,15 +661,22 @@ os_info *get_unix_version()
             } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
 
-                if (cmd_output_ver = popen("system_profiler SPSoftwareDataType -detailLevel mini", "r"), cmd_output_ver)
+                if (cmd_output_ver = popen("system_profiler SPSoftwareDataType", "r"), cmd_output_ver)
                 {
                     if (fread(buff, 1, sizeof(buff), cmd_output_ver) > 0)
                     {
-                        char *aux = strtok(buff, "\n");
-                        aux = strtok(NULL, "\n");
-                        aux = strtok(NULL, ":");
-                        aux = strtok(NULL, " ");
-                        w_strdup(aux, info->os_name);
+                        char *aux = strtok_r(buff, "\n", &save_ptr);
+                        aux = strtok_r(NULL, "\n", &save_ptr);
+                        aux = strtok_r(NULL, ":", &save_ptr);
+                        aux = strtok_r(NULL, " ", &save_ptr);
+                        if (aux && strlen(aux) > 0)
+                        {
+                            w_strdup(aux, info->os_name);
+                        }
+                        else
+                        {
+                            mdebug1("Cannot parse System Version (system_profiler SPSoftwareDataType -detailLevel mini).");
+                        }
                     }
                     else
                     {
