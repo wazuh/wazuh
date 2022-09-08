@@ -13,24 +13,22 @@
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
 #define NETSH "C:\\Windows\\System32\\netsh.exe"
-#define  FIREWALL_DATA_INITIALIZE { {false, FIREWALL_DOMAIN}, {false, FIREWALL_PRIVATE}, {false, FIREWALL_PUBLIC}};
+#define FIREWALL_DATA_INITIALIZE {{false, FIREWALL_DOMAIN}, {false, FIREWALL_PRIVATE}, {false, FIREWALL_PUBLIC}};
 
 typedef enum {
     FIREWALL_DOMAIN = 0,
     FIREWALL_PRIVATE,
     FIREWALL_PUBLIC
-}firewallProfile_t;
+} firewallProfile_t;
 
 typedef struct{
-    bool iSenabled;
+    bool isEnabled;
     firewallProfile_t profile;
-}firewallData_t;
+} firewallData_t;
 
 const char *firewallProfileStr[3] = {"FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC"};
 
 int getFirewallStateAllProfiles(const char * output_buf, firewallData_t *firewallData);
-
-
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -87,12 +85,12 @@ int main (int argc, char **argv) {
 
     char *exec_args_add[11] = { NETSH, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
     char *exec_args_delete[8] = { NETSH, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
-    char *exec_args_show[6] = { NETSH, "advfirewall", "show", "allprofiles", NULL};
+    char *exec_args_show[6] = { NETSH, "advfirewall", "show", "allprofiles", NULL };
 
     wfd_t *wfd = NULL;
-    if ((action == ADD_COMMAND)){
+    if ((action == ADD_COMMAND)) {
         wfd = wpopenv(NETSH, exec_args_show, W_BIND_STDOUT);
-        if (!wfd){
+        if (!wfd) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s' : %s", NETSH, strerror(errno));
             write_debug_file(argv[0], log_msg);
@@ -101,15 +99,14 @@ int main (int argc, char **argv) {
         }
         else {
             int index = 0;
-            while (fgets(output_buf, OS_MAXSTR, wfd->file_out)){   
-
-                if ((index = getFirewallStateAllProfiles(output_buf, firewallData) ) != -1){
-                    if (false == firewallData[index].iSenabled){
+            while (fgets(output_buf, OS_MAXSTR -1, wfd->file_out)) {   
+                if ((index = getFirewallStateAllProfiles(output_buf, firewallData)) != -1) {
+                    if (false == firewallData[index].isEnabled) {
                         memset(log_msg, '\0', OS_MAXSTR);
                         snprintf(
                             log_msg, OS_MAXSTR -1, "{\"message\":\"Firewall is disabled\",\"profile\":\"%s\",\"status\":\"%s\"}",
                             firewallProfileStr[firewallData[index].profile],
-                            firewallData[index].iSenabled == true? "active":"inactive"
+                            firewallData[index].isEnabled == true ? "active" : "inactive"
                         );
                         write_debug_file(argv[0], log_msg);
                     }
@@ -118,7 +115,6 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
     }
-
 
     wfd = wpopenv(NETSH, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
     if (!wfd) {
@@ -144,19 +140,19 @@ int main (int argc, char **argv) {
  * @param firewallData: pointer to firewall data
  * @return index firewall profile firewallProfile_t
 */
-int getFirewallStateAllProfiles(const char * output_buf, firewallData_t *firewallData){
+int getFirewallStateAllProfiles(const char * output_buf, firewallData_t *firewallData) {
     const char *pos = strstr(output_buf, "State");
     static int countNumProf = 0;
     int retVal = -1;
-    if( pos != NULL){
+    if (pos != NULL) {
         char state[15];
-        if (pos && sscanf(pos, "%*s %2s", state) ==1 ){
+        if (pos && sscanf(pos, "%*s %2s", state) == 1) {
             if (strcmp(state, "ON") == 0) {
-                firewallData[countNumProf].iSenabled = true;             
-            }else{
-                firewallData[countNumProf].iSenabled = false;
+                firewallData[countNumProf].isEnabled = true;             
+            } else {
+                firewallData[countNumProf].isEnabled = false;
             }
-            switch (countNumProf){
+            switch (countNumProf) {
                 case 0:
                     firewallData[countNumProf].profile = FIREWALL_DOMAIN;
                     break;
@@ -169,13 +165,13 @@ int getFirewallStateAllProfiles(const char * output_buf, firewallData_t *firewal
                 default:
                     break;
             }
-            retVal  = countNumProf;
-            if(countNumProf++ > 2){
+            retVal = countNumProf;
+            if (countNumProf++ > 2) {
                 countNumProf = 0;
             }
         }
     }
-    return  retVal;
+    return retVal;
 }
 
 #endif
