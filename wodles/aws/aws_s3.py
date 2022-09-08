@@ -169,28 +169,11 @@ class WazuhIntegration:
         self.db_cursor = self.db_connector.cursor()
         if bucket:
             self.bucket = bucket
-        self.old_version = None  # for DB migration if it is necessary
         self.check_metadata_version()
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
         self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
-
-    def migrate_from_38(self, **kwargs):
-        self.db_maintenance(**kwargs)
-        self.db_connector.commit()
-
-    def migrate(self, **kwargs):
-        regex_version = re.compile(r'^v?(\d.\d){1}')
-        old_version = re.search(regex_version, self.old_version).group(1).replace('.', '')
-        current_version = re.search(regex_version, self.wazuh_version).group(1).replace('.', '')
-        if old_version < current_version:
-            migration_method_name = 'migrate_from_{}'.format(old_version)
-            if hasattr(self, migration_method_name):
-                migration_method = getattr(self, migration_method_name)
-                # do migration from 3.8 version
-                if old_version == '38':
-                    migration_method(**kwargs)
 
     def check_metadata_version(self):
         try:
@@ -201,7 +184,6 @@ class WazuhIntegration:
                 metadata_version = query_version.fetchone()[0]
                 # update Wazuh version in metadata table
                 if metadata_version != self.wazuh_version:
-                    self.old_version = metadata_version
                     self.db_connector.execute(self.sql_update_version_metadata, {'wazuh_version': self.wazuh_version})
                     self.db_connector.commit()
             else:
@@ -922,8 +904,6 @@ class AWSBucket(WazuhIntegration):
                 if not regions:
                     continue
             for aws_region in regions:
-                if self.old_version:
-                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
@@ -1220,8 +1200,6 @@ class AWSConfigBucket(AWSLogsBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
-                if self.old_version:
-                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # for processing logs day by day
                 date_list = self.get_date_list(aws_account_id, aws_region)
@@ -1735,9 +1713,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                        self.secret_key, aws_region, profile_name=self.profile_name)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
-                    if self.old_version:
-                        self.migrate(aws_account_id=aws_account_id, aws_region=aws_region,
-                                     flow_log_id=flow_log_id)
                     date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
