@@ -492,7 +492,7 @@ class AgentsReconnect:
             """
             agents_per_worker = [worker['total'] for worker in self.env_status.values()]
             mean = sum(agents_per_worker) / len(agents_per_worker)
-            tolerance_window = max(floor(mean * tolerance), 2)
+            tolerance_window = max(floor(mean * tolerance), 3)
             biggest_node = max(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
             smallest_node = min(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
 
