@@ -1,3 +1,5 @@
+#include "specificParsers.hpp"
+
 #include <climits>
 #include <iostream>
 #include <memory>
@@ -8,18 +10,20 @@
 #include <unordered_set>
 
 #include "date/date.h"
-#include "hlpDetails.hpp"
-#include "specificParsers.hpp"
 #include "tld.hpp"
 #include <arpa/inet.h>
 #include <curl/curl.h>
-#include <fmt/format.h>
+#include <profile/profile.hpp>
+#include <pugixml.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
-
-#include <profile/profile.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
+#include <fmt/format.h>
+#include <json/json.hpp>
+
+#include "hlpDetails.hpp"
 
 // Complementary functions for JSON parser //
 enum class JSON_TYPE
@@ -1273,4 +1277,66 @@ bool parseBoolean(const char** it, Parser const& parser, ParseResult& result)
     auto& trueVal = parser.options[0];
     result[parser.name] = bool {str == trueVal};
     return true;
+}
+
+/**
+ * @brief Transform an XML document into a JSON document.
+ *
+ * @param doc Input XML document.
+ * @param docJson Output JSON document.
+ * @param path Path to the current node.
+ */
+static void xmlToJson(std::shared_ptr<pugi::xml_node> docXml,
+                      std::shared_ptr<json::Json> docJson,
+                      std::string path = "")
+{
+    // Iterate over the xml generating the corresponding json
+    for (auto node : docXml->children())
+    {
+        // Ignore text nodes as they are handled by the parent
+        if (node.type() == pugi::node_pcdata)
+        {
+            continue;
+        }
+        std::string localPath {path};
+        localPath += "/" + std::string {node.name()};
+        docJson->setObject(localPath);
+
+        auto text = node.text();
+        if (!text.empty())
+        {
+            docJson->setString(text.as_string(), localPath + "/#text");
+        }
+
+        for (auto attr : node.attributes())
+        {
+            docJson->setString(attr.value(), localPath + "/@" + attr.name());
+        }
+
+        if (!node.first_child().empty())
+        {
+            xmlToJson(std::make_shared<pugi::xml_node>(node), docJson, localPath);
+        }
+    }
+}
+
+bool parseXml(const char** it, Parser const& parser, ParseResult& result)
+{
+    // TODO: same as parseJson, we are creating a Json object to obtain the json string
+    // and later creating a Json object again, fix this on HLP refactor.
+    bool success {false};
+    auto xmlDoc = std::make_shared<pugi::xml_document>();
+    auto jsonDoc = std::make_shared<json::Json>();
+
+    auto parseResult = xmlDoc->load_buffer(*it, strlen(*it));
+
+    if (parseResult.status == pugi::status_ok)
+    {
+        xmlToJson(xmlDoc, jsonDoc);
+        result[parser.name] = jsonDoc;
+        success = true;
+        *it += strlen(*it);
+    }
+
+    return success;
 }
