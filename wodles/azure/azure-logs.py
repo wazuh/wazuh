@@ -24,7 +24,6 @@ from hashlib import md5
 from json import dumps, loads, JSONDecodeError
 from os.path import abspath, dirname
 from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
-from typing import Optional
 
 from azure.common import AzureException, AzureHttpError
 from azure.storage.blob import BlockBlobService
@@ -666,7 +665,7 @@ def start_storage():
 
 def get_blobs(
     container_name: str, blob_service: BlockBlobService, md5_hash: str, min_datetime: datetime, max_datetime: datetime,
-    desired_datetime: datetime, next_marker: Optional[str] = None, prefix: Optional[str] = None
+    desired_datetime: datetime, next_marker: str = None, prefix: str = None
 ):
     """Get the blobs from a container and send their content.
 
@@ -686,6 +685,8 @@ def get_blobs(
         md5 value used to search the container in the file containing the dates.
     next_marker : str
         Token used as a marker to continue from previous iteration.
+    prefix : str, optional
+        Prefix value to search blobs that match with it.
 
     Raises
     ------
