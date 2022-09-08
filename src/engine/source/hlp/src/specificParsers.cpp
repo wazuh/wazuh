@@ -626,8 +626,6 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         }
         // Print key and value and iterator
         lastFoundOk = strParsePtr;
-        // std::cout << "Key: '" << key << "', Value: '" << value << "', Iterator: '" <<
-        // strParsePtr << "'" << std::endl;
 
         // Check the value type and cast it
         auto jsonValue {rapidjson::Value(rapidjson::kNullType)};
@@ -684,7 +682,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         *it = lastFoundOk;
     }
 
-    return lastFoundOk == nullptr ? false : true;
+    return (nullptr != lastFoundOk);
 }
 
 bool parseIPaddress(const char** it, Parser const& parser, ParseResult& result)

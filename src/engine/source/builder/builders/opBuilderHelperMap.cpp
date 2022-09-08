@@ -355,11 +355,10 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Get trim type
-    char trimType = parameters[0].m_value == "begin"
-                        ? 's'
-                        : parameters[0].m_value == "end"
-                              ? 'e'
-                              : parameters[0].m_value == "both" ? 'b' : '\0';
+    char trimType = parameters[0].m_value == "begin"  ? 's'
+                    : parameters[0].m_value == "end"  ? 'e'
+                    : parameters[0].m_value == "both" ? 'b'
+                                                      : '\0';
     if ('\0' == trimType)
     {
         throw std::runtime_error("Invalid trim type for s_trim operator");
@@ -632,7 +631,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
                 char* err = nullptr;
 
                 std::string byte = strHex.substr(iHex, 2);
-                char chr = (char)strtol(byte.c_str(), &err, 16);    // BASE: 16 (Hexa)
+                char chr = (char)strtol(byte.c_str(), &err, 16); // BASE: 16 (Hexa)
 
                 if (err != nullptr && *err != 0)
                 {
