@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import datetime
 import json
 import os
 import re
@@ -13,12 +14,12 @@ DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 
 
-def hourly_():
+def hourly_() -> list:
     """Compute hourly averages.
 
     Returns
     -------
-    array
+    list
         Averages and iterations.
     """
     averages = []
@@ -40,12 +41,12 @@ def hourly_():
     return [{'averages': averages, 'interactions': interactions}]
 
 
-def weekly_():
+def weekly_() -> list:
     """Compute weekly averages.
 
     Returns
     -------
-    array
+    list
         Hours and interactions for each week day.
     """
     weekly_results = []
@@ -70,17 +71,17 @@ def weekly_():
     return weekly_results
 
 
-def totals_(date=utils.get_utc_now()):
+def totals_(date: datetime.datetime = utils.get_utc_now()) -> list:
     """Compute statistical information for the current or specified date.
 
     Parameters
     ----------
-    date: date
+    date: datetime
         Date object with the date value of the stats, current date by default.
 
     Returns
     -------
-    array
+    list
         array of dictionaries. Each dictionary represents an hour.
 
     Raises
@@ -117,7 +118,7 @@ def totals_(date=utils.get_utc_now()):
     return affected
 
 
-def get_daemons_stats_(filename):
+def get_daemons_stats_(filename: str) -> list:
     """Get daemons stats from an input file.
 
     Parameters
@@ -127,7 +128,7 @@ def get_daemons_stats_(filename):
 
     Returns
     -------
-    array
+    list
         Stats of the input file.
 
     Raises
@@ -151,19 +152,19 @@ def get_daemons_stats_(filename):
     return [items]
 
 
-def get_daemons_stats_from_socket(agent_id, daemon):
+def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     """Get a daemon stats from an agent or manager.
 
     Parameters
     ----------
-    agent_id: string
+    agent_id: str
         Id of the agent to get stats from.
-    daemon: string
+    daemon: str
         Name of the service to get stats from.
 
     Returns
     -------
-    Dict
+    dict
         Object with daemon's stats.
     """
     if not agent_id or not daemon:

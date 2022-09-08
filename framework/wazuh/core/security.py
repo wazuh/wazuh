@@ -25,13 +25,20 @@ def load_spec():
         return yaml.safe_load(stream)
 
 
-def update_security_conf(new_config):
+def update_security_conf(new_config: dict):
     """Update dict and write it in the configuration file.
 
     Parameters
     ----------
     new_config : dict
         Dictionary with the new configuration.
+
+    Raises
+    ------
+    WazuhInternalError(1005)
+        Error reading security conf file.
+    WazuhError(4021)
+        No new_config provided.
     """
     if new_config:
         try:
@@ -48,17 +55,18 @@ def update_security_conf(new_config):
         middlewares.request_counter = 0
 
 
-def check_relationships(roles: list = None):
-    """Check the users related with the specified list of roles
+def check_relationships(roles: list = None) -> set:
+    """Check the users related with the specified list of roles.
 
     Parameters
     ----------
     roles : list
-        List of affected roles
+        List of affected roles.
 
     Returns
     -------
-    Set with all affected users
+    set
+        Set with all affected users.
     """
     users_affected = set()
     if roles:
@@ -70,14 +78,13 @@ def check_relationships(roles: list = None):
 
 
 def invalid_run_as_tokens():
-    """Add the necessary rules to invalidate all affected run_as's tokens
-    """
+    """Add the necessary rules to invalidate all affected run_as's tokens."""
     with TokenManager() as tm:
         tm.add_user_roles_rules(run_as=True)
 
 
 def invalid_users_tokens(users: list = None):
-    """Add the necessary rules to invalidate all affected user's tokens
+    """Add the necessary rules to invalidate all affected user's tokens.
 
     Parameters
     ----------
@@ -100,8 +107,14 @@ def invalid_roles_tokens(roles: list = None):
         tm.add_user_roles_rules(roles=set(roles))
 
 
-def revoke_tokens():
-    """Revoke all tokens in current node."""
+def revoke_tokens() -> dict:
+    """Revoke all tokens in current node.
+
+    Returns
+    -------
+    dict
+        Confirmation message.
+    """
     change_keypair()
     with TokenManager() as tm:
         tm.delete_all_rules()

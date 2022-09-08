@@ -1,33 +1,35 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import calendar
+import glob
+import gzip
 import logging
 import logging.handlers
 import os
-from wazuh.core import common, utils
-import glob
-import gzip
-import shutil
 import re
-import calendar
+import shutil
+from typing import Union
+
+from wazuh.core import common, utils
 
 
 class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
     """
     Wazuh log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
-    Also, rotated logs are stored in /logs/wazuh
+    Also, rotated logs are stored in /logs/wazuh.
     """
 
     def doRollover(self):
         """
-        Override base class method to make the set the appropiate permissions to the new log file
+        Override base class method to make the set the appropiate permissions to the new log file.
         """
         # Rotate the file first
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
         # Set appropiate permissions
-        #os.chown(self.baseFilename, common.wazuh_uid(), common.wazuh_gid())
-        #os.chmod(self.baseFilename, 0o660)
+        # os.chown(self.baseFilename, common.wazuh_uid(), common.wazuh_gid())
+        # os.chmod(self.baseFilename, 0o660)
 
         # Save rotated file in /logs/wazuh directory
         rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
@@ -38,12 +40,18 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         os.chmod(new_rotated_file, 0o640)
         os.unlink(rotated_file)
 
-    def computeArchivesDirectory(self, rotated_filepath):
-        """
-        Based on the name of the rotated file, compute in which directory it should be stored.
+    def computeArchivesDirectory(self, rotated_filepath: str) -> str:
+        """Based on the name of the rotated file, compute in which directory it should be stored.
 
-        :param rotated_filepath: Filepath of the rotated log
-        :return: New directory path
+        Parameters
+        ----------
+        rotated_filepath : str
+            Filepath of the rotated log.
+
+        Returns
+        -------
+        str
+            New directory path.
         """
         rotated_file = os.path.basename(rotated_filepath)
         year, month, day = re.match(r'[\w\.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
@@ -59,7 +67,8 @@ class CustomFilter():
     """
     Define a custom filter to differentiate between log types.
     """
-    def __init__(self, log_type):
+
+    def __init__(self, log_type: str):
         """Constructor.
 
         Parameters
@@ -69,7 +78,7 @@ class CustomFilter():
         """
         self.log_type = log_type
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         """Filter the log entry depending on its log type.
 
         Parameters
@@ -79,7 +88,7 @@ class CustomFilter():
 
         Returns
         -------
-        boolean
+        bool
             Boolean used to determine if the log entry should be logged.
         """
         # If the log file is not specifically filtered, then it should log into both files
@@ -88,19 +97,27 @@ class CustomFilter():
 
 class WazuhLogger:
     """
-    Defines attributes of a Python wazuh daemon's logger
+    Define attributes of a Python wazuh daemon's logger.
     """
-    def __init__(self, foreground_mode: bool, log_path: str, debug_level: [int, str], logger_name='wazuh',
-                 custom_formatter=None, tag='%(asctime)s %(levelname)s: %(message)s'):
-        """
-        Constructor
 
-        :param foreground_mode: Enable stream handler on sys.stderr
-        :param log_path: Filepath of the file to send logs to. Relative to the wazuh installation path.
-        :param tag: Tag defining logging format.
-        :param debug_level: Log level.
-        :param logger_name: string sets logger name to register in logging module
-        :param custom_formatter: subclass of logging.Formatter. Allows formatting messages depending on their contents
+    def __init__(self, foreground_mode: bool, log_path: str, debug_level: Union[int, str], logger_name: str = 'wazuh',
+                 custom_formatter: logging.Formatter = None, tag: str = '%(asctime)s %(levelname)s: %(message)s'):
+        """Constructor.
+
+        Parameters
+        ----------
+        foreground_mode : bool
+            Enable stream handler on sys.stderr.
+        log_path : str
+            Filepath of the file to send logs to. Relative to the wazuh installation path.
+        tag : str
+            Tag defining logging format.
+        debug_level : Union[int, str]
+            Log level.
+        logger_name : str
+            Sets logger name to register in logging module.
+        custom_formatter : logging.Formatter
+            Subclass of logging.Formatter. Allows formatting messages depending on their contents.
         """
         self.log_path = os.path.join(common.WAZUH_PATH, log_path)
         self.logger = None
@@ -114,8 +131,7 @@ class WazuhLogger:
             self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
 
     def setup_logger(self):
-        """
-        Prepares a logger with:
+        """Prepare a logger with:
             * A rotating file handler
             * A stream handler (if foreground_mode is enabled)
             * An additional debug level.
@@ -155,14 +171,21 @@ class WazuhLogger:
 
         self.logger = logger
 
-    def __getattr__(self, item):
-        """
-        Overwrites __getattr__ magic method.
+    def __getattr__(self, item: str) -> object:
+        """Overwrite __getattr__ magic method.
             * If the item requested is an attribute of self.logger, return it.
             * If it's an attribute of self, return it.
             * Otherwise, raise an AttributeError exception
-        :param item: Name of the attribute to return
-        :return: attribute named "item".
+
+        Parameters
+        ----------
+        item : str
+            Name of the attribute to return.
+        
+        Returns
+        -------
+        object
+            Attribute named "item".
         """
         if hasattr(self.logger, item):
             return getattr(self.logger, item)
