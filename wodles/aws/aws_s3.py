@@ -2491,11 +2491,11 @@ class AWSALBBucket(AWSLBBucket):
                     try:
                         if field_to_process == "target_port_list" and len(log_entry[field_to_process].split(" ")) > 1:
                             # Handle case when `target_port_list` is space-delimited list
-                            ip_list = [i.split(":")[0] for i in log_entry[field_to_process].split(" ")]
-                            port_list = [i.split(":")[1] for i in log_entry[field_to_process].split(" ")]
-
-                            log_entry[ip_field] = " ".join(ip_list)
-                            log_entry[field_to_process] = " ".join(port_list)
+                            ips, ports = "", ""
+                            for item in [i.split(":") for i in log_entry[field_to_process].split(" ")]:
+                                ips += f"{item[0]} "
+                                ports += f"{item[1]} "
+                                log_entry[ip_field], log_entry[field_to_process] = ips.strip(), ports.strip()
                         else:
                             log_entry[ip_field], log_entry[field_to_process] = log_entry[field_to_process].split(":")
                     except ValueError:
