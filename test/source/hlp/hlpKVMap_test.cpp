@@ -76,6 +76,109 @@ TEST(parseKVMap, buildNoEndString)
     ASSERT_TRUE(static_cast<bool>(op));
 }
 
+
+// Test: parsing maps objects
+TEST(hlpTests_map, success_test)
+{
+    const char* logQl = "<_map/kv_map/=/ > <_dummy>";
+    const char* event = "key1=Value1 Key2=Value2 dummy";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
+              std::any_cast<JsonString>(result["_map"]).jsonString);
+    ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
+}
+
+TEST(hlpTests_map, end_mark_test)
+{
+    const char* logQl = "<_map/kv_map/=/ >-<_dummy>";
+    const char* event = "key1=Value1 Key2=Value2-dummy";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
+              std::any_cast<JsonString>(result["_map"]).jsonString);
+    ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
+}
+
+TEST(hlpTests_map, incomplete_map_test)
+{
+    const char* logQl = "<_map/kv_map/=/ >";
+    const char* event1 = "key1=Value1 Key2=";
+    const char* event2 = "key1=Value1 Key2";
+    const char* event3 = "key1=Value1 =Value2";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result1;
+    ParseResult result2;
+    ParseResult result3;
+    bool ret1 = parseOp(event1, result1);
+    bool ret2 = parseOp(event2, result2);
+    bool ret3 = parseOp(event3, result3);
+
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    // ASSERT_TRUE(result1.empty());
+    ASSERT_TRUE(result2.empty());
+    ASSERT_TRUE(result3.empty());
+}
+
+// MAP: Values before literal
+TEST(hlpTests_map, success_map_1_before_string)
+{
+    const char* logQl = "<_map/kv_map/=/ > hi!";
+    const char* event = "key1=Value1 hi!";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ(R"({"key1":"Value1"})",
+                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
+}
+
+TEST(hlpTests_map, success_map_2_before_string)
+{
+    const char* logQl = "<_map/kv_map/=/ > hi!";
+    const char* event = "key1=Value1 Key2=Value2 hi!";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ(R"({"key1":"Value1","Key2":"Value2"})",
+                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
+}
+
+TEST(hlpTests_map, success_map_multiCharacterArgs)
+{
+    const char* logQl = "<_map/kv_map/: / > hi!";
+    const char* event = "key1: Value1 Key2: Value2 hi!";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+    ASSERT_STREQ(R"({"key1":"Value1","Key2":"Value2"})",
+                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
+}
+
 TEST(parseKVMap, singleKVPairMatchTestKVSeparators)
 {
     const auto expectedResult {R"({"keyX":"valueX"})"};

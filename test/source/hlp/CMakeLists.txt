@@ -7,7 +7,7 @@ target_link_libraries(hlp_test hlp gtest_main)
 
 gtest_discover_tests(hlp_test)
 
-# Configuration Catalog tests
+# Configuration KVMap tests
 add_executable(hlpkvmap_test
   ${TEST_SOURCE_DIR}/hlp/hlpKVMap_test.cpp
 )
