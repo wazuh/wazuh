@@ -24,6 +24,7 @@
 #   15 - Invalid endpoint URL
 #   16 - Throttling error
 #   17 - Invalid key format
+#   18 - Invalid prefix
 
 import argparse
 import signal
@@ -173,7 +174,7 @@ class WazuhIntegration:
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
-        self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
     def migrate_from_38(self, **kwargs):
         self.db_maintenance(**kwargs)
@@ -717,11 +718,9 @@ class AWSBucket(WazuhIntegration):
                     accounts.append(account_id)
             return accounts
         except KeyError:
-            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
-            print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
-                  f"type and this bucket does not contain log files from this type. Try with other type: "
-                  f"{bucket_types - {get_script_arguments().type.lower()}}")
-            sys.exit(12)
+            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
+                  f"type '{get_script_arguments().type.lower()}'")
+            sys.exit(18)
 
     def find_regions(self, account_id):
         regions = self.client.list_objects_v2(Bucket=self.bucket,
@@ -929,14 +928,20 @@ class AWSBucket(WazuhIntegration):
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
+    def send_event(self, event):
+        # Change dynamic fields to strings; truncate values as needed
+        event_msg = self.reformat_msg(event)
+        # Send the message
+        self.send_msg(event_msg)
+
     def iter_events(self, event_list, log_key, aws_account_id):
-        def check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
+        def _check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
             field_list = nested_field.split('.', 1)
             try:
                 expression_to_evaluate = json_item[field_list[0]]
             except TypeError:
                 if isinstance(json_item, list):
-                    return any(check_recursive(i, field_list[0], regex=regex) for i in json_item)
+                    return any(_check_recursive(i, field_list[0], regex=regex) for i in json_item)
                 return False
             except KeyError:
                 return False
@@ -946,24 +951,25 @@ class AWSBucket(WazuhIntegration):
                         return re.match(regex, exp) is not None
                     except TypeError:
                         return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
-                return check_regex(expression_to_evaluate)
-            return check_recursive(expression_to_evaluate, field_list[1], regex=regex)
 
-        def event_should_be_skipped(event_):
+                return check_regex(expression_to_evaluate)
+            return _check_recursive(expression_to_evaluate, field_list[1], regex=regex)
+
+        def _event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                   and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
-                if event_should_be_skipped(event):
+                if _event_should_be_skipped(event):
                     debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
                           f'The event will be skipped.', 2)
                     continue
+                # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
-                # Change dynamic fields to strings; truncate values as needed
-                event_msg = self.reformat_msg(event_msg)
-                # Send the message
-                self.send_msg(event_msg)
+
+                self.send_event(event_msg)
+
 
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
@@ -2144,14 +2150,10 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         db_table_name = 'guardduty'
         AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
-    def iter_events(self, event_list, log_key, aws_account_id):
-        if event_list is not None:
-            for event in event_list:
-                # Parse out all the values of 'None'
-                event_msg = self.get_alert_msg(aws_account_id, log_key, event)
-                # Send the message (splitted if it is necessary)
-                for msg in self.reformat_msg(event_msg):
-                    self.send_msg(msg)
+    def send_event(self, event):
+        # Send the message (splitted if it is necessary)
+        for msg in self.reformat_msg(event):
+            self.send_msg(msg)
 
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
@@ -2841,7 +2843,7 @@ class AWSCloudWatchLogs(AWSService):
                 start_time,
                 end_time)
             VALUES
-                (':aws_region',
+                (:aws_region,
                 :aws_log_group,
                 :aws_log_stream,
                 :next_token,

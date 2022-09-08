@@ -14,7 +14,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - wazuh-agentlessd: !anystr
@@ -54,7 +54,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - compilation_date: !anystr
@@ -143,7 +143,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts: !anything
@@ -180,7 +180,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - rootcheck:
@@ -203,7 +203,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - syscheck:
@@ -239,7 +239,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -281,7 +281,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts: !anything
@@ -325,7 +325,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - averages: !anything
@@ -349,7 +349,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - Sun:
@@ -392,7 +392,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - total_events_decoded: !anyfloat
@@ -460,7 +460,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - queue_size: !anyfloat
@@ -492,7 +492,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items: !anything
             failed_items: []
@@ -512,7 +512,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - &manager_log
@@ -560,7 +560,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -585,7 +585,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -610,7 +610,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -632,7 +632,7 @@ stages:
     response:
         status_code: 200
         json:
-          error: !anyint
+          error: 0
           data:
             affected_items:
               - <<: *manager_log
@@ -673,7 +673,26 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Filter by non-existent tag
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        tag: wazuh-unknown-daemon
+    response:
+      status_code: 200
+      json:
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -696,7 +715,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - sca: !anything
@@ -742,7 +761,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - node_name: !anystr
@@ -795,7 +814,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - name: !anystr
@@ -836,7 +855,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -862,7 +881,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - global: !anything
@@ -880,7 +899,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - active-response: !anything
@@ -899,7 +918,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts: !anything
@@ -917,7 +936,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - command: !anything
@@ -935,7 +954,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -953,7 +972,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - auth: !anything
@@ -971,7 +990,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -989,7 +1008,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - localfile: !anything
@@ -1007,7 +1026,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -1024,7 +1043,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -1042,7 +1061,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - monitord: !anything
@@ -1060,7 +1079,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - remote: !anything
@@ -1078,7 +1097,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -1096,7 +1115,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - syscheck: !anything
@@ -1114,7 +1133,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - rootcheck: !anything
@@ -1132,7 +1151,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - internal: !anything
@@ -1150,7 +1169,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - wmodules: !anything
@@ -1198,7 +1217,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts:
@@ -1221,7 +1240,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1245,7 +1264,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1285,7 +1304,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - alerts:
@@ -1310,7 +1329,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - !anystr

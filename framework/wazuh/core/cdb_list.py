@@ -144,8 +144,8 @@ def get_list_from_file(path, raw=False):
         CDB list.
     """
     # Match empty lines or lines which start with "TEMPLATE:"
-    regex_template = re.compile(r'^TEMPLATE:|^\s*$')
-    result = dict()
+    regex_without_template = r'^(?!.*TEMPLATE)(.*)$'
+    result = {}
 
     try:
         with open(path) as f:
@@ -154,15 +154,15 @@ def get_list_from_file(path, raw=False):
         if raw:
             result = output
         else:
-            for line in output.splitlines():
-                if not re.match(regex_template, line):
-                    if '"' not in line:
-                        # Check if key and value are not surrounded by double quotes
-                        key, value = line.split(':')
-                    else:
-                        # Check if key and/or value are surrounded by double quotes
-                        key, value = split_key_value_with_quotes(line, path)
-                    result.update({key: value})
+            for match in re.finditer(regex_without_template, output.strip(), re.MULTILINE):
+                line = match.group(1)
+                if '"' not in line:
+                    # Check if key and value are not surrounded by double quotes
+                    key, value = line.split(':')
+                else:
+                    # Check if key and/or value are surrounded by double quotes
+                    key, value = split_key_value_with_quotes(line, path)
+                result[key] = value
 
     except OSError as e:
         if e.errno == 2:

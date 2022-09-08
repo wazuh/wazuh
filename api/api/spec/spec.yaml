@@ -843,6 +843,19 @@ components:
                 $ref: '#/components/schemas/NodeHealthcheck'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseNodeRulesetSynchronizationStatus:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/NodeRulesetSyncStatus'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroupIDs:
       allOf:
         - type: object
@@ -1750,6 +1763,16 @@ components:
                 sync_integrity_free:
                   type: boolean
 
+    NodeRulesetSyncStatus:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Node name"
+        synced:
+          type: boolean
+          description: "Whether the ruleset is synchronized or not"
+
     DaemonStatus:
       type: string
       enum:
@@ -2475,41 +2498,8 @@ components:
             - warning
         tag:
           type: string
+          format: alphanumeric
           description: "Wazuh component that logged the event"
-          enum:
-            - agent_control
-            - wazuh-agentlessd
-            - wazuh-analysisd
-            - wazuh-authd
-            - wazuh-csyslogd
-            - wazuh-dbd
-            - wazuh-execd
-            - wazuh-integratord
-            - wazuh-maild
-            - wazuh-monitord
-            - wazuh-logcollector
-            - wazuh-remoted
-            - wazuh-reportd
-            - wazuh-rootcheck
-            - wazuh-syscheckd
-            - sca
-            - verify-agent-conf
-            - wazuh-db
-            - wazuh-modulesd
-            - wazuh-modulesd:aws-s3
-            - wazuh-modulesd:azure-logs
-            - wazuh-modulesd:agent-upgrade
-            - wazuh-modulesd:task-manager
-            - wazuh-modulesd:ciscat
-            - wazuh-modulesd:control
-            - wazuh-modulesd:command
-            - wazuh-modulesd:database
-            - wazuh-modulesd:docker-listener
-            - wazuh-modulesd:download
-            - wazuh-modulesd:oscap
-            - wazuh-modulesd:osquery
-            - wazuh-modulesd:syscollector
-            - wazuh-modulesd:vulnerability-detector
         timestamp:
           type: string
           format: date-time
@@ -4737,38 +4727,7 @@ components:
       description: "Wazuh component that logged the event"
       schema:
         type: string
-        enum:
-        - wazuh-agentlessd
-        - wazuh-analysisd
-        - wazuh-authd
-        - wazuh-csyslogd
-        - wazuh-dbd
-        - wazuh-execd
-        - wazuh-integratord
-        - wazuh-maild
-        - wazuh-monitord
-        - wazuh-logcollector
-        - wazuh-remoted
-        - wazuh-reportd
-        - wazuh-rootcheck
-        - wazuh-syscheckd
-        - sca
-        - wazuh-db
-        - wazuh-modulesd
-        - wazuh-modulesd:aws-s3
-        - wazuh-modulesd:azure-logs
-        - wazuh-modulesd:agent-upgrade
-        - wazuh-modulesd:task-manager
-        - wazuh-modulesd:ciscat
-        - wazuh-modulesd:control
-        - wazuh-modulesd:command
-        - wazuh-modulesd:database
-        - wazuh-modulesd:docker-listener
-        - wazuh-modulesd:download
-        - wazuh-modulesd:oscap
-        - wazuh-modulesd:osquery
-        - wazuh-modulesd:syscollector
-        - wazuh-modulesd:vulnerability-detector
+        format: alphanumeric
     log_level:
       in: query
       name: level
@@ -8026,6 +7985,57 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected nodes healthcheck information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /cluster/ruleset/synchronization:
+    get:
+      tags:
+      - Cluster
+      summary: "Get cluster nodes ruleset synchronization status"
+      description: "Return ruleset synchronization status for all nodes or a list of them. This synchronization only
+      covers the user custom ruleset"
+      operationId: api.controllers.cluster_controller.get_nodes_ruleset_sync_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/nodes_list'
+      responses:
+        '200':
+          description: "Ruleset synchronization status for cluster nodes"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeRulesetSynchronizationStatus'
+              example:
+                data:
+                  affected_items:
+                    - name: "master-node"
+                      synced: true
+                    - name: "worker1"
+                      synced: true
+                    - name: "worker2"
+                      synced: true
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Nodes ruleset synchronization status was successfully read"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

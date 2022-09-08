@@ -639,6 +639,40 @@ stages:
       <<: *empty_response
 
 ---
+test_name: GET /cluster/ruleset/synchronization
+
+stages:
+
+  - name: Get cluster ruleset synchronization status (empty response, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Get cluster ruleset synchronization status (specific node, permission denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /cluster/local/config
 
 stages:

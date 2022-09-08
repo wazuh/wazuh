@@ -15,7 +15,6 @@
 #include "os_err.h"
 #include "wazuh_db/wdb.h"
 
-extern const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE;
 typedef struct test_struct {
     wdb_t *wdb;
     wdb_t *wdb_global;
@@ -1592,87 +1591,6 @@ void test_vuln_cves_remove_by_status_success(void **state){
     os_free(query);
 }
 
-void test_vuln_cves_remove_entry_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"}", query);
-
-    // wdb_agents_remove_vuln_cves
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, cve, "cve-xxxx-yyyy");
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, reference, "ref-cve-xxxx-yyyy");
-    will_return(__wrap_wdb_agents_remove_vuln_cves, OS_INVALID);
-
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves remove command; SQL err: ERROR MESSAGE");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Cannot execute vuln_cves remove command; SQL err: ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_remove_entry_success(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"}", query);
-
-    // wdb_agents_remove_vuln_cves
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, cve, "cve-xxxx-yyyy");
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, reference, "ref-cve-xxxx-yyyy");
-    will_return(__wrap_wdb_agents_remove_vuln_cves, OS_SUCCESS);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_vuln_cves_clear_command_error(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("clear", query);
-
-    // wdb_parse_agents_clear_vuln_cves
-    will_return(__wrap_wdb_agents_clear_vuln_cves, OS_INVALID);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves clear command; SQL err: ERROR MESSAGE");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Cannot execute vuln_cves clear command; SQL err: ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_clear_command_success(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("clear", query);
-
-    // wdb_parse_agents_clear_vuln_cves
-    will_return(__wrap_wdb_agents_clear_vuln_cves, OS_SUCCESS);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
 /* wdb_parse_packages */
 
 /* get */
@@ -2804,8 +2722,8 @@ void test_dbsync_modify_type_exists_data_text_null_value(void ** state) {
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 2);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
@@ -3262,7 +3180,8 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
 
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-    will_return_always(__wrap_sqlite3_bind_int64, SQLITE_ERROR);
+    will_return_always(__wrap_sqlite3_bind_null, SQLITE_ERROR);
+
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
@@ -3279,35 +3198,25 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 5);
     expect_value(__wrap_sqlite3_bind_int, value, 4);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 6);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 6);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 7);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 8);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 8);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 9);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 9);
 
-    expect_value(__wrap_sqlite3_bind_int64, index, 10);
-    expect_value(__wrap_sqlite3_bind_int64, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 10);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 11);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 11);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 12);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 12);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 13);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 13);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 14);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 14);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 15);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 15);
 
     will_return_always(__wrap_sqlite3_errmsg, error_value);
 
@@ -3597,8 +3506,8 @@ void test_dbsync_insert_type_exists_data_correct_null_value_from_json(void **sta
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "_NULL_");
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 4);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
 
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
@@ -3654,8 +3563,8 @@ void test_dbsync_modify_type_exists_data_null_value_from_json(void **state) {
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 2);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "_NULL_");
 
@@ -3891,11 +3800,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_json_data_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_by_status_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_entry_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_entry_success, test_setup, test_teardown),
-        // wdb_parse_agents_clear_vuln_cves
-        cmocka_unit_test_setup_teardown(test_vuln_cves_clear_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_clear_command_success, test_setup, test_teardown),
         // wdb_parse_packages
         cmocka_unit_test_setup_teardown(test_packages_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_get_not_triaged_success, test_setup, test_teardown),

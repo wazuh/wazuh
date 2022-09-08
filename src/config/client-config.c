@@ -45,12 +45,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_protocol = "protocol";
 
     agent * logr = (agent *)d1;
-    logr->notify_time = 0;
-    logr->max_time_reconnect_try = 0;
-    logr->force_reconnect_interval = 0;
-    logr->main_ip_update_interval = 0;
-    logr->rip_id = 0;
-    logr->server_count = 0;
 
     for (i = 0; node[i]; i++) {
         rip = NULL;
@@ -64,14 +58,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         }
         /* Get local IP */
         else if (strcmp(node[i]->element, xml_local_ip) == 0) {
-            os_strdup(node[i]->content, logr->lip);
-            if (OS_IsValidIP(logr->lip, NULL) != 1) {
-                merror(INVALID_IP, logr->lip);
-                return (OS_INVALID);
-            } else if (strchr(logr->lip, ':') != NULL) {
-                os_realloc(logr->lip, IPSIZE + 1, logr->lip);
-                OS_ExpandIPv6(logr->lip, IPSIZE);
-            }
+            mwarn("The <%s> tag has no functionality, so it will have no effect.", xml_local_ip);
         }
         /* Get server IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
@@ -569,7 +556,6 @@ void Free_Client(agent * config){
             free(config->server);
         }
 
-        free(config->lip);
         free(config->profile);
         labels_free(config->labels);
     }

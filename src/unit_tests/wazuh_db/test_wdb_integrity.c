@@ -26,7 +26,7 @@
 #include "cJSON.h"
 #include "os_err.h"
 
-int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest);
+int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest, const char * pk_value);
 extern os_sha1 global_group_hash;
 
 /* setup/teardown */
@@ -62,29 +62,24 @@ static int teardown_wdb_t(void **state) {
 /* tests */
 
 // Tests wdb_calculate_stmt_checksum
-
-static void test_wdb_calculate_stmt_checksum_wdb_null(void **state)
-{
-    expect_assert_failure(wdb_calculate_stmt_checksum(NULL, NULL, WDB_FIM, NULL));
+static void test_wdb_calculate_stmt_checksum_wdb_null(void **state) {
+    expect_assert_failure(wdb_calculate_stmt_checksum(NULL, NULL, WDB_FIM, NULL, NULL));
 }
 
-static void test_wdb_calculate_stmt_checksum_stmt_null(void **state)
-{
+static void test_wdb_calculate_stmt_checksum_stmt_null(void **state) {
     wdb_t *data = *state;
 
-    expect_assert_failure(wdb_calculate_stmt_checksum(data, NULL, WDB_FIM, NULL));
+    expect_assert_failure(wdb_calculate_stmt_checksum(data, NULL, WDB_FIM, NULL, NULL));
 }
 
-static void test_wdb_calculate_stmt_checksum_cks_null(void **state)
-{
+static void test_wdb_calculate_stmt_checksum_cks_null(void **state) {
     wdb_t *data = *state;
     sqlite3_stmt *stmt = (sqlite3_stmt *)1;
 
-    expect_assert_failure(wdb_calculate_stmt_checksum(data, stmt, WDB_FIM, NULL));
+    expect_assert_failure(wdb_calculate_stmt_checksum(data, stmt, WDB_FIM, NULL, NULL));
 }
 
-static void test_wdb_calculate_stmt_checksum_no_row(void **state)
-{
+static void test_wdb_calculate_stmt_checksum_no_row(void **state) {
     int ret;
 
     wdb_t *data = *state;
@@ -94,13 +89,12 @@ static void test_wdb_calculate_stmt_checksum_no_row(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 0);
 
-    ret = wdb_calculate_stmt_checksum(data, stmt, WDB_FIM, test_hex);
+    ret = wdb_calculate_stmt_checksum(data, stmt, WDB_FIM, test_hex, NULL);
 
     assert_int_equal(ret, 0);
 }
 
-static void test_wdb_calculate_stmt_checksum_success(void **state)
-{
+static void test_wdb_calculate_stmt_checksum_success(void **state) {
     int ret;
 
     wdb_t *data = *state;
@@ -117,28 +111,69 @@ static void test_wdb_calculate_stmt_checksum_success(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
 
-    ret = wdb_calculate_stmt_checksum(data, stmt, WDB_FIM, test_hex);
+    ret = wdb_calculate_stmt_checksum(data, stmt, WDB_FIM, test_hex, NULL);
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_wdb_calculate_stmt_checksum_duplicate_entries_found(void **state) {
+    int ret;
+
+    wdb_t *data = *state;
+    data->id = strdup("001");
+    sqlite3_stmt *stmt = (sqlite3_stmt *)1;
+    os_sha1 test_hex = {5,5,0,8,6,'c','e','f',9,'c',8,7,'d',6,'d',0,3,1,'c','d',5,'d','b',2,9,'c','d',0,3,'a',2,'e','d',0,2,5,2,'b',4,5};
+    const char* pk_value = "test_pk_value";
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 100);
+    // For loop
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "test_checksum");
+    expect_string(__wrap_EVP_DigestUpdate, data, "test_checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 13);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+    // Next iteration
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 100);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "test_checksum");
+    expect_string(__wrap_EVP_DigestUpdate, data, "test_checksum");
+    expect_value(__wrap_EVP_DigestUpdate, count, 13);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+    // No more rows
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "DB(001) syscollector-packages component has more than one element with the same PK value 'test_pk_value'.");
+
+    // wdbi_remove_by_pk
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, pk_value);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    ret = wdb_calculate_stmt_checksum(data, stmt, component, test_hex, pk_value);
 
     assert_int_equal(ret, 1);
 }
 
 // Tests wdbi_checksum
-
-static void test_wdbi_checksum_wbs_null(void **state)
-{
+static void test_wdbi_checksum_wdb_null(void **state) {
     expect_assert_failure(wdbi_checksum(NULL, 0, ""));
 }
 
-static void test_wdbi_checksum_hexdigest_null(void **state)
-{
+static void test_wdbi_checksum_hexdigest_null(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
 
     expect_assert_failure(wdbi_checksum(data, 0, NULL));
 }
 
-static void test_wdbi_checksum_wdb_stmt_cache_fail(void **state)
-{
+static void test_wdbi_checksum_stmt_cache_fail(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -146,21 +181,21 @@ static void test_wdbi_checksum_wdb_stmt_cache_fail(void **state)
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     ret = wdbi_checksum(data, 0, test_hex);
 
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_checksum_success(void **state)
-{
+static void test_wdbi_checksum_success(void **state) {
     int ret;
 
     wdb_t * data = *state;
     data->id = strdup("000");
     os_sha1 test_hex = {5,5,0,8,6,'c','e','f',9,'c',8,7,'d',6,'d',0,3,1,'c','d',5,'d','b',2,9,'c','d',0,3,'a',2,'e','d',0,2,5,2,'b',4,5};
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 100);
@@ -176,23 +211,100 @@ static void test_wdbi_checksum_success(void **state)
     assert_int_equal(ret, 1);
 }
 
-// Tests wdbi_checksum_range
+// Tests wdbi_remove_by_pk
+static void test_wdbi_remove_by_pk_wdb_null(void **state) {
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    const char* pk_value = NULL;
+    expect_assert_failure(wdbi_remove_by_pk(NULL, component, pk_value));
+}
 
-static void test_wdbi_checksum_range_wbs_null(void **state)
-{
+static void test_wdbi_remove_by_pk_null(void **state) {
+    wdb_t *data = *state;
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    const char* pk_value = NULL;
+
+    expect_string(__wrap__mwarn, formatted_msg, "PK value is NULL during the removal of the component 'syscollector-packages'");
+
+    wdbi_remove_by_pk(data, component, pk_value);
+}
+
+static void test_wdbi_remove_by_pk_stmt_cache_fail(void **state) {
+    wdb_t *data = *state;
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    const char* pk_value = "test_pk_value";
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    wdbi_remove_by_pk(data, component, pk_value);
+}
+
+static void test_wdbi_remove_by_pk_sqlite_bind_fail(void **state) {
+    wdb_t *data = *state;
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    const char* pk_value = "test_pk_value";
+    data->id = strdup("001");
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, pk_value);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "DB(001) sqlite3_bind_text(): ERROR");
+
+    wdbi_remove_by_pk(data, component, pk_value);
+}
+
+static void test_wdbi_remove_by_pk_sqlite_step_fail(void **state) {
+    wdb_t *data = *state;
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+
+    const char* pk_value = "test_pk_value";
+    data->id = strdup("001");
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, pk_value);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(001) sqlite3_step(): ERROR");
+
+    wdbi_remove_by_pk(data, component, pk_value);
+}
+
+static void test_wdbi_remove_by_pk_success(void **state) {
+    wdb_t *data = *state;
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+
+    const char* pk_value = "test_pk_value";
+    data->id = strdup("001");
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_value(__wrap_sqlite3_bind_text, buffer, pk_value);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_remove_by_pk(data, component, pk_value);
+}
+
+// Tests wdbi_checksum_range
+static void test_wdbi_checksum_range_wdb_null(void **state) {
     expect_assert_failure(wdbi_checksum_range(NULL, 0, "test_begin", "test_end", ""));
 }
 
-static void test_wdbi_checksum_range_hexdigest_null(void **state)
-{
+static void test_wdbi_checksum_range_hexdigest_null(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
 
     expect_assert_failure(wdbi_checksum_range(data, 0, "test_begin", "test_end", NULL));
 }
 
-static void test_wdbi_checksum_range_wdb_stmt_cache_fail(void **state)
-{
+static void test_wdbi_checksum_range_stmt_cache_fail(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -200,14 +312,14 @@ static void test_wdbi_checksum_range_wdb_stmt_cache_fail(void **state)
     os_sha1 test_hex = "";
 
     will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     ret = wdbi_checksum_range(data, 0, "test_begin", "test_end", test_hex);
 
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_checksum_range_begin_null(void **state)
-{
+static void test_wdbi_checksum_range_begin_null(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -217,7 +329,7 @@ static void test_wdbi_checksum_range_begin_null(void **state)
     const char* end = "test_end";
     os_sha1 test_hex = "";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -233,8 +345,7 @@ static void test_wdbi_checksum_range_begin_null(void **state)
     assert_int_equal(ret, 0);
 }
 
-static void test_wdbi_checksum_range_end_null(void **state)
-{
+static void test_wdbi_checksum_range_end_null(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -244,7 +355,7 @@ static void test_wdbi_checksum_range_end_null(void **state)
     const char* end = NULL;
     os_sha1 test_hex = "";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, begin);
@@ -260,8 +371,7 @@ static void test_wdbi_checksum_range_end_null(void **state)
     assert_int_equal(ret, 0);
 }
 
-static void test_wdbi_checksum_range_success(void **state)
-{
+static void test_wdbi_checksum_range_success(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -270,7 +380,7 @@ static void test_wdbi_checksum_range_success(void **state)
     const char* end = "test_end";
     os_sha1 test_hex = {5,5,0,8,6,'c','e','f',9,'c',8,7,'d',6,'d',0,3,1,'c','d',5,'d','b',2,9,'c','d',0,3,'a',2,'e','d',0,2,5,2,'b',4,5};
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, begin);
@@ -294,14 +404,11 @@ static void test_wdbi_checksum_range_success(void **state)
 }
 
 // Test wdbi_delete
-
-static void test_wdbi_delete_wbs_null(void **state)
-{
+static void test_wdbi_delete_wdb_null(void **state) {
     expect_assert_failure(wdbi_delete(NULL, 0, "test_begin", "test_end","test_tail"));
 }
 
-static void test_wdbi_delete_begin_null(void **state)
-{
+static void test_wdbi_delete_begin_null(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -310,7 +417,7 @@ static void test_wdbi_delete_begin_null(void **state)
     const char* end = "test_end";
     const char* tail = NULL;
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -329,8 +436,7 @@ static void test_wdbi_delete_begin_null(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_delete_end_null(void **state)
-{
+static void test_wdbi_delete_end_null(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -339,7 +445,7 @@ static void test_wdbi_delete_end_null(void **state)
     const char* end = NULL;
     const char* tail = "test_tail";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, tail);
@@ -358,8 +464,7 @@ static void test_wdbi_delete_end_null(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_delete_tail_null(void **state)
-{
+static void test_wdbi_delete_tail_null(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -368,7 +473,7 @@ static void test_wdbi_delete_tail_null(void **state)
     const char* end = "test_end";
     const char* tail = NULL;
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, begin);
@@ -388,8 +493,7 @@ static void test_wdbi_delete_tail_null(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_delete_wdb_stmt_cache_fail(void **state)
-{
+static void test_wdbi_delete_stmt_cache_fail(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -401,8 +505,7 @@ static void test_wdbi_delete_wdb_stmt_cache_fail(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_delete_sql_no_done(void **state)
-{
+static void test_wdbi_delete_sql_no_done(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -411,7 +514,7 @@ static void test_wdbi_delete_sql_no_done(void **state)
     const char* end = "test_end";
     const char* tail = "test_fail";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, end);
@@ -431,8 +534,7 @@ static void test_wdbi_delete_sql_no_done(void **state)
     assert_int_equal(ret, -1);
 }
 
-static void test_wdbi_delete_success(void **state)
-{
+static void test_wdbi_delete_success(void **state) {
     int ret;
 
     wdb_t * data = *state;
@@ -441,7 +543,7 @@ static void test_wdbi_delete_success(void **state)
     const char* end = "test_end";
     const char* tail = "test_fail";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, end);
@@ -459,22 +561,18 @@ static void test_wdbi_delete_success(void **state)
 }
 
 // Test wdbi_update_attempt
-
-static void test_wdbi_update_attempt_wbs_null(void **state)
-{
+static void test_wdbi_update_attempt_wdb_null(void **state) {
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
 
     expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, agent_checksum, manager_checksum, FALSE));
 }
 
-static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
-{
+static void test_wdbi_update_attempt_stmt_cache_fail(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
-
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -488,7 +586,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state) {
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_int64, index, 1);
     expect_value(__wrap_sqlite3_bind_int64, value, 0);
@@ -512,15 +610,14 @@ static void test_wdbi_update_attempt_no_sql_done(void **state) {
     wdbi_update_attempt(data, WDB_FIM, 0, agent_checksum, manager_checksum, FALSE);
 }
 
-static void test_wdbi_update_attempt_success(void **state)
-{
+static void test_wdbi_update_attempt_success(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
     const char *component = "fim";
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_int64, index, 1);
     expect_value(__wrap_sqlite3_bind_int64, value, 0);
@@ -542,35 +639,31 @@ static void test_wdbi_update_attempt_success(void **state)
 }
 
 // Test wdbi_update_completion
-
-static void test_wdbi_update_completion_wbs_null(void **state)
-{
+static void test_wdbi_update_completion_wdb_null(void **state) {
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
     expect_assert_failure(wdbi_update_completion(NULL, 0, 0, agent_checksum, manager_checksum));
-
 }
 
-static void test_wdbi_update_completion_stmt_cache_fail(void **state)
-{
+static void test_wdbi_update_completion_stmt_cache_fail(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
+
     will_return(__wrap_wdb_stmt_cache, -1);
 
     wdbi_update_completion(data, 0, 0, agent_checksum, manager_checksum);
 }
 
-static void test_wdbi_update_completion_no_sql_done(void **state)
-{
+static void test_wdbi_update_completion_no_sql_done(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
     const char *component = "fim";
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_int64, index, 1);
     expect_value(__wrap_sqlite3_bind_int64, value, 0);
@@ -597,15 +690,14 @@ static void test_wdbi_update_completion_no_sql_done(void **state)
     wdbi_update_completion(data, WDB_FIM, 0, agent_checksum, manager_checksum);
 }
 
-static void test_wdbi_update_completion_success(void **state)
-{
+static void test_wdbi_update_completion_success(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
     const char *component = "fim";
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
     os_sha1 manager_checksum = "a1b976d41cfce3f216ef7ccef58dfb550d0dccbe";
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 1);
     expect_value(__wrap_sqlite3_bind_int64, value, 0);
     will_return(__wrap_sqlite3_bind_int64, 0);
@@ -629,9 +721,7 @@ static void test_wdbi_update_completion_success(void **state)
 }
 
 // Test wdbi_query_clear
-
-void test_wdbi_query_clear_null_payload(void **state)
-{
+void test_wdbi_query_clear_null_payload(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -644,8 +734,7 @@ void test_wdbi_query_clear_null_payload(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_wdbi_query_clear_invalid_payload(void **state)
-{
+void test_wdbi_query_clear_invalid_payload(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -658,8 +747,7 @@ void test_wdbi_query_clear_invalid_payload(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_wdbi_query_clear_no_id(void **state)
-{
+void test_wdbi_query_clear_no_id(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -672,8 +760,7 @@ void test_wdbi_query_clear_no_id(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_wdbi_query_clear_stmt_cache_error(void **state)
-{
+void test_wdbi_query_clear_stmt_cache_error(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -686,8 +773,7 @@ void test_wdbi_query_clear_stmt_cache_error(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_wdbi_query_clear_sql_step_error(void **state)
-{
+void test_wdbi_query_clear_sql_step_error(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -705,8 +791,7 @@ void test_wdbi_query_clear_sql_step_error(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_wdbi_query_clear_ok(void **state)
-{
+void test_wdbi_query_clear_ok(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -717,7 +802,7 @@ void test_wdbi_query_clear_ok(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     expect_value(__wrap_sqlite3_bind_int64, index, 1);
     expect_value(__wrap_sqlite3_bind_int64, value, 5678);
@@ -744,9 +829,7 @@ void test_wdbi_query_clear_ok(void **state)
 }
 
 // Test wdbi_query_checksum
-
-void test_wdbi_query_checksum_null_payload(void **state)
-{
+void test_wdbi_query_checksum_null_payload(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -759,8 +842,7 @@ void test_wdbi_query_checksum_null_payload(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
-void test_wdbi_query_checksum_no_begin(void **state)
-{
+void test_wdbi_query_checksum_no_begin(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -773,8 +855,7 @@ void test_wdbi_query_checksum_no_begin(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
-void test_wdbi_query_checksum_no_end(void **state)
-{
+void test_wdbi_query_checksum_no_end(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -787,8 +868,7 @@ void test_wdbi_query_checksum_no_end(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
-void test_wdbi_query_checksum_no_checksum(void **state)
-{
+void test_wdbi_query_checksum_no_checksum(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -801,8 +881,7 @@ void test_wdbi_query_checksum_no_checksum(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
-void test_wdbi_query_checksum_no_id(void **state)
-{
+void test_wdbi_query_checksum_no_id(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -815,8 +894,7 @@ void test_wdbi_query_checksum_no_id(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
-void test_wdbi_query_checksum_range_fail(void **state)
-{
+void test_wdbi_query_checksum_range_fail(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -827,14 +905,14 @@ void test_wdbi_query_checksum_range_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
     assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
-void test_wdbi_query_checksum_range_no_data(void **state)
-{
+void test_wdbi_query_checksum_range_no_data(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -847,13 +925,13 @@ void test_wdbi_query_checksum_range_no_data(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101); //predelete
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101); //pre attemps
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
@@ -890,8 +968,7 @@ void test_wdbi_query_checksum_range_no_data(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_NO_DATA);
 }
 
-void test_wdbi_query_checksum_diff_hexdigest(void **state)
-{
+void test_wdbi_query_checksum_diff_hexdigest(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -911,6 +988,7 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
     will_return(__wrap_wdb_stmt_cache, -1);
+
     will_return(__wrap_wdb_stmt_cache, -1);
 
     // wdbi_checksum_range
@@ -929,8 +1007,7 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
-void test_wdbi_query_checksum_equal_hexdigest(void **state)
-{
+void test_wdbi_query_checksum_equal_hexdigest(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -970,8 +1047,7 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_OK);
 }
 
-void test_wdbi_query_checksum_bad_action(void **state)
-{
+void test_wdbi_query_checksum_bad_action(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -1003,8 +1079,7 @@ void test_wdbi_query_checksum_bad_action(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
-void test_wdbi_query_checksum_check_left_no_tail(void **state)
-{
+void test_wdbi_query_checksum_check_left_no_tail(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -1039,8 +1114,7 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
-void test_wdbi_query_checksum_check_left_ok(void **state)
-{
+void test_wdbi_query_checksum_check_left_ok(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -1076,8 +1150,7 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
-void test_wdbi_query_checksum_last_manager_success(void **state)
-{
+void test_wdbi_query_checksum_last_manager_success(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -1104,8 +1177,7 @@ void test_wdbi_query_checksum_last_manager_success(void **state)
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_OK);
 }
 
-void test_wdbi_query_checksum_last_manager_diff(void **state)
-{
+void test_wdbi_query_checksum_last_manager_diff(void **state) {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
@@ -1154,8 +1226,7 @@ void test_wdbi_query_checksum_last_manager_diff(void **state)
 }
 
 // Test wdbi_get_last_manager_checksum
-void test_wdbi_get_last_manager_checksum_success(void **state)
-{
+void test_wdbi_get_last_manager_checksum_success(void **state) {
     wdb_t *data = *state;
     const char *component = "fim_file";
     cJSON* j_data = cJSON_CreateArray();
@@ -1177,8 +1248,7 @@ void test_wdbi_get_last_manager_checksum_success(void **state)
     assert_string_equal(manager_checksum, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
 }
 
-void test_wdbi_get_last_manager_stmt_cache_fail(void **state)
-{
+void test_wdbi_get_last_manager_stmt_cache_fail(void **state) {
     wdb_t *data = *state;
 
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -1190,8 +1260,7 @@ void test_wdbi_get_last_manager_stmt_cache_fail(void **state)
     assert_int_equal (ret_val, OS_INVALID);
 }
 
-void test_wdbi_get_last_manager_exec_stmt_fail(void **state)
-{
+void test_wdbi_get_last_manager_exec_stmt_fail(void **state) {
     wdb_t *data = *state;
     const char *component = "fim_file";
 
@@ -1210,9 +1279,7 @@ void test_wdbi_get_last_manager_exec_stmt_fail(void **state)
 }
 
 // Test wdbi_array_hash
-
-void test_wdbi_array_hash_success(void **state)
-{
+void test_wdbi_array_hash_success(void **state) {
     const char** test_words = NULL;
     int ret_val = -1;
     os_sha1 hexdigest;
@@ -1237,8 +1304,7 @@ void test_wdbi_array_hash_success(void **state)
     os_free(test_words);
 }
 
-void test_wdbi_array_hash_null(void **state)
-{
+void test_wdbi_array_hash_null(void **state) {
     int ret_val = -1;
     os_sha1 hexdigest;
 
@@ -1252,9 +1318,7 @@ void test_wdbi_array_hash_null(void **state)
 }
 
 // Test wdbi_strings_hash
-
-void test_wdbi_strings_hash_success(void **state)
-{
+void test_wdbi_strings_hash_success(void **state) {
     int ret_val = -1;
     os_sha1 hexdigest;
 
@@ -1267,8 +1331,7 @@ void test_wdbi_strings_hash_success(void **state)
     assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
 }
 
-void test_wdbi_strings_hash_null(void **state)
-{
+void test_wdbi_strings_hash_null(void **state) {
     int ret_val = -1;
     os_sha1 hexdigest;
 
@@ -1282,9 +1345,7 @@ void test_wdbi_strings_hash_null(void **state)
 }
 
 // Test wdbi_check_sync_status
-
-void test_wdbi_check_sync_status_cache_failed(void **state)
-{
+void test_wdbi_check_sync_status_cache_failed(void **state) {
     int ret_val = OS_INVALID;
     wdb_t * data = *state;
 
@@ -1296,8 +1357,7 @@ void test_wdbi_check_sync_status_cache_failed(void **state)
     assert_int_equal (ret_val, OS_INVALID);
 }
 
-void test_wdbi_check_sync_status_exec_failed(void **state)
-{
+void test_wdbi_check_sync_status_exec_failed(void **state) {
     int ret_val = OS_INVALID;
     wdb_t * data = *state;
     const char *component = "syscollector-packages";
@@ -1315,8 +1375,7 @@ void test_wdbi_check_sync_status_exec_failed(void **state)
     assert_int_equal (ret_val, OS_INVALID);
 }
 
-void test_wdbi_check_sync_status_data_failed(void **state)
-{
+void test_wdbi_check_sync_status_data_failed(void **state) {
     int ret_val = OS_INVALID;
     wdb_t * data = *state;
     const char *component = "syscollector-packages";
@@ -1340,8 +1399,7 @@ void test_wdbi_check_sync_status_data_failed(void **state)
     assert_int_equal (ret_val, OS_INVALID);
 }
 
-void test_wdbi_check_sync_status_data_synced(void **state)
-{
+void test_wdbi_check_sync_status_data_synced(void **state) {
     int ret_val = OS_INVALID;
     wdb_t * data = *state;
     const char *component = "syscollector-packages";
@@ -1365,8 +1423,7 @@ void test_wdbi_check_sync_status_data_synced(void **state)
     assert_int_equal (ret_val, 1);
 }
 
-void test_wdbi_check_sync_status_data_never_synced_without_checksum(void **state)
-{
+void test_wdbi_check_sync_status_data_never_synced_without_checksum(void **state) {
     int ret_val = OS_INVALID;
     wdb_t * data = *state;
     const char *component = "syscollector-packages";
@@ -1390,8 +1447,7 @@ void test_wdbi_check_sync_status_data_never_synced_without_checksum(void **state
     assert_int_equal (ret_val, 0);
 }
 
-void test_wdbi_check_sync_status_data_not_synced_error_checksum(void **state)
-{
+void test_wdbi_check_sync_status_data_not_synced_error_checksum(void **state) {
     int ret_val = OS_INVALID;
     wdb_t * data = *state;
     const char *component = "syscollector-packages";
@@ -1412,14 +1468,14 @@ void test_wdbi_check_sync_status_data_not_synced_error_checksum(void **state)
 
     // Error calling to calculate checksum
     will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
 
     assert_int_equal (ret_val, -1);
 }
 
-void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state)
-{
+void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state) {
     int ret_val = -1;
     wdb_t * data = *state;
     data->id = strdup("000");
@@ -1440,7 +1496,7 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state)
     will_return(__wrap_sqlite3_bind_text, 0);
 
     // Calling to calculate checksum
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -1450,8 +1506,7 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state)
     assert_int_equal (ret_val, 0);
 }
 
-void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
-{
+void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state) {
     int ret_val = -1;
     wdb_t * data = *state;
     data->id = strdup("000");
@@ -1473,7 +1528,7 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
     will_return(__wrap_sqlite3_bind_text, 0);
 
     // Calling to calculate checksum
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     will_return(__wrap_sqlite3_step, 0);
@@ -1503,9 +1558,7 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
 }
 
 // Test wdbi_last_completion
-
-void test_wdbi_last_completion_step_fail(void **state)
-{
+void test_wdbi_last_completion_step_fail(void **state) {
     wdb_t * data = *state;
     data->id = strdup("000");
     unsigned int timestamp = 10000;
@@ -1524,7 +1577,6 @@ void test_wdbi_last_completion_step_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): ERROR_MESSAGE");
 
     wdbi_set_last_completion(data, WDB_SYSCOLLECTOR_PACKAGES, timestamp);
-
 }
 
 // Test wdb_global_group_hash_cache
@@ -1716,42 +1768,44 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_calculate_stmt_checksum_cks_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_calculate_stmt_checksum_no_row, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdb_calculate_stmt_checksum_success, setup_wdb_t, teardown_wdb_t),
-
+        cmocka_unit_test_setup_teardown(test_wdb_calculate_stmt_checksum_duplicate_entries_found, setup_wdb_t, teardown_wdb_t),
         //Test wdbi_checksum_range
-        cmocka_unit_test(test_wdbi_checksum_wbs_null),
+        cmocka_unit_test(test_wdbi_checksum_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdbi_checksum_hexdigest_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_checksum_wdb_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_checksum_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_checksum_success, setup_wdb_t, teardown_wdb_t),
-
+        // wdbi_remove_by_pk
+        cmocka_unit_test(test_wdbi_remove_by_pk_wdb_null),
+        cmocka_unit_test_setup_teardown(test_wdbi_remove_by_pk_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_remove_by_pk_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_remove_by_pk_sqlite_bind_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_remove_by_pk_sqlite_step_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_remove_by_pk_success, setup_wdb_t, teardown_wdb_t),
         //Test wdbi_checksum_range
-        cmocka_unit_test(test_wdbi_checksum_range_wbs_null),
+        cmocka_unit_test(test_wdbi_checksum_range_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdbi_checksum_range_hexdigest_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_checksum_range_wdb_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_checksum_range_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_checksum_range_begin_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_checksum_range_end_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_checksum_range_success, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_delete
-        cmocka_unit_test(test_wdbi_delete_wbs_null),
+        cmocka_unit_test(test_wdbi_delete_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_begin_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_end_null, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_tail_null, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_delete_wdb_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_delete_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_sql_no_done, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_delete_success, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_update_attempt
-        cmocka_unit_test(test_wdbi_update_attempt_wbs_null),
+        cmocka_unit_test(test_wdbi_update_attempt_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdbi_update_attempt_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_update_attempt_no_sql_done, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_update_attempt_success, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_update_completion
-        cmocka_unit_test(test_wdbi_update_completion_wbs_null),
+        cmocka_unit_test(test_wdbi_update_completion_wdb_null),
         cmocka_unit_test_setup_teardown(test_wdbi_update_completion_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_update_completion_no_sql_done, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_update_completion_success, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_query_clear
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_null_payload, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_invalid_payload, setup_wdb_t, teardown_wdb_t),
@@ -1759,7 +1813,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_stmt_cache_error, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_sql_step_error, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_ok, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_query_checksum
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_null_payload, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_no_begin, setup_wdb_t, teardown_wdb_t),
@@ -1775,20 +1828,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_ok, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_last_manager_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_last_manager_diff, setup_wdb_t, teardown_wdb_t),
-
         // Test wdbi_get_last_manager_checksum
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_checksum_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_exec_stmt_fail, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_array_hash
         cmocka_unit_test_setup_teardown(test_wdbi_array_hash_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_array_hash_null, setup_wdb_t, teardown_wdb_t),
-
         //Test wdbi_strings_hash
         cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_null, setup_wdb_t, teardown_wdb_t),
-
         // Test wdbi_check_sync_status
         cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_cache_failed, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_exec_failed, setup_wdb_t, teardown_wdb_t),
@@ -1798,7 +1847,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced_error_checksum, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced_checksum_no_data, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced_checksum_valid, setup_wdb_t, teardown_wdb_t),
-
         // Test wdbi_last_completion
         cmocka_unit_test_setup_teardown(test_wdbi_last_completion_step_fail, setup_wdb_t, teardown_wdb_t),
 

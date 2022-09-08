@@ -22,7 +22,7 @@ test_name: GET /mitre/mitigations
 
 stages:
 
-  # GET /mitre/techniques
+  # GET /mitre/mitigations
   - name: Request MITRE mitigations (Denied)
     request:
       verify: False

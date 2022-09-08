@@ -31,7 +31,6 @@ int ClientConf(const char *cfgfile)
     int modules = 0;
 
     agt->server = NULL;
-    agt->lip = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->cfgadq = -1;
@@ -41,6 +40,11 @@ int ClientConf(const char *cfgfile)
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
+    agt->notify_time = 0;
+    agt->max_time_reconnect_try = 0;
+    agt->force_reconnect_interval = 0;
+    agt->main_ip_update_interval = 0;
+    agt->server_count = 0;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
@@ -89,7 +93,6 @@ cJSON *getClientConfig(void) {
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
     cJSON_AddNumberToObject(client,"force_reconnect_interval",agt->force_reconnect_interval);
     cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
-    if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
     if (agt->crypto_method == W_METH_BLOWFISH)

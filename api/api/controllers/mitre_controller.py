@@ -209,8 +209,8 @@ async def get_techniques(request, technique_ids=None, pretty=False, wait_for_com
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+                          rbac_permissions=request['token_info']['rbac_policies'])
+
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -378,8 +378,8 @@ async def get_software(request, software_ids=None, pretty=False, wait_for_comple
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+                          rbac_permissions=request['token_info']['rbac_policies'])
+
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

@@ -65,8 +65,9 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdeb
                             -Wl,--wrap,bqueue_used")
 
 list(APPEND remoted_names "test_sendmsg")
-list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                            -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue -Wl,--wrap,time")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                            -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue -Wl,--wrap,time \
+                            -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send")
 
 list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS}")

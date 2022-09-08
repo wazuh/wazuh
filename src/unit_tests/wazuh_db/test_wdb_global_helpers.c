@@ -372,7 +372,9 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     expect_value(__wrap_chown, __group, 0);
     will_return(__wrap_chown, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "(1135): Could not chown object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
+
+    const char * error_msg = "(1135): Could not chown object 'var/db/agents/001-agent1.db' due to";
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -421,7 +423,9 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
     will_return(__wrap_chmod, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to [(0)-(error)].");
+
+    const char * error_msg = "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to";
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -1573,109 +1577,6 @@ void test_wdb_get_agent_labels_success(void **state) {
     assert_ptr_equal(1, root);
 }
 
-/* Tests wdb_set_agent_labels */
-
-void test_wdb_set_agent_labels_error_socket(void **state)
-{
-    int ret = 0;
-    int id = 1;
-    char *labels = "key1:value1\nkey2:value2";
-
-    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-labels 1 key1:value1\nkey2:value2");
-
-    ret = wdb_set_agent_labels(id, labels, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_set_agent_labels_error_sql_execution(void **state)
-{
-    int ret = 0;
-    int id = 1;
-    char *labels = "key1:value1\nkey2:value2";
-
-    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-labels 1 key1:value1\nkey2:value2");
-
-    ret = wdb_set_agent_labels(id, labels, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_set_agent_labels_error_result(void **state)
-{
-    int ret = 0;
-    int id = 1;
-    char *labels = "key1:value1\nkey2:value2";
-
-    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
-
-    ret = wdb_set_agent_labels(id, labels, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_set_agent_labels_success(void **state)
-{
-    int ret = 0;
-    int id = 1;
-    char *labels = "key1:value1\nkey2:value2";
-
-    char *query_str = "global set-labels 1 key1:value1\nkey2:value2";
-    const char *response = "ok";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, OS_BUFFER_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = wdb_set_agent_labels(id, labels, NULL);
-
-    assert_int_equal(OS_SUCCESS, ret);
-}
-
 /* Tests wdb_update_agent_keepalive */
 
 void test_wdb_update_agent_keepalive_error_json(void **state)
@@ -2058,142 +1959,6 @@ void test_wdb_update_agent_connection_status_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_select_group_belong */
-
-void test_wdb_select_group_belong_error_no_json_response(void **state)
-{
-    int id = 1;
-    cJSON* j_response = NULL;
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get groups from agent 1.");
-
-    j_response = wdb_select_group_belong(id, NULL);
-
-    assert_null(j_response);
-}
-
-void test_wdb_select_group_belong_success(void **state) {
-    cJSON *j_root = NULL;
-    cJSON *j_response = NULL;
-    int id = 1;
-
-    j_root = __real_cJSON_Parse("[\"default\",\"new_group\"]");
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, j_root);
-
-    j_response = wdb_select_group_belong(id, NULL);
-
-    char *response = __real_cJSON_PrintUnformatted(j_response);
-    assert_string_equal(response, "[\"default\",\"new_group\"]");
-    __real_cJSON_Delete(j_root);
-    os_free(response);
-}
-
-/* Tests wdb_delete_agent_belongs */
-
-void test_wdb_delete_agent_belongs_error_socket(void **state)
-{
-    int ret = 0;
-    int id = 1;
-
-    char *query_str = "global delete-agent-belong 1";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
-
-    ret = wdb_delete_agent_belongs(id, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_delete_agent_belongs_error_sql_execution(void **state)
-{
-    int ret = 0;
-    int id = 1;
-
-    char *query_str = "global delete-agent-belong 1";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
-
-    ret = wdb_delete_agent_belongs(id, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_delete_agent_belongs_error_result(void **state)
-{
-    int ret = 0;
-    int id = 1;
-
-    char *query_str = "global delete-agent-belong 1";
-    const char *response = "err";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
-
-    ret = wdb_delete_agent_belongs(id, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_delete_agent_belongs_success(void **state)
-{
-    int ret = 0;
-    int id = 1;
-
-    char *query_str = "global delete-agent-belong 1";
-    const char *response = "ok";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    ret = wdb_delete_agent_belongs(id, NULL);
-
-    assert_int_equal(OS_SUCCESS, ret);
-}
-
 /* Tests wdb_get_agent_name */
 
 void test_wdb_get_agent_name_error_no_json_response(void **state) {
@@ -2296,12 +2061,16 @@ void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
     will_return(__wrap_remove, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to [(0)-(error)].");
+
+    const char * error_shm = "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to";
+    expect_memory(__wrap__mdebug2, formatted_msg, error_shm, strlen(error_shm));
 
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
     will_return(__wrap_remove, OS_INVALID);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__mdebug2, formatted_msg, "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to [(0)-(error)].");
+
+    const char * error_wal = "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to";
+    expect_memory(__wrap__mdebug2, formatted_msg, error_wal, strlen(error_wal));
 
     ret = wdb_remove_agent_db(id, name);
 
@@ -2450,79 +2219,6 @@ void test_wdb_remove_agent_success(void **state)
     ret = wdb_remove_agent(id, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
-}
-
-/* Tests wdb_get_agent_keepalive */
-
-void test_wdb_get_agent_keepalive_error_no_name_nor_ip(void **state) {
-    time_t keepalive = 0;
-    char *name = NULL;
-    char *ip = NULL;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get last keepalive.");
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(OS_INVALID, keepalive);
-}
-
-void test_wdb_get_agent_keepalive_error_no_json_response(void **state) {
-    time_t keepalive = 0;
-    char name[]="agent1";
-    char ip[]="0.0.0.1";
-    cJSON* response = NULL;
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, response);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the last agent keepalive.");
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(OS_INVALID, keepalive);
-}
-
-void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
-    time_t keepalive = 0;
-    char name[]="agent1";
-    char ip[]="0.0.0.1";
-    cJSON* response = __real_cJSON_Parse("[{}]");
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, response);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, NULL);
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(OS_SUCCESS, keepalive);
-
-    __real_cJSON_Delete(response);
-}
-
-void test_wdb_get_agent_keepalive_success(void **state) {
-    time_t keepalive = 0;
-    char name[]="agent1";
-    char ip[]="0.0.0.1";
-    cJSON* response = __real_cJSON_Parse("[{\"last_keepalive\":100}]");
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, response);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(response->child, "last_keepalive"));
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(100, keepalive);
-
-    __real_cJSON_Delete(response);
 }
 
 /* Tests wdb_get_agent_group */
@@ -3992,11 +3688,6 @@ int main()
         /* Tests wdb_get_agent_labels */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_set_agent_labels */
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_keepalive */
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -4009,14 +3700,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_select_group_belong */
-        cmocka_unit_test_setup_teardown(test_wdb_select_group_belong_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_select_group_belong_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_delete_agent_belongs */
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_name */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -4031,11 +3714,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_get_agent_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_name_nor_ip, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

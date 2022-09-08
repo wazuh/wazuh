@@ -368,6 +368,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     /* Get message if available */
     if (al_json = jqueue_next(fileq), !al_json) {
+        sleep(1);
         return NULL;
     }
 
@@ -745,11 +746,11 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             body_size -= log_size;
         }
 
-        free(key);
+        os_free(key);
     }
     else if ((item->type & 0xFF) == cJSON_Array){
 
-        cJSON *json_array;
+        cJSON *json_item;
         int i = 0;
         log_size = strlen(item->string) + strlen(tab) + strlen(delimitator);
 
@@ -759,8 +760,8 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             body_size -= log_size;
         }
 
-        while(json_array = cJSON_GetArrayItem(item, i), json_array){
-            key = cJSON_PrintUnformatted(json_array);
+        while(json_item = cJSON_GetArrayItem(item, i), json_item){
+            key = cJSON_PrintUnformatted(json_item);
             log_size = strlen(key) + strlen(space);
 
             if(body_size > log_size){
@@ -768,7 +769,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                 body_size -= log_size;
             }
 
-            free(key);
+            os_free(key);
             i++;
         }
 
@@ -796,7 +797,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                 strncat(tab_child, "\t", 2);
                 PrintTable(item->child, printed, body_size, tab_child, (counter + 2));
             }
-            else {
+            else if (item->next) {
                 PrintTable(item->next, printed, body_size, tab, counter);
             }
         }

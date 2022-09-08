@@ -35,7 +35,6 @@ typedef struct _agent {
     int cfgadq;
     int rip_id; ///< Holds the index of the current connected server
     int server_count; ///< Holds the total amount of servers
-    char *lip;
     int notify_time;
     int max_time_reconnect_try;
     long force_reconnect_interval;

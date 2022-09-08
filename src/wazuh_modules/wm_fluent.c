@@ -70,7 +70,7 @@ static void wm_fluent_poll_server(wm_fluent_t * fluent);
 const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
     (wm_routine)wm_fluent_main,
-    (wm_routine)(void *)wm_fluent_destroy,
+    (void(*)(void *))wm_fluent_destroy,
     (cJSON * (*)(const void *))wm_fluent_dump,
     NULL,
     NULL
@@ -96,6 +96,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         pthread_exit(NULL);
     }
 
+    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
     SSL_load_error_strings();
     SSL_library_init();
 

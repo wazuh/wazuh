@@ -78,6 +78,7 @@ async def test_print_nodes(local_client_mock, get_agents_mock, print_table_mock,
 @patch('builtins.print')
 @patch('scripts.cluster_control.get_utc_strptime')
 @patch('scripts.cluster_control.local_client.LocalClient', return_value='LocalClient return value')
+@patch('scripts.cluster_control.control.get_nodes', return_value={'items': [{'name': 'wazuh_worker'}]})
 @patch('scripts.cluster_control.control.get_health',
        return_value={'n_connected_nodes': '1',
                      'nodes': {'wazuh_worker2': {
@@ -96,66 +97,89 @@ async def test_print_nodes(local_client_mock, get_agents_mock, print_table_mock,
                                     'last_sync_agentgroups': {'date_start_master': '0', 'date_end_master': '0',
                                                               'n_synced_chunks': 0},
                                     'sync_agent_info_free': 'True', 'sync_agent_groups_free': 'True'}}}})
-async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime_mock, print_mock):
+async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, get_utc_strptime_mock, print_mock):
     """Test if the current status of the cluster is properly printed."""
 
     def seconds_mock(time, format=None):
         """Auxiliary mock function."""
         return timedelta(seconds=int(time))
 
+    # Common variables
     config = {'name': 'cluster_name'}
     more = True
-    filter_node = 'wazuh_worker'
     worker_status = get_health_mock.return_value['nodes']['wazuh_worker2']['status']
     worker_info = get_health_mock.return_value['nodes']['wazuh_worker2']['info']
-
     get_utc_strptime_mock.side_effect = seconds_mock
-    await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
-    print_mock.assert_has_calls([call(f"Cluster name: {config['name']}\n\n"
-                                      f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
-                                 call(f"\n    wazuh_worker2 ({worker_info['ip']})\n        "
-                                      f"Version: {worker_info['version']}\n        Type: {worker_info['type']}\n       "
-                                      f" Active agents: {worker_info['n_active_agents']}\n        Status:\n           "
-                                      f" Last keep Alive:\n                Last received: "
-                                      f"{worker_status['last_keep_alive']}.\n            Integrity check:\n           "
-                                      f"     Last integrity check: n/a "
-                                      f"({worker_status['last_check_integrity']['date_end_master']} - "
-                                      f"{worker_status['last_check_integrity']['date_start_master']}).\n               "
-                                      f" Permission to check integrity: {worker_status['sync_integrity_free']}.\n      "
-                                      f"      Integrity sync:\n                Last integrity synchronization: 1.0s "
-                                      f"({worker_status['last_sync_integrity']['date_start_master']} - "
-                                      f"{worker_status['last_sync_integrity']['date_end_master']}).\n                "
-                                      f"Synchronized files: Shared: "
-                                      f"{worker_status['last_sync_integrity']['total_files']['shared']} | Missing: "
-                                      f"{worker_status['last_sync_integrity']['total_files']['missing']} | Extra: "
-                                      f"{worker_status['last_sync_integrity']['total_files']['extra']}.\n            "
-                                      f"Agents-info:\n                Last synchronization: 0.001s ("
-                                      f"{worker_status['last_sync_agentinfo']['date_start_master']} - "
-                                      f"{worker_status['last_sync_agentinfo']['date_start_master']}).\n         "
-                                      f"       Number of synchronized chunks: "
-                                      f"{worker_status['last_sync_agentinfo']['n_synced_chunks']}.\n                "
-                                      f"Permission to synchronize agent-info: {worker_status['sync_agent_info_free']}.\n            "
-                                      f"Agent-groups:\n                Last synchronization: 0.001s ("
-                                      f"{worker_status['last_sync_agentgroups']['date_start_master']} - "
-                                      f"{worker_status['last_sync_agentgroups']['date_start_master']}).\n         "
-                                      f"       Number of synchronized chunks: "
-                                      f"{worker_status['last_sync_agentgroups']['n_synced_chunks']}.\n                "
-                                      f"Permission to synchronize agent-groups: {worker_status['sync_agent_groups_free']}.\n"
-                                      )])
 
-    local_client_mock.assert_called_once_with()
-    get_health_mock.assert_called_once_with(local_client_mock.return_value, filter_node=filter_node)
-    get_utc_strptime_mock.assert_has_calls(
-        [call(worker_status['last_sync_integrity']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-         call(worker_status['last_sync_integrity']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-         call(worker_status['last_sync_agentinfo']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-         call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-         call(worker_status['last_sync_agentgroups']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-         call(worker_status['last_sync_agentgroups']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
+    # Test cases 1 and 2
+    for filter_node in ['wazuh_worker', None]:
+        # Reset mocks
+        print_mock.reset_mock()
+        local_client_mock.reset_mock()
+        get_nodes_mock.reset_mock()
+        get_health_mock.reset_mock()
 
+        # Call print_health
+        await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
+        print_mock.assert_has_calls([call(f"Cluster name: {config['name']}\n\n"
+                                          f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
+                                     call(f"\n    wazuh_worker2 ({worker_info['ip']})\n        "
+                                          f"Version: {worker_info['version']}\n        "
+                                          f"Type: {worker_info['type']}\n       "
+                                          f" Active agents: {worker_info['n_active_agents']}\n        "
+                                          f"Status:\n           "
+                                          f" Last keep Alive:\n                Last received: "
+                                          f"{worker_status['last_keep_alive']}.\n            "
+                                          f"Integrity check:\n           "
+                                          f"     Last integrity check: n/a "
+                                          f"({worker_status['last_check_integrity']['date_end_master']} - "
+                                          f"{worker_status['last_check_integrity']['date_start_master']})."
+                                          f"\n                Permission to check integrity: "
+                                          f"{worker_status['sync_integrity_free']}.\n            "
+                                          f"Integrity sync:\n                Last integrity synchronization: 1.0s "
+                                          f"({worker_status['last_sync_integrity']['date_start_master']} - "
+                                          f"{worker_status['last_sync_integrity']['date_end_master']})."
+                                          f"\n                Synchronized files: Shared: "
+                                          f"{worker_status['last_sync_integrity']['total_files']['shared']} | Missing: "
+                                          f"{worker_status['last_sync_integrity']['total_files']['missing']} | Extra: "
+                                          f"{worker_status['last_sync_integrity']['total_files']['extra']}."
+                                          f"\n            Agents-info:\n                Last synchronization: 0.001s ("
+                                          f"{worker_status['last_sync_agentinfo']['date_start_master']} - "
+                                          f"{worker_status['last_sync_agentinfo']['date_start_master']}).\n         "
+                                          f"       Number of synchronized chunks: "
+                                          f"{worker_status['last_sync_agentinfo']['n_synced_chunks']}."
+                                          f"\n                Permission to synchronize agent-info: "
+                                          f"{worker_status['sync_agent_info_free']}.\n            "
+                                          f"Agent-groups:\n                Last synchronization: 0.001s ("
+                                          f"{worker_status['last_sync_agentgroups']['date_start_master']} - "
+                                          f"{worker_status['last_sync_agentgroups']['date_start_master']}).\n         "
+                                          f"       Number of synchronized chunks: "
+                                          f"{worker_status['last_sync_agentgroups']['n_synced_chunks']}."
+                                          f"\n                Permission to synchronize agent-groups: "
+                                          f"{worker_status['sync_agent_groups_free']}.\n"
+                                          )])
+
+        # Common assertions
+        local_client_mock.assert_called_once()
+        get_utc_strptime_mock.assert_has_calls(
+            [call(worker_status['last_sync_integrity']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+             call(worker_status['last_sync_integrity']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+             call(worker_status['last_sync_agentinfo']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+             call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+             call(worker_status['last_sync_agentgroups']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+             call(worker_status['last_sync_agentgroups']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
+
+        # filter_node dependant assertions
+        filter_node and get_nodes_mock.assert_not_called()
+        filter_node or get_nodes_mock.assert_called_once()
+        get_health_mock.assert_called_once_with(
+            local_client_mock.return_value,
+            filter_node=filter_node or [get_nodes_mock.return_value['items'][0]['name']])
+
+    # Test case 3
     more = False
+    filter_node = 'wazuh_worker'
     print_mock.reset_mock()
-
     await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
     print_mock.assert_called_once_with(f"Cluster name: {config['name']}\n\nLast completed synchronization for connected"
                                        f" nodes ({get_health_mock.return_value['n_connected_nodes']}):\n    "
@@ -286,22 +310,22 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
 
         assert exclusive_mock.exclusive == [{'action': 'store_const', 'const': 'list_agents', 'dest': None,
                                              'flag': '-a', 'help': 'List agents', 'name': '--list-agents',
-                                             'nargs': None,  'type': None}, {'action': 'store_const',
-                                                                             'const': 'list_nodes',
-                                                                             'dest': None, 'flag': '-l',
-                                                                             'help': 'List nodes',
-                                                                             'name': '--list-nodes', 'nargs': None,
-                                                                             'type': None}, {'action': 'store',
-                                                                                             'const': 'health',
-                                                                                             'dest': None,
-                                                                                             'flag': '-i',
-                                                                                             'help': 'Show cluster '
-                                                                                                     'health',
-                                                                                             'name': '--health',
-                                                                                             'nargs': '?',
-                                                                                             'type': None},
+                                             'nargs': None, 'type': None}, {'action': 'store_const',
+                                                                            'const': 'list_nodes',
+                                                                            'dest': None, 'flag': '-l',
+                                                                            'help': 'List nodes',
+                                                                            'name': '--list-nodes', 'nargs': None,
+                                                                            'type': None}, {'action': 'store',
+                                                                                            'const': 'health',
+                                                                                            'dest': None,
+                                                                                            'flag': '-i',
+                                                                                            'help': 'Show cluster '
+                                                                                                    'health',
+                                                                                            'name': '--health',
+                                                                                            'nargs': '?',
+                                                                                            'type': None},
                                             {'action': 'store_true', 'const': None, 'dest': None, 'flag': '-u',
-                                             'help': 'Show usage', 'name': '--usage', 'nargs': None,  'type': None}]
+                                             'help': 'Show usage', 'name': '--usage', 'nargs': None, 'type': None}]
 
         # Test the fifth condition
         get_cluster_status_mock.return_value['enabled'] = 'yes'

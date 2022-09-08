@@ -929,44 +929,6 @@ cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group
     return result;
 }
 
-cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip) {
-    sqlite3_stmt *stmt = NULL;
-    cJSON * result = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return NULL;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE) < 0) {
-        mdebug1("Cannot cache statement");
-        return NULL;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE];
-
-    if (sqlite3_bind_text(stmt, 1, name, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-    if (sqlite3_bind_text(stmt, 2, ip, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-    if (sqlite3_bind_text(stmt, 3, ip, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-
-    result = wdb_exec_stmt(stmt);
-
-    if (!result) {
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
-    }
-
-    return result;
-}
-
 int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = NULL;
 
