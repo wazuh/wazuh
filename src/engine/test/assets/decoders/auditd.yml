@@ -150,4 +150,3 @@ normalize:
       timestamp: $_log.epoch
       event.action: +s_lo/$_log.record_type
       wazuh.avc: +rename_field/$_avc
-      _log: +delete_field

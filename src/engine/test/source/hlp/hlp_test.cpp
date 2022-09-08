@@ -97,10 +97,14 @@ TEST(hlpTests_logQL, logQL_expression)
     ASSERT_TRUE(parseOp);
     ASSERT_EQ("{\"data\":\"this is a json\"}",
               std::any_cast<JsonString>(result["_json"]).jsonString);
-    ASSERT_EQ("Mon, 02 Jan 2006 15:04:05 MST", std::any_cast<std::string>(result["event.created"]));
-    ASSERT_EQ("https://user:password@wazuh.com:8080/status?query=%22a%20query%20with%20a%20space%22#fragment", std::any_cast<std::string>(result["host"]));
+    ASSERT_EQ("Mon, 02 Jan 2006 15:04:05 MST",
+              std::any_cast<std::string>(result["event.created"]));
+    ASSERT_EQ("https://user:password@wazuh.com:8080/"
+              "status?query=%22a%20query%20with%20a%20space%22#fragment",
+              std::any_cast<std::string>(result["host"]));
     ASSERT_EQ("127.0.0.1", std::any_cast<std::string>(result["agent.ip"]));
-    ASSERT_EQ("02 Jan 06 15:04 -0700", std::any_cast<std::string>(result["file.created"]));
+    ASSERT_EQ("02 Jan 06 15:04 -0700",
+              std::any_cast<std::string>(result["file.created"]));
 }
 
 TEST(hlpTests_logQL, invalid_logql_expression)
@@ -339,9 +343,9 @@ TEST(hlpTests_json, success_parsing_object_by_default)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ("{\"String\":\"This is a string\"}",
-              std::any_cast<JsonString>(result["_field1"]).jsonString.data());
+                 std::any_cast<JsonString>(result["_field1"]).jsonString.data());
     ASSERT_STREQ("{\"String\":\"This is another string\"}",
-              std::any_cast<JsonString>(result["_field2"]).jsonString.data());
+                 std::any_cast<JsonString>(result["_field2"]).jsonString.data());
 }
 
 TEST(hlpTests_json, several_results_different_types)
@@ -414,8 +418,8 @@ TEST(hlpTests_json, success_array_in_object)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ("{\"String\": [ {\"SecondString\":\"This is a "
-              "string\"}, {\"ThirdString\":\"This is a string\"} ] }",
-              std::any_cast<JsonString>(result["_json"]).jsonString.data());
+                 "string\"}, {\"ThirdString\":\"This is a string\"} ] }",
+                 std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, failed_not_string)
@@ -442,7 +446,7 @@ TEST(hlpTests_json, success_array)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ("[ {\"A\":\"1\"}, {\"B\":\"2\"}, {\"C\":\"3\"} ]",
-              std::any_cast<JsonString>(result["_json"]).jsonString.data());
+                 std::any_cast<JsonString>(result["_json"]).jsonString.data());
 }
 
 TEST(hlpTests_json, success_any)
@@ -510,108 +514,6 @@ TEST(hlpTests_json, success_null)
 
     ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_STREQ("null", std::any_cast<JsonString>(result["_json"]).jsonString.data());
-}
-
-// Test: parsing maps objects
-TEST(hlpTests_map, success_test)
-{
-    const char* logQl = "<_map/kv_map/=/ > <_dummy>";
-    const char* event = "key1=Value1 Key2=Value2 dummy";
-
-    ParserFn parseOp = getParserOp(logQl);
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-
-    ParseResult result;
-    bool ret = parseOp(event, result);
-
-    ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
-              std::any_cast<JsonString>(result["_map"]).jsonString);
-    ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
-}
-
-TEST(hlpTests_map, end_mark_test)
-{
-    const char* logQl = "<_map/kv_map/=/ >-<_dummy>";
-    const char* event = "key1=Value1 Key2=Value2-dummy";
-
-    ParserFn parseOp = getParserOp(logQl);
-    ParseResult result;
-    bool ret = parseOp(event, result);
-
-    ASSERT_TRUE(static_cast<bool>(parseOp));
-    ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
-              std::any_cast<JsonString>(result["_map"]).jsonString);
-    ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
-}
-
-TEST(hlpTests_map, incomplete_map_test)
-{
-    const char* logQl = "<_map/kv_map/=/ >";
-    const char* event1 = "key1=Value1 Key2=";
-    const char* event2 = "key1=Value1 Key2";
-    const char* event3 = "key1=Value1 =Value2";
-
-    ParserFn parseOp = getParserOp(logQl);
-    ParseResult result1;
-    ParseResult result2;
-    ParseResult result3;
-    bool ret1 = parseOp(event1, result1);
-    bool ret2 = parseOp(event2, result2);
-    bool ret3 = parseOp(event3, result3);
-
-    ASSERT_TRUE(static_cast<bool>(parseOp));
-    // ASSERT_TRUE(result1.empty());
-    ASSERT_TRUE(result2.empty());
-    ASSERT_TRUE(result3.empty());
-}
-
-// MAP: Values before literal
-TEST(hlpTests_map, success_map_1_before_string)
-{
-    const char* logQl = "<_map/kv_map/=/ > hi!";
-    const char* event = "key1=Value1 hi!";
-
-    ParserFn parseOp = getParserOp(logQl);
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-
-    ParseResult result;
-    bool ret = parseOp(event, result);
-
-    ASSERT_TRUE(static_cast<bool>(parseOp));
-    ASSERT_STREQ(R"({"key1":"Value1"})",
-                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
-}
-
-TEST(hlpTests_map, success_map_2_before_string)
-{
-    const char* logQl = "<_map/kv_map/=/ > hi!";
-    const char* event = "key1=Value1 Key2=Value2 hi!";
-
-    ParserFn parseOp = getParserOp(logQl);
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-
-    ParseResult result;
-    bool ret = parseOp(event, result);
-
-    ASSERT_TRUE(static_cast<bool>(parseOp));
-    ASSERT_STREQ(R"({"key1":"Value1","Key2":"Value2"})",
-                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
-}
-
-TEST(hlpTests_map, success_map_multiCharacterArgs)
-{
-    const char* logQl = "<_map/kv_map/: / > hi!";
-    const char* event = "key1: Value1 Key2: Value2 hi!";
-
-    ParserFn parseOp = getParserOp(logQl);
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
-
-    ParseResult result;
-    bool ret = parseOp(event, result);
-
-    ASSERT_TRUE(static_cast<bool>(parseOp));
-    ASSERT_STREQ(R"({"key1":"Value1","Key2":"Value2"})",
-                 std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
 }
 
 // Timestamp
