@@ -101,3 +101,100 @@ TEST(opBuilderHelperRenameField, renameToAnExistingField)
     ASSERT_FALSE(result.payload()->exists("/oldField"));
     ASSERT_EQ("new_data", result.payload()->getString("/newField").value());
 }
+
+TEST(opBuilderHelperRenameField, renameToAnExistingArrayField)
+{
+    auto tuple = std::make_tuple(
+        string {"/newField"}, string {"rename_field"}, vector<string> {"$oldField"});
+
+    auto event = std::make_shared<json::Json>(
+        R"({"newField": "old_data","oldField": ["new_data"]})");
+
+    ASSERT_NO_THROW(
+        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+
+    result::Result<Event> result {};
+    ASSERT_NO_THROW(result = op(event));
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->exists("/newField"));
+    ASSERT_FALSE(result.payload()->exists("/oldField"));
+    ASSERT_EQ("new_data", result.payload()->getString("/newField/0").value());
+}
+
+TEST(opBuilderHelperRenameField, renameToAnExistingObjtField)
+{
+    auto tuple = std::make_tuple(
+        string {"/newField/emb"}, string {"rename_field"}, vector<string> {"$oldField.child"});
+
+    auto event = std::make_shared<json::Json>(
+        R"({"newField": {"emb": "old_data"},"oldField": {"child": "new_data"}})");
+
+    ASSERT_NO_THROW(
+        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+
+    result::Result<Event> result {};
+    ASSERT_NO_THROW(result = op(event));
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->exists("/newField/emb"));
+    ASSERT_FALSE(result.payload()->exists("/oldField/child"));
+    ASSERT_EQ("new_data", result.payload()->getString("/newField/emb").value());
+}
+
+TEST(opBuilderHelperRenameField, renameToAnExistingNullField)
+{
+    auto tuple = std::make_tuple(
+        string {"/newField/emb"}, string {"rename_field"}, vector<string> {"$oldField.child"});
+
+    auto event = std::make_shared<json::Json>(
+        R"({"newField": {"emb": "old_data"},"oldField": {"child": null}})");
+
+    ASSERT_NO_THROW(
+        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+
+    result::Result<Event> result {};
+    ASSERT_NO_THROW(result = op(event));
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->exists("/newField/emb"));
+    ASSERT_FALSE(result.payload()->exists("/oldField/child"));
+    ASSERT_TRUE(result.payload()->isNull("/newField/emb"));
+}
+
+
+TEST(opBuilderHelperRenameField, renameToAnExistingBoolField)
+{
+    auto tuple = std::make_tuple(
+        string {"/newField/emb"}, string {"rename_field"}, vector<string> {"$oldField.child"});
+
+    auto event = std::make_shared<json::Json>(
+        R"({"newField": {"emb": "old_data"},"oldField": {"child": true}})");
+
+    ASSERT_NO_THROW(
+        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+
+    result::Result<Event> result {};
+    ASSERT_NO_THROW(result = op(event));
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->exists("/newField/emb"));
+    ASSERT_FALSE(result.payload()->exists("/oldField/child"));
+    ASSERT_TRUE(result.payload()->getBool("/newField/emb").value());
+}
+
+
+TEST(opBuilderHelperRenameField, renameToAnExistingStringEmptyField)
+{
+    auto tuple = std::make_tuple(
+        string {"/newField/emb"}, string {"rename_field"}, vector<string> {"$oldField.child"});
+
+    auto event = std::make_shared<json::Json>(
+        R"({"newField": {"emb": "old_data"},"oldField": {"child": ""}})");
+
+    ASSERT_NO_THROW(
+        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+
+    result::Result<Event> result {};
+    ASSERT_NO_THROW(result = op(event));
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->exists("/newField/emb"));
+    ASSERT_FALSE(result.payload()->exists("/oldField/child"));
+    ASSERT_EQ("", result.payload()->getString("/newField/emb").value());
+}
