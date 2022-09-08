@@ -6,6 +6,13 @@ find_package(CURL REQUIRED)
 
 add_compile_definitions ( ONLY_C_LOCALE=1 )
 
+CPMAddPackage(
+  NAME pugixml
+  GITHUB_REPOSITORY zeux/pugixml
+  GIT_TAG v1.12.1
+  VERSION 1.12.1
+)
+
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
@@ -22,7 +29,7 @@ add_library(hlp STATIC
 
 target_link_libraries(hlp
     PUBLIC base
-    PRIVATE CURL::libcurl)
+    PRIVATE CURL::libcurl pugixml)
 
 target_include_directories(hlp
     PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include
