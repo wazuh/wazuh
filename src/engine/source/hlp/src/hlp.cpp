@@ -45,6 +45,7 @@ void configureParserMappings(const std::string &config)
             {"short", ParserType::Number},
             {"quoted", ParserType::QuotedString},
             {"boolean", ParserType::Boolean},
+            {"xml", ParserType::Xml}
         };
 
     if (config.empty())
@@ -92,7 +93,8 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"ip", ParserType::IP},
     {"number", ParserType::Number},
     {"toend", ParserType::ToEnd},
-    {"ignore", ParserType::Ignore}
+    {"ignore", ParserType::Ignore},
+    {"xml", ParserType::Xml}
     //TODO add missing parsers
 };
 
