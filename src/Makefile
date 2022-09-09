@@ -138,7 +138,6 @@ endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 ifeq (${CHECK_ALPINE},YES)
-		OSSEC_CFLAGS+=-I/usr/include/linux
 		OSSEC_LIBS+=-lintl
 		DEFINES+=-DALPINE
 endif
