@@ -110,6 +110,7 @@ class WazuhException(Exception):
         1126: {'message': 'Error updating ossec configuration',
                'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
                },
+        1127: {'message': 'Invalid configuration for the given component'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',

@@ -170,12 +170,7 @@ def main():
     if args.test_config:
         sys.exit(0)
 
-    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
-    if cluster_status['running'] == 'yes':
-        main_logger.error("Cluster is already running.", exc_info=False)
-        sys.exit(1)
-
-    # clean
+    # Clean cluster files from previous executions
     wazuh.core.cluster.cluster.clean_up()
 
     # Check for unused PID files
