@@ -53,7 +53,7 @@ def check_user_master(user: str, password: str) -> dict:
     return {'result': False}
 
 
-def check_user(user: str, password: str) -> Union[dict, None]:
+def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
     """Validate a username-password pair.
 
     Convenience method to use in OpenAPI specification.
