@@ -665,22 +665,22 @@ os_info *get_unix_version()
                 {
                     if (fread(buff, 1, sizeof(buff), cmd_output_ver) > 0)
                     {
-                        char *aux = strtok_r(buff, "\n", &save_ptr);
-                        aux = strtok_r(NULL, "\n", &save_ptr);
-                        aux = strtok_r(NULL, ":", &save_ptr);
-                        aux = strtok_r(NULL, " ", &save_ptr);
+                        strtok_r(buff, "\n", &save_ptr);
+                        strtok_r(NULL, "\n", &save_ptr);
+                        strtok_r(NULL, ":", &save_ptr);
+                        char *aux = strtok_r(NULL, " ", &save_ptr);
                         if (aux && strlen(aux) > 0)
                         {
                             w_strdup(aux, info->os_name);
                         }
                         else
                         {
-                            mdebug1("Cannot parse System Version (system_profiler SPSoftwareDataType -detailLevel mini).");
+                            mdebug1("Cannot parse System Version (system_profiler SPSoftwareDataType).");
                         }
                     }
                     else
                     {
-                        mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType -detailLevel mini).");
+                        mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
                     }
                     pclose(cmd_output_ver);
                 }
