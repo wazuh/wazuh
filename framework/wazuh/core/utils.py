@@ -1913,7 +1913,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         raise WazuhError(1113, str(e))
 
 
-def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True) -> results.WazuhResult:
+def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
     """Upload files (rules, lists, decoders and ossec.conf).
 
     Parameters
@@ -1934,7 +1934,7 @@ def upload_file(content: str, file_path: str, check_xml_formula_values: bool = T
 
     Returns
     -------
-    results.WazuhResult
+    WazuhResult
         Confirmation message.
     """
 
