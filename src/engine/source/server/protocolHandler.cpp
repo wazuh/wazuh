@@ -114,14 +114,14 @@ base::Event ProtocolHandler::parse(const string& event)
             // As the format goes like: ...:[<Agent_ID>....
             endIdx = event.find("]", startIdx);
             uint32_t valueSize = (endIdx - startIdx) - 1;
-            const auto agentId {event.substr(startIdx + 1, valueSize).c_str()};
+            const auto agentId {event.substr(startIdx + 1, valueSize)};
             parseEvent->setString(agentId, EVENT_AGENT_ID);
 
             // Agent_Name is between '(' and ')'
             startIdx = endIdx + 2; // As the format goes like: ...] (<Agent_Name>...
             endIdx = event.find(")", startIdx);
             valueSize = (endIdx - startIdx) - 1;
-            const auto agentName {event.substr(startIdx + 1, valueSize).c_str()};
+            const auto agentName {event.substr(startIdx + 1, valueSize)};
             parseEvent->setString(agentName, EVENT_AGENT_NAME);
 
             // Registered_IP is between ' ' (a space) and "->" (an arrow)
@@ -143,7 +143,7 @@ base::Event ProtocolHandler::parse(const string& event)
                 endIdx = secondColonIdx;
             }
             valueSize = (endIdx - startIdx) - 1;
-            const auto origin {event.substr(startIdx + 1, valueSize).c_str()};
+            const auto origin {event.substr(startIdx + 1, valueSize)};
             parseEvent->setString(origin, EVENT_ORIGIN);
         }
         catch (std::runtime_error& e)
