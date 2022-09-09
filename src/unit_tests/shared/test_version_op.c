@@ -894,13 +894,17 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Darwin\n");
 
-    // sw_vers -productName
-    expect_string(__wrap_popen, command, "sw_vers -productName");
+    // system_profiler SPSoftwareDataType
+    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "macOS Catalina\n");
+    char *SP_OUT =
+        "Software:\n\n\
+          System Software Overview:\n\n\
+            System Version: macOS 10.12 (16A323)\n\
+            Kernel Version: Darwin 16.0.0\n";
+    expect_fread(SP_OUT, 1);
 
     expect_value(__wrap_pclose, stream, 1);
     will_return(__wrap_pclose, 1);
@@ -946,7 +950,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     *state = ret;
 
     assert_non_null(ret);
-    assert_string_equal(ret->os_name, "macOS Catalina");
+    assert_string_equal(ret->os_name, "macOS");
     assert_string_equal(ret->os_major, "10");
     assert_string_equal(ret->os_minor, "2");
     assert_string_equal(ret->os_version, "10.2");
