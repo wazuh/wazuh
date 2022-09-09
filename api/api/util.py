@@ -11,7 +11,6 @@ from typing import Union
 import six
 from connexion import ProblemException
 
-from api.models.base_model_ import Model
 from wazuh.core import common, exception
 
 
@@ -154,7 +153,7 @@ def deserialize_datetime(string: str) -> Union[datetime.datetime, str]:
         return string
 
 
-def deserialize_model(data: Union[list, dict], klass: type) -> Union[Model, list, dict]:
+def deserialize_model(data: Union[list, dict], klass: type):
     """Deserialize list or dict to Model.
 
     Parameters
