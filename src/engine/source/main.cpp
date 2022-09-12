@@ -1,10 +1,12 @@
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <CLI/CLI.hpp>
 
 #include <cmds/cmdGraph.hpp>
+#include <cmds/cmdKvdb.hpp>
 #include <cmds/cmdRun.hpp>
 #include <cmds/cmdTest.hpp>
 #include <logging/logging.hpp>
@@ -18,6 +20,7 @@ namespace args
 constexpr auto SUBCOMMAND_RUN = "run";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
+constexpr auto SUBCOMMAND_KVDB = "kvdb";
 
 // Graph file names
 constexpr auto ENV_DEF_DIR = ".";
@@ -40,6 +43,9 @@ std::string protocol_location;
 int debug_level;
 std::string asset_trace;
 int log_level;
+std::string kvdb_name;
+std::string kvdb_input_file;
+std::string kvdb_input_type;
 
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 {
@@ -178,6 +184,33 @@ void configureSubcommandGraph(std::shared_ptr<CLI::App> app)
         ->default_str(args::ENV_DEF_DIR);
 }
 
+void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
+{
+    CLI::App* kvdb = app->add_subcommand(args::SUBCOMMAND_KVDB, "KVDB operations.");
+
+    // KVDB path
+    kvdb->add_option("-p, --path", args::kvdb_path, "Path to KVDB folder.")
+        ->default_val("/var/ossec/queue/db/kvdb/")
+        ->check(CLI::ExistingDirectory);
+
+    // KVDB name
+    kvdb->add_option("-n, --name", args::kvdb_name, "KVDB name to be added.")->required();
+
+    // KVDB input file
+    kvdb->add_option("-i, --input_file",
+                     args::kvdb_input_file,
+                     "Path to file containing the KVDB data.")
+        ->required()
+        ->check(CLI::ExistingFile);
+
+    // KVDB input file type
+    kvdb->add_option("-t, --input_type",
+                     args::kvdb_input_type,
+                     "Type of the input file. Allowed values: json")
+        ->check(CLI::IsMember({"json"}))
+        ->required();
+}
+
 std::shared_ptr<CLI::App> configureCliApp()
 {
     auto app = std::make_shared<CLI::App>(
@@ -188,6 +221,7 @@ std::shared_ptr<CLI::App> configureCliApp()
     configureSubcommandRun(app);
     configureSubcommandLogtest(app);
     configureSubcommandGraph(app);
+    configureSubcommandKvdb(app);
 
     return app;
 }
@@ -238,6 +272,13 @@ int main(int argc, char* argv[])
     {
         cmd::graph(
             args::kvdb_path, args::file_storage, args::environment, args::graph_out_dir);
+    }
+    else if (app->get_subcommand(args::SUBCOMMAND_KVDB)->parsed())
+    {
+        cmd::kvdb(args::kvdb_path,
+                  args::kvdb_name,
+                  args::kvdb_input_file,
+                  cmd::stringToInputType(args::kvdb_input_type));
     }
     else
     {
