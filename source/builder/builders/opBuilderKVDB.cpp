@@ -6,8 +6,8 @@
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
 
-#include "baseTypes.hpp"
 #include "baseHelper.hpp"
+#include "baseTypes.hpp"
 #include "syntax.hpp"
 #include <utils/stringUtils.hpp>
 
@@ -20,95 +20,70 @@ using namespace helper::base;
 // <field>: +kvdb_extract/<DB>/<ref_key>
 base::Expression opBuilderKVDBExtract(const std::any& definition)
 {
-    std::string target;
-    std::vector<std::string> parametersArr;
+    // Extract parameters from any
+    auto [targetField, name, raw_parameters] =
+        helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters {helper::base::processParameters(raw_parameters)};
+    // Assert expected number of parameters
+    helper::base::checkParametersSize(parameters, 2);
+    helper::base::checkParameterType(parameters[0], Parameter::Type::VALUE);
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
-    try
-    {
-        auto tuple =
-            std::any_cast<std::tuple<std::string, std::vector<std::string>>>(definition);
-        target = json::Json::formatJsonPath(std::get<0>(tuple));
-        parametersArr = std::get<1>(tuple);
-    }
-    catch (std::exception& e)
-    {
-        std::throw_with_nested(std::runtime_error(
-            fmt::format("[builder::opBuilderKVDBExtract(<field, parameters>)] Received "
-                        "unexpected argument type")));
-    }
-    if (parametersArr.size() != 3) // TODO: We are using default column only now
-    {
-        throw std::runtime_error(
-            fmt::format("[builder::opBuilderKVDBExtract(<field, parameters>)] "
-                        "Expected 3 arguments, but got [{}]",
-                        parametersArr.size()));
-    }
+    // Extract parameters
+    const auto dbName = parameters[0].m_value;
+    const auto key = parameters[1];
 
     // Get DB
-    auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
+    KVDBManager::get().addDb(dbName, false);
+    auto kvdb = KVDBManager::get().getDB(dbName);
     if (!kvdb)
     {
-        const auto msg {
-            fmt::format("[{}] DB isn't available for usage", parametersArr[1])};
+        const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
         throw std::runtime_error(std::move(msg));
     }
 
-    // Get reference key
-    std::string& key = parametersArr[2];
-    bool isReference = false;
-    if (REFERENCE_ANCHOR == key[0])
-    {
-        key = json::Json::formatJsonPath(key.substr(1));
-        isReference = true;
-    }
-
     // Trace messages
-    auto name = fmt::format("{}: kvdb", target);
     std::string successTrace = fmt::format("[{}] -> Success", name);
-    std::string failureTrace = fmt::format("[{}] -> Failure", name);
-
+    std::string failureTrace1 =
+        fmt::format("[{}] -> Failure: field [{}] not found", name, key.m_value);
+    std::string failureTrace2 = fmt::format("[{}] -> Failure", name);
     // Return Expression
     return base::Term<base::EngineOp>::create(
         name,
-        [=, kvdb = std::move(kvdb)](base::Event event)
+        [=, kvdb = std::move(kvdb), targetField = std::move(targetField)](
+            base::Event event)
         {
             // Get DB key
-            std::string dbKey;
-            if (isReference)
+            std::string resolvedKey;
+            if (Parameter::Type::REFERENCE == key.m_type)
             {
-                try
+                auto value = event->getString(key.m_value);
+                if (value)
                 {
-                    auto value = event->getString(key);
-                    dbKey = value.value();
+                    resolvedKey = value.value();
                 }
-                catch (std::exception& ex)
+                else
                 {
-                    return base::result::makeFailure(std::move(event), failureTrace);
+                    return base::result::makeFailure(event, failureTrace1);
                 }
             }
             else
             {
-                dbKey = key;
+                resolvedKey = key.m_value;
             }
 
             // Get value from the DB
-            std::string dbValue = kvdb->read(dbKey);
+            std::string dbValue = kvdb->read(resolvedKey);
             if (dbValue.empty())
             {
-                return base::result::makeFailure(std::move(event), failureTrace);
+                return base::result::makeFailure(event, failureTrace2);
             }
-
             // Create and add string to event
-            try
+            else
             {
-                json::Json val;
-                val.setString(dbValue.c_str());
-                // TODO: add proper set once json supports
-                event->set(target, val);
-            }
-            catch (std::exception& ex)
-            {
-                return base::result::makeFailure(event, failureTrace);
+                event->setString(dbValue, targetField);
             }
 
             return base::result::makeSuccess(event, successTrace);
@@ -127,7 +102,8 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
     auto kvdb = KVDBManager::get().getDB(parameters[0].m_value);
     if (!kvdb)
     {
-        auto msg = fmt::format("[{}] DB isn't available for usage", parameters[0].m_value);
+        auto msg =
+            fmt::format("[{}] DB isn't available for usage", parameters[0].m_value);
         throw std::runtime_error(std::move(msg));
     }
 
@@ -136,7 +112,8 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
 
     return base::Term<base::EngineOp>::create(
         name,
-        [=, kvdb = std::move(kvdb), targetField = std::move(targetField)](base::Event event)
+        [=, kvdb = std::move(kvdb), targetField = std::move(targetField)](
+            base::Event event)
         {
             bool found = false;
             try // TODO We are only using try for JSON::get. Is correct to
