@@ -79,6 +79,18 @@ bool configureBooleanParser(Parser& parser, std::vector<std::string_view> const&
  * @throws std::runtime_error if args not in list or wrong quantity.
  */
 bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& args);
+
+/**
+ * @brief Method to pre-configure a ignore parser at build stage to be used on future
+ * to parse an event
+ *
+ * @param parser The ignore parser to be pre-configured
+ * @param args List with the options for configuring the ignore parser
+ * @return true on success. false on error
+ * @throws std::runtime_error if args not in list or wrong quantity.
+ */
+bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& args);
+
 /**
  * @brief Parse an unspecified element until an endtoken character is found
  *
@@ -204,25 +216,15 @@ bool parseQuotedString(const char** it, Parser const& parser, ParseResult& resul
  */
 bool parseBoolean(const char** it, Parser const& parser, ParseResult& result);
 
-/**
- * @brief configure Ignore parser
- *
- * @param parser parser object
- * @param args arguments for the parser, one string argument or none.
- * @return true
- * @return false
- */
-bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
- * @brief Ignore parser. If none argument is provided will use keyword parser. If one
- * argument is provided will parse any consecutive string that matches the argument.
+ * @brief Parse a string until the next character (next token) is found. The parsed string
+ * can be empty. Only fails if the next token is not found.
  *
- * @param it event for parsing.
- * @param parser parser object
- * @param result ignored
- * @return true
- * @return false
+ * @param it Iterator pointing to the string to be parser
+ * @param parser struct with the parser definitions
+ * @param result map where the parsing result is added
+ * @return true on success. false if the next token is not found.
  */
 bool parseIgnore(const char** it, Parser const& parser, ParseResult& result);
 
