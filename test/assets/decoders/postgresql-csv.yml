@@ -21,7 +21,7 @@ definitions:
   MESSAGE_FORMAT_3: "duration: <_temp_duration/float> ms"
   MESSAGE_FORMAT_4: "<postgresql.log.query_step>:<message/keyword>"
 
-  POSTGRES_OPTIONAL_FIELDS: <?postgresql.log.detail>,<?postgresql.log.hint>,<?postgresql.internal_query>,<?_internal_query_pos>,<?postgresql.log.context>,<?postgresql.log.query>,<?_query_pos>,<_/,>
+  POSTGRES_OPTIONAL_FIELDS: <?postgresql.log.detail>,<?postgresql.log.hint>,<?postgresql.internal_query>,<?_internal_query_pos>,<?postgresql.log.context>,<?postgresql.log.query>,<?_query_pos>,<_/ignore/,>
 
 check:
   - wazuh.queue: 49

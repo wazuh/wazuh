@@ -78,7 +78,7 @@ TEST(parseKVMap, buildNoEndString)
 
 
 // Test: parsing maps objects
-TEST(hlpTests_map, success_test)
+TEST(parseKVMap, success_test)
 {
     const char* logQl = "<_map/kv_map/=/ > <_dummy>";
     const char* event = "key1=Value1 Key2=Value2 dummy";
@@ -94,7 +94,7 @@ TEST(hlpTests_map, success_test)
     ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
 }
 
-TEST(hlpTests_map, end_mark_test)
+TEST(parseKVMap, end_mark_test)
 {
     const char* logQl = "<_map/kv_map/=/ >-<_dummy>";
     const char* event = "key1=Value1 Key2=Value2-dummy";
@@ -109,7 +109,7 @@ TEST(hlpTests_map, end_mark_test)
     ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
 }
 
-TEST(hlpTests_map, incomplete_map_test)
+TEST(parseKVMap, incomplete_map_test)
 {
     const char* logQl = "<_map/kv_map/=/ >";
     const char* event1 = "key1=Value1 Key2=";
@@ -131,7 +131,7 @@ TEST(hlpTests_map, incomplete_map_test)
 }
 
 // MAP: Values before literal
-TEST(hlpTests_map, success_map_1_before_string)
+TEST(parseKVMap, success_map_1_before_string)
 {
     const char* logQl = "<_map/kv_map/=/ > hi!";
     const char* event = "key1=Value1 hi!";
@@ -147,7 +147,7 @@ TEST(hlpTests_map, success_map_1_before_string)
                  std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
 }
 
-TEST(hlpTests_map, success_map_2_before_string)
+TEST(parseKVMap, success_map_2_before_string)
 {
     const char* logQl = "<_map/kv_map/=/ > hi!";
     const char* event = "key1=Value1 Key2=Value2 hi!";
@@ -163,7 +163,7 @@ TEST(hlpTests_map, success_map_2_before_string)
                  std::any_cast<JsonString>(result["_map"]).jsonString.c_str());
 }
 
-TEST(hlpTests_map, success_map_multiCharacterArgs)
+TEST(parseKVMap, success_map_multiCharacterArgs)
 {
     const char* logQl = "<_map/kv_map/: / > hi!";
     const char* event = "key1: Value1 Key2: Value2 hi!";
