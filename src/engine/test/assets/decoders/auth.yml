@@ -29,12 +29,12 @@ parse:
 
     # Jul 10 10:11:12 somehostname sudo:      tsg : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/ls
     - message: >-
-        <_/ ><user.name> <_system.auth.sudo.error/quoted/: / ;> TTY=<_system.auth.sudo.tty> ; PWD=<system.auth.sudo.pwd> ;
+        <_/ignore/ ><user.name> <_system.auth.sudo.error/quoted/: / ;> TTY=<_system.auth.sudo.tty> ; PWD=<system.auth.sudo.pwd> ;
         USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>
 
     # Jul 10 10:11:12 somehostname sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /var/log/auth.log
     - message: >-
-        <_/ ><user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ;
+        <_/ignore/ ><user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ;
         USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>
 
     # Jul 10 10:11:12 somehostname groupadd[6969]: new group: name=mysql, GID=666

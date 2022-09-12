@@ -14,9 +14,9 @@ check:
 parse:
   logql:
     # BSD Syslog RFC 3164 standard
-    - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>[<process.pid>]:<_/ ><message>"
+    - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>[<process.pid>]:<_/ignore/ ><message>"
     # BSD Syslog RFC 3164 no pid
-    - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>:<_/ ><message>"
+    - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>:<_/ignore/ ><message>"
 
     # BSD Syslog RFC 3164 standard ISO8601
     - event.original: "<timestamp/ISO8601> <host.hostname> <process.name>[<process.pid>]: <message>"
