@@ -2489,16 +2489,12 @@ class AWSALBBucket(AWSLBBucket):
             for log_entry in tsv_file:
                 for field_to_process, ip_field in fields_to_process_map.items():
                     try:
-                        if field_to_process == "target_port_list" and len(log_entry[field_to_process].split(" ")) > 1:
-                            # Handle case when `target_port_list` is space-delimited list
-                            ips, ports = "", ""
-                            for item in [i.split(":") for i in log_entry[field_to_process].split(" ")]:
-                                ips += f"{item[0]} "
-                                ports += f"{item[1]} "
-                                log_entry[ip_field], log_entry[field_to_process] = ips.strip(), ports.strip()
-                        else:
-                            log_entry[ip_field], log_entry[field_to_process] = log_entry[field_to_process].split(":")
-                    except ValueError:
+                        port, ip = "", ""
+                        for item in [i.split(":") for i in log_entry[field_to_process].split()]:
+                            ip += f"{item[0]} "
+                            port += f"{item[1]} "
+                        log_entry[field_to_process], log_entry[ip_field] = port.strip(), ip.strip()
+                    except (ValueError, IndexError):
                         debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
                         debug(f"Log Entry: {log_entry}", msg_level=2)
 
