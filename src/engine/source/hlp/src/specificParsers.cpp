@@ -259,6 +259,7 @@ bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& ar
 bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
 {
     auto start = *it;
+    auto retval = true;
     if (!parser.options.empty())
     {
         auto ignoreStr = parser.options[0];
@@ -285,21 +286,24 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
                 break;
             }
         }
+
+        if (parser.endToken == '\0' && ** it != '\0') {
+            retval = false;
+        }
     }
     else
     {
-        while (**it != '\0')
-        {
-            if (**it == parser.endToken)
-            {
-                break;
-            }
-            ++*it;
+        *it = strchrnul(*it, parser.endToken);
+        if (parser.endToken != **it) {
+            retval = false;
         }
     }
 
-    result[parser.name] = std::string {start, *it};
-    return true;
+    if (retval) {
+        result[parser.name] = std::string {start, *it};
+    }
+
+    return retval;
 }
 
 bool parseAny(const char** it, Parser const& parser, ParseResult& result)

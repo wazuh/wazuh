@@ -20,32 +20,32 @@ using ParserList = std::vector<Parser>;
 static bool sInitialized = false;
 static std::unordered_map<std::string, ParserType> kECSParserMapper;
 
-void configureParserMappings(const std::string &config)
+void configureParserMappings(const std::string& config)
 {
-    static const std::unordered_map<std::string_view, ParserType>
-        kSchema2ParserType {
-            {"constant_keyword", ParserType::Any},
-            {"keyword", ParserType::Any},
-            {"match_only_text", ParserType::Any},
-            {"wildcard", ParserType::Any},
-            {"any", ParserType::ToEnd},
-            {"ip", ParserType::IP},
-            {"timestamp", ParserType::Ts},
-            {"date", ParserType::Ts},
-            {"url", ParserType::URL},
-            {"json", ParserType::JSON},
-            {"kv_map", ParserType::KVMap},
-            {"domain", ParserType::Domain},
-            {"filepath", ParserType::FilePath},
-            {"useragent", ParserType::UserAgent},
-            {"float", ParserType::Number},
-            {"long", ParserType::Number},
-            {"number", ParserType::Number},
-            {"scaled_float", ParserType::Number},
-            {"short", ParserType::Number},
-            {"quoted", ParserType::QuotedString},
-            {"boolean", ParserType::Boolean},
-        };
+    static const std::unordered_map<std::string_view, ParserType> kSchema2ParserType {
+        {"constant_keyword", ParserType::Any},
+        {"keyword", ParserType::Any},
+        {"match_only_text", ParserType::Any},
+        {"wildcard", ParserType::Any},
+        {"any", ParserType::ToEnd},
+        {"ip", ParserType::IP},
+        {"timestamp", ParserType::Ts},
+        {"date", ParserType::Ts},
+        {"url", ParserType::URL},
+        {"json", ParserType::JSON},
+        {"kv_map", ParserType::KVMap},
+        {"domain", ParserType::Domain},
+        {"filepath", ParserType::FilePath},
+        {"useragent", ParserType::UserAgent},
+        {"float", ParserType::Number},
+        {"long", ParserType::Number},
+        {"number", ParserType::Number},
+        {"scaled_float", ParserType::Number},
+        {"short", ParserType::Number},
+        {"quoted", ParserType::QuotedString},
+        {"boolean", ParserType::Boolean},
+        {"ignore", ParserType::Ignore},
+    };
 
     if (config.empty())
     {
@@ -56,7 +56,7 @@ void configureParserMappings(const std::string &config)
     rapidjson::Document doc;
     doc.Parse(config.c_str());
 
-    if(doc.HasParseError())
+    if (doc.HasParseError())
     {
         WAZUH_LOG_ERROR("HLP types configuration its not a valid JSON. Error "
                         "at offset [{}]",
@@ -93,7 +93,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"number", ParserType::Number},
     {"toend", ParserType::ToEnd},
     {"ignore", ParserType::Ignore}
-    //TODO add missing parsers
+    // TODO add missing parsers
 };
 
 /**
@@ -104,8 +104,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
  * @note This function requires that the original string live for the duration
  *       that you need each piece as the vector refers to the original string
  */
-static std::vector<std::string_view>
-splitSlashSeparatedField(std::string_view str)
+static std::vector<std::string_view> splitSlashSeparatedField(std::string_view str)
 {
     std::vector<std::string_view> ret;
     while (true)
@@ -127,8 +126,7 @@ splitSlashSeparatedField(std::string_view str)
     return ret;
 }
 
-static void setParserOptions(Parser &parser,
-                             std::vector<std::string_view> const &args)
+static void setParserOptions(Parser& parser, std::vector<std::string_view> const& args)
 {
     auto config = kParsersConfig[static_cast<int>(parser.type)];
     if (config)
@@ -137,7 +135,7 @@ static void setParserOptions(Parser &parser,
     }
 }
 
-Parser createParserFromExpresion(Expression const &exp)
+Parser createParserFromExpresion(Expression const& exp)
 {
     // We could be parsing:
     //      '<_>'
@@ -153,27 +151,20 @@ Parser createParserFromExpresion(Expression const &exp)
     parser.type = ParserType::Any;
     if (parser.name[0] == '_')
     {
-        //TODO: temporary fields should be trimmed on the final event
-        if (parser.name.size() != 1)
+        // TODO: temporary fields should be trimmed on the final event
+        //  We have a temp capture with the format <_temp/type/typeN>
+        //  we need to take the first parameter after the name and set the
+        //  type from it
+        if (!args.empty())
         {
-            // We have a temp capture with the format <_temp/type/typeN>
-            // we need to take the first parameter after the name and set the
-            // type from it
-            if (!args.empty())
+            auto it = kTempTypeMapper.find(args[0]);
+            if (it != kTempTypeMapper.end())
             {
-                auto it = kTempTypeMapper.find(args[0]);
-                if (it != kTempTypeMapper.end())
-                {
-                    parser.type = it->second;
-                }
-                // erase the type from the list so we are
-                // consistent with the non temp case
-                args.erase(args.begin());
+                parser.type = it->second;
             }
-        }
-        else
-        {
-            parser.type = ParserType::Ignore;
+            // erase the type from the list so we are
+            // consistent with the non temp case
+            args.erase(args.begin());
         }
     }
     else
@@ -183,7 +174,7 @@ Parser createParserFromExpresion(Expression const &exp)
         {
             parser.type = it->second;
         }
-        //TODO: modify in order to show error to usr (no parser found)
+        // TODO: modify in order to show error to usr (no parser found)
     }
 
     setParserOptions(parser, args);
@@ -191,12 +182,12 @@ Parser createParserFromExpresion(Expression const &exp)
     return parser;
 }
 
-std::vector<Parser> getParserList(ExpressionList const &expressions)
+std::vector<Parser> getParserList(ExpressionList const& expressions)
 {
     WAZUH_TRACE_FUNCTION;
     std::vector<Parser> parsers;
 
-    for (auto const &expresion : expressions)
+    for (auto const& expresion : expressions)
     {
         switch (expresion.type)
         {
@@ -228,22 +219,22 @@ std::vector<Parser> getParserList(ExpressionList const &expressions)
     return parsers;
 }
 
-static ExecuteResult executeParserList(std::string_view const &event,
-                              ParserList const &parsers,
-                              ParseResult &result)
+static ExecuteResult executeParserList(std::string_view const& event,
+                                       ParserList const& parsers,
+                                       ParseResult& result)
 {
     WAZUH_TRACE_FUNCTION_S(5);
-    const char *eventIt = event.data();
+    const char* eventIt = event.data();
 
     // TODO This implementation is super simple for the POC
     // but we will want to re-do it or revise it to implement
     // better parser combinations
     bool isOk = true;
     std::string trace;
-    for (auto const &parser : parsers)
+    for (auto const& parser : parsers)
     {
         WAZUH_TRACE_SCOPE("parserLoop");
-        const char *prevIt = eventIt;
+        const char* prevIt = eventIt;
         auto parseFunc = kAvailableParsers[static_cast<int>(parser.type)];
         if (parseFunc != nullptr)
         {
@@ -252,13 +243,19 @@ static ExecuteResult executeParserList(std::string_view const &event,
         else
         {
             // ASSERT here we are missing an implementation
-            return ExecuteResult{false, trace + fmt::format("Parser[\"{}\"] failure: Missing implementation for parser [{}]", parser.name, parser.name)};
+            return ExecuteResult {
+                false,
+                trace
+                    + fmt::format(
+                        "Parser[\"{}\"] failure: Missing implementation for parser [{}]",
+                        parser.name,
+                        parser.name)};
         }
 
         if (!isOk)
         {
-            if (parser.expType == ExpressionType::OptionalCapture ||
-                parser.expType == ExpressionType::OrCapture)
+            if (parser.expType == ExpressionType::OptionalCapture
+                || parser.expType == ExpressionType::OrCapture)
             {
                 // We need to test the second part of the 'OR' capture
                 eventIt = prevIt;
@@ -267,18 +264,20 @@ static ExecuteResult executeParserList(std::string_view const &event,
             else
             {
                 // TODO report error <field>?<other>
-                return ExecuteResult{false, trace + fmt::format("Parser[\"{}\"] failure", parser.name)};
+                return ExecuteResult {
+                    false, trace + fmt::format("Parser[\"{}\"] failure", parser.name)};
             }
-        }else
+        }
+        else
         {
             trace += fmt::format("Parser[\"{}\"] success\n", parser.name);
         }
     }
 
-    return ExecuteResult{isOk, trace};
+    return ExecuteResult {isOk, trace};
 }
 
-ParserFn getParserOp(std::string_view const &logQl)
+ParserFn getParserOp(std::string_view const& logQl)
 {
     WAZUH_TRACE_FUNCTION;
     if (logQl.empty())
@@ -296,12 +295,11 @@ ParserFn getParserOp(std::string_view const &logQl)
     auto parserList = getParserList(expressions);
     if (parserList.empty())
     {
-        throw std::runtime_error(
-            "[HLP]Could not convert expressions to parser List");
+        throw std::runtime_error("[HLP]Could not convert expressions to parser List");
     }
 
-    ParserFn parseFn = [parserList = std::move(parserList)](
-                           std::string_view const &event, ParseResult &result)
+    ParserFn parseFn = [parserList = std::move(parserList)](std::string_view const& event,
+                                                            ParseResult& result)
     {
         return executeParserList(event, parserList, result);
     };
