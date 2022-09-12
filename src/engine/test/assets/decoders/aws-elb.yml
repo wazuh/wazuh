@@ -33,7 +33,7 @@ definitions:
     \"-\"
     $ELBSSL
   ELBV2TYPE: <aws.elb.type>
-  ELBV2LOGVERSION: <_/ > # ignore spaces
+  ELBV2LOGVERSION: <_/ignore/ > # ignore spaces
 
 check:
   - wazuh.queue: 49
