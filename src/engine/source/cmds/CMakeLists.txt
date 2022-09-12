@@ -2,6 +2,7 @@ add_library(cmds STATIC
     src/cmdGraph.cpp
     src/cmdRun.cpp
     src/cmdTest.cpp
+    src/cmdKvdb.cpp
 )
 
 target_link_libraries(cmds PRIVATE
