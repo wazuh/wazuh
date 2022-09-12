@@ -663,22 +663,24 @@ os_info *get_unix_version()
 
                 if (cmd_output_ver = popen("system_profiler SPSoftwareDataType", "r"), cmd_output_ver)
                 {
-                    if (fread(buff, 1, sizeof(buff), cmd_output_ver) > 0)
+                    while (fgets(buff, sizeof(buff) - 1, cmd_output_ver))
                     {
-                        strtok_r(buff, "\n", &save_ptr);
-                        strtok_r(NULL, "\n", &save_ptr);
-                        strtok_r(NULL, ":", &save_ptr);
-                        char *aux = strtok_r(NULL, " ", &save_ptr);
-                        if (aux && strlen(aux) > 0)
+                        char *key = strtok_r(buff, ":", &save_ptr);
+                        if (key && strcmp(os_strip_char(key, ' '), "SystemVersion") == 0)
                         {
-                            w_strdup(aux, info->os_name);
-                        }
-                        else
-                        {
-                            mdebug1("Cannot parse System Version (system_profiler SPSoftwareDataType).");
+                            char *value = strtok_r(NULL, " ", &save_ptr);
+                            if (value)
+                            {
+                                w_strdup(value, info->os_name);
+                            }
+                            else
+                            {
+                                mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                            }
+                            break;
                         }
                     }
-                    else
+                    if (!info->os_name)
                     {
                         mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
                     }
