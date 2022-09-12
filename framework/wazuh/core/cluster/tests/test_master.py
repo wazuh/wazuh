@@ -992,8 +992,8 @@ async def test_master_handler_sync_wazuh_db_information_ok(sync_wazuh_db_informa
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.master.WazuhDBConnection")
-async def test_manager_handler_send_entire_agent_groups_information(WazuhDBConnection_mock):
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+async def test_manager_handler_send_entire_agent_groups_information(AsyncWazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:
@@ -1036,8 +1036,8 @@ async def test_manager_handler_send_entire_agent_groups_information(WazuhDBConne
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.master.WazuhDBConnection")
-async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_mock):
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+async def test_manager_handler_send_agent_groups_information(AsyncWazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:
@@ -1064,7 +1064,7 @@ async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_m
             self._error.append(data)
             raise Exception('Stop while True')
 
-    class WazuhDBConnectionMock:
+    class AsyncWazuhDBConnectionMock:
         """Auxiliary class."""
 
         def __init__(self):
@@ -1072,10 +1072,10 @@ async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_m
             self.raw = []
             self.closed = False
 
-        def run_wdb_command(self, command):
+        async def run_wdb_command(self, command):
             return command
 
-        def send(self, data, raw):
+        async def send(self, data, raw):
             """Auxiliary method."""
             self.chunks.append(data)
             self.raw.append(raw)
@@ -1108,7 +1108,7 @@ async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_m
     master_handler.server.agent_groups_control = 'testing'
     master_handler.task_loggers["Agent-groups send"] = LoggerMock()
     master_handler.server.get_agent_groups_info = get_agent_groups_info.__get__(master_handler.server)
-    WazuhDBConnection_mock.return_value = WazuhDBConnectionMock()
+    AsyncWazuhDBConnection_mock.return_value = AsyncWazuhDBConnectionMock()
 
     with patch('wazuh.core.cluster.master.c_common.SyncWazuhdb', SyncWazuhdbMock):
         with pytest.raises(Exception, match='Stop while True'):
@@ -1884,13 +1884,13 @@ async def test_agent_groups_update(sleep_mock):
             self._error.append(data)
             raise Exception('Stop while true')
 
-    class WazuhDBConnectionMock:
+    class AsyncWazuhDBConnectionMock:
         """Auxiliary class."""
 
         def __init__(self):
             pass
 
-        def run_wdb_command(self):
+        async def run_wdb_command(self):
             pass
 
     class SyncWazuhdbMock:
@@ -1912,7 +1912,7 @@ async def test_agent_groups_update(sleep_mock):
 
     with patch("wazuh.core.cluster.master.Master.setup_task_logger",
                return_value=logger_mock) as setup_task_logger_mock:
-        with patch('wazuh.core.cluster.master.WazuhDBConnection', WazuhDBConnectionMock):
+        with patch('wazuh.core.cluster.master.AsyncWazuhDBConnection', AsyncWazuhDBConnectionMock):
             with patch('wazuh.core.cluster.master.c_common.SyncWazuhdb', SyncWazuhdbMock):
                 with pytest.raises(Exception, match='Stop while true'):
                     master_class.clients = {'worker1': 'worker1'}
