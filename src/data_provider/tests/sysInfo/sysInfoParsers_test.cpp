@@ -436,9 +436,9 @@ TEST_F(SysInfoParsersTest, MacOS)
     constexpr auto MACOS_SW_VERSION
     {
         R"(
-        ProductName:    Mac OS X
-        ProductVersion: 10.12.6
-        BuildVersion:   16G29
+        ProductName:	Mac OS X
+        ProductVersion:	10.14.6
+        BuildVersion:	18G103
         )"
     };
     constexpr auto MACOS_SYSTEM_PROFILER
@@ -448,32 +448,32 @@ TEST_F(SysInfoParsersTest, MacOS)
 
           System Software Overview:
 
-            System Version: macOS 10.15.5 (19F101)
-            Kernel Version: Darwin 19.5.0
-            Boot Volume: catalina
+            System Version: macOS 10.14.6 (18G103)
+            Kernel Version: Darwin 18.7.0
+            Boot Volume: mojave
             Boot Mode: Normal
-            Computer Name: User’s iMac (2)
-            User Name: User (macos-catalina)
+            Computer Name: macos-mojave-vm
+            User Name: System Administrator (root)
             Secure Virtual Memory: Enabled
             System Integrity Protection: Enabled
-            Time since boot: 3 minutes
+            Time since boot: 58 minutes
         )"
     };
     constexpr auto MACOS_UNAME
     {
-        "16.7.0"
+        "18.7.0"
     };
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
     EXPECT_TRUE(parser.parseSystemProfiler(MACOS_SYSTEM_PROFILER, output));
     EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
-    EXPECT_EQ("10.12.6", output["os_version"]);
+    EXPECT_EQ("10.14.6", output["os_version"]);
     EXPECT_EQ("macOS", output["os_name"]);
     EXPECT_EQ("darwin", output["os_platform"]);
-    EXPECT_EQ("16G29", output["os_build"]);
-    EXPECT_EQ("Sierra", output["os_codename"]);
+    EXPECT_EQ("18G103", output["os_build"]);
+    EXPECT_EQ("Mojave", output["os_codename"]);
     EXPECT_EQ("10", output["os_major"]);
-    EXPECT_EQ("12", output["os_minor"]);
+    EXPECT_EQ("14", output["os_minor"]);
     EXPECT_EQ("6", output["os_patch"]);
 }
