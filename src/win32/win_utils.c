@@ -20,9 +20,7 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
-#include "unit_tests/win32/test_win_utils.c"
 #endif
-
 
 HANDLE hMutex;
 int win_debug_level;

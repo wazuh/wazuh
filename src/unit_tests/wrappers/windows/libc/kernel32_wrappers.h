@@ -11,16 +11,16 @@
 #ifndef KERNEL32_WRAPPERS_WINDOWS_H
 #define KERNEL32_WRAPPERS_WINDOWS_H
 
-#include "shared.h"
+#include <stdbool.h>
+#include <windows.h>
+
+DWORD wrap_WaitForSingleObject(HANDLE hMutex, long value);
+
+bool wrap_ReleaseMutex(HANDLE hMutex);
 
 #undef WaitForSingleObject
 #define WaitForSingleObject wrap_WaitForSingleObject
 #undef ReleaseMutex
 #define ReleaseMutex wrap_ReleaseMutex
-
-
-DWORD wrap_WaitForSingleObject(HANDLE hMutex, long value);
-
-bool wrap_ReleaseMutex(HANDLE hMutex);
 
 #endif
