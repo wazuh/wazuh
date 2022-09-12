@@ -3382,7 +3382,7 @@ class AWSCloudWatchLogs(AWSService):
 
 def handler(signal, frame):
     print("ERROR: SIGINT received.")
-    sys.exit(12)
+    sys.exit(2)
 
 
 def debug(msg, msg_level):
