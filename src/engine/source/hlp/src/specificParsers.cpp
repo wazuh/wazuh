@@ -263,47 +263,50 @@ bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& ar
 bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
 {
     auto start = *it;
+    auto tmpIt = *it;
+
     auto retval = true;
     if (!parser.options.empty())
     {
         auto ignoreStr = parser.options[0];
         size_t ignoreLen = ignoreStr.size();
 
-        auto checkIgnore = [&](const char** it)
+        auto checkIgnore = [&](const char** tmpIt)
         {
-            auto start = **it;
-            for (auto i = 0; **it != '\0' && i < ignoreLen; ++i, ++*it)
+            auto start = **tmpIt;
+            for (auto i = 0; **tmpIt != '\0' && i < ignoreLen; ++i, ++*tmpIt)
             {
-                if (**it != ignoreStr[i])
+                if (**tmpIt != ignoreStr[i])
                 {
-                    (*it) -= i;
+                    (*tmpIt) -= i;
                     return false;
                 }
             }
             return true;
         };
 
-        while (**it != '\0')
+        while (*tmpIt != '\0')
         {
-            if (!checkIgnore(it))
+            if (!checkIgnore(&tmpIt))
             {
                 break;
             }
         }
 
-        if (parser.endToken == '\0' && ** it != '\0') {
+        if (parser.endToken == '\0' && *tmpIt != '\0') {
             retval = false;
         }
     }
     else
     {
-        *it = strchrnul(*it, parser.endToken);
-        if (parser.endToken != **it) {
+        tmpIt = strchrnul(tmpIt, parser.endToken);
+        if (parser.endToken != *tmpIt) {
             retval = false;
         }
     }
 
     if (retval) {
+        *it = tmpIt;
         result[parser.name] = std::string {start, *it};
     }
 
