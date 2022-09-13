@@ -66,5 +66,6 @@ normalize:
     map:
       event.original.cis.score: "NULL"
 
-  - query: +s_concat/agent /$event.original.agent.id /ciscat save /$event.original.cis.scan_id/|$event.original.cis.timestamp|/$event.original.cis.benchmark|/$event.original.cis.profile|/$event.original.cis.pass|/$event.original.cis.fail|/$event.original.cis.error|/$event.original.cis.notchecked|/$event.original.cis.unknown|/$event.original.cis.score|
-  - query_response: +wdb_update/$query
+  - map:
+     query: +s_concat/agent /$event.original.agent.id /ciscat save /$event.original.cis.scan_id/|$event.original.cis.timestamp|/$event.original.cis.benchmark|/$event.original.cis.profile|/$event.original.cis.pass|/$event.original.cis.fail|/$event.original.cis.error|/$event.original.cis.notchecked|/$event.original.cis.unknown|/$event.original.cis.score|
+     query_response: +wdb_update/$query

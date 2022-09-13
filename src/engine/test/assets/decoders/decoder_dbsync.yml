@@ -1,7 +1,7 @@
 name: decoder_dbsync
 
 check:
-  - queue: +i_eq/35
+  - wazuh.queue: 53 # DBSYNC_MQ '5'
 
 parse:
   logql:
@@ -11,24 +11,22 @@ normalize:
   - check:
       - _dbsyncEventOriginal.type: +s_starts/integrity_check_
     map:
-      _query: +s_concat/agent /$agent.id/ /$component/ /$type/ /$data_plain
-      _query_response: +wdb_query/$query
+      _query: +s_concat/agent /$agent.id/ /$_dbsyncEventOriginal.component/ /$_dbsyncEventOriginal.type/ /$_dbsyncEventOriginal.data
+      _query_response: +wdb_query/$_query
   - check:
       - _query_response: +exists
     map:
-      _query_response.data.tail: +delete_field
-      _query_response.data.checksum: +delete_field
-      _ar_query: +s_concat/$component/ dbsync /$query_response/ /$data_plain
-      _ar_result: +ar_write/$ar_query
+      _ar_query: +s_concat/(msg_to_agent) [] N!S /$agent.id/ /$_dbsyncEventOriginal.component/ dbsync /$_query_response/ /$_dbsyncEventOriginal.data
+      _ar_result: +ar_write/$_ar_query
 
   - check:
       - _dbsyncEventOriginal.type: +s_eq/state
     map:
-      _query: +s_concat/agent /$agent.id/ /$component/ save2 /$data_plain
-      _query_status: +wdb_update/$query
+      _query: +s_concat/agent /$agent.id/ /$_dbsyncEventOriginal.component/ save2 /$_dbsyncEventOriginal.data
+      _query_status: +wdb_update/$_query
 
   - check:
       - _dbsyncEventOriginal.type: +s_eq/integrity_clear
     map:
-      _query: +s_concat/agent /$agent.id/ /$component/ integrity_clear /$data_plain
-      _query_status: +wdb_update/$query
+      _query: +s_concat/agent /$agent.id/ /$_dbsyncEventOriginal.component/ integrity_clear /$_dbsyncEventOriginal.data
+      _query_status: +wdb_update/$_query
