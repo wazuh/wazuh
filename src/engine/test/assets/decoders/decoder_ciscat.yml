@@ -1,7 +1,7 @@
 name: decoder_ciscat
 
 check:
-  - wazuh.queue: +i_eq/65
+  - wazuh.queue: 65
   - wazuh.origin: "wodle_cis-cat"
 
 parse:

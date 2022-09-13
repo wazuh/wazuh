@@ -1,6 +1,6 @@
 name: syscollector_process_del
 
-parent:
+parents:
   - syscollector_process
 
 check:

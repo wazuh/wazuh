@@ -4,7 +4,7 @@ parents:
   - syscollector_port
 
 check:
-  - _syscollectorEventOriginal.port: +exist
+  - _syscollectorEventOriginal.port: +exists
 
 normalize:
   - check:
@@ -68,5 +68,5 @@ normalize:
       _syscollectorEventOriginal.port.process: "NULL"
 
   - map:
-    _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ port save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.port.protocol/|/$_syscollectorEventOriginal.port.local_ip/|/$_syscollectorEventOriginal.port.local_port/|/$_syscollectorEventOriginal.port.remote_ip/|/$_syscollectorEventOriginal.port.remote_port/|/$_syscollectorEventOriginal.port.tx_queue/|/$_syscollectorEventOriginal.port.rx_queue/|/$_syscollectorEventOriginal.port.inode/|/$_syscollectorEventOriginal.port.state/|/$_syscollectorEventOriginal.port.PID/|/$_syscollectorEventOriginal.port.process
-    _port_save_result: +wdb_update/$_query
+      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ port save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.port.protocol/|/$_syscollectorEventOriginal.port.local_ip/|/$_syscollectorEventOriginal.port.local_port/|/$_syscollectorEventOriginal.port.remote_ip/|/$_syscollectorEventOriginal.port.remote_port/|/$_syscollectorEventOriginal.port.tx_queue/|/$_syscollectorEventOriginal.port.rx_queue/|/$_syscollectorEventOriginal.port.inode/|/$_syscollectorEventOriginal.port.state/|/$_syscollectorEventOriginal.port.PID/|/$_syscollectorEventOriginal.port.process
+      _port_save_result: +wdb_update/$_query

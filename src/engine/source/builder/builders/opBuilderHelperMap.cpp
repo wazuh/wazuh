@@ -447,9 +447,9 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const auto failureTrace1 {fmt::format(
-        "[{}] -> Failure: [{}] must be string or int", name, parameters[1].m_value)};
+        "[{}] -> Failure: Parameter must be string or int: ", name)};
     const auto failureTrace2 {
-        fmt::format("[{}] -> Failure: [{}] not found", name, parameters[1].m_value)};
+        fmt::format("[{}] -> Failure: not found parameter: ", name)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -466,7 +466,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
                     // Check path exists
                     if (!event->exists(parameter.m_value))
                     {
-                        return base::result::makeFailure(event, failureTrace2);
+                        return base::result::makeFailure(event, failureTrace2 + parameter.m_value);
                     }
 
                     // Get field value
@@ -480,9 +480,13 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
                     {
                         resolvedField = event->getString(parameter.m_value).value();
                     }
+                    else if(event->isObject(parameter.m_value))
+                    {
+                        resolvedField = event->str(parameter.m_value).value();
+                    }
                     else
                     {
-                        return base::result::makeFailure(event, failureTrace1);
+                        return base::result::makeFailure(event, failureTrace1 + parameter.m_value);
                     }
 
                     result.append(resolvedField);
