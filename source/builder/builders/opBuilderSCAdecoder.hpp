@@ -123,12 +123,21 @@ struct DecodeCxt
     /**
      * @brief Get int value of a field.
      * @param field Field to get the value.
-     * @return empty if the field is not found or the value is not an.
-     * int
+     * @return empty if the field is not found or the value is not an int
      */
     std::optional<int> getSrcInt(sca::field::Name field) const
     {
         return event->getInt(sourcePath.at(field));
+    };
+
+    /**
+     * @brief Get number as a double value from a field.
+     * @param field Field to get the value.
+     * @return empty if the field is not found or the value is not a number
+     */
+    std::optional<double> getSrcNumberAsDouble(sca::field::Name field) const
+    {
+        return event->getNumberAsDouble(sourcePath.at(field));
     };
 
     /**

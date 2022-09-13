@@ -42,7 +42,7 @@ void test(const std::string& kvdbPath,
           int debugLevel,
           bool traceAll,
           const std::vector<std::string>& assetTrace,
-          int protocolQueue,
+          char protocolQueue,
           const std::string& protocolLocation)
 {
     // Init logging
