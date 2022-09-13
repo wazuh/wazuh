@@ -193,11 +193,11 @@ add_executable(register_test
 )
 gtest_discover_tests(register_test)
 
-add_executable(opBuilderSCAdecoderTest
+add_executable(opBuilderSCAdecoder_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderSCAdecoder_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
-gtest_discover_tests(opBuilderSCAdecoderTest)
+gtest_discover_tests(opBuilderSCAdecoder_test)
 
 add_executable(opBuilderHelperNetInfoAddress_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNetInfoAddress_test.cpp
