@@ -1172,7 +1172,46 @@ TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_AllCopiedFields)
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
     ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
     ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
-    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_EQ(event->getNumberAsDouble("/sca/score").value(), 4.0);
+    ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
+}
+
+TEST_F(opBuilderSCAdecoder_Functions, scoreFloatFillScanInfo_AllCopiedFields)
+{
+    auto event {std::make_shared<json::Json>(
+        R"({
+        "event":
+        {
+            "original":
+            {
+                "name": "some_name",
+                "scan_id": 404,
+                "description": "Some description",
+                "policy_id": "some_policy_id",
+                "passed": 314,
+                "failed": 42,
+                "invalid": 8,
+                "total_checks": 420,
+                "score": 69.007,
+                "file": "some_file"
+            }
+        }
+    })")};
+
+    auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    sca::FillScanInfo(state);
+
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
+                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
+    ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
+    ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
+    ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
+    ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
+    ASSERT_EQ(event->getNumberAsDouble("/sca/score").value(), 69.007);
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
@@ -2740,7 +2779,7 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
         "failed": int,
         "invalid": int,
         "total_checks": int,
-        "score": int,
+        "score": int/float,
         "hash": str,
         "hash_file": str,
         "file": str,
@@ -3405,7 +3444,102 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
     ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
     ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
-    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_EQ(event->getNumberAsDouble("/sca/score").value(), 4.0);
+    ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
+}
+
+TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto firstScanSummaryEvt {
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "summary",
+                    "scan_id": 404,
+                    "policy_id": "some_policy_id",
+                    "description": "Some description",
+                    "references": "Some references",
+                    "start_time": 19920710,
+                    "end_time": 20220808,
+                    "passed": 314,
+                    "failed": 42,
+                    "invalid": 8,
+                    "total_checks": 420,
+                    "score": 69.007,
+                    "hash": "some_hash",
+                    "hash_file": "some_hash_file",
+                    "name": "some_name",
+                    "file": "some_file",
+                    "first_scan": true,
+                    "force_alert": "Some force_alert"
+                }
+            }
+        })"};
+
+    const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
+
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        int clientRemoteFD {-1};
+        string clientMessage;
+
+        // FindScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+        testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
+        close(clientRemoteFD);
+
+        // SaveScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(
+            clientMessage.data(),
+            "agent 007 sca update_scan_info_start "
+            "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
+        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+        close(clientRemoteFD);
+
+        // FindPolicyInfo
+        ignoreCodeSection(
+            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+
+        // FindCheckResults
+        ignoreCodeSection(
+            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
+    ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
+                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
+    ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
+    ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
+    ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
+    ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
+    ASSERT_EQ(event->getNumberAsDouble("/sca/score").value(), 69.007);
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
@@ -3469,6 +3603,88 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
         ASSERT_STREQ(clientMessage.data(),
                      "agent 007 sca update_scan_info_start "
                      "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
+        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+        close(clientRemoteFD);
+
+        // FindPolicyInfo
+        ignoreCodeSection(
+            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+
+        // FindCheckResults
+        ignoreCodeSection(
+            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+    });
+
+    result::Result<Event> result {op(event)};
+
+    t.join();
+    close(serverSocketFD);
+
+    ASSERT_TRUE(result);
+    ASSERT_FALSE(event->exists("/sca/type"));
+}
+
+TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
+{
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
+
+    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    const auto notFirstScanNoForceSummaryEvt {
+        R"({
+            "agent":
+            {
+                "id": "007"
+            },
+            "event":
+            {
+                "original":
+                {
+                    "type": "summary",
+                    "scan_id": 404,
+                    "policy_id": "some_policy_id",
+                    "description": "Some description",
+                    "references": "Some references",
+                    "start_time": 19920710,
+                    "end_time": 20220808,
+                    "passed": 314,
+                    "failed": 42,
+                    "invalid": 8,
+                    "total_checks": 420,
+                    "score": 69.007,
+                    "hash": "some_hash",
+                    "hash_file": "some_hash_file",
+                    "name": "some_name",
+                    "file": "some_file"
+                }
+            }
+        })"};
+
+    const auto event {std::make_shared<json::Json>(notFirstScanNoForceSummaryEvt)};
+
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    std::thread t([&]() {
+        int clientRemoteFD {-1};
+        string clientMessage;
+
+        // FindScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+        testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
+        close(clientRemoteFD);
+
+        // SaveScanInfo
+        clientRemoteFD = testAcceptConnection(serverSocketFD);
+        ASSERT_GT(clientRemoteFD, 0);
+        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+        ASSERT_STREQ(
+            clientMessage.data(),
+            "agent 007 sca update_scan_info_start "
+            "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
         testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
         close(clientRemoteFD);
 
@@ -3558,7 +3774,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
     ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
     ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
-    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_EQ(event->getNumberAsDouble("/sca/score").value(), 4.0);
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
@@ -3620,7 +3836,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
     ASSERT_EQ(event->getInt("/sca/invalid").value(), 8);
     ASSERT_EQ(event->getInt("/sca/total_checks").value(), 420);
-    ASSERT_EQ(event->getInt("/sca/score").value(), 4);
+    ASSERT_EQ(event->getNumberAsDouble("/sca/score").value(), 4.0);
     ASSERT_STREQ(event->getString("/sca/file").value().c_str(), "some_file");
 }
 
