@@ -47,7 +47,7 @@
 #define HC_FORCE_RECONNECT      "force_reconnect"
 #define HC_RESTART              "restart"
 #define HC_GETCONFIG            "getconfig"
-#define HC_INVALID_VERSION      "err {\"message\": \"Incompatible version\"}"
-
-
+#define HC_ERROR                "err "
+#define HC_INVALID_VERSION      "Incompatible version"
+#define HC_RETRIEVE_VERSION     "Couldn't retrieve version"
 #endif /* RC_H */

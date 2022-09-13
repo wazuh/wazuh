@@ -285,22 +285,39 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) {
             mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
 
-            const char *json_err;
             cJSON *agent_info = NULL;
             cJSON *version = NULL;
-            if (agent_info = cJSON_ParseWithOpts(strchr(r_msg, '{'), &json_err, 0), agent_info) {
+            if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
+                char *error_msg_string = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     if (compare_wazuh_versions(__ossec_version, version->valuestring) < 0) {
                         /* Reply to the agent */
+                        cJSON *error_msg = cJSON_CreateObject();
+                        cJSON_AddStringToObject(error_msg, "message", HC_INVALID_VERSION);
+                        error_msg_string = cJSON_PrintUnformatted(error_msg);
                         char msg_err[OS_FLSIZE + 1] = "";
-                        snprintf(msg_err, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_INVALID_VERSION);
+                        snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
                         send_msg(key->id, msg_err, -1);
                         cJSON_Delete(agent_info);
+                        cJSON_Delete(error_msg);
+                        os_free(error_msg_string);
                         os_free(clean);
                         return;
                     }
                 } else {
                     merror("Error getting version from agent '%s'", key->id);
+
+                    cJSON *error_msg = cJSON_CreateObject();
+                    cJSON_AddStringToObject(error_msg, "message", HC_RETRIEVE_VERSION);
+                    error_msg_string = cJSON_PrintUnformatted(error_msg);
+                    char msg_err[OS_FLSIZE + 1] = "";
+                    snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
+                    send_msg(key->id, msg_err, -1);
+                    cJSON_Delete(agent_info);
+                    cJSON_Delete(error_msg);
+                    os_free(error_msg_string);
+                    os_free(clean);
+                    return;
                 }
             }
             cJSON_Delete(agent_info);
@@ -448,13 +465,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             os_calloc(1, sizeof(agent_info_data), agent_data);
 
             result = parse_agent_update_msg(msg, agent_data);
+
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);
                 wdb_free_agent_info_data(agent_data);
                 os_free(clean);
                 return;
             }
-// mwarn("------------------------------------ '%s'", agent_data->version);
+
             // Appending system labels
             os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
 
