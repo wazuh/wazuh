@@ -10,12 +10,15 @@ check:
   - _fimEventOriginal.data.type: +is_string
 
 normalize:
+  - map:
+      _do_save2: false
+
   - check:
-      _fimEventOriginal.data.type: +s_eq/added
+      - _fimEventOriginal.data.type: +s_eq/added
     map:
       _do_save2: true
   - check:
-      _fimEventOriginal.data.type: +s_eq/modified
+      - _fimEventOriginal.data.type: +s_eq/modified
     map:
       _do_save2: true
 

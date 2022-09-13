@@ -2,7 +2,7 @@
 name: fim
 
 check:
-  - wazuh.queue: +i_eq/38
+  - wazuh.queue: +i_eq/56
 
 parse:
   logql:

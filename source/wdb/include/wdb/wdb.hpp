@@ -27,7 +27,9 @@ const static std::map<std::string_view, QueryResultCodes> QueryResStr2Code = {
     {"err", QueryResultCodes::ERROR},
     {"ign", QueryResultCodes::IGNORE}};
 
-constexpr auto WDB_PATH {"queue/db/wdb"}; ///< Default wdb socket path
+constexpr std::string_view CFG_AR_SOCK_PATH {"/var/ossec/queue/alerts/cfgarq"};
+constexpr std::string_view WDB_SOCK_PATH {"/var/ossec/queue/db/wdb"};
+
 constexpr auto SOCKET_NOT_CONNECTED {-1}; ///< Socket not connected (status)
 
 /**
@@ -48,7 +50,7 @@ public:
      *
      * @param path Path to the wdb socket
      */
-    WazuhDB(std::string_view strPath = WDB_PATH)
+    WazuhDB(std::string_view strPath = WDB_SOCK_PATH)
         : m_socket(strPath) {};
 
     /** @brief Destructor */
