@@ -239,7 +239,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
         })");
 
     // Create server
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -313,7 +313,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
         })");
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -384,7 +384,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
         })");
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -454,7 +454,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
         })");
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -519,7 +519,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_othe
         })");
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -601,7 +601,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
         })");
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -676,7 +676,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
         })");
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {

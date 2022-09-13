@@ -23,13 +23,6 @@
 namespace builder::internals::builders
 {
 
-// /* Security configuration assessment remoted queue */
-
-// TODO: remove when undoing set for testing
-constexpr std::string_view WDB_SOCK_PATH {"/tmp/testStream.socket"};
-/* Security configuration assessment remoted queue */
-constexpr std::string_view CFG_AR_PATH {"/tmp/cfgar.sock"}; //"queue/alerts/cfgarq"
-
 namespace sca
 {
 

@@ -49,7 +49,8 @@ protected:
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
 
         wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-        cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(CFG_AR_PATH);
+        cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(
+            CFG_AR_SOCK_PATH);
 
         for (sca::field::Name field = sca::field::Name::A_BEGIN;
              field != sca::field::Name::A_END;
@@ -781,7 +782,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
 // Result true, Executes Query and responds OK
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 {
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -821,7 +822,7 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
 // Result true, Executes Query and responds Err
 TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQueryError)
 {
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -862,7 +863,7 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
 TEST_F(opBuilderSCAdecoder_Functions,
        DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 {
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -920,7 +921,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
         }
     })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -965,7 +966,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
         }
     })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1010,7 +1011,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
         }
     })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1586,7 +1587,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1616,7 +1617,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1666,7 +1667,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1730,7 +1731,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResp
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithoutResult)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1769,7 +1770,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1841,7 +1842,7 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -1932,7 +1933,7 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2023,7 +2024,7 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2097,7 +2098,7 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2171,7 +2172,7 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2245,7 +2246,7 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2319,7 +2320,7 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2393,7 +2394,7 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2569,7 +2570,7 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -2639,7 +2640,7 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3319,7 +3320,7 @@ TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3354,7 +3355,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3446,7 +3447,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 
     const auto event {std::make_shared<json::Json>(notFirstScanNoForceSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3497,7 +3498,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3532,7 +3533,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -3541,7 +3542,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -3569,7 +3570,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3631,7 +3632,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3683,7 +3684,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAns
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3733,7 +3734,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3783,7 +3784,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHa
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3834,7 +3835,7 @@ TEST_F(summaryTypeDecoderSCA,
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3893,7 +3894,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -3952,7 +3953,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4004,7 +4005,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -4013,7 +4014,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -4030,7 +4031,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4071,7 +4072,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4096,7 +4097,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -4105,7 +4106,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -4122,7 +4123,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4147,7 +4148,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -4156,7 +4157,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -4173,7 +4174,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4214,7 +4215,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4239,7 +4240,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -4248,7 +4249,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:1");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -4265,7 +4266,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4290,7 +4291,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -4299,7 +4300,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -4357,7 +4358,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4401,7 +4402,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4445,7 +4446,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4489,7 +4490,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4533,7 +4534,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4586,7 +4587,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4639,7 +4640,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4701,7 +4702,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4760,7 +4761,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -4821,7 +4822,7 @@ TEST_F(policiesTypeDecoderSCA,
             }
         })")};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5007,7 +5008,7 @@ TEST_F(dumpEndTypeDecoderSCA,
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5048,7 +5049,7 @@ TEST_F(dumpEndTypeDecoderSCA,
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5088,7 +5089,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotF
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5128,7 +5129,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpec
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5168,7 +5169,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFo
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5209,7 +5210,7 @@ TEST_F(dumpEndTypeDecoderSCA,
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5258,7 +5259,7 @@ TEST_F(dumpEndTypeDecoderSCA,
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5306,7 +5307,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpected
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5354,7 +5355,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5402,7 +5403,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5450,7 +5451,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedA
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5498,7 +5499,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZ
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5546,7 +5547,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5594,7 +5595,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5643,7 +5644,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5674,7 +5675,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -5683,7 +5684,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -5702,7 +5703,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5733,7 +5734,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -5742,7 +5743,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);
@@ -5761,7 +5762,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
-    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -5792,7 +5793,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
     });
 
     // PushDumpRequest socket
-    const int clientDgramFD = testBindUnixSocket(CFG_AR_PATH, SOCK_DGRAM);
+    const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
     ASSERT_GT(clientDgramFD, 0);
 
     result::Result<Event> result {op(event)};
@@ -5801,7 +5802,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
     auto receivedMessage {testRecvString(clientDgramFD, SOCK_DGRAM)};
     ASSERT_STREQ(receivedMessage.c_str(), "007:sca-dump:some_policy_id:0");
     close(clientDgramFD);
-    unlink(CFG_AR_PATH.data());
+    unlink(CFG_AR_SOCK_PATH.data());
 
     t.join();
     close(serverSocketFD);

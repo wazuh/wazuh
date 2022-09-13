@@ -1,11 +1,11 @@
 name: decoder_sca
 
 check:
-  - queue: +i_eq/7
+  - wazuh.queue: 112
 
 parse:
   logql:
-    event.original: <_sca_event_json/json>
+      - event.original: <_sca_event_json/json>
 
 normalize:
   - check:

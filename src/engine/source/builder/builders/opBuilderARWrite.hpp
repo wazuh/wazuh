@@ -15,8 +15,7 @@
 
 namespace builder::internals::builders
 {
-
-constexpr const char* AR_QUEUE_PATH {"/tmp/ar.sock"};
+constexpr const char* AR_QUEUE_PATH {"/var/ossec/queue/alerts/ar"};
 
 /**
  * @brief Helper Function that allows to send a message through the AR queue

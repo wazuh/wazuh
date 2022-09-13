@@ -16,8 +16,7 @@
 
 #include "expression.hpp"
 #include <utils/stringUtils.hpp>
-
-constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
+#include <wdb/wdb.hpp>
 
 namespace builder::internals::builders
 {

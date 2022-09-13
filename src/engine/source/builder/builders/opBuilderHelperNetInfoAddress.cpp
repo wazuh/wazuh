@@ -19,9 +19,6 @@
 namespace
 {
 
-// TODO: remove pre release or leave it just for testing
-constexpr std::string_view STREAM_SOCK_PATH = "/tmp/testStream.socket";
-
 enum class Name
 {
     ADDRESS,
@@ -121,7 +118,8 @@ bool sysNetAddresTableFill(base::Event event,
 
 base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool isIPv6)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] =
+        helper::base::extractDefinition(definition);
     const auto parameters = helper::base::processParameters(rawParameters);
 
     // Assert expected number of parameters
@@ -140,7 +138,8 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
     helper::base::checkParameterType(parameters[3],
                                      helper::base::Parameter::Type::REFERENCE);
 
-    const auto traceName = helper::base::formatHelperFilterName(name, targetField, parameters);
+    const auto traceName =
+        helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
@@ -152,7 +151,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
         "[{}] -> Failure: [{}] couldn't assign result value", traceName, targetField);
 
     // EventPaths and mappedPaths can be set in buildtime
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
