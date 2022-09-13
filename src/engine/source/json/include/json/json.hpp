@@ -255,6 +255,21 @@ public:
     std::optional<double> getDouble(std::string_view path = "") const;
 
     /**
+     * @brief get the value of either a double or int field as a double.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     *
+     * @todo Develop tests for this method
+     */
+    std::optional<double> getNumberAsDouble(std::string_view path = "") const;
+
+    /**
      * @brief get the value of the bool field.
      * Overwrites previous value. If reference field is not found, sets base field to
      * null.
