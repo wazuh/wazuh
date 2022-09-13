@@ -842,12 +842,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exception.WazuhClusterError(3016, extra_message=result.decode())
             except exception.WazuhException as e:
                 # Notify error to worker and delete its received file.
-                self.logger.error(f"Error sending files information: {e}")
+                logger.error(f"Error sending files information: {e}")
                 await self.send_request(
                     command=b'syn_m_c_r', data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 # Notify error to worker and delete its received file.
-                self.logger.error(f"Error sending files information: {e}")
+                logger.error(f"Error sending files information: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder).encode()
                 await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
@@ -859,7 +859,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         self.cluster_items['intervals']['communication']['min_zip_size'],
                         sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                     )
-                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
+                    logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
                 except KeyError:
                     # Increase max zip size if two conditions are met:
                     #   1. Current zip limit is lower than default.
@@ -872,8 +872,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             self.current_zip_limit * (
                                     1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                             ))
-                        self.logger.debug(
-                            f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
+                        logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
 
                 # Remove local file.
                 os.unlink(compressed_data)

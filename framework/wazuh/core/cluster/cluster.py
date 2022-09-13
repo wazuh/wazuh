@@ -27,8 +27,8 @@ from wazuh.core.utils import blake2b, mkdir_with_mode, get_utc_now, get_date_fro
 logger = logging.getLogger('wazuh')
 
 # Separators used in compression/decompression functions to delimit files.
-FILE_SEP = '|@!@|'
-PATH_SEP = '|!@!|'
+FILE_SEP = '|@@//@@|'
+PATH_SEP = '|//@@//|'
 
 
 #
