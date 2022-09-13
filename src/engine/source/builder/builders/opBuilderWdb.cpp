@@ -82,9 +82,8 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
                 completeQuery = rValue;
             }
 
-            // instantiate wDB
-            // TODO: delete sock_path! is there a way or a cons of using sharedptr
-            auto wdb {wazuhdb::WazuhDB(STREAM_SOCK_PATH)};
+            // instantiate WDB
+            auto wdb {wazuhdb::WazuhDB(wazuhdb::WDB_SOCK_PATH)};
 
             // Execute complete query in DB
             auto returnTuple {wdb.tryQueryAndParseResult(completeQuery)};
