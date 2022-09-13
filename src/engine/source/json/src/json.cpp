@@ -1,5 +1,7 @@
 #include <json/json.hpp>
 
+#include <iostream>
+
 #include <fmt/format.h>
 
 namespace json
@@ -282,6 +284,35 @@ std::optional<double> Json::getDouble(std::string_view path) const
                                              "Invalid json path: [{}]",
                                              path));
     }
+}
+
+std::optional<double> Json::getNumberAsDouble(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value && value->IsNumber())
+        {
+            if (value->IsInt())
+            {
+                return static_cast<double>(value->GetInt());
+            }
+            if (value->IsDouble())
+            {
+                return value->GetDouble();
+            }
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+
+    return std::nullopt;
 }
 
 std::optional<bool> Json::getBool(std::string_view path) const
