@@ -1,7 +1,28 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.7]
+## [v4.3.8]
+
+### Manager
+
+#### Fixed
+
+- Fixed wrong field assignation in Audit decoders (thanks to @pyama86). ([#14752](https://github.com/wazuh/wazuh/pull/14752))
+- Prevented wazuh-remoted from cleaning the multigroup folder in worker nodes. ([#14825](https://github.com/wazuh/wazuh/pull/14825))
+- Fixed rule skipping in wazuh-analysisd when the option if_sid is invalid. ([#14772](https://github.com/wazuh/wazuh/pull/14772))
+
+### Agent
+
+#### Changed
+
+- Updated root CA certificate in agents to validate WPK upgrades. ([#14842](https://github.com/wazuh/wazuh/pull/14842))
+
+#### Fixed
+
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 to v4.3.7 (reported by @guragainroshan0). ([#14801](https://github.com/wazuh/wazuh/pull/14801))
+
+
+## [v4.3.7] - 2022-08-24
 
 ### Manager
 
@@ -55,7 +76,7 @@ All notable changes to this project will be documented in this file.
 - Fixed OS detection in Ubuntu 20.04 LTS SCA policy. ([#14678](https://github.com/wazuh/wazuh/pull/14678))
 
 
-## [v4.3.6] 2022-07-20
+## [v4.3.6] - 2022-07-20
 
 ### Manager
 
@@ -109,7 +130,7 @@ All notable changes to this project will be documented in this file.
 - Disabled filebeat logging metrics. ([#14121](https://github.com/wazuh/wazuh/pull/14121))
 
 
-## [v4.3.5] 2022-06-29
+## [v4.3.5] - 2022-06-29
 
 ### Manager
 
