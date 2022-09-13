@@ -94,7 +94,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
 
     Returns
     -------
-    Union[web.Response, ConnexionResponse]
+    web.Response or ConnexionResponse
         Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
             raw=True            -> ConnexionResponse (text/plain)
             raw=False (default) -> web.Response      (application/json)

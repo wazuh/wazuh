@@ -43,7 +43,7 @@ class APIException(Exception):
             2010: 'Error while attempting to bind on address: address already in use'
         }
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Magic method str().
 
         Returns

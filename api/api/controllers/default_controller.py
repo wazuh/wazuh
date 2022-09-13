@@ -19,9 +19,7 @@ logger = logging.getLogger('wazuh-api')
 
 
 async def default_info(pretty: bool = False) -> web.Response:
-    """Get basicinfo.
-
-    Returns basic information about the Wazuh API.
+    """Return basic information about the Wazuh API.
 
     Parameters
     ----------

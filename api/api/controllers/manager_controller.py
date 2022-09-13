@@ -103,7 +103,7 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
 
     Returns
     -------
-    Union[web.Response, ConnexionResponse]
+    web.Response or ConnexionResponse
         Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
             raw=True            -> ConnexionResponse (application/xml)
             raw=False (default) -> web.Response (application/json)

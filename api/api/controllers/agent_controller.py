@@ -238,7 +238,7 @@ async def reconnect_agents(request, pretty: bool = False, wait_for_complete: boo
         Show results in human-readable format. Default `False`
     wait_for_complete : bool
         Disable timeout response. Default `False`
-    agents_list : Union[list, str]
+    agents_list : list or str
         List of agent IDs. All possible values from 000 onwards. Default `*`
 
     Returns

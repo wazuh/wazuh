@@ -67,7 +67,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
 
     Returns
     -------
-    Union[dict, None]
+    dict or None
         Dictionary with the username and its status or None.
     """
     dapi = DistributedAPI(f=check_user_master,

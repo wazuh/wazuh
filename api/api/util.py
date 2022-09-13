@@ -41,7 +41,7 @@ def _deserialize(data: Union[dict, list, str], klass: type) -> object:
 
     Parameters
     ----------
-    data : Union[dict, list, str]
+    data : dict or list or str
         dict, list or str to deserialize.
     klass : type
         Class literal, or string of class name.
@@ -76,14 +76,14 @@ def _deserialize_primitive(data: Union[dict, list, str], klass: type) -> Union[i
 
     Parameters
     ----------
-    data : Union[dict, list, str]
+    data : dict or list or str
         dict, list or str to deserialize.
     klass : type
         Class literal, or string of class name.
 
     Returns
     -------
-    Union[int, float, str, bool]
+    int or float or str or bool
         Deserialized data.
     """
     try:
@@ -121,7 +121,7 @@ def deserialize_date(string: str) -> Union[datetime.date, str]:
 
     Returns
     -------
-    Union[datetime.date, str]
+    datetime.date or str
         Deserialized date or string in case of ImportError.
     """
     try:
@@ -143,7 +143,7 @@ def deserialize_datetime(string: str) -> Union[datetime.datetime, str]:
 
     Returns
     -------
-    Union[datetime.datetime, str]
+    datetime.datetime or str
         Deserialized datetime or string in case of ImportError.
     """
     try:
@@ -158,14 +158,14 @@ def deserialize_model(data: Union[list, dict], klass: type):
 
     Parameters
     ----------
-    data : Union[list, dict]
+    data : list or dict
         dict, list or str to deserialize.
     klass : type
         Class literal, or string of class name.
 
     Returns
     -------
-    Union[Model, list, dict]
+    Model or list or dict
         Deserialized data to Model or data without changes.
     """
     instance = klass()
