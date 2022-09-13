@@ -28,6 +28,7 @@ enum class ParserType
     Boolean,
     Invalid,
     Ignore,
+    CSV,
 };
 
 enum class ExpressionType;
