@@ -19,6 +19,7 @@ const parserConfigFuncPtr kParsersConfig[] = {
     nullptr,
     configureIgnoreParser,
     configureXmlParser,
+    configureCSVParser,
 };
 
 const parserFuncPtr kAvailableParsers[] = {
@@ -39,4 +40,5 @@ const parserFuncPtr kAvailableParsers[] = {
     nullptr,
     parseIgnore,
     parseXml,
+    parseCSV,
 };
