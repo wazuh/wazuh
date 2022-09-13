@@ -35,7 +35,7 @@ unsigned int threads;
 std::string kvdb_path;
 std::string environment;
 std::string graph_out_dir;
-int protocol_queue;
+char protocol_queue;
 std::string protocol_location;
 int debug_level;
 std::string asset_trace;

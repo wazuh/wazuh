@@ -97,6 +97,14 @@ TEST(JsonBuildtime, Number)
     Json real {"123.456"};
     ASSERT_TRUE(real.isNumber());
     ASSERT_EQ(real.getDouble(), 123.456);
+
+    Json intAsDouble {"123"};
+    ASSERT_TRUE(intAsDouble.isNumber());
+    ASSERT_EQ(intAsDouble.getNumberAsDouble(), 123.0);
+
+    Json doubleAsDouble {"123.456"};
+    ASSERT_TRUE(doubleAsDouble.isNumber());
+    ASSERT_EQ(doubleAsDouble.getNumberAsDouble(), 123.456);
 }
 
 TEST(JsonBuildtime, String)

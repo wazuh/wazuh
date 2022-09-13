@@ -59,6 +59,7 @@ enum class Type
 {
     STRING,
     INT,
+    NUMBER,
     BOOL,
     ARRAY,
     OBJECT
@@ -189,6 +190,7 @@ inline bool isValidEvent(const DecodeCxt& ctx,
             switch (type)
             {
                 case field::Type::STRING: return ctx.event->isString(path);
+                case field::Type::NUMBER: return ctx.event->isNumber(path);
                 case field::Type::INT: return ctx.event->isInt(path);
                 case field::Type::BOOL: return ctx.event->isBool(path);
                 case field::Type::ARRAY: return ctx.event->isArray(path);
@@ -570,7 +572,7 @@ bool isValidScanInfoEvent(const DecodeCxt& ctx)
         {field::Name::FAILED, field::Type::INT, true},
         {field::Name::INVALID, field::Type::INT, true},
         {field::Name::TOTAL_CHECKS, field::Type::INT, true},
-        {field::Name::SCORE, field::Type::INT, true},
+        {field::Name::SCORE, field::Type::NUMBER, true},
         {field::Name::HASH, field::Type::STRING, true},
         {field::Name::HASH_FILE, field::Type::STRING, true},
         {field::Name::FILE, field::Type::STRING, true},
@@ -644,7 +646,7 @@ bool SaveScanInfo(const DecodeCxt& ctx, bool update)
     const auto failed = ctx.getSrcInt(field::Name::FAILED).value();
     const auto invalid = ctx.getSrcInt(field::Name::INVALID).value();
     const auto totalChecks = ctx.getSrcInt(field::Name::TOTAL_CHECKS).value();
-    const auto score = ctx.getSrcInt(field::Name::SCORE).value();
+    const auto score = ctx.getSrcNumberAsDouble(field::Name::SCORE).value();
     const auto hash = ctx.getSrcStr(field::Name::HASH).value();
     const auto policyID = ctx.getSrcStr(field::Name::POLICY_ID).value();
 
@@ -1149,7 +1151,8 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     /* Create the context for SCA decoder */
     namespace SF = sca::field;
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
-    auto cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(wazuhdb::CFG_AR_SOCK_PATH);
+    auto cfgarSock = std::make_shared<base::utils::socketInterface::unixDatagram>(
+        wazuhdb::CFG_AR_SOCK_PATH);
     /*  Maps of paths. Contains the orginal path and the mapped path for each field */
     std::unordered_map<SF::Name, std::string> fieldSource {};
     std::unordered_map<SF::Name, std::string> fieldDest {};
@@ -1169,7 +1172,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
          agentIdPath = parameters[1].m_value,
          fieldSrc = std::move(fieldSource),
          fieldDst = std::move(fieldDest),
-         cfg = std::move(cfg),
+         cfgarSock = std::move(cfgarSock),
          wdb = std::move(wdb)](base::Event event) -> base::result::Result<base::Event>
         {
             std::optional<std::string> error;
@@ -1180,7 +1183,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
             {
                 const auto agentId = event->getString(agentIdPath).value();
                 const auto cxt =
-                    sca::DecodeCxt {event, agentId, wdb, cfg, fieldSrc, fieldDst};
+                    sca::DecodeCxt {event, agentId, wdb, cfgarSock, fieldSrc, fieldDst};
 
                 // TODO: Field type is mandatory and should be checked in the decoder
                 auto type = event->getString(sourceSCApath + "/type");
