@@ -406,6 +406,7 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         constexpr auto PATTERN_MATCH{R"(([^\s]+) ([^\s]+) ([^\s]+))"};
         std::string match;
         std::regex pattern{PATTERN_MATCH};
+
         if (Utils::findRegexInString(output["os_name"], match, pattern, 1))
         {
             output["os_name"] = match;
