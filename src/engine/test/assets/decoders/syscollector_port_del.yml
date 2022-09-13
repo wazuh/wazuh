@@ -9,5 +9,5 @@ check:
 
 normalize:
   - map:
-    _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ port del /$_syscollectorEventOriginal.ID
-    _port_del_result: +wdb_update/$_query
+     _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ port del /$_syscollectorEventOriginal.ID
+     _port_del_result: +wdb_update/$_query
