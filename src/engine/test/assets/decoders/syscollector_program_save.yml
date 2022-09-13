@@ -83,10 +83,11 @@ normalize:
       - _syscollectorEventOriginal.program.version: +exists
       - _syscollectorEventOriginal.program.architecture: +exists
     map:
-      _hexDigest: +hash_sha1/$_syscollectorEventOriginal.program.name/$_syscollectorEventOriginal.program.version/$_syscollectorEventOriginal.program.architecture
+      _concat_words: +s_concat/$_syscollectorEventOriginal.program.name/$_syscollectorEventOriginal.program.version/$_syscollectorEventOriginal.program.architecture
+      _hexDigest: +hash_sha1/$_concat_words
 
   - check:
-      _hexDigest: +is_string
+      - _hexDigest: +is_string
     map:
       _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ package save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.format/|/$_syscollectorEventOriginal.name/|/$_syscollectorEventOriginal.priority/|/$_syscollectorEventOriginal.group/|/$_syscollectorEventOriginal.size/|/$_syscollectorEventOriginal.vendor/|/$_syscollectorEventOriginal.install_time/|/$_syscollectorEventOriginal.version/|/$_syscollectorEventOriginal.architecture/|/$_syscollectorEventOriginal.multi-arch/|/$_syscollectorEventOriginal.source/|/$_syscollectorEventOriginal.description/|/$_syscollectorEventOriginal.location/|/$_hexDigest
       _package_save_result: +wdb_update/$_query
