@@ -1148,8 +1148,8 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
 
     /* Create the context for SCA decoder */
     namespace SF = sca::field;
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-    auto cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(CFG_AR_PATH);
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
+    auto cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(wazuhdb::CFG_AR_SOCK_PATH);
     /*  Maps of paths. Contains the orginal path and the mapped path for each field */
     std::unordered_map<SF::Name, std::string> fieldSource {};
     std::unordered_map<SF::Name, std::string> fieldDest {};

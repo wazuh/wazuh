@@ -1,7 +1,7 @@
 name: syscollector_queue
 
 check:
-  - wazuh.queue: +i_eq/64 #SYSCOLLECTOR_MQ
+  - wazuh.queue: 64 #+i_eq/64 #SYSCOLLECTOR_MQ
   - wazuh.origin: +s_eq/syscollector
 
 parse:
