@@ -81,6 +81,15 @@ bool configureBooleanParser(Parser& parser, std::vector<std::string_view> const&
 bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
+ * @brief Method for pre-configure a parser that will parse a string as CSV
+ *
+ * @param parser The parser to be pre-configured
+ * @param args List with the destination field name of the CSV parser
+ * @return true on success. false on error
+ */
+bool configureCSVParser(Parser& parser, std::vector<std::string_view> const& args);
+
+/**
  * @brief Method to pre-configure a ignore parser at build stage to be used on future
  * to parse an event
  *
@@ -258,4 +267,15 @@ bool configureXmlParser(Parser& parser, std::vector<std::string_view> const& arg
  * @return false
  */
 bool parseXml(const char** it, Parser const& parser, ParseResult& result);
+
+/**
+ * @brief Parse a CSV like string
+ *
+ * @param it Iterator pointing to the string to be parser
+ * @param parser struct with the parser definitions
+ * @param result map where the parsing result is added
+ * @return true on success. false on error
+ */
+bool parseCSV(const char** it, Parser const& parser, ParseResult& result);
+
 #endif //_H_SPECIFIC_PARSERS

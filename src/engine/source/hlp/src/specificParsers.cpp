@@ -25,7 +25,11 @@
 
 #include "hlpDetails.hpp"
 
-// Complementary functions for JSON parser //
+namespace
+{
+/**
+ * @brief Enum for classifying the type of a json value
+ */
 enum class JSON_TYPE
 {
     J_ANY,
@@ -37,6 +41,9 @@ enum class JSON_TYPE
     J_NULL
 };
 
+/**
+ * @brief Asociates a JSON_TYPE with a string
+ */
 static const std::unordered_map<std::string_view, JSON_TYPE> jsonTypes = {
     {"string", JSON_TYPE::J_STRING},
     {"bool", JSON_TYPE::J_BOOL},
@@ -46,10 +53,63 @@ static const std::unordered_map<std::string_view, JSON_TYPE> jsonTypes = {
     {"null", JSON_TYPE::J_NULL},
     {"any", JSON_TYPE::J_ANY}};
 
+/**
+ * @brief check if a string is a valid json type
+ *
+ * @param type the string to check
+ * @return true if the string is a valid json type, false otherwise.
+ */
 bool validJsonType(std::string_view type)
 {
     return jsonTypes.find(type) != jsonTypes.end();
 }
+
+/**
+ * @brief Convert and insert a json value into a json object
+ *
+ * @param output_doc the json object to insert the value into
+ * @param key the key to insert the value into
+ * @param value the value to insert
+ */
+void addValueToJson(rapidjson::Document& output_doc,
+                    std::string_view key,
+                    std::string_view value)
+{
+    auto& allocator = output_doc.GetAllocator();
+    // Check the value type and cast it
+    auto jsonValue {rapidjson::Value(rapidjson::kNullType)};
+    if (!value.empty())
+    {
+
+        // Check if the value maybe is a negative number
+        bool negativeNumber = value[0] == '-' && value.size() > 1;
+
+        if (value.find_first_not_of("0123456789.", negativeNumber ? 1 : 0)
+            == std::string_view::npos)
+        {
+            // Number
+            if (value.find('.') != std::string_view::npos)
+            {
+                jsonValue.SetDouble(std::stod(std::string(value)));
+            }
+            else
+            {
+                jsonValue.SetInt64(std::stoll(std::string(value)));
+            }
+        }
+        else
+        {
+            // Add string value
+            jsonValue = rapidjson::Value(std::string(value).c_str(), allocator);
+        }
+    }
+    // TODO Check if every argument is a valid json key
+    output_doc.AddMember(rapidjson::Value(std::string(key).c_str(), allocator),
+                         jsonValue.Move(),
+                         allocator);
+}
+
+} // namespace
 
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work
@@ -260,6 +320,26 @@ bool configureJsonParser(Parser& parser, std::vector<std::string_view> const& ar
     return true;
 }
 
+bool configureCSVParser(Parser& parser, std::vector<std::string_view> const& args)
+{
+    if (!args.empty())
+    {
+        if (args.size() >= 1)
+        {
+            // TODO Check if every argument is a valid json path
+            parser.options = std::vector<std::string>(args.begin(), args.end());
+        }
+        else
+        {
+            const auto msg = fmt::format("[HLP] Invalid arguments for CVS Parser. "
+                                         "Expected 1 or more, got [{}]",
+                                         args.size());
+            throw std::runtime_error(msg);
+        }
+    }
+    return true;
+}
+
 bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
 {
     auto start = *it;
@@ -293,19 +373,22 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
             }
         }
 
-        if (parser.endToken == '\0' && *tmpIt != '\0') {
+        if (parser.endToken == '\0' && *tmpIt != '\0')
+        {
             retval = false;
         }
     }
     else
     {
         tmpIt = strchrnul(tmpIt, parser.endToken);
-        if (parser.endToken != *tmpIt) {
+        if (parser.endToken != *tmpIt)
+        {
             retval = false;
         }
     }
 
-    if (retval) {
+    if (retval)
+    {
         *it = tmpIt;
         result[parser.name] = std::string {start, *it};
     }
@@ -436,7 +519,6 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
     /* Json Key-value */
     rapidjson::Document output_doc;
     output_doc.SetObject();
-    auto& allocator = output_doc.GetAllocator();
 
     /* -----------------------------------------------
                     Helpers lambdas
@@ -639,35 +721,7 @@ bool parseKVMap(const char** it, Parser const& parser, ParseResult& result)
         lastFoundOk = strParsePtr;
 
         // Check the value type and cast it
-        auto jsonValue {rapidjson::Value(rapidjson::kNullType)};
-        if (!value.empty())
-        {
-
-            // Check if the value maybe is a negative number
-            bool negativeNumber = value[0] == '-' && value.size() > 1;
-
-            if (value.find_first_not_of("0123456789.", negativeNumber ? 1 : 0)
-                == std::string_view::npos)
-            {
-                // Number
-                if (value.find('.') != std::string_view::npos)
-                {
-                    jsonValue.SetDouble(std::stod(std::string(value)));
-                }
-                else
-                {
-                    jsonValue.SetInt64(std::stoll(std::string(value)));
-                }
-            }
-            else
-            {
-                // Add string value
-                jsonValue = rapidjson::Value(std::string(value).c_str(), allocator);
-            }
-        }
-        output_doc.AddMember(rapidjson::Value(std::string(key).c_str(), allocator),
-                             jsonValue.Move(),
-                             allocator);
+        addValueToJson(output_doc, key, value);
     }
 
     // Validate if the map is valid with the endMapToken
@@ -1410,4 +1464,159 @@ bool parseXml(const char** it, Parser const& parser, ParseResult& result)
     }
 
     return success;
+}
+
+bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
+{
+    WAZUH_TRACE_FUNCTION;
+    // RFC 4180
+    const char separator = ',';
+    const char escapeChar = '"'; // Escape character is the same as the double quote
+    const char endToken = parser.endToken;
+
+    rapidjson::Document output_doc;
+    output_doc.SetObject();
+
+    std::size_t colsQty = parser.options.size(); // Number of columns to parse
+    std::size_t colsParsed = 0;                  // Number of columns parsed
+
+    bool isExtractComplete = false; // true when the end of CSV is reached
+    const char* str = *it;          // pointer to the current position in the string
+    const bool separatorIsEndToken = (separator == endToken);
+
+    /*
+     * Returns pair <const char * iterator, std::string_view value> with
+     * the pointer to the nex character to parse and the value quoted parsed
+     * If the next character is not a separator or the end of the string, the cvs is not
+     * valid
+     */
+    const auto getQuoted = [&](const char* str) -> std::pair<const char*, std::string>
+    {
+        str++;
+        const char* end = nullptr;
+
+        std::string value {};
+        // Search for the end quote
+        while (end = strchr(str, escapeChar), end != nullptr)
+        {
+            if (*(end + 1) == escapeChar)
+            {
+                value.append(str, end + 1 - str);
+                str = end + 2; // Escaped quote, skip it
+            }
+            else
+            {
+                // End quote found
+                value.append(str, end - str);
+                end++;
+                break;
+            }
+        }
+        return {end, std::move(value)};
+    };
+
+    /*
+     * Returns pair <const char * iterator, std::string_view value> with
+     * the pointer to the nex character to parse and the value unquoted parsed
+     */
+    const auto getUnQuoted = [&](const char* str) -> std::pair<const char*, std::string>
+    {
+        // Search for the separator or the end of the CSV.
+        const char* end = strchr(str, separator);
+        if (end == nullptr)
+        {
+            end = strchr(str, endToken);
+        }
+        // If the end is nullptr, the CSV is malformed
+        if (end != nullptr)
+        {
+            std::string value(str, end - str);
+            return {end, std::move(value)};
+        }
+        return {nullptr, std::string {}};
+    };
+
+    /*
+     * Extract the values
+     */
+
+    if (*str == separator)
+    { // First value can be empty
+        addValueToJson(output_doc, parser.options[colsParsed], "");
+        colsParsed++;
+        isExtractComplete = (colsParsed == colsQty) && *(str + 1) == endToken;
+    }
+    while (!isExtractComplete && colsParsed < colsQty)
+    {
+        // get value
+        std::string value {};
+        switch (str[0])
+        {
+            case separator:
+                // empty value
+                str++;
+                break;
+            case escapeChar:
+                // get value until next escapeChar
+                std::tie(str, value) = getQuoted(str);
+                break;
+            default:
+                // get value until next separator or end of CSV
+                std::tie(str, value) = getUnQuoted(str);
+                break;
+        }
+
+        /*
+         * Check if the CSV is malformed:
+         * - The value extracted is invalid
+         * - The next character is not a separator or the end of the string
+         */
+        bool isInvalid = (str == nullptr) || ((separator != *str) && (endToken != *str));
+
+        if (isInvalid)
+        {
+            break; // CSV is malformed
+        }
+
+        if (separator == *str)
+        {
+            // The next character must be a separator or the end of the CSV
+            bool emptyValue = (separator == *(str + 1));
+            // Or if the next value is the last value and is empty
+            emptyValue |= ('\0' == *(str + 1));
+            if (!emptyValue)
+            {
+                str++;
+            }
+            if (separatorIsEndToken && colsParsed + 1 == colsQty)
+            {
+                isExtractComplete = true;
+            }
+        }
+        else
+        {
+            // The next character is the end of the CSV
+            if (colsParsed + 1 != colsQty)
+            {
+                break; // Quanitity of columns does not match with the expected
+            }
+            isExtractComplete = true;
+        }
+
+        // Add value to the JSON
+        addValueToJson(output_doc, parser.options[colsParsed], value);
+        colsParsed++; // new value parsed
+    }
+
+    // "CSV parsed successfully"
+    if (isExtractComplete)
+    {
+        rapidjson::StringBuffer s;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+        output_doc.Accept(writer);
+        result[parser.name] = hlp::JsonString {s.GetString()};
+        *it = !separatorIsEndToken ? str : str - 1;
+    }
+
+    return isExtractComplete;
 }

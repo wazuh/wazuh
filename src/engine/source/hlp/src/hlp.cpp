@@ -94,7 +94,8 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"number", ParserType::Number},
     {"toend", ParserType::ToEnd},
     {"ignore", ParserType::Ignore},
-    {"xml", ParserType::Xml}
+    {"xml", ParserType::Xml},
+    {"csv", ParserType::CSV},
     //TODO add missing parsers
 };
 
