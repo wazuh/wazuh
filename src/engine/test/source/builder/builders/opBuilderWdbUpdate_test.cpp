@@ -112,7 +112,7 @@ TEST(opBuilderWdbUpdate, completeFunctioningWithBadResponse)
     })")};
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -150,7 +150,7 @@ TEST(opBuilderWdbUpdate, completeFunctioningWithOkResponse)
     })")};
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -182,7 +182,7 @@ TEST(opBuilderWdbUpdate, completeFunctioningWithOkResponseWPayload)
     })")};
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -213,7 +213,7 @@ TEST(opBuilderWdbUpdate, QueryResultCodeNotOkWithPayload)
     })")};
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
@@ -251,7 +251,7 @@ TEST(opBuilderWdbUpdate, QueryResultCodeOkPayloadEmpty)
     })")};
 
     // Create the endpoint for test
-    const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    const int serverSocketFD {testBindUnixSocket(wazuhdb::WDB_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
 
     std::thread t([&]() {
