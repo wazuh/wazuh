@@ -399,7 +399,7 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         {"System Version", "os_name"},
     };
     std::stringstream data{in};
-    const auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, output) };
+    auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, output) };
 
     if (ret)
     {
@@ -412,7 +412,8 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         }
         else
         {
-            return false;
+            output["os_name"] = "macOS";
+            ret = false;
         }
     }
 

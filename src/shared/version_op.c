@@ -662,11 +662,12 @@ os_info *get_unix_version()
                 info->os_platform = strdup("darwin");
 
                 if (cmd_output_ver = popen("system_profiler SPSoftwareDataType", "r"), cmd_output_ver) {
-                    while (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
+                    while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
                         char *key = strtok_r(buff, ":", &save_ptr);
                         if (key) {
-                            char *trimed_key = os_strip_char(key, ' ');
-                            if (strcmp(trimed_key, "SystemVersion") == 0) {
+                            static const char *expected_key = "SystemVersion";
+                            char *trimmed_key = os_strip_char(key, ' ');
+                            if (trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
                                 char *value = strtok_r(NULL, " ", &save_ptr);
                                 if (value) {
                                     w_strdup(value, info->os_name);
@@ -674,7 +675,7 @@ os_info *get_unix_version()
                                     mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
                                 }
                             }
-                            free (trimed_key);
+                            os_free (trimmed_key);
                             if(info->os_name) {
                                 break;
                             }
