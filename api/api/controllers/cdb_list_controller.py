@@ -78,7 +78,7 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
 
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
                    raw: bool = False) -> Union[web.Response, ConnexionResponse]:
-    """"Get content of one CDB list file, in raw or dict format.
+    """Get content of one CDB list file, in raw or dict format.
 
     Parameters
     ----------
