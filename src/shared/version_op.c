@@ -661,27 +661,26 @@ os_info *get_unix_version()
             } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
 
-                if (cmd_output_ver = popen("system_profiler SPSoftwareDataType", "r"), cmd_output_ver)
-                {
-                    while (fgets(buff, sizeof(buff) - 1, cmd_output_ver))
-                    {
+                if (cmd_output_ver = popen("system_profiler SPSoftwareDataType", "r"), cmd_output_ver) {
+                    while (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
                         char *key = strtok_r(buff, ":", &save_ptr);
-                        if (key && strcmp(os_strip_char(key, ' '), "SystemVersion") == 0)
-                        {
-                            char *value = strtok_r(NULL, " ", &save_ptr);
-                            if (value)
-                            {
-                                w_strdup(value, info->os_name);
+                        if (key) {
+                            char *trimed_key = os_strip_char(key, ' ');
+                            if (strcmp(trimed_key, "SystemVersion") == 0) {
+                                char *value = strtok_r(NULL, " ", &save_ptr);
+                                if (value) {
+                                    w_strdup(value, info->os_name);
+                                } else {
+                                    mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                                }
                             }
-                            else
-                            {
-                                mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                            free (trimed_key);
+                            if(info->os_name) {
+                                break;
                             }
-                            break;
                         }
                     }
-                    if (!info->os_name)
-                    {
+                    if (NULL == info->os_name) {
                         mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
                     }
                     pclose(cmd_output_ver);
