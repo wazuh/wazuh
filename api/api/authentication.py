@@ -164,7 +164,7 @@ def generate_token(user_id: str = None, data: dict = None, run_as: bool = False)
     data : dict
         Roles permissions for the user.
     run_as : bool
-        Indicate if the user has logged in with run_as or not.
+        Indicate if the user has logged in with authorization context or not.
 
     Returns
     -------
@@ -207,7 +207,7 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
     token_nbf_time : int
         Issued at time of the current token.
     run_as : bool
-        Indicate if the token has been granted through run_as endpoint.
+        Indicate if the token has been granted through authorization context endpoint.
 
     Returns
     -------
