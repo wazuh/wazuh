@@ -127,7 +127,7 @@ def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> lis
 
     Parameters
     ----------
-    auth_context : Union[dict, str]
+    auth_context : dict or str
         Authorization context of the current user.
     user_id : int
         Username of the current user.
@@ -155,7 +155,7 @@ def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) 
 
     Parameters
     ----------
-    auth_context : Union[dict, str]
+    auth_context : dict or str
         Authorization context of the current user.
     user_id : int
         Username of the current user.

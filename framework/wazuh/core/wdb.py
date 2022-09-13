@@ -278,7 +278,7 @@ class WazuhDBConnection:
 
         Returns
         -------
-        Union[str, dict]
+        str or dict
             Result of the query.
         """
         return self._send(query, raw)

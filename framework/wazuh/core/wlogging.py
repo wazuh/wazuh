@@ -112,7 +112,7 @@ class WazuhLogger:
             Filepath of the file to send logs to. Relative to the wazuh installation path.
         tag : str
             Tag defining logging format.
-        debug_level : Union[int, str]
+        debug_level : int or str
             Log level.
         logger_name : str
             Sets logger name to register in logging module.

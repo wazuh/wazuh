@@ -40,9 +40,9 @@ class RBAChecker:
 
         Parameters
         ----------
-        auth_context : Union[dict, str]
+        auth_context : dict or str
             Authorization context to be checked.
-        role : Union[list, orm.Roles]
+        role : list or orm.Roles
             Roles(list)/Role/None(All roles in the system) to be checked against the authorization context.
         user_id : int
             Current user_id.
@@ -188,7 +188,7 @@ class RBAChecker:
 
         Returns
         -------
-        Union[bool, None]
+        bool or None
             True/False/None, it is possible that the database has been modified externally to Wazuh, Potential Security
             Breach, Currently, if this is the case and the unknown role is invalid, it will not cause any problems to
             the system, it will be ignored.
@@ -214,7 +214,7 @@ class RBAChecker:
 
         Returns
         -------
-        Union[re.Pattern, bool]
+        re.Pattern or bool
             Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
@@ -235,16 +235,16 @@ class RBAChecker:
 
         Parameters
         ----------
-        role_chunk : Union[list, dict]
+        role_chunk : list or dict
             Chunk of one stored role in the class.
-        auth_context : Union[list, dict]
+        auth_context : list or dict
             Received authorization context.
         mode : str
             MATCH or MATCH$.
 
         Returns
         -------
-        Union[int, bool]
+        int or bool
             True or 1 if match else False or 0.
         """
         auth_context = self.authorization_context if auth_context is None else auth_context
@@ -288,7 +288,7 @@ class RBAChecker:
 
         Parameters
         ----------
-        role_chunk : Union[list, dict]
+        role_chunk : list or dict
             Chunk of one stored role in the class.
         auth_context : dict
             Received authorization context.
@@ -336,7 +336,7 @@ class RBAChecker:
 
         Returns
         -------
-        Union[bool, int]
+        bool or int
             True or 1 if the authorization context matched the role, or False or 0 otherwise.
         """
         for rule_key, rule_value in rule.items():

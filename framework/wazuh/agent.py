@@ -162,7 +162,7 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
     Parameters
     ----------
-    agent_list : Union[list, str]
+    list or str
         List of agent IDs. All possible values from 000 onwards. Default `*`
 
     Returns

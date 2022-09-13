@@ -191,7 +191,7 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
 
     Returns
     -------
-    Union[str, AffectedItemsWazuhResult]
+    str or AffectedItemsWazuhResult
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',

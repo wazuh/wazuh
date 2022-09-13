@@ -319,7 +319,7 @@ def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, Affecte
 
     Returns
     -------
-    Union[str,AffectedItemsWazuhResult]
+    str or AffectedItemsWazuhResult
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',

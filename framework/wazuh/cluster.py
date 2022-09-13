@@ -80,7 +80,7 @@ async def get_health_nodes(lc: local_client.LocalClient,
     ----------
     lc : LocalClient object
         LocalClient with which to send the 'get_nodes' request.
-    filter_node : Union[str, list]
+    filter_node : str or list
         Node to return.
 
     Returns
@@ -112,7 +112,7 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node: Union[str, l
     ----------
     lc : LocalClient object
         LocalClient with which to send the 'get_nodes' request.
-    filter_node : Union[str, list]
+    filter_node : str or list
         Node to return.
 
     Returns

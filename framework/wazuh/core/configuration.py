@@ -262,7 +262,7 @@ def _replace_custom_values(opt_value: Union[list, dict, str]) -> Union[list, dic
 
     Parameters
     ----------
-    opt_value : Union[list,dict,str]
+    opt_value : list or dict or str
         Value to be replaced.
     """
     if type(opt_value) is list:
@@ -666,7 +666,7 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
 
     Returns
     -------
-    Union[dict, str]
+    dict or str
         agent.conf as dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):

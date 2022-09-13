@@ -137,7 +137,7 @@ def send_command(function: callable, command: dict, local_master: bool = False) 
 
     Returns
     -------
-    Union[object, None]
+    object or None
         Distributed API request result.
     """
     dapi = DistributedAPI(f=function, f_kwargs=command,

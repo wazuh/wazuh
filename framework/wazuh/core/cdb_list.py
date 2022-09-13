@@ -165,7 +165,7 @@ def get_list_from_file(path: str, raw: bool = False) -> Union[dict, str]:
 
     Returns
     -------
-    Union[dict, str]
+    dict or str
         CDB list.
     """
     # Match empty lines or lines which start with "TEMPLATE:"

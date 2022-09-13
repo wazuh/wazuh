@@ -1049,7 +1049,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         Returns
         -------
-        typing.Union[str, datetime]
+        str or datetime
             In case of a date, return the element after its conversion. Otherwise it return the element.
         """
         date_patterns = ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
@@ -1068,7 +1068,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         Parameters
         ----------
-        value1 : typing.Union[str, int]
+        value1 : str or int
             First value of the operation.
         op : str
             Operation to be done.
@@ -1107,7 +1107,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         Parameters
         ----------
-        iterable : typing.Union[dict, list]
+        iterable : dict or list
             Iterable object to be iterated over.
         key_list : list
             List of keys.

@@ -22,7 +22,7 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
 
     Parameters
     ----------
-    agent_list : Union[str, None]
+    agent_list : str or None
         List of the agents IDs to run the scan for.
 
     Returns

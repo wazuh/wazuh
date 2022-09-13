@@ -704,7 +704,7 @@ class WazuhInternalError(WazuhException):
             Name of the exception to be shown.
         type : str
             Type of the exception.
-        ids : Union[list, set]
+        ids : list or set
             List or set with the ids involved in the exception
         """
 
@@ -755,7 +755,7 @@ class WazuhError(WazuhException):
             Name of the exception to be shown.
         type : str
             Type of the exception.
-        ids : Union[list, set]
+        ids : list or set
             List or set with the ids involved in the exception
         """
 

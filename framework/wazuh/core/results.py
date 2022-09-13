@@ -28,7 +28,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
         Parameters
         ----------
-        dct : Union[dict, object]
+        dct : dict or object
             Map to take key-values from.
 
         Raises
@@ -82,7 +82,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
         Parameters
         ----------
-        other : Union[AbstractWazuhResult, wexception.WazuhException]
+        other : AbstractWazuhResult or wexception.WazuhException
 
         Raises
         ------
@@ -91,7 +91,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
         Returns
         -------
-        Union[AbstractWazuhResult, wexception.WazuhException]
+        AbstractWazuhResult or wexception.WazuhException
             Resultant object.
         """
         if isinstance(other, wexception.WazuhException):
@@ -282,7 +282,7 @@ class WazuhResult(AbstractWazuhResult):
 
         Parameters
         ----------
-        dct : Union[dict, object]
+        dct : dict or object
             Map to take key-values from.
         str_priority : list
             List of strings. If not None, conflicts when merging str values in the result are solved taking the first
@@ -736,7 +736,7 @@ def nested_itemgetter(*expressions):
 
     Returns
     -------
-    Union[object, tuple]
+    object or tuple
         Object or tuple of objects.
     """
     getters = []
@@ -770,11 +770,11 @@ def _goes_before_than(a: Union[tuple, list], b: Union[tuple, list], ascending: U
 
     Parameters
     ----------
-    a : Union[tuple, list]
+    a : tuple or list
         First object to compare.
-    b : Union[tuple, list]
+    b : tuple or list
         Second object to compare.
-    ascending : Union[tuple, list]
+    ascending : tuple or list
         Tuple or list of booleans with a length equal to the minimum length between a and b. True if ascending, False
         otherwise.
     casters : Iterable
@@ -814,11 +814,11 @@ def merge(*iterables, criteria: Union[tuple, list] = None, ascending: Union[tupl
     ----------
     iterables
         List of lists to be merged.
-    criteria : Union[tuple, list]
+    criteria : tuple or list
         List or tuple of expressions accepted by the nested_itemgetter function.
-    ascending : Union[tuple, list]
+    ascending : tuple or list
         List or tuple of booleans. Should have the same length as criteria. True for ascending False otherwise.
-    types : Union[tuple, list]
+    types : tuple or list
         List or tuple of strings. Should have the same length as criteria. Must fit a class in builtins
         (int, float, str, ...).
 

@@ -103,7 +103,7 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
         Cluster current configuration.
     more : bool
         Indicate whether additional information is desired or not.
-    filter_node : Union[str, list]
+    filter_node : str or list
         Node to return.
     """
 

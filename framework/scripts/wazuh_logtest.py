@@ -381,7 +381,7 @@ class WazuhLogtest:
 
         Returns
         -------
-        Union[bool, None]
+        bool or None
             True if the session was removed successfully, False if the session was not removed, and None if the last
             session is unknown.
         """
