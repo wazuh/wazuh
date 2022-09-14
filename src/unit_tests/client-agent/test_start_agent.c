@@ -397,7 +397,7 @@ static void test_agent_handshake_to_server_invalid_version(void **state) {
 
     expect_any_count(__wrap__minfo, formatted_msg, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg ,"Incompatible version");
+    expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Incompatible version'");
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
