@@ -2,64 +2,41 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+from types import MappingProxyType
+
 from wazuh.core.agent import Agent
-from wazuh.core.common import MAXIMUM_DATABASE_LIMIT
-from wazuh.core.exception import WazuhError
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
-
-# API field -> DB field
-fields_translation_sca = {'policy_id': 'policy_id',
-                          'name': 'name',
-                          'description': 'description',
-                          'references': '`references`',
-                          'pass': 'pass',
-                          'fail': 'fail',
-                          'score': 'score',
-                          'invalid': 'invalid',
-                          'total_checks': 'total_checks',
-                          'hash_file': 'hash_file',
-                          'end_scan': 'end_scan',
-                          'start_scan': 'start_scan'
-                          }
-fields_translation_sca_check = {'policy_id': 'policy_id',
-                                'id': 'id',
-                                'title': 'title',
-                                'description': 'description',
-                                'rationale': 'rationale',
-                                'remediation': 'remediation',
-                                'file': 'file',
-                                'process': 'process',
-                                'directory': 'directory',
-                                'registry': 'registry',
-                                'command': 'command',
-                                'references': '`references`',
-                                'result': 'result',
-                                'status': '`status`',
-                                'reason': 'reason',
-                                'condition': 'condition'}
-fields_translation_sca_check_compliance = {'compliance.key': 'key',
-                                           'compliance.value': 'value'}
-fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
-
-default_query_sca = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
-default_query_sca_check = 'SELECT {0} FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check ' \
-                          'LEFT JOIN sca_check_rules c ON a.id=c.id_check WHERE id IN (SELECT id FROM sca_check)'
 
 
 class WazuhDBQuerySCA(WazuhDBQuery):
+    DEFAULT_QUERY = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
+    # API-DB fields mapping
+    FIELDS_TRANSLATION = MappingProxyType({'policy_id': 'policy_id',
+                                           'name': 'name',
+                                           'description': 'description',
+                                           'references': '`references`',
+                                           'pass': 'pass',
+                                           'fail': 'fail',
+                                           'score': 'score',
+                                           'invalid': 'invalid',
+                                           'total_checks': 'total_checks',
+                                           'hash_file': 'hash_file',
+                                           'end_scan': 'end_scan',
+                                           'start_scan': 'start_scan'})
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
-                 get_data, default_sort_field='policy_id', filters=None, fields=fields_translation_sca,
-                 default_query=default_query_sca, count_field='policy_id'):
+    def __init__(self, agent_id, offset, limit, sort, search, query, count, get_data, select=None,
+                 default_sort_field='policy_id', default_sort_order='DESC', filters=None, fields=None,
+                 default_query=DEFAULT_QUERY, count_field='policy_id'):
         self.agent_id = agent_id
         self.default_query = default_query
         self.count_field = count_field
         Agent(agent_id).get_basic_information()  # check if the agent exists
-        filters = {} if filters is None else filters
 
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
-                              search=search, select=select, fields=fields, default_sort_field=default_sort_field,
-                              default_sort_order='DESC', filters=filters, query=query, count=count, get_data=get_data,
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
+                              select=select or list(self.FIELDS_TRANSLATION.keys()),
+                              fields=fields or self.FIELDS_TRANSLATION,
+                              default_sort_field=default_sort_field, default_sort_order=default_sort_order,
+                              filters=filters or {}, query=query, count=count, get_data=get_data,
                               date_fields={'end_scan', 'start_scan'}, backend=WazuhDBBackend(agent_id))
 
     def _default_query(self):
@@ -82,52 +59,49 @@ class WazuhDBQuerySCA(WazuhDBQuery):
 
 
 class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
+    DEFAULT_QUERY = "SELECT {0} FROM sca_check"
+    # API-DB fields mapping
+    FIELDS_TRANSLATION = MappingProxyType({'policy_id': 'policy_id',
+                                           'id': 'id',
+                                           'title': 'title',
+                                           'description': 'description',
+                                           'rationale': 'rationale',
+                                           'remediation': 'remediation',
+                                           'file': 'file',
+                                           'process': 'process',
+                                           'directory': 'directory',
+                                           'registry': 'registry',
+                                           'command': 'command',
+                                           'references': '`references`',
+                                           'result': 'result',
+                                           'status': '`status`',
+                                           'reason': 'reason',
+                                           'condition': 'condition'})
 
-    def _parse_filters(self):
-        if self.legacy_filters:
-            self._parse_legacy_filters()
-        if self.q:
-            self._parse_query()
-        if self.search or self.query_filters:
-            self.query += " WHERE " if self.query.count('WHERE') == 1 else ' AND '
+    def __init__(self, agent_id, offset, limit, sort, filters, search, query, policy_id):
+        policy_query_filter = f"policy_id={policy_id}"
 
-    def _add_limit_to_query(self):
-        if self.limit:
-            if self.limit > MAXIMUM_DATABASE_LIMIT:
-                raise WazuhError(1405, str(self.limit))
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=sort, filters=filters,
+                                 query=policy_query_filter if not query else f"{policy_query_filter};{query}",
+                                 search=search, count=True, get_data=True, select=list(self.FIELDS_TRANSLATION.keys()),
+                                 default_query=self.DEFAULT_QUERY, fields=self.FIELDS_TRANSLATION, count_field='id',
+                                 default_sort_field='id', default_sort_order='ASC')
 
-            # We add offset and limit only to the inner SELECT (subquery)
-            self.query += ' LIMIT :inner_limit OFFSET :inner_offset'
-            self.request['inner_offset'] = self.offset
-            self.request['inner_limit'] = self.limit
-            self.request['offset'] = 0
-            self.request['limit'] = 0
-        elif self.limit == 0:  # 0 is not a valid limit
-            raise WazuhError(1406)
 
-    def run(self):
-        """Builds the query and runs it on the database"""
-        # Remove the last )
-        self.query = self.query[:-1]
+class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
+    # API-DB fields mapping
+    FIELDS_TRANSLATION = MappingProxyType({'sca_check_compliance': MappingProxyType({'id_check': 'id_check',
+                                                                                     'key': 'key',
+                                                                                     'value': 'value'}),
+                                           'sca_check_rules': MappingProxyType({'id_check': 'id_check',
+                                                                                'type': 'type',
+                                                                                'rule': 'rule'})})
 
-        self._add_select_to_query()
-        self._add_filters_to_query()
-        self._add_search_to_query()
+    def __init__(self, agent_id, table, id_check_list):
+        default_query = "SELECT {0} FROM " + \
+                        f"{table} WHERE id_check IN {str(id_check_list).replace('[', '(').replace(']', ')')}"
 
-        # Add the last )
-        self.query += ")"
-        if self.count:
-            self._get_total_items()
-            if not self.data:
-                return {'totalItems': self.total_items}
-
-        # Remove the last )
-        self.query = self.query[:-1]
-        self._add_limit_to_query()
-
-        # Add the last )
-        self.query += ")"
-        self._add_sort_to_query()
-        if self.data:
-            self._execute_data_query()
-            return self._format_data_into_dictionary()
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, default_query=default_query,
+                                 fields=self.FIELDS_TRANSLATION[table], offset=0, limit=None, sort=None, search=None,
+                                 select=list(self.FIELDS_TRANSLATION[table].keys()), query="", count=False,
+                                 get_data=True, default_sort_field='id_check', default_sort_order='ASC')
