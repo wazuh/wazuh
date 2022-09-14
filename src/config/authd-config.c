@@ -74,7 +74,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->force_options.disconnected_time = 3600;
     config->force_options.after_registration_time = 3600;
     short legacy_force_insert = -1;
-    short legacy_force_time = -1;
+    int legacy_force_time = -1;
     if (!node)
         return 0;
 
@@ -129,7 +129,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             legacy_force_insert = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
             mwarn("The <%s> tag is deprecated since version 4.3.0. Use <%s> instead.", xml_force_time, xml_force);
-            short b = eval_bool(node[i]->content);
+            char *end;
+            int b = strtol(node[i]->content, &end, 10);
             if (b < 0) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
@@ -231,10 +232,13 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
         config->force_options.enabled = legacy_force_insert;
     }
-    if (legacy_force_time > 0) {
-        mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
-                legacy_force_time ? "'yes'" : "'no'", xml_force_time);
-        config->force_options.enabled = legacy_force_time;
+    if (legacy_force_time != -1) {
+        mdebug1("Setting <force>< disconnected_time> tag to %d to comply with the legacy <%s> option found.",
+                legacy_force_time, xml_force_time);
+        if(legacy_force_time != 0) {
+            config->force_options.enabled = false;
+        }
+        config->force_options.disconnected_time = legacy_force_time;
     }
     return 0;
 }
