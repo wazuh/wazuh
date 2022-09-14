@@ -84,7 +84,7 @@ else
             uid=$(( $GID + 1 ))
             echo "${USER}:x:$uid:$GID::${DIR}:/bin/false" >> /etc/passwd
         elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
-            ${USERADD} "${USER}" -H "${DIR}" -s ${OSMYSHELL} -G "${GROUP}"
+            ${USERADD} "${USER}" -h "${DIR}" -s ${OSMYSHELL} -G "${GROUP}"
         else
             ${USERADD} "${USER}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
         fi
