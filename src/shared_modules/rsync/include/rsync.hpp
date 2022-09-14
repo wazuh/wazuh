@@ -107,6 +107,13 @@ public:
      */
     RSYNC_HANDLE handle() { return m_handle; }
 
+    /**
+     * @brief Log message with the previously initialized gs_logFunction
+     *
+     * @param msg The message to log
+     */
+    static void logMessage(const std::string& msg);
+
 private:
     RSYNC_HANDLE m_handle;
     bool m_shouldBeRemoved;

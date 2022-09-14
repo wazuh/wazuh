@@ -353,3 +353,11 @@ StartSyncConfiguration& StartSyncConfiguration::rangeChecksum(QueryParameter& pa
     m_jsConfiguration["range_checksum_query_json"] = parameter.queryParameter();
     return *this;
 }
+
+void RemoteSync::logMessage(const std::string& msg)
+{
+    if (!msg.empty() && gs_logFunction)
+    {
+        gs_logFunction(msg);
+    }
+}

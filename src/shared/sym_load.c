@@ -46,6 +46,22 @@ void* so_get_module_handle(const char *so){
 #endif
 }
 
+void* so_check_module_loaded(const char *so){
+#ifdef WIN32
+    char file_name[MAX_PATH] = { 0 };
+    snprintf(file_name, MAX_PATH-1, "%s.dll", so);
+    return GetModuleHandle(file_name);
+#else
+    char file_name[4096] = { 0 };
+#if defined(__MACH__)
+    snprintf(file_name, 4096-1, "lib%s.dylib", so);
+#else
+    snprintf(file_name, 4096-1, "lib%s.so", so);
+#endif
+    return dlopen(file_name, RTLD_NOLOAD);
+#endif
+}
+
 void* so_get_function_sym(void *handle, const char *function_name){
 #ifndef WIN32
     return dlsym(handle, function_name);

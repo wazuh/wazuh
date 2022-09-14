@@ -20,6 +20,7 @@
 
 void* so_get_module_handle_on_path(const char *path, const char *so);
 void* so_get_module_handle(const char *so);
+void* so_check_module_loaded(const char *so);
 void* so_get_function_sym(void *handle, const char *function_name);
 int so_free_library(void *handle);
 

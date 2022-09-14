@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "messageCreatorFactory.h"
+#include "rsync.hpp"
 
 using namespace RSync;
 
@@ -108,6 +109,8 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
+
+        RemoteSync::logMessage(std::string("Remote sync started: " + RSync::IntegrityCommands[checksumCtx.rightCtx.type]));
     }
     else
     {
