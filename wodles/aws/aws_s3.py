@@ -72,6 +72,7 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 debug_level = 0
 INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
 INVALID_REQUEST_TIME_ERROR = "RequestTimeTooSkewed"
+THROTTLING_EXCEPTION_ERROR = "ThrottlingException"
 
 INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
 INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
@@ -1095,9 +1096,9 @@ class AWSBucket(WazuhIntegration):
             exit_number = 1
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == 'ThrottlingException':
-                debug(f'Error: The "check_bucket" request was denied due to request throttling. ', 2)
-                sys.exit(16)
+            if error_code == THROTTLING_EXCEPTION_ERROR:
+                error_message = "The 'check_bucket' request was denied due to request throttling."
+                exit_number = 16
             elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
                 error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
                 exit_number = 3
@@ -2583,9 +2584,9 @@ class AWSServerAccess(AWSCustomBucket):
             exit_number = 1
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == 'ThrottlingException':
-                debug(f'ERROR: The "check_bucket" request failed: {error}', 1)
-                sys.exit(16)
+            if error_code == THROTTLING_EXCEPTION_ERROR:
+                error_message = f"The 'check_bucket' request failed: {error}"
+                exit_number = 16
             elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
                 error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
                 exit_number = 3
