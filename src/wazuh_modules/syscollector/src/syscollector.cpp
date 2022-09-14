@@ -65,7 +65,16 @@ void syscollector_start(const unsigned int inverval,
         }
     };
 
+    std::function<void(const std::string&)> callbackDebugVerboseLogWrapper
+    {
+        [callbackLog](const std::string & data)
+        {
+            callbackLog(SYS_LOG_DEBUG_VERBOSE, data.c_str());
+        }
+    };
+
     DBSync::initialize(callbackErrorLogWrapper);
+    RemoteSync::initialize(callbackDebugVerboseLogWrapper);
 
     try
     {

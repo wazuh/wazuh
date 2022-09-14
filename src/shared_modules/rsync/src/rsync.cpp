@@ -219,6 +219,10 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
 void RemoteSync::teardown()
 {
     RSyncImplementation::instance().release();
+    if(gs_logFunction)
+    {
+        gs_logFunction = nullptr;
+    }
 }
 
 RemoteSync::RemoteSync()
@@ -283,4 +287,12 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
 void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
 {
     RSyncImplementation::instance().push(m_handle, payload);
+}
+
+void RemoteSync::logMessage(const std::string& msg)
+{
+    if (!msg.empty() && gs_logFunction)
+    {
+        gs_logFunction(msg);
+    }
 }
