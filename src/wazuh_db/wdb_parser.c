@@ -577,6 +577,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
 
             if (wdb_vacuum(wdb->db) < 0) {
+                mdebug1("DB(%s) Cannot vacuum database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
                 result = -1;
             } else {
@@ -918,8 +919,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_disconnect_agents(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "get-all-agents") == 0) {
+        } else if (strcmp(query, "get-all-agents") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-all-agents.");
                 mdebug2("Global DB query error near: %s", query);
@@ -928,8 +928,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_get_all_agents(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "get-agent-info") == 0) {
+        } else if (strcmp(query, "get-agent-info") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-agent-info.");
                 mdebug2("Global DB query error near: %s", query);
@@ -938,8 +937,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_get_agent_info(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "reset-agents-connection") == 0) {
+        } else if (strcmp(query, "reset-agents-connection") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for reset-agents-connection.");
                 mdebug2("Global DB query error near: %s", query);
@@ -948,8 +946,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_reset_agents_connection(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "get-agents-by-connection-status") == 0) {
+        } else if (strcmp(query, "get-agents-by-connection-status") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-agents-by-connection-status.");
                 mdebug2("Global DB query error near: %s", query);
@@ -958,8 +955,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "backup") == 0) {
+        } else if (strcmp(query, "backup") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for backup.");
                 mdebug2("Global DB query error near: %s", query);
@@ -969,8 +965,38 @@ int wdb_parse(char * input, char * output, int peer) {
                 // The "backup restore" command takes the pool_mutex to remove the wdb pointer
                 result = wdb_parse_global_backup(&wdb, next, output);
             }
-        }
-        else {
+        } else if (strcmp(query, "vacuum") == 0) {
+            if (wdb_commit2(wdb) < 0) {
+                mdebug1("Global DB Cannot end transaction.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = -1;
+            }
+
+            if (wdb_vacuum(wdb->db) < 0) {
+                mdebug1("Global DB Cannot vacuum database.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
+                result = -1;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+                result = 0;
+            }
+        } else if (strcmp(query, "get_fragmentation") == 0) {
+            int state = wdb_get_db_state(wdb);
+            if ( state < 0) {
+                mdebug1("Global DB Cannot get database fragmentation.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
+                result = -1;
+            } else {
+                cJSON *json_fragmentation = cJSON_CreateObject();
+                cJSON_AddNumberToObject(json_fragmentation, "fragmentation", state);
+                char *out = cJSON_PrintUnformatted(json_fragmentation);
+                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+                os_free(out);
+                cJSON_Delete(json_fragmentation);
+                result = 0;
+            }
+        } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
