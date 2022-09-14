@@ -569,6 +569,36 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_syscollector(wdb, query, next, output);
             }
+        } else if (strcmp(query, "vacuum") == 0) {
+            if (wdb_commit2(wdb) < 0) {
+                mdebug1("DB(%s) Cannot end transaction.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
+                result = -1;
+            }
+
+            if (wdb_vacuum(wdb->db) < 0) {
+                snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
+                result = -1;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+                result = 0;
+            }
+        } else if (strcmp(query, "get_fragmentation") == 0) {
+            int state = wdb_get_db_state(wdb);
+            if ( state < 0) {
+                mdebug1("DB(%s) Cannot get database fragmentation.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
+                result = -1;
+            } else {
+                cJSON *json_fragmentation = cJSON_CreateObject();
+                cJSON_AddNumberToObject(json_fragmentation, "fragmentation", state);
+                char *out = cJSON_PrintUnformatted(json_fragmentation);
+                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+                os_free(out);
+                cJSON_Delete(json_fragmentation);
+                result = 0;
+            }
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
