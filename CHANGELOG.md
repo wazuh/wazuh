@@ -56,7 +56,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Improved performance for MITRE API endpoints. ([#14208](https://github.com/wazuh/wazuh/pull/14208)
+- Improved performance for MITRE API endpoints. ([#14208](https://github.com/wazuh/wazuh/pull/14208))
 
 ### Ruleset
 
