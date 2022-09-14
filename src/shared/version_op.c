@@ -665,7 +665,7 @@ os_info *get_unix_version()
                     while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
                         char *key = strtok_r(buff, ":", &save_ptr);
                         if (key) {
-                            static const char *expected_key = "SystemVersion";
+                            const char *expected_key = "SystemVersion";
                             char *trimmed_key = os_strip_char(key, ' ');
                             if (trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
                                 char *value = strtok_r(NULL, " ", &save_ptr);

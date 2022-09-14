@@ -399,7 +399,8 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         {"System Version", "os_name"},
     };
     std::stringstream data{in};
-    auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, output) };
+    nlohmann::json tmp;
+    auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, tmp) };
 
     if (ret)
     {
@@ -407,13 +408,12 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         std::string match;
         std::regex pattern{PATTERN_MATCH};
 
-        if (Utils::findRegexInString(output["os_name"], match, pattern, 1))
+        if (Utils::findRegexInString(tmp["os_name"], match, pattern, 1))
         {
-            output["os_name"] = match;
+            output["os_name"] = std::move(match);
         }
         else
         {
-            output["os_name"] = "macOS";
             ret = false;
         }
     }
