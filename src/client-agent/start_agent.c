@@ -368,7 +368,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
                         cJSON *error_info = NULL;
                         if (error_msg = cJSON_Parse(strchr(tmp_msg, '{')), error_msg) {
                             if (error_info = cJSON_GetObjectItem(error_msg, "message"), cJSON_IsString(error_info)) {
-                                    mwarn("%s",error_info->valuestring);
+                                mwarn("Couldn't connect to server '%s': '%s'", agt->server[server_id].rip, error_info->valuestring);
                             } else {
                                 merror("Error getting message from server '%s'", agt->server[server_id].rip);
                             }
