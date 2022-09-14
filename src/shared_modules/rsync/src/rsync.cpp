@@ -35,10 +35,10 @@ static void log_message(const std::string& msg)
 
 EXPORTED void rsync_initialize(log_fnc_t log_function)
 {
-    RemoteSync::initialize([log_function](const std::string & msg)
+    if(!gs_logFunction)
     {
-        log_function(msg.c_str());
-    });
+        gs_logFunction = [log_function](const std::string & msg) { log_function(msg.c_str()); };
+    }
 }
 
 EXPORTED void rsync_teardown(void)
@@ -210,19 +210,12 @@ EXPORTED int rsync_close(const RSYNC_HANDLE handle)
 
 void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
 {
-    if (!gs_logFunction)
-    {
-        gs_logFunction = logFunction;
-    }
+    RSyncImplementation::instance().initializeLogFunction(m_handle, logFunction);
 }
 
 void RemoteSync::teardown()
 {
     RSyncImplementation::instance().release();
-    if(gs_logFunction)
-    {
-        gs_logFunction = nullptr;
-    }
 }
 
 RemoteSync::RemoteSync()
@@ -287,12 +280,4 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
 void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
 {
     RSyncImplementation::instance().push(m_handle, payload);
-}
-
-void RemoteSync::logMessage(const std::string& msg)
-{
-    if (!msg.empty() && gs_logFunction)
-    {
-        gs_logFunction(msg);
-    }
 }

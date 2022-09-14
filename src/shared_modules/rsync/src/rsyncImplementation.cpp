@@ -109,7 +109,8 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, jsStartParams, checksumCtx.rightCtx);
-        RemoteSync::logMessage(std::string("Remote sync started: " + RSync::IntegrityCommands[checksumCtx.rightCtx.type]));
+
+        RSyncImplementation::logMessage(handle, std::string("Remote sync started: " + RSync::IntegrityCommands[checksumCtx.rightCtx.type]));
     }
     else
     {
@@ -177,7 +178,6 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
     m_registrationController.initComponentByHandle(handle, messageHeaderID);
 }
 
-
 void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsigned char>& data)
 {
     const auto spRSyncContext
@@ -185,6 +185,26 @@ void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsi
         remoteSyncContext(handle)
     };
     spRSyncContext->m_msgDispatcher.push(data);
+}
+
+void RSyncImplementation::initializeLogFunction(const RSYNC_HANDLE handle, std::function<void(const std::string&)> logFunction)
+{
+    const auto spRSyncContext
+    {
+        remoteSyncContext(handle)
+    };
+    spRSyncContext->m_logFunction = logFunction;
+}
+
+void RSyncImplementation::logMessage(const RSYNC_HANDLE handle, const std::string& msg)
+{
+    const auto spRSyncContext
+    {
+        remoteSyncContext(handle)
+    };
+    if(spRSyncContext->m_logFunction){
+        spRSyncContext->m_logFunction(msg);
+    }
 }
 
 void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,

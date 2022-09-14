@@ -48,6 +48,7 @@ public:
               const std::function<void(const std::string&)> reportDiffFunction,
               const std::function<void(const std::string&)> reportSyncFunction,
               const std::function<void(const syscollector_log_level_t, const std::string&)> logFunction,
+              const std::function<void(const std::string&)> rsyncLogFunction,
               const std::string& dbPath,
               const std::string& normalizerConfigPath,
               const std::string& normalizerType,

@@ -74,7 +74,6 @@ void syscollector_start(const unsigned int inverval,
     };
 
     DBSync::initialize(callbackErrorLogWrapper);
-    RemoteSync::initialize(callbackDebugVerboseLogWrapper);
 
     try
     {
@@ -82,6 +81,7 @@ void syscollector_start(const unsigned int inverval,
                                       callbackDiffWrapper,
                                       callbackSyncWrapper,
                                       callbackLogWrapper,
+                                      callbackDebugVerboseLogWrapper,
                                       dbPath,
                                       normalizerConfigPath,
                                       normalizerType,

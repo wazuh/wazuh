@@ -114,6 +114,10 @@ namespace RSync
             void push(const RSYNC_HANDLE handle,
                       const std::vector<unsigned char>& data);
 
+            void initializeLogFunction(const RSYNC_HANDLE handle, std::function<void(const std::string&)> logFunction);
+
+            void logMessage(const RSYNC_HANDLE handle, const std::string& msg);
+
             bool isComponentRegistered(const std::string& component);
 
 
@@ -124,6 +128,7 @@ namespace RSync
                 public:
                     RSyncContext() = default;
                     MsgDispatcher m_msgDispatcher;
+                    std::function<void(const std::string&)> m_logFunction;
             };
 
             std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);

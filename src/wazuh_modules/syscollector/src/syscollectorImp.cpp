@@ -1154,6 +1154,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
                         const std::function<void(const syscollector_log_level_t, const std::string&)> logFunction,
+                        const std::function<void(const std::string&)> rsyncLogFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
                         const std::string& normalizerType,
@@ -1189,6 +1190,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_stopping = false;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
+    m_spRsync->initialize(rsyncLogFunction);
+
     m_spNormalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
     registerWithRsync();
     syncLoop(lock);

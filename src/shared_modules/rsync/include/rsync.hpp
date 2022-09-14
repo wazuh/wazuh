@@ -39,7 +39,7 @@ public:
     *
     * @param logFunction pointer to log function to be used by the rsync.
     */
-    static void initialize(std::function<void(const std::string&)> logFunction);
+    void initialize(std::function<void(const std::string&)> logFunction);
 
     /**
      * @brief Remote sync initializes the instance.
@@ -101,13 +101,6 @@ public:
      * @return RSYNC_HANDLE to be used in all internal calls.
      */
     RSYNC_HANDLE handle() { return m_handle; }
-
-    /**
-     * @brief Log message with previously initalized gs_logFunction.
-     *
-     * @param msg Message to log.
-     */
-    static void logMessage(const std::string& msg);
 
 private:
     RSYNC_HANDLE m_handle;

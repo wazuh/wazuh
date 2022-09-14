@@ -80,8 +80,15 @@ int main(int argc, const char* argv[])
         }
     };
 
+    const auto logDebugVerboseFunction
+    {
+        [logFunction](const std::string & log)
+        {
+            logFunction(SYS_LOG_DEBUG_VERBOSE, log);
+        }
+    };
+
     const auto spInfo{ std::make_shared<SysInfo>() };
-    RemoteSync::initialize(logErrorFunction);
     DBSync::initialize(logErrorFunction);
 
     try
@@ -107,6 +114,7 @@ int main(int argc, const char* argv[])
                                       reportDiffFunction,
                                       reportSyncFunction,
                                       logFunction,
+                                      logDebugVerboseFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                       SYSCOLLECTOR_NORM_TYPE,
