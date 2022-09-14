@@ -83,3 +83,4 @@ websocket-client==0.57.0
 Werkzeug==2.0.2
 xmltodict==0.12.0
 yarl==1.6.3
+treelib==1.6.1
