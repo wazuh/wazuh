@@ -684,6 +684,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
 
             if (wdb_vacuum(wdb->db) < 0) {
+                mdebug1("DB(%s) Cannot vacuum database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
                 result = -1;
             } else {
