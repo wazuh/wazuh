@@ -99,8 +99,8 @@ else()
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
                            -Wl,--wrap,check_path_type -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,fim_whodata_event \
-                           -Wl,--wrap,fim_checker -Wl,--wrap,os_random \
-                           -Wl,--wrap,convert_windows_string -Wl,--wrap,FOREVER \
+                           -Wl,--wrap,fim_checker -Wl,--wrap,os_random -Wl,--wrap,wpopenv -Wl,--wrap,atomic_int_get\
+                           -Wl,--wrap,convert_windows_string -Wl,--wrap,FOREVER -Wl,--wrap,wpclose \
                            -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,fprintf \
                            -Wl,--wrap,fgets -Wl,--wrap,wstr_split -Wl,--wrap,pthread_rwlock_wrlock \
                            -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int -Wl,--wrap,pthread_rwlock_rdlock \
