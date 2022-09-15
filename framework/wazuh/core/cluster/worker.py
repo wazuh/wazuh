@@ -755,13 +755,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             await asyncio.wait_for(file_received.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
+        except Exception as e:
+            if isinstance(e, asyncio.TimeoutError):
+                exc = WazuhClusterError(3039)
+            else:
+                exc = WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=name.encode() + b' ' + json.dumps(timeout_exc := WazuhClusterError(3039),
-                                                       cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+            await self.send_request(command=b"cancel_task",
+                                    data=f"{name} {json.dumps(exc, cls=c_common.WazuhJSONEncoder)}".encode())
+            raise exc
 
         if isinstance(self.sync_tasks[name].filename, Exception):
             exc_info = json.dumps(exception.WazuhClusterError(
@@ -796,12 +798,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                           ko_files, zip_path, self.cluster_items, self.task_loggers['Integrity sync'])
                 logger.debug("Updating local files: End.")
 
-            # Send extra valid files to the master.
-            logger.info(
-                f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
-            # if 'TYPE' in ko_files and ko_files['TYPE']:
-            #     logger.debug("Master requires some worker files.")
-            #     asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
+            logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
 
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing files: {e}")
