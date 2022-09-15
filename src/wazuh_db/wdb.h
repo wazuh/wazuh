@@ -694,20 +694,14 @@ int wdb_rootcheck_delete(wdb_t * wdb);
 /* Rebuild database. Returns 0 on success or -1 on error. */
 int wdb_vacuum(sqlite3 *db);
 
-/* Calculate the fragmentation state of a db. Returns 0-100 on success or -1 on error. */
+/* Calculate the fragmentation state of a db. Returns 0-100 on success or OS_INVALID on error. */
 int wdb_get_db_state(wdb_t * wdb);
 
-/* Create temp table */
-int wdb_create_temp_table(sqlite3 *db);
-
-/* Insert into temp table */
-int wdb_insert_into_temp_table(sqlite3 *db);
+/* Run a query without selecting any fields */
+int wdb_execute_non_select_query(sqlite3 *db, const char *query);
 
 /* Select from temp table */
 int wdb_select_from_temp_table(sqlite3 *db);
-
-/* Drop temp table */
-int wdb_drop_temp_table(sqlite3 *db);
 
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);

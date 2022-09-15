@@ -783,64 +783,49 @@ int wdb_vacuum(sqlite3 *db) {
     return result;
 }
 
-/* Calculate the fragmentation state of a db. Returns 0-100 on success or -1 on error. */
+/* Calculate the fragmentation state of a db. Returns 0-100 on success or OS_INVALID on error. */
 int wdb_get_db_state(wdb_t * wdb) {
-    int result = -1;
+    int result = OS_INVALID;
 
-    if (wdb_create_temp_table(wdb->db) == -1) {
+    if (wdb_execute_non_select_query(wdb->db, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error creating temporary table.");
-        return -1;
+        return OS_INVALID;
     }
 
-    if (wdb_insert_into_temp_table(wdb->db) != -1) {
-        if (result = wdb_select_from_temp_table(wdb->db), result == -1) {
+    if (wdb_execute_non_select_query(wdb->db, SQL_INSERT_INTO_TEMP_TABLE) != OS_INVALID) {
+        if (result = wdb_select_from_temp_table(wdb->db), result == OS_INVALID) {
             mdebug1("Error in select from temporary table.");
         }
     } else {
         mdebug1("Error inserting into temporary table.");
-        result = -1;
+        result = OS_INVALID;
     }
 
-    if (wdb_drop_temp_table(wdb->db) == -1) {
+    if (wdb_execute_non_select_query(wdb->db, SQL_DROP_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error dropping temporary table.");
-        return -1;
     }
 
     return result;
 }
 
-/* Create temp table */
-int wdb_create_temp_table(sqlite3 *db) {
+/* Run a query without selecting any fields */
+int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
     sqlite3_stmt *stmt = NULL;
-    int result = 0;
+    int result = OS_SUCCESS;
 
-    if (sqlite3_prepare_v2(db, SQL_CREATE_TEMP_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
+    if (query == NULL) {
+        mdebug1("wdb_execute_non_select_query(): null query.");
+        return OS_INVALID;
+    }
+
+    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
         mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
+        return OS_INVALID;
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
         mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
-}
-
-/* Insert into temp table */
-int wdb_insert_into_temp_table(sqlite3 *db) {
-    sqlite3_stmt *stmt = NULL;
-    int result = 0;
-
-    if (sqlite3_prepare_v2(db, SQL_INSERT_INTO_TEMP_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
+        result = OS_INVALID;
     }
 
     sqlite3_finalize(stmt);
@@ -854,34 +839,14 @@ int wdb_select_from_temp_table(sqlite3 *db) {
 
     if (sqlite3_prepare_v2(db, SQL_SELECT_TEMP_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
         mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
+        return OS_INVALID;
     }
 
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+    if (result = wdb_step(stmt), SQLITE_ROW == result) {
+        result = 100 - (int)(sqlite3_column_double(stmt, 0) * 100);
+    } else {
         mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    result = 100 - (int)(sqlite3_column_double(stmt, 0)*100);
-
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Drop temp table */
-int wdb_drop_temp_table(sqlite3 *db) {
-    sqlite3_stmt *stmt = NULL;
-    int result = 0;
-
-    if (sqlite3_prepare_v2(db, SQL_DROP_TEMP_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
+        result = OS_INVALID;
     }
 
     sqlite3_finalize(stmt);
