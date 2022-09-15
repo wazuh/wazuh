@@ -1350,9 +1350,9 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
     std::size_t colsQty = parser.options.size(); // Number of columns to parse
     std::size_t colsParsed = 0;                  // Number of columns parsed
 
-    bool isExtractComplete = false; // true when the end of CSV is reached
+    bool isExtractComplete = false; // true when the end of CSV and extraction is reached
     const char* str = *it;          // pointer to the current position in the string
-    const bool separatorIsEndToken = (separator == endToken);
+    const bool separatorIsEndToken = (separator == endToken); // Special case
 
     /*
      * Returns pair <const char * iterator, std::string_view value> with
