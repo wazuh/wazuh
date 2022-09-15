@@ -30,7 +30,7 @@ SendRetval unixDatagram::sendMsg(const std::string& msg)
     {
         // Send the message
         const auto sent {send(getFD(), msg.data(), payloadSize, MSG_NOSIGNAL)};
-        if (sent == payloadSize)
+        if (sent == (int64_t) payloadSize)
         {
             result = SendRetval::SUCCESS;
         }

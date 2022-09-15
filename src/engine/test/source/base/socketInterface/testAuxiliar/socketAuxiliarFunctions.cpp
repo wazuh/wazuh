@@ -185,7 +185,6 @@ CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool do
     }
     else
     {
-        payloadSize++; // send the null terminator
         // MSG_NOSIGNAL prevent broken pipe signal
         bool success = true;
         if (doSendSize)
@@ -242,7 +241,7 @@ inline std::vector<char> testStreamRcvMsg(const int socketFD)
     }
 
     std::vector<char> recvMsg;
-    recvMsg.resize(msgSize + 1, '\0');
+    recvMsg.resize(msgSize);
 
     recvb = testRecvWaitAll(socketFD, &(recvMsg[0]), msgSize);
     checkRcv(recvb);
@@ -284,5 +283,5 @@ std::vector<char> testRecvMsg(const int socketFD, const int socketType)
 std::string testRecvString(const int socketFD, const int socketType)
 {
     auto byteMsg {testRecvMsg(socketFD, socketType)};
-    return std::string(byteMsg.data());
+    return std::string(byteMsg.data(), byteMsg.size());
 }
