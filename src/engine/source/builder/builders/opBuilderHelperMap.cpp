@@ -848,6 +848,63 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
         });
 }
 
+base::Expression opBuilderHelperMerge(const std::any& definition)
+{
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(rawParameters);
+    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
+
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: parameter reference [{}] not found",
+                    name,
+                    parameters[0].m_value);
+    const auto failereTrace2 =
+        fmt::format("[{}] -> Failure: target field [{}] not found", name, targetField);
+    const auto failureTrace3 = fmt::format("[{}] -> Failure: fields type error", name);
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=,
+         targetField = std::move(targetField),
+         fieldReference = std::move(parameters[0].m_value)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Check target and reference field exists
+            if (!event->exists(fieldReference))
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            if (!event->exists(targetField))
+            {
+                return base::result::makeFailure(event, failereTrace2);
+            }
+
+            // Check fields types
+            auto tt = event->type(targetField);
+            auto st = event->type(fieldReference);
+            if (event->type(targetField) != event->type(fieldReference)
+                || (event->type(targetField) != json::Json::Type::Array
+                    && event->type(targetField) != json::Json::Type::Object))
+            {
+                return base::result::makeFailure(event, failureTrace3);
+            }
+
+            // Merge
+            event->merge(fieldReference, targetField);
+
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
 //*************************************************
 //*             JSON tranform                     *
 //*************************************************

@@ -1,9 +1,9 @@
-#include <json/json.hpp>
 #include "gtest/gtest.h"
+#include <json/json.hpp>
 
 #include <iostream>
-#include <string>
 #include <limits>
+#include <string>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
@@ -46,6 +46,10 @@ TEST(JsonStatic, FormatJsonPath)
     dotPath = ".key.value";
     ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
     ASSERT_EQ(pointerPath, "/key/value");
+
+    dotPath = ".";
+    ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
+    ASSERT_EQ(pointerPath, "");
 }
 
 TEST(JsonBuildtime, Size)
@@ -622,7 +626,7 @@ TEST(JsonRuntime, strFromPathNotCorrectPointer)
     ASSERT_EQ(doc.str("/Field"), "\"value\"");
 }
 
-//return various stages of nested objects
+// return various stages of nested objects
 TEST(JsonRuntime, strFromPathNestedObjects)
 {
     std::string expected =
@@ -651,6 +655,83 @@ TEST(JsonRuntime, strFromPathNestedObjects)
     ASSERT_EQ(doc.str("/D"), std::nullopt);
 }
 
+/****************************************************************************************/
+// QUERY
+/****************************************************************************************/
+TEST(JsonQueryTest, TypeName)
+{
+    // Root objs
+    Json nullObj {"null"};
+    Json boolObj {"true"};
+    Json numberObj {"123"};
+    Json stringObj {"\"string\""};
+    Json arrayObj {"[1, 2, 3]"};
+    Json objectObj {"{\"key\": \"value\"}"};
+
+    ASSERT_EQ(nullObj.typeName(), "null");
+    ASSERT_EQ(boolObj.typeName(), "bool");
+    ASSERT_EQ(numberObj.typeName(), "number");
+    ASSERT_EQ(stringObj.typeName(), "string");
+    ASSERT_EQ(arrayObj.typeName(), "array");
+    ASSERT_EQ(objectObj.typeName(), "object");
+    // Nested objs
+    Json nestedNullObj {"{\"key\": null}"};
+    Json nestedBoolObj {"{\"key\": true}"};
+    Json nestedNumberObj {"{\"key\": 123}"};
+    Json nestedStringObj {"{\"key\": \"string\"}"};
+    Json nestedArrayObj {"{\"key\": [1, 2, 3]}"};
+    Json nestedObjectObj {"{\"key\": {\"key\": \"value\"}}"};
+
+    ASSERT_EQ(nestedNullObj.typeName("/key"), "null");
+    ASSERT_EQ(nestedBoolObj.typeName("/key"), "bool");
+    ASSERT_EQ(nestedNumberObj.typeName("/key"), "number");
+    ASSERT_EQ(nestedStringObj.typeName("/key"), "string");
+    ASSERT_EQ(nestedArrayObj.typeName("/key"), "array");
+    ASSERT_EQ(nestedObjectObj.typeName("/key"), "object");
+
+    // Invalid pointers
+    ASSERT_THROW(nestedNullObj.typeName("key"), std::runtime_error);
+    // Field not found
+    ASSERT_THROW(nestedNullObj.typeName("/notFound"), std::runtime_error);
+}
+
+TEST(JsonQueryTest, Type)
+{
+    // Root objs
+    Json nullObj {"null"};
+    Json boolObj {"true"};
+    Json numberObj {"123"};
+    Json stringObj {"\"string\""};
+    Json arrayObj {"[1, 2, 3]"};
+    Json objectObj {"{\"key\": \"value\"}"};
+
+    ASSERT_EQ(nullObj.type(), Json::Type::Null);
+    ASSERT_EQ(boolObj.type(), Json::Type::Boolean);
+    ASSERT_EQ(numberObj.type(), Json::Type::Number);
+    ASSERT_EQ(stringObj.type(), Json::Type::String);
+    ASSERT_EQ(arrayObj.type(), Json::Type::Array);
+    ASSERT_EQ(objectObj.type(), Json::Type::Object);
+
+    // Nested objs
+    Json nestedNullObj {"{\"key\": null}"};
+    Json nestedBoolObj {"{\"key\": true}"};
+    Json nestedNumberObj {"{\"key\": 123}"};
+    Json nestedStringObj {"{\"key\": \"string\"}"};
+    Json nestedArrayObj {"{\"key\": [1, 2, 3]}"};
+    Json nestedObjectObj {"{\"key\": {\"key\": \"value\"}}"};
+
+    ASSERT_EQ(nestedNullObj.type("/key"), Json::Type::Null);
+    ASSERT_EQ(nestedBoolObj.type("/key"), Json::Type::Boolean);
+    ASSERT_EQ(nestedNumberObj.type("/key"), Json::Type::Number);
+    ASSERT_EQ(nestedStringObj.type("/key"), Json::Type::String);
+    ASSERT_EQ(nestedArrayObj.type("/key"), Json::Type::Array);
+    ASSERT_EQ(nestedObjectObj.type("/key"), Json::Type::Object);
+
+    // Invalid pointer
+    ASSERT_THROW(nestedObjectObj.type("invalid"), std::runtime_error);
+    // field not found
+    ASSERT_THROW(nestedObjectObj.type("/invalid"), std::runtime_error);
+}
 /****************************************************************************************/
 // GETTERS
 /****************************************************************************************/
@@ -1281,4 +1362,352 @@ TEST(JsonSettersTest, Erase)
 
     // Invalid pointer
     ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, MergeObjRoot)
+{
+    Json jObjSrc {R"({
+        "key1": "newValue1",
+        "key3": "newValue3",
+        "key4": {
+            "key5": "newValue5"
+        }
+    })"};
+
+    Json jObjDst {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key7": "value7"
+        }
+    })"};
+
+    Json jObjExpected {R"({
+        "key1": "newValue1",
+        "key2": "value2",
+        "key3": "newValue3",
+        "key4": {
+            "key5": "newValue5"
+        },
+        "key6": {
+            "key7": "value7"
+        }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge(jObjSrc));
+    ASSERT_EQ(jObjDst, jObjExpected);
+}
+
+TEST(JsonSettersTest, MergeObjNested)
+{
+    Json jObjSrc {R"({
+        "key1": "newValue1",
+        "key3": "newValue3",
+        "key4": {
+            "key5": "newValue5"
+        }
+    })"};
+
+    Json jObjDst {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key7": "value7"
+        }
+    })"};
+
+    Json jObjExpected {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key1": "newValue1",
+            "key3": "newValue3",
+            "key4": {
+                "key5": "newValue5"
+            },
+            "key7": "value7"
+        }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge(jObjSrc, "/key6"));
+    ASSERT_EQ(jObjDst, jObjExpected);
+}
+
+TEST(JsonSettersTest, MergeArrayRoot)
+{
+    Json jArraySrc {R"([
+        "newValue1",
+        "value2",
+        "newValue3",
+        {
+            "key5": "newValue5"
+        }
+    ])"};
+
+    Json jArrayDst {R"([
+        "value1",
+        "value2",
+        {
+            "key7": "value7"
+        }
+    ])"};
+
+    Json jArrayExpected {R"([
+        "value1",
+        "value2",
+        {
+            "key7": "value7"
+        },
+        "newValue1",
+        "newValue3",
+        {
+            "key5": "newValue5"
+        }
+    ])"};
+
+    ASSERT_NO_THROW(jArrayDst.merge(jArraySrc));
+    ASSERT_EQ(jArrayDst, jArrayExpected);
+}
+
+TEST(JsonSettersTest, MergeArrayNested)
+{
+    Json jArraySrc {R"([
+        "newValue1",
+        "value2",
+        "newValue3",
+        {
+            "key5": "newValue5"
+        }
+    ])"};
+
+    Json jArrayDst {R"({
+        "key1": [
+            "value1",
+            "value2",
+            {
+                "key7": "value7"
+            }
+        ]
+    })"};
+
+    Json jArrayExpected {R"({
+        "key1": [
+            "value1",
+            "value2",
+            {
+                "key7": "value7"
+            },
+            "newValue1",
+            "newValue3",
+            {
+                "key5": "newValue5"
+            }
+        ]
+    })"};
+
+    ASSERT_NO_THROW(jArrayDst.merge(jArraySrc, "/key1"));
+    ASSERT_EQ(jArrayDst, jArrayExpected);
+}
+
+TEST(JsonSettersTest, MergeFailCases)
+{
+
+    Json jObjSrc {R"({
+        "key1": "newValue1",
+        "key3": "newValue3",
+        "key4": {
+            "key5": "newValue5"
+        }
+    })"};
+
+    Json jArrSrc {R"([
+        "newValue1",
+        "newValue3"
+    ])"};
+
+    Json jObjDst {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key7": "value7"
+        }
+    })"};
+
+    Json jArrDst {R"([
+        "value1",
+        "value2"
+    ])"};
+
+    Json jOtherSrc {R"("value")"};
+    Json jOtherDst {R"("value")"};
+
+    // Invalid pointer
+    ASSERT_THROW(jObjDst.merge(jObjSrc, "object/key"), std::runtime_error);
+
+    // Different types
+    ASSERT_THROW(jObjDst.merge(jArrSrc), std::runtime_error);
+    ASSERT_THROW(jArrDst.merge(jObjSrc), std::runtime_error);
+
+    // Merging into a non-object non-array
+    ASSERT_THROW(jOtherDst.merge(jOtherSrc), std::runtime_error);
+}
+
+TEST(JsonSettersTest, MergeObjRootRef)
+{
+    Json jObjDst {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key7": "value7"
+        },
+        "to_merge": {
+            "key1": "newValue1",
+            "key3": "newValue3",
+            "key4": {
+                "key5": "newValue5"
+            }
+        }
+    })"};
+
+    Json jObjExpected {R"({
+        "key1": "newValue1",
+        "key2": "value2",
+        "key3": "newValue3",
+        "key4": {
+            "key5": "newValue5"
+        },
+        "key6": {
+            "key7": "value7"
+        }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge("/to_merge"));
+}
+
+TEST(JsonSettersTest, MergeObjNestedRef)
+{
+    Json jObjDst {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key7": "value7"
+        },
+        "to_merge": {
+            "key1": "newValue1",
+            "key3": "newValue3",
+            "key4": {
+                "key5": "newValue5"
+            }
+        }
+    })"};
+
+    Json jObjExpected {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key1": "newValue1",
+            "key3": "newValue3",
+            "key4": {
+                "key5": "newValue5"
+            },
+            "key7": "value7"
+        }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge("/to_merge", "/key6"));
+    ASSERT_EQ(jObjDst, jObjExpected);
+}
+
+TEST(JsonSettersTest, MergeArrayRootRef)
+{
+    Json jArrayDst {R"([
+        "value1",
+        "value2",
+        {
+            "key7": "value7"
+        },
+        {"to_merge": [
+            "newValue1",
+            "value2",
+            "newValue3",
+            {
+                "key5": "newValue5"
+            }
+        ]}
+    ])"};
+
+    ASSERT_THROW(jArrayDst.merge("/to_merge"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, MergeArrayNestedRef)
+{
+    Json jArrayDst {R"({
+        "key1": [
+            "value1",
+            "value2",
+            {
+                "key7": "value7"
+            }
+        ],
+        "to_merge": [
+            "newValue1",
+            "value2",
+            "newValue3",
+            {
+                "key5": "newValue5"
+            }
+        ]
+    })"};
+
+    Json jArrayExpected {R"({
+        "key1": [
+            "value1",
+            "value2",
+            {
+                "key7": "value7"
+            },
+            "newValue1",
+            "newValue3",
+            {
+                "key5": "newValue5"
+            }
+        ]
+    })"};
+
+    ASSERT_NO_THROW(jArrayDst.merge("/to_merge", "/key1"));
+    ASSERT_EQ(jArrayDst, jArrayExpected);
+}
+
+TEST(JsonSettersTest, MergeRefFailCases)
+{
+    Json jObjDst {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key6": {
+            "key7": "value7"
+        },
+        "to_merge_obj": {
+            "key1": "newValue1",
+            "key3": "newValue3",
+            "key4": {
+                "key5": "newValue5"
+            }
+        },
+        "to_merge_arr": [
+            "newValue1",
+            "newValue3"
+        ]
+    })"};
+
+    // Invalid pointer
+    ASSERT_THROW(jObjDst.merge("/object/key"), std::runtime_error);
+
+    // Destination not found
+    ASSERT_THROW(jObjDst.merge("/to_non_merge_obj"), std::runtime_error);
+
+    // Different types
+    ASSERT_THROW(jObjDst.merge("/to_merge_arr"), std::runtime_error);
+
+    // Merging into a non-object non-array
+    ASSERT_THROW(jObjDst.merge("/to_merge_obj", "/key1"), std::runtime_error);
 }
