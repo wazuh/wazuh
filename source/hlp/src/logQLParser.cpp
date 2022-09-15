@@ -140,9 +140,6 @@ static bool parseCapture(Tokenizer& tk, ExpressionList& expresions)
             {
                 return false;
             }
-            // Fix up the combType of the previous capture as this is now an OR
-            auto& prevCapture = expresions.back();
-            prevCapture.type = ExpressionType::OrCapture;
 
             Token orEnd = getToken(tk);
             expresions.push_back({{orEnd.text, orEnd.len}, ExpressionType::Capture});
@@ -155,6 +152,9 @@ static bool parseCapture(Tokenizer& tk, ExpressionList& expresions)
             char endToken = peekChar(tk);
             auto& currentCapture = expresions.back();
             currentCapture.endToken = endToken;
+            // Fix up the combType of the previous capture as this is now an OR
+            auto& prevCapture = expresions.at(expresions.size() - 2);
+            prevCapture.type = ExpressionType::OrCapture;
             prevCapture.endToken = endToken;
         }
         else
