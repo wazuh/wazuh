@@ -107,6 +107,7 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,
                               "helper.s_ipVersion");
     Registry::registerBuilder(builders::opBuilderHelperAppendSplitString, "helper.s_to_array");
+    Registry::registerBuilder(builders::opBuilderHelperMerge, "helper.merge");
 
     // DB sync
     Registry::registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
