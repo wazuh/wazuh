@@ -232,7 +232,7 @@ TEST(unixDatagramSocket, SendMessage)
 
     ASSERT_NO_THROW(uDgram.sendMsg(TEST_SEND_MESSAGE.data()));
 
-    ASSERT_EQ(testRecvString(serverSocketFD, SOCK_DGRAM), TEST_SEND_MESSAGE);
+    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).data(), TEST_SEND_MESSAGE.data());
 
     close(serverSocketFD);
 
@@ -248,7 +248,7 @@ TEST(unixDatagramSocket, SendMessageDisconnected)
 
     ASSERT_NO_THROW(uDgram.sendMsg(TEST_SEND_MESSAGE.data()));
 
-    ASSERT_EQ(testRecvString(serverSocketFD, SOCK_DGRAM), TEST_SEND_MESSAGE);
+    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).data(), TEST_SEND_MESSAGE.data());
 
     close(serverSocketFD);
 

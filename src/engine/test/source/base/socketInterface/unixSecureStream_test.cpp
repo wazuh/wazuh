@@ -232,7 +232,7 @@ TEST(unixSecureStreamSocket, SendMessage)
 
     ASSERT_NO_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data()));
     ASSERT_NO_THROW(
-        ASSERT_EQ(testRecvString(serverSocketFD, SOCK_STREAM), TEST_SEND_MESSAGE));
+        ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(), TEST_SEND_MESSAGE.data()));
 
     close(acceptSocketFd);
     close(serverSocketFD);
@@ -253,7 +253,7 @@ TEST(unixSecureStreamSocket, SendMessageDisconnected)
     ASSERT_GT(serverSocketFD, 0);
 
     ASSERT_NO_THROW(
-        ASSERT_EQ(testRecvString(serverSocketFD, SOCK_STREAM), TEST_SEND_MESSAGE));
+        ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_STREAM).data(), TEST_SEND_MESSAGE.data()));
 
     close(acceptSocketFd);
     close(serverSocketFD);
@@ -276,7 +276,7 @@ TEST(unixSecureStreamSocket, ReceiveMessage)
     auto commRetval {testSendMsg(serverSocketFD, TEST_SEND_MESSAGE.data())};
     ASSERT_EQ(commRetval, CommRetval::SUCCESS);
 
-    auto receivedMessage {uStream.recvMsg()};
+    auto receivedMessage {uStream.recvString()};
     ASSERT_STREQ(receivedMessage.data(), TEST_SEND_MESSAGE.data());
 
     close(acceptSocketFd);
@@ -318,7 +318,7 @@ TEST(unixSecureStreamSocket, SendLongestMessage)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
-    char msg[uStream.getMaxMsgSize()] = {};
+    char msg[uStream.getMaxMsgSize() + 1] {};
     memset(msg, 'x', uStream.getMaxMsgSize());
 
     // Create server
