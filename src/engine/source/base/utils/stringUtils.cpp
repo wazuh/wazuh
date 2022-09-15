@@ -39,7 +39,7 @@ std::string join(const std::vector<std::string>& strVector,
                  const bool startsWithSeparator)
 {
     std::string strResult {};
-    for (ssize_t i = 0; i < strVector.size(); ++i)
+    for (std::size_t i = 0; i < strVector.size(); ++i)
     {
         strResult.append((!startsWithSeparator && 0 == i) ? "" : separator);
         strResult.append(strVector.at(i));
