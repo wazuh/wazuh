@@ -30,14 +30,15 @@
 #endif
 
 /* Internal structures */
-typedef struct _file_sum {
+typedef struct _file_time {
     char *name;
-    os_md5 sum;
-} file_sum;
+    time_t m_time;
+} file_time;
 
 typedef struct group_t {
     char *name;
-    file_sum **f_sum;
+    file_time **f_time;
+    os_md5 merged_sum;
     bool has_changed;
     bool exists;
 } group_t;
@@ -47,22 +48,24 @@ static OSHash *invalid_files;
 /* Internal functions prototypes */
 
 /**
- * @brief Process group, update file sum structure and create merged.mg file
+ * @brief Process group, update file time structure and create merged.mg file
  * @param group Group name
- * @param _f_sum File sum structure to update
+ * @param _f_time File time structure to update
+ * @param _merged_sum Merged sum to update
  * @param sharedcfg_dir Group directory
  * @param create_merged Flag indicating if merged.mg needs to be created
  */
-STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged);
+STATIC void c_group(const char *group, file_time ***_f_time, os_md5 *_merged_sum, char * sharedcfg_dir, bool create_merged);
 
 /**
- * @brief Process multigroup, update file sum structure and create merged.mg file
+ * @brief Process multigroup, update file time structure and create merged.mg file
  * @param multi_group Multigroup name
- * @param _f_sum File sum structure to update
+ * @param _f_time File time structure to update
+ * @param _merged_sum Merged sum to update
  * @param hash_multigroup Multigroup hash
  * @param create_merged Flag indicating if merged.mg needs to be created
  */
-STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool create_merged);
+STATIC void c_multi_group(char *multi_group, file_time ***_f_time, os_md5 *_merged_sum, char *hash_multigroup, bool create_merged);
 
 /**
  * @brief Process groups and multigroups files
@@ -91,30 +94,28 @@ STATIC void process_deleted_multi_groups();
 
 /**
  * @brief Find a group structure from a file name and md5
- * @param file File name
  * @param md5 MD5 of the file
  * @param group_name Array to store the group name if exists
  * @return Group structure if exists, NULL otherwise
  */
-STATIC group_t* find_group_from_file(const char * file, const char * md5, char group_name[OS_SIZE_65536]);
+STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]);
 
 /**
  * @brief Find a multigroup structure from a file name and md5
- * @param file File name
  * @param md5 MD5 of the file
  * @param multigroup_name Array to store the multigroup name if exists
  * @return Multigroup structure if exists, NULL otherwise
  */
-STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup_name[OS_SIZE_65536]);
+STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]);
 
 /**
- * @brief Compare and check if the file sum has changed
- * @param old_sum File sum of previous scan
- * @param new_sum File sum of new scan
+ * @brief Compare and check if the file time has changed
+ * @param old_time File time of previous scan
+ * @param new_time File time of new scan
  * @return true Changed
  * @return false Didn't change
  */
-STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
+STATIC bool ftime_changed(file_time **old_time, file_time **new_time);
 
 /**
  * @brief Check if any group of a given multigroup has changed
@@ -150,13 +151,13 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
  * @param src_path Source path of the files to validate
  * @param group Group name
  * @param merged_tmp Name of temporal merged.mg file
- * @param f_sum File sum structure to update
+ * @param f_time File time structure to update
  * @param f_size File size variable to update
  * @param create_merged Flag indicating if merged.mg needs to be created
  * @param path_offset Variable that indicates the necessary offset for the MergeAppendFile function
  * @return 1 on shared file creation success, 0 on shared file creation failure
  */
-STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset);
+STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_time ***f_time, unsigned int *f_size, bool create_merged, int path_offset);
 
 /**
  * @brief Copy the contents of one directory to another
@@ -196,14 +197,14 @@ void cleaner(void* data) {
     os_free(data);
 }
 
-// Frees file sum structure
-void free_file_sum(file_sum **f_sum) {
-    if (f_sum) {
-        for (unsigned int i = 0; f_sum[i]; i++) {
-            os_free(f_sum[i]->name);
-            os_free(f_sum[i]);
+// Frees file time structure
+void free_file_time(file_time **f_time) {
+    if (f_time) {
+        for (unsigned int i = 0; f_time[i]; i++) {
+            os_free(f_time[i]->name);
+            os_free(f_time[i]);
         }
-        os_free(f_sum);
+        os_free(f_time);
     }
 }
 
@@ -381,15 +382,15 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
                 w_mutex_lock(&files_mutex);
 
-                if (aux = OSHash_Get_ex(groups, data->group), !aux || !aux->f_sum) {
-                    if (aux = OSHash_Get_ex(multi_groups, data->group), !aux || !aux->f_sum) {
+                if (aux = OSHash_Get_ex(groups, data->group), !aux || !aux->f_time) {
+                    if (aux = OSHash_Get_ex(multi_groups, data->group), !aux || !aux->f_time) {
                         mdebug1("No such group '%s' for agent '%s'", data->group, key->id);
                     }
                 }
 
-                if (aux && aux->f_sum && aux->f_sum[0] && *(aux->f_sum[0]->sum)) {
+                if (aux && aux->merged_sum[0]) {
                     // Copy sum before unlock mutex
-                    memcpy(data->merged_sum, aux->f_sum[0]->sum, sizeof(os_md5));
+                    memcpy(data->merged_sum, aux->merged_sum, sizeof(os_md5));
                 }
 
                 w_mutex_unlock(&files_mutex);
@@ -474,8 +475,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 }
 
 /* Generate merged file for groups */
-STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged) {
+STATIC void c_group(const char *group, file_time ***_f_time, os_md5 *_merged_sum, char * sharedcfg_dir, bool create_merged) {
     os_md5 md5sum;
+    struct stat attrib;
     int merged_ok = 1;
     unsigned int f_size = 0;
     char merged_tmp[PATH_MAX + 1];
@@ -486,11 +488,11 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
     *merged_tmp = '\0';
 
     /* Create merged file */
-    os_calloc(2, sizeof(file_sum *), (*_f_sum));
-    os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
-
-    (*_f_sum)[f_size]->name = NULL;
-    (*_f_sum)[f_size]->sum[0] = '\0';
+    os_calloc(2, sizeof(file_time *), (*_f_time));
+    os_calloc(1, sizeof(file_time), (*_f_time)[f_size]);
+    (*_f_time)[f_size]->m_time = 0;
+    os_strdup(SHAREDCFG_FILENAME, (*_f_time)[f_size]->name);
+    (*_f_time)[++f_size] = NULL;
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
@@ -517,8 +519,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
                 // Validate the file
                 if (r_group->merged_is_downloaded) {
                     // File is invalid
-                    if (!TestUnmergeFiles(destination_path, OS_TEXT))
-                    {
+                    if (!TestUnmergeFiles(destination_path, OS_TEXT)) {
                         int fd = unlink(destination_path);
 
                         merror("The downloaded file '%s' is corrupted.", destination_path);
@@ -554,20 +555,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
         }
     }
 
-    f_size++;
-
-    if (r_group && r_group->merged_is_downloaded) {
-        // Validate the file
-        if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            (*_f_sum)[0]->sum[0] = '\0';
-            merror("Accessing file '%s'", merged);
-        } else {
-            snprintf((*_f_sum)[0]->sum, sizeof((*_f_sum)[0]->sum), "%s", md5sum);
-            os_strdup(SHAREDCFG_FILENAME, (*_f_sum)[0]->name);
-        }
-
-        (*_f_sum)[f_size] = NULL;
-    } else {
+    if (!r_group || !r_group->merged_is_downloaded) {
         if (create_merged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
             // First call, truncate merged file
@@ -578,24 +566,24 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
         }
 
         // Merge ar.conf always
-        if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
+        if (stat(DEFAULTAR, &attrib) == 0) {
+            os_realloc((*_f_time), (f_size + 2) * sizeof(file_time *), (*_f_time));
+            os_calloc(1, sizeof(file_time), (*_f_time)[f_size]);
+            (*_f_time)[f_size]->m_time = attrib.st_mtime;
+            os_strdup(DEFAULTAR_FILE, (*_f_time)[f_size]->name);
+            (*_f_time)[++f_size] = NULL;
+
             if (create_merged) {
                 if (merged_ok = MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1), merged_ok == 0) {
                     unlink(merged_tmp);
                     return;
                 }
             }
-            os_realloc((*_f_sum), (f_size + 2) * sizeof(file_sum *), (*_f_sum));
-            os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
-            snprintf((*_f_sum)[f_size]->sum, sizeof((*_f_sum)[f_size]->sum), "%s", md5sum);
-            os_strdup(DEFAULTAR_FILE, (*_f_sum)[f_size]->name);
-            (*_f_sum)[f_size + 1] = NULL;
-            f_size++;
         }
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
-        merged_ok = validate_shared_files(group_path, group, merged_tmp, _f_sum, &f_size, create_merged, -1);
+        merged_ok = validate_shared_files(group_path, group, merged_tmp, _f_time, &f_size, create_merged, -1);
 
         if (create_merged) {
             if (merged_ok == 0) {
@@ -604,22 +592,25 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
             }
             OS_MoveFile(merged_tmp, merged);
         }
+    }
 
-        if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            if (create_merged) {
-                merror("Accessing file '%s'", merged);
-            }
-
-            (*_f_sum)[0]->sum[0] = '\0';
+    if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
+        if (create_merged) {
+            merror("Accessing file '%s'", merged);
         }
+    } else {
+        snprintf((*_merged_sum), sizeof((*_merged_sum)), "%s", md5sum);
 
-        snprintf((*_f_sum)[0]->sum, sizeof((*_f_sum)[0]->sum), "%s", md5sum);
-        os_strdup(SHAREDCFG_FILENAME, (*_f_sum)[0]->name);
+        if (stat(merged, &attrib) != 0) {
+            merror("Unable to get entry attributes '%s'", merged);
+        } else {
+            (*_f_time)[0]->m_time = attrib.st_mtime;
+        }
     }
 }
 
 /* Generate merged file for multigroups */
-STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool create_merged) {
+STATIC void c_multi_group(char *multi_group, file_time ***_f_time, os_md5 *_merged_sum, char *hash_multigroup, bool create_merged) {
     DIR *dp;
     char *group;
     char *save_ptr = NULL;
@@ -666,15 +657,15 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
         return;
     }
 
-    c_group(hash_multigroup, _f_sum, MULTIGROUPS_DIR, create_merged);
+    c_group(hash_multigroup, _f_time, _merged_sum, MULTIGROUPS_DIR, create_merged);
 
     closedir(dp);
 }
 
-/* Create/update the structure with the files and checksums */
+/* Create/update the structure with the files */
 STATIC void c_files()
 {
-    mdebug2("Updating shared files sums.");
+    mdebug2("Updating shared files.");
 
     w_mutex_lock(&files_mutex);
 
@@ -696,7 +687,7 @@ STATIC void c_files()
         reported_path_size_exceeded = 1;
     }
 
-    mdebug2("End updating shared files sums.");
+    mdebug2("End updating shared files.");
 }
 
 STATIC void process_groups() {
@@ -723,7 +714,7 @@ STATIC void process_groups() {
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                mdebug1("At process_groups(): Could not open directory '%s'", path);
+                mdebug1("Could not open directory '%s'", path);
             }
             continue;
         }
@@ -737,19 +728,19 @@ STATIC void process_groups() {
                 merror("Couldn't add group '%s' to hash table 'groups'", entry->d_name);
             } else {
                 group->name = strdup(entry->d_name);
-                c_group(entry->d_name, &group->f_sum, SHAREDCFG_DIR, !logr.nocmerged);
+                c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, !logr.nocmerged);
                 group->has_changed = true;
                 group->exists = true;
             }
         } else {
-            file_sum **old_sum = group->f_sum;
-            group->f_sum = NULL;
-            c_group(entry->d_name, &group->f_sum, SHAREDCFG_DIR, false);
-            if (fsum_changed(old_sum, group->f_sum)) {
+            file_time **old_time = group->f_time;
+            group->f_time = NULL;
+            c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, false);
+            if (ftime_changed(old_time, group->f_time)) {
                 // Group has changed
                 if (!logr.nocmerged) {
-                    free_file_sum(group->f_sum);
-                    c_group(entry->d_name, &group->f_sum, SHAREDCFG_DIR, true);
+                    free_file_time(group->f_time);
+                    c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true);
                 }
                 group->has_changed = true;
                 mdebug2("Group '%s' has changed.", group->name);
@@ -757,7 +748,7 @@ STATIC void process_groups() {
                 // Group didn't change
                 group->has_changed = false;
             }
-            free_file_sum(old_sum);
+            free_file_time(old_time);
             group->exists = true;
         }
 
@@ -851,31 +842,31 @@ STATIC void process_multi_groups() {
                 merror("Couldn't add multigroup '%s' to hash table 'multi_groups'", key);
             } else {
                 multigroup->name = strdup(key);
-                c_multi_group(key, &multigroup->f_sum, data, !logr.nocmerged);
+                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, !logr.nocmerged);
                 multigroup->exists = true;
             }
         } else {
             if (group_changed(key)) {
                 // Multigroup needs to be updated
-                free_file_sum(multigroup->f_sum);
-                c_multi_group(key, &multigroup->f_sum, data, !logr.nocmerged);
+                free_file_time(multigroup->f_time);
+                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, !logr.nocmerged);
                 mdebug2("Multigroup '%s' has changed.", multigroup->name);
 
             } else {
-                file_sum **old_sum = multigroup->f_sum;
-                multigroup->f_sum = NULL;
-                c_multi_group(key, &multigroup->f_sum, data, false);
-                if (fsum_changed(old_sum, multigroup->f_sum)) {
+                file_time **old_time = multigroup->f_time;
+                multigroup->f_time = NULL;
+                c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, false);
+                if (ftime_changed(old_time, multigroup->f_time)) {
                     // Multigroup was modified from outside
                     if (!logr.nocmerged) {
-                        free_file_sum(multigroup->f_sum);
-                        c_multi_group(key, &multigroup->f_sum, data, true);
+                        free_file_time(multigroup->f_time);
+                        c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, true);
                         mwarn("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
                     } else {
                         mdebug2("Multigroup '%s' was modified from outside.", multigroup->name);
                     }
                 }
-                free_file_sum(old_sum);
+                free_file_time(old_time);
             }
             multigroup->exists = true;
         }
@@ -907,7 +898,7 @@ STATIC void process_deleted_groups() {
             group->exists = false;
         } else {
             OSHash_Delete_ex(groups, key);
-            free_file_sum(group->f_sum);
+            free_file_time(group->f_time);
             os_free(group->name);
             os_free(group);
         }
@@ -942,7 +933,7 @@ STATIC void process_deleted_multi_groups() {
             snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
             rmdir_ex(multi_path);
             OSHash_Delete_ex(multi_groups, key);
-            free_file_sum(multigroup->f_sum);
+            free_file_time(multigroup->f_time);
             os_free(multigroup->name);
             os_free(multigroup);
         }
@@ -951,17 +942,16 @@ STATIC void process_deleted_multi_groups() {
     }
 }
 
-STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset) {
+STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_time ***f_time, unsigned int *f_size, bool create_merged, int path_offset) {
     char ** files;
     char file[MAX_SHARED_PATH + 1];
     int merged_ok = 1;
     unsigned int i;
-    os_md5 md5sum;
 
     // Try to open directory, avoid TOCTOU hazard
     if (files = wreaddir(src_path), !files) {
         if (errno != ENOTDIR) {
-            mdebug1("At validate_shared_files(): Could not open directory '%s'", src_path);
+            mdebug1("Could not open directory '%s'", src_path);
         }
         return 1;
     }
@@ -980,9 +970,9 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
 
         if (snprintf(file, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH) {
             if (!reported_path_size_exceeded) {
-                mwarn("At validate_shared_files(): path too long '%s'", file);
+                mwarn("Path too long '%s'", file);
             } else {
-                mdebug2("At validate_shared_files(): path too long '%s'", file);
+                mdebug2("Path too long '%s'", file);
             }
             continue;
         }
@@ -1001,23 +991,18 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
             }
         }
 
-        if (stat(file, &attrib) != 0 ) {
-            merror("At validate_shared_files(): Unable to get entry attributes '%s'", file);
+        if (stat(file, &attrib) != 0) {
+            merror("Unable to get entry attributes '%s'", file);
             continue;
         }
 
         if (S_ISDIR(attrib.st_mode)) {
-            if (merged_ok = validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset), merged_ok == 0) {
+            if (merged_ok = validate_shared_files(file, group, merged_tmp, f_time, f_size, create_merged, path_offset), merged_ok == 0) {
                 free_strarray(files);
                 return 0;
             }
         } else {
             // Is a file
-            if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
-                merror("Accessing file '%s'", file);
-                continue;
-            }
-
             if (modify_time = (time_t*) OSHash_Get(invalid_files, file), modify_time != NULL) {
                 time_t last_modify;
 
@@ -1057,22 +1042,21 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
             }
 
             if (!ignored) {
+                os_realloc((*f_time), ((*f_size) + 2) * sizeof(file_time *), (*f_time));
+                os_calloc(1, sizeof(file_time), (*f_time)[(*f_size)]);
+                (*f_time)[*f_size]->m_time = attrib.st_mtime;
+                os_strdup(file, (*f_time)[(*f_size)]->name);
+                (*f_time)[++(*f_size)] = NULL;
+
                 if (create_merged) {
                     if (merged_ok = MergeAppendFile(merged_tmp, file, NULL, path_offset), merged_ok == 0) {
-                        (*f_sum)[*f_size] = NULL;
                         free_strarray(files);
                         return 0;
                     }
                 }
-                os_realloc(*f_sum, ((*f_size) + 2) * sizeof(file_sum *), *f_sum);
-                os_calloc(1, sizeof(file_sum), (*f_sum)[(*f_size)]);
-                snprintf((*f_sum)[*f_size]->sum, sizeof((*f_sum)[*f_size]->sum), "%s", md5sum);
-                os_strdup(file, (*f_sum)[(*f_size)]->name);
-                (*f_size) = (*f_size) + 1;
             }
         }
     }
-    (*f_sum)[*f_size] = NULL;
     free_strarray(files);
     return 1;
 }
@@ -1109,18 +1093,18 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
 
         if (snprintf(source_path, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH ) {
             if (!reported_path_size_exceeded) {
-                mwarn("At copy_directory(): source path too long '%s'", source_path);
+                mwarn("Source path too long '%s'", source_path);
             } else {
-                mdebug2("At copy_directory(): source path too long '%s'", source_path);
+                mdebug2("Source path too long '%s'", source_path);
             }
             continue;
         }
 
         if (snprintf(destination_path, MAX_SHARED_PATH + 1, "%s/%s", dst_path, files[i]) > MAX_SHARED_PATH) {
             if (!reported_path_size_exceeded) {
-                mwarn("At copy_directory(): destination path too long '%s'", destination_path);
+                mwarn("Destination path too long '%s'", destination_path);
             } else {
-                mdebug2("At copy_directory(): destination path too long '%s'", destination_path);
+                mdebug2("Destination path too long '%s'", destination_path);
             }
             continue;
         }
@@ -1167,29 +1151,19 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
     return;
 }
 
-STATIC group_t* find_group_from_file(const char * file, const char * md5, char group_name[OS_SIZE_65536]) {
+STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]) {
     group_t *group;
-    file_sum **f_sum;
     OSHashNode *my_node;
-    unsigned int i, j;
+    unsigned int i;
 
     my_node = OSHash_Begin(groups, &i);
 
     while (my_node) {
         group = my_node->data;
-        f_sum = group->f_sum;
 
-        if (f_sum && f_sum[0] && f_sum[0]->name) {
-            for (j = 0; f_sum[j]; j++) {
-                if (!strcmp(f_sum[j]->name, file)) {
-                    if (!strcmp(f_sum[j]->sum, md5)) {
-                        snprintf(group_name, OS_SIZE_65536, "%s", group->name);
-                        return group;
-                    } else {
-                        break;
-                    }
-                }
-            }
+        if (!strcmp(group->merged_sum, md5)) {
+            snprintf(group_name, OS_SIZE_65536, "%s", group->name);
+            return group;
         }
 
         my_node = OSHash_Next(groups, &i, my_node);
@@ -1198,29 +1172,19 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
     return NULL;
 }
 
-STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup_name[OS_SIZE_65536]) {
+STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]) {
     group_t *multigroup;
-    file_sum **f_sum;
     OSHashNode *my_node;
-    unsigned int i, j;
+    unsigned int i;
 
     my_node = OSHash_Begin(multi_groups, &i);
 
     while (my_node) {
         multigroup = my_node->data;
-        f_sum = multigroup->f_sum;
 
-        if (f_sum && f_sum[0] && f_sum[0]->name) {
-            for (j = 0; f_sum[j]; j++) {
-                if (!strcmp(f_sum[j]->name, file)) {
-                    if (!strcmp(f_sum[j]->sum, md5)) {
-                        snprintf(multigroup_name, OS_SIZE_65536, "%s", multigroup->name);
-                        return multigroup;
-                    } else {
-                        break;
-                    }
-                }
-            }
+        if (!strcmp(multigroup->merged_sum, md5)) {
+            snprintf(multigroup_name, OS_SIZE_65536, "%s", multigroup->name);
+            return multigroup;
         }
 
         my_node = OSHash_Next(multi_groups, &i, my_node);
@@ -1229,38 +1193,28 @@ STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, 
     return NULL;
 }
 
-STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
+STATIC bool ftime_changed(file_time **old_time, file_time **new_time) {
     unsigned int size_old, size_new = 0;
     unsigned int i, j;
 
-    if (!old_sum || !new_sum) {
-        if (!old_sum && !new_sum) {
+    if (!old_time || !new_time) {
+        if (!old_time && !new_time) {
             return false;
         } else {
             return true;
         }
     }
 
-    if (old_sum[0] && new_sum[0]) {
-        if (!old_sum[0]->name || !new_sum[0]->name) {
-            if (!old_sum[0]->name && !new_sum[0]->name) {
-                return false;
-            } else {
-                return true;
-            }
-        }
-    }
-
-    for (size_old = 0; old_sum[size_old]; size_old++);
-    for (size_new = 0; new_sum[size_new]; size_new++);
+    for (size_old = 0; old_time[size_old]; size_old++);
+    for (size_new = 0; new_time[size_new]; size_new++);
 
     if (size_old == size_new) {
-        for (i = 0; old_sum[i]; i++) {
+        for (i = 0; old_time[i]; i++) {
             bool found = false;
-            for (j = 0; new_sum[j]; j++) {
-                if (!strcmp(old_sum[i]->name, new_sum[j]->name)) {
+            for (j = 0; new_time[j]; j++) {
+                if (!strcmp(old_time[i]->name, new_time[j]->name)) {
                     found = true;
-                    if (strcmp(old_sum[i]->sum, new_sum[j]->sum)) {
+                    if (old_time[i]->m_time != new_time[j]->m_time) {
                         return true;
                     }
                     break;
@@ -1363,7 +1317,7 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
 
             w_mutex_lock(&files_mutex);
 
-            if (!guess_agent_group || (!find_group_from_file(file, md5, group) && !find_multi_group_from_file(file, md5, group))) {
+            if (!guess_agent_group || (!find_group_from_sum(md5, group) && !find_multi_group_from_sum(md5, group))) {
                 // If the group could not be guessed, set to "default"
                 // or if the user requested not to guess the group, through the internal
                 // option 'guess_agent_group', set to "default"
@@ -1599,7 +1553,7 @@ void manager_init()
     pending_data = OSHash_Create();
 
     if (!m_hash || !invalid_files || !groups || !multi_groups || !pending_data) {
-        merror_exit("At manager_init(): OSHash_Create() failed");
+        merror_exit("OSHash_Create() failed");
     }
 
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
