@@ -89,10 +89,20 @@ std::string Json::formatJsonPath(std::string_view dotPath)
 {
     // TODO: Handle array indices and pointer path operators.
     std::string pointerPath {dotPath};
-    std::replace(std::begin(pointerPath), std::end(pointerPath), '.', '/');
-    if (pointerPath.front() != '/')
+
+    // Some helpers may indiate that the field is root element
+    // In this case the path will be defined as "."
+    if (pointerPath == ".")
     {
-        pointerPath.insert(0, "/");
+        pointerPath = "";
+    }
+    else
+    {
+        std::replace(std::begin(pointerPath), std::end(pointerPath), '.', '/');
+        if (pointerPath.front() != '/')
+        {
+            pointerPath.insert(0, "/");
+        }
     }
 
     return pointerPath;
@@ -662,18 +672,65 @@ bool Json::isObject(std::string_view path) const
     }
 }
 
-std::string Json::typeName() const
+std::string Json::typeName(std::string_view path) const
 {
-    switch (m_document.GetType())
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
     {
-        case rapidjson::kNullType: return "null";
-        case rapidjson::kFalseType:
-        case rapidjson::kTrueType: return "bool";
-        case rapidjson::kObjectType: return "object";
-        case rapidjson::kArrayType: return "array";
-        case rapidjson::kStringType: return "string";
-        case rapidjson::kNumberType: return "number";
-        default: return "unknown";
+        const auto* value = pp.Get(m_document);
+        if (value)
+        {
+            switch (value->GetType())
+            {
+                case rapidjson::kNullType: return "null";
+                case rapidjson::kFalseType:
+                case rapidjson::kTrueType: return "bool";
+                case rapidjson::kNumberType: return "number";
+                case rapidjson::kStringType: return "string";
+                case rapidjson::kArrayType: return "array";
+                case rapidjson::kObjectType: return "object";
+                default: return "unknown";
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::typeName(basePointerPath)] "
+                                                 "Cannot find path: [{}]",
+                                                 path));
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::typeName(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+}
+
+Json::Type Json::type(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        const auto* value = pp.Get(m_document);
+        if (value)
+        {
+            return rapidTypeToJsonType(value->GetType());
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::type(basePointerPath)] "
+                                                 "Cannot find path: [{}]",
+                                                 path));
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::type(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
     }
 }
 
@@ -856,4 +913,116 @@ bool Json::erase(std::string_view path)
     }
 }
 
+void Json::merge(rapidjson::Value& source, std::string_view path)
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        auto* dstValue = pp.Get(m_document);
+        if (dstValue)
+        {
+            if (dstValue->GetType() == source.GetType())
+            {
+
+                if (dstValue->IsObject())
+                {
+                    for (auto srcIt = source.MemberBegin(); srcIt != source.MemberEnd();
+                         ++srcIt)
+                    {
+                        if (dstValue->HasMember(srcIt->name))
+                        {
+                            dstValue->FindMember(srcIt->name)->value = srcIt->value;
+                        }
+                        else
+                        {
+                            dstValue->AddMember(
+                                srcIt->name, srcIt->value, m_document.GetAllocator());
+                        }
+                    }
+                }
+                else if (dstValue->IsArray())
+                {
+                    for (auto srcIt = source.Begin(); srcIt != source.End(); ++srcIt)
+                    {
+                        // Find if value is already in dstValue
+                        // TODO: this is inefficient, but rapidjson does not provide a way
+                        // to do it.
+                        auto found = false;
+                        for (auto dstIt = dstValue->Begin(); dstIt != dstValue->End();
+                             ++dstIt)
+                        {
+                            if (*dstIt == *srcIt)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            dstValue->PushBack(*srcIt, m_document.GetAllocator());
+                        }
+                    }
+                }
+                else
+                {
+                    throw std::runtime_error(
+                        "[Json::merge(basePointerPath)] "
+                        "Invalid json type, expected object or array");
+                }
+            }
+            else
+            {
+                throw std::runtime_error("[Json::merge(basePointerPath)] "
+                                         "Cannot merge json objects of different types"
+
+                );
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
+                                                 "Field not found: [{}]",
+                                                 path));
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+}
+
+void Json::merge(Json& other, std::string_view path)
+{
+    merge(other.m_document, path);
+}
+
+void Json::merge(std::string_view source, std::string_view path)
+{
+    auto pp = rapidjson::Pointer(source.data());
+
+    if (pp.IsValid())
+    {
+        auto* srcValue = pp.Get(m_document);
+        if (srcValue)
+        {
+            merge(*srcValue, path);
+            erase(source);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
+                                                 "Field not found: [{}]",
+                                                 source));
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::merge(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             source));
+    }
+}
 } // namespace json

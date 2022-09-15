@@ -20,6 +20,17 @@ namespace json
 
 class Json
 {
+public:
+    enum class Type
+    {
+        Null,
+        Object,
+        Array,
+        String,
+        Number,
+        Boolean
+    };
+
 private:
     rapidjson::Document m_document;
 
@@ -38,6 +49,31 @@ private:
      * @param object The rapidjson::GenericObject to copy.
      */
     Json(const rapidjson::GenericObject<true, rapidjson::Value>& object);
+
+    /**
+     * @brief Get Json type from internal rapidjason type.
+     *
+     * @param t rapidjson::Type to convert.
+     * @return constexpr Type The converted type.
+     *
+     * @throw std::runtime_error if the type is not supported.
+     */
+    constexpr static Type rapidTypeToJsonType(rapidjson::Type t)
+    {
+        switch (t)
+        {
+            case rapidjson::kNullType: return Type::Null;
+            case rapidjson::kObjectType: return Type::Object;
+            case rapidjson::kArrayType: return Type::Array;
+            case rapidjson::kStringType: return Type::String;
+            case rapidjson::kNumberType: return Type::Number;
+            case rapidjson::kFalseType:
+            case rapidjson::kTrueType: return Type::Boolean;
+            default: throw std::runtime_error("Unknown rapidjson::Type");
+        }
+    }
+
+    void merge(rapidjson::Value& source, std::string_view path);
 
 public:
     /**
@@ -413,7 +449,19 @@ public:
      *
      * @return std::string The type name of the Json.
      */
-    std::string typeName() const;
+    std::string typeName(std::string_view path = "") const;
+
+    /**
+     * @brief Get Type of the Json.
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return Type The type of the Json.
+     *
+     * @throws std::runtime_error If:
+     * - path is invalid or cannot be found.
+     * - internal json type is not supported.
+     */
+    Type type(std::string_view path = "") const;
 
     /************************************************************************************/
     // Setters
@@ -513,6 +561,39 @@ public:
      * @throws std::runtime_error If path is invalid.
      */
     bool erase(std::string_view path = "");
+
+    /**
+     * @brief Merge the Json Value at the path with the given Json Value.
+     *
+     * Objects are merged, arrays are appended.
+     * Merges only first level of the Json Value.
+     *
+     * @param other The Json Value to merge.
+     * @param path  The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error On the following conditions:
+     * - If path is invalid.
+     * - If either Json Values are not Object or Array.
+     * - If Json Values are not the same type.
+     */
+    void merge(Json& other, std::string_view path = "");
+
+    /**
+     * @brief Merge the Json Value at the path with the given Json Value at reference
+     * path.
+     *
+     * Merges only first level of the Json Value.
+     * Reference value is deleted after merge.
+     *
+     * @param other The Json path pointing to the value to be merged.
+     * @param path  The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error On the following conditions:
+     * - If either path are invalid.
+     * - If either Json Values are not Object or Array.
+     * - If Json Values are not the same type.
+     */
+    void merge(std::string_view other, std::string_view path = "");
 };
 
 } // namespace json
