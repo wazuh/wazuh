@@ -576,13 +576,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = -1;
             }
 
-            if (wdb_vacuum(wdb->db) < 0) {
-                mdebug1("DB(%s) Cannot vacuum database.", sagent_id);
-                snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
-                result = -1;
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-                result = 0;
+            if (result != -1) {
+                if (wdb_vacuum(wdb->db) < 0) {
+                    mdebug1("DB(%s) Cannot vacuum database.", sagent_id);
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
+                    result = -1;
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                    result = 0;
+                }
             }
         } else if (strcmp(query, "get_fragmentation") == 0) {
             int state = wdb_get_db_state(wdb);
@@ -972,13 +974,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = -1;
             }
 
-            if (wdb_vacuum(wdb->db) < 0) {
-                mdebug1("Global DB Cannot vacuum database.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
-                result = -1;
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-                result = 0;
+            if ( result != -1) {
+                if (wdb_vacuum(wdb->db) < 0) {
+                    mdebug1("Global DB Cannot vacuum database.");
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
+                    result = -1;
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "ok");
+                    result = 0;
+                }
             }
         } else if (strcmp(query, "get_fragmentation") == 0) {
             int state = wdb_get_db_state(wdb);
