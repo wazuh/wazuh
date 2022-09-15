@@ -995,6 +995,323 @@ void test_wdb_close_success(){
     assert_int_equal(0, wdb_close(wdb, 0));
 }
 
+void test_wdb_execute_non_select_query_query_null(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_execute_non_select_query(): null query.");
+
+    assert_int_equal(OS_INVALID, wdb_execute_non_select_query(db, 0));
+
+    os_free(db);
+}
+
+void test_wdb_execute_non_select_query_prepare_error(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    assert_int_equal(OS_INVALID, wdb_execute_non_select_query(db, "query"));
+
+    os_free(db);
+}
+
+void test_wdb_execute_non_select_query_step_error(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(OS_INVALID, wdb_execute_non_select_query(db, "query"));
+
+    os_free(db);
+}
+
+void test_wdb_execute_non_select_query_success(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(OS_SUCCESS, wdb_execute_non_select_query(db, "query"));
+
+    os_free(db);
+}
+
+void test_wdb_select_from_temp_table_prepare_error(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    assert_int_equal(OS_INVALID, wdb_select_from_temp_table(db));
+
+    os_free(db);
+}
+
+void test_wdb_select_from_temp_table_step_error(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(OS_INVALID, wdb_select_from_temp_table(db));
+
+    os_free(db);
+}
+
+void test_wdb_select_from_temp_table_success_0(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 1);
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(0, wdb_select_from_temp_table(db));
+
+    os_free(db);
+}
+
+void test_wdb_select_from_temp_table_success_100(void **state) {
+    sqlite3 *db = calloc(1, sizeof(sqlite3 *));
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(100, wdb_select_from_temp_table(db));
+
+    os_free(db);
+}
+
+void test_wdb_get_db_state_create_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // create temp table fail
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating temporary table.");
+
+    assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_db_state_insert_error_drop_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // create temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // insert temp table fail
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error inserting into temporary table.");
+
+    // dropp temp table fail
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error dropping temporary table.");
+
+    assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_db_state_insert_error_drop_success(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // create temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // insert temp table fail
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error inserting into temporary table.");
+
+    // dropp temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_db_state_select_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // create temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // insert temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // select from temp table fail
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error in select from temporary table.");
+
+    // dropp temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_db_state_success_0(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // create temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // insert temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // select from temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // dropp temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(0, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_db_state_success_100(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // create temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // insert temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // select from temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // dropp temp table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(100, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         // wdb_open_tasks
@@ -1056,6 +1373,23 @@ int main() {
         cmocka_unit_test(test_wdb_close_refcount_error),
         cmocka_unit_test(test_wdb_close_no_commit_sqlerror),
         cmocka_unit_test(test_wdb_close_success),
+        // wdb_execute_non_select_query
+        cmocka_unit_test(test_wdb_execute_non_select_query_query_null),
+        cmocka_unit_test(test_wdb_execute_non_select_query_prepare_error),
+        cmocka_unit_test(test_wdb_execute_non_select_query_step_error),
+        cmocka_unit_test(test_wdb_execute_non_select_query_success),
+        // wdb_select_from_temp_table
+        cmocka_unit_test(test_wdb_select_from_temp_table_prepare_error),
+        cmocka_unit_test(test_wdb_select_from_temp_table_step_error),
+        cmocka_unit_test(test_wdb_select_from_temp_table_success_0),
+        cmocka_unit_test(test_wdb_select_from_temp_table_success_100),
+        // wdb_get_db_state
+        cmocka_unit_test(test_wdb_get_db_state_create_error),
+        cmocka_unit_test(test_wdb_get_db_state_insert_error_drop_error),
+        cmocka_unit_test(test_wdb_get_db_state_insert_error_drop_success),
+        cmocka_unit_test(test_wdb_get_db_state_select_error),
+        cmocka_unit_test(test_wdb_get_db_state_success_0),
+        cmocka_unit_test(test_wdb_get_db_state_success_100),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
