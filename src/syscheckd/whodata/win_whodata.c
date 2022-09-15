@@ -174,18 +174,22 @@ STATIC void win_whodata_release_resources(whodata *wdata) {
 
     if (wdata->fd != NULL) {
         OSHash_Free(wdata->fd);
+        wdata->fd = NULL;
     }
 
     if (wdata->directories != NULL) {
         OSHash_Free(wdata->directories);
+        wdata->directories = NULL;
     }
 
     if (wdata->device != NULL) {
         free_strarray(wdata->device);
+        wdata->device = NULL;
     }
 
     if (wdata->drive != NULL) {
         free_strarray(wdata->drive);
+        wdata->drive = NULL;
     }
 
     atomic_int_set(&whodata_end, 1);
