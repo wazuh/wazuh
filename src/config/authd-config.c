@@ -75,6 +75,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->force_options.after_registration_time = 3600;
     short legacy_force_insert = -1;
     int legacy_force_time = -1;
+    bool new_force_read = false;
+
     if (!node)
         return 0;
 
@@ -120,7 +122,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             config->flags.use_source_ip = b;
         } else if (!strcmp(node[i]->element, xml_force_insert)) {
-            mwarn("The <%s> tag is deprecated since version 4.3.0. Use <%s> tag instead.", xml_force_insert, xml_force);
+            mwarn("The <%s> tag is deprecated. Use <%s> instead.", xml_force_insert, xml_force);
             short b = eval_bool(node[i]->content);
             if (b < 0) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -128,7 +130,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
             legacy_force_insert = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
-            mwarn("The <%s> tag is deprecated since version 4.3.0. Use <%s> instead.", xml_force_time, xml_force);
+            mwarn("The <%s> tag is deprecated. Use <%s> instead.", xml_force_time, xml_force);
             char *end;
             int b = strtol(node[i]->content, &end, 10);
             if (b < 0) {
@@ -137,6 +139,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
             legacy_force_time = b;
         } else if (!strcmp(node[i]->element, xml_force)) {
+            new_force_read = true;
+
             xml_node **chld_node = NULL;
 
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
@@ -226,20 +230,25 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         }
     }
 
-    if (legacy_force_insert != -1) {
-        mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
-                legacy_force_insert ? "'yes'" : "'no'", xml_force_insert);
+    if (!new_force_read) {
+        if (legacy_force_insert != -1) {
+            config->force_options.enabled = legacy_force_insert;
 
-        config->force_options.enabled = legacy_force_insert;
-    }
-    if (legacy_force_time != -1) {
-        mdebug1("Setting <force>< disconnected_time> tag to %d to comply with the legacy <%s> option found.",
-                legacy_force_time, xml_force_time);
-        if(legacy_force_time != 0) {
-            config->force_options.enabled = false;
+            mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
+                    legacy_force_insert ? "'yes'" : "'no'", xml_force_insert);
         }
-        config->force_options.disconnected_time = legacy_force_time;
+        if (legacy_force_time != -1) {
+            if (legacy_force_time == 0) {
+                config->force_options.disconnected_time_enabled = false;
+            }
+            config->force_options.disconnected_time = legacy_force_time;
+
+            mdebug1("Setting <force><disconnected_time> tag to '%d' to comply with the legacy <%s> option found.",
+                legacy_force_time, xml_force_time);
+        }
     }
+    
+
     return 0;
 }
 
