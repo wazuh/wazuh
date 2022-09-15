@@ -23,6 +23,7 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
 # Options
 option(ENGINE_BUILD_TEST "Generate tests" ON)
+option(ENGINE_BUILD_ASAN "Enable address sanitizer" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
@@ -36,6 +37,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         add_compile_definitions ( WAZUH_ASSERT_WITH_SYM )
     endif()
     add_compile_definitions ( WAZUH_DEBUG )
+endif()
+
+if (ENGINE_BUILD_ASAN)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address -fno-omit-frame-pointer)
 endif()
 
 # Ensures that we do an out of source build
@@ -58,7 +64,7 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
 # CPM DOWNLOAD
 ####################################################################################################
 
-set(CPM_DOWNLOAD_VERSION 0.34.1)
+set(CPM_DOWNLOAD_VERSION 0.35.6)
 
 if(CPM_SOURCE_CACHE)
   set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
