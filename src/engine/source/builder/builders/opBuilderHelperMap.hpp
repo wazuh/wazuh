@@ -165,6 +165,20 @@ base::Expression opBuilderHelperAppendString(const std::any& definition);
  */
 base::Expression opBuilderHelperAppendSplitString(const std::any& definition);
 
+/**
+ * @brief Merge two arrays or objects.
+ * Accepts one reference parameter. Fail cases:
+ * - If target or source not exists
+ * - If source and target, are not the same type
+ * - If source or target are not arrays or objects
+ *
+ * @param definition Definition of the operation to be built
+ * @return base::Expression The lifter with the `merge` transformation.
+ *
+ * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
+ */
+base::Expression opBuilderHelperMerge(const std::any& definition);
+
 //*************************************************
 //*              IP tranform                      *
 //*************************************************
