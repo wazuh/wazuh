@@ -16,7 +16,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,bzip2_uncompress,--wrap,lstat \
                             -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose,--wrap,fgetc \
                             -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite,--wrap,fgetpos \
-                            -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit ${DEBUG_OP_WRAPPERS} \
+                            -Wl,--wrap,merror,--wrap,fseek")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 ${DEBUG_OP_WRAPPERS}")
