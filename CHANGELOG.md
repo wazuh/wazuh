@@ -1,21 +1,30 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.13.4]
+## [v3.13.6]
+
+### Agent
+
+#### Fixed
+
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 (reported by @guragainroshan0). ([#14823](https://github.com/wazuh/wazuh/pull/14823))
+
+
+## [v3.13.4] - 2022-05-30
 
 ### Fixed
 
 - Fixed a crash in Vuln Detector when scanning agents running on Windows (backport from 4.3.2). ([#13624](https://github.com/wazuh/wazuh/pull/13624))
 
 
-## [v3.13.3]
+## [v3.13.3] - 2021-04-28
 
 ### Fixed
 
 - Fixed a bug in Vulnerability Detector that made Modulesd crash while updating the NVD feed due to a missing CPE entry. ([#8346](https://github.com/wazuh/wazuh/pull/8346))
 
 
-## [v3.13.2]
+## [v3.13.2] - 2022-09-21
 
 ### Fixed
 
