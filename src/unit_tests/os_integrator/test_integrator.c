@@ -48,9 +48,8 @@ static int test_teardown(void **state) {
 
     (void) state;
 
-    IntegratorConfig *virustotal_config = (IntegratorConfig *)state[0];
-    IntegratorConfig *pagerduty_config = (IntegratorConfig *)state[1];
-    wfd_t *wfd =  (wfd_t *)state[2];
+    IntegratorConfig *virustotal_config = state[0];
+    IntegratorConfig *pagerduty_config = state[1];
 
     os_free(virustotal_config);
     os_free(pagerduty_config);
@@ -85,11 +84,15 @@ void test_OS_IntegratorD(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
 
     will_return(__wrap_FOREVER, 1);
+
     expect_string(__wrap__mdebug2, formatted_msg, "jqueue_next()");
+
     will_return(__wrap_jqueue_next, al_json);
+
     expect_string(__wrap__mdebug1, formatted_msg, "sending new alert.");
 
     will_return(__wrap_time, 1111);
+
     will_return(__wrap_os_random, 2222);
 
     expect_string(__wrap_fopen, path, virustotal_file);
@@ -122,6 +125,7 @@ void test_OS_IntegratorD(void **state) {
     will_return(__wrap_unlink, 0);
 
     will_return(__wrap_time, 1111);
+
     will_return(__wrap_os_random, 2222);
 
     expect_string(__wrap_fopen, path, pagerduty_file);

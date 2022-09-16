@@ -386,7 +386,6 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             }
 
             int dbg_lvl = isDebug();
-            // por que se le pasa el integratordir si no tiene nada q ver???? y la api key?? por que en un log en plano?
             os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", INTEGRATORDIR, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
             if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
