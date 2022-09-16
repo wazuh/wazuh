@@ -18,25 +18,23 @@ const parserConfigFuncPtr kParsersConfig[] = {
     configureBooleanParser,
     nullptr,
     configureIgnoreParser,
-    nullptr
+    configureXmlParser,
 };
 
-const parserFuncPtr kAvailableParsers[] = {
-    parseAny,
-    parseAny,
-    matchLiteral,
-    parseIPaddress,
-    parseTimeStamp,
-    parseURL,
-    parseJson,
-    parseKVMap,
-    parseDomain,
-    parseFilePath,
-    parseUserAgent,
-    parseNumber,
-    parseQuotedString,
-    parseBoolean,
-    nullptr,
-    parseIgnore,
-    parseXml
-};
+const parserFuncPtr kAvailableParsers[] = {parseAny,
+                                           parseAny,
+                                           matchLiteral,
+                                           parseIPaddress,
+                                           parseTimeStamp,
+                                           parseURL,
+                                           parseJson,
+                                           parseKVMap,
+                                           parseDomain,
+                                           parseFilePath,
+                                           parseUserAgent,
+                                           parseNumber,
+                                           parseQuotedString,
+                                           parseBoolean,
+                                           nullptr,
+                                           parseIgnore,
+                                           parseXml};

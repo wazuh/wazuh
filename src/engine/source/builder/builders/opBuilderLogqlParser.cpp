@@ -68,12 +68,11 @@ static bool any2Json(std::any const& anyVal, std::string const& path, base::Even
 
         event->set(path, val);
     }
-    // Json in shared_ptr (to avoid copies, we could use move semantics here instead)
-    else if (typeid(std::shared_ptr<json::Json>) == type)
+    else if (typeid(json::Json) == type)
     {
         try
         {
-            event->set(path, *std::any_cast<std::shared_ptr<json::Json>>(anyVal));
+            event->set(path, std::any_cast<json::Json>(anyVal));
         }
         catch (const std::exception& e)
         {
