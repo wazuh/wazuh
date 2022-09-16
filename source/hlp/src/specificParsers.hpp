@@ -227,13 +227,27 @@ bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& 
 bool parseIgnore(const char** it, Parser const& parser, ParseResult& result);
 
 /**
+ * @brief Configure xml parser.
+ *
+ * If no arguments are provided will use the default xml to json, if one argument is
+ * provided will use the module specified in the argument with specific rules for
+ * conversion.
+ *
+ * @param parser parser object
+ * @param args arguments for the parser, one string argument or none.
+ * @return true
+ * @return false
+ */
+bool configureXmlParser(Parser& parser, std::vector<std::string_view> const& args);
+
+/**
  * @brief Parse xml string and transform it to a json.
  *
  * For every xml node a json object is created and nested in the parent object.
- * For every xml attribute a key with \@<attribute_name> is created in the json object.
- * If the xml node has text content, a key with #text is created in the json object.
- * Every value is mapped as a string.
- * Empty nodes or values are mapped to empty strings.
+ * For every xml attribute a key with \@<attribute_name> is created in the json
+ * object. If the xml node has text content, a key with #text is created in the json
+ * object. Every value is mapped as a string. Empty nodes or values are mapped to
+ * empty strings.
  *
  * @param it event for parsing.
  * @param parser parser object
