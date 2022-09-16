@@ -49,9 +49,9 @@
     {
       "date_index_name": {
         "field": "timestamp",
-        "date_rounding": "d",
+        "date_rounding": "{{fields.date_rounding}}",
         "index_name_prefix": "{{fields.index_prefix}}",
-        "index_name_format": "yyyy.MM.dd",
+        "index_name_format": "{{fields.index_format}}",
         "ignore_failure": false 
       }
     },

@@ -6,6 +6,10 @@ var:
       - /var/ossec/logs/archives/archives.json
   - name: index_prefix
     default: wazuh-archives-3.x-
+  - name: index_format
+    default: yyyy.MM.dd
+  - name: date_rounding
+    default: d
 
 input: config/archives.yml
 

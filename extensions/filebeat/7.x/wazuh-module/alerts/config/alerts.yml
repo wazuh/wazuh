@@ -1,5 +1,7 @@
 fields:
   index_prefix: {{ .index_prefix }}
+  index_format: {{ .index_format }}
+  date_rounding: {{ .date_rounding }}
 type: log
 paths:
 {{ range $i, $path := .paths }}
