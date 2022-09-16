@@ -3,8 +3,9 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomAffectedItems
 from connexion.lifecycle import ConnexionResponse
+
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -18,7 +19,6 @@ with patch('wazuh.common.wazuh_uid'):
             get_stats_node, get_stats_remoted_node, get_stats_weekly_node,
             get_status, get_status_node, put_restart, update_configuration, get_nodes_ruleset_sync_status)
         from wazuh import cluster, common, manager, stats
-        from wazuh.core.cluster import cluster as core_cluster
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -125,7 +125,7 @@ async def test_get_nodes_ruleset_sync_status(mock_exc, mock_dapi, mock_remove, m
         f_kwargs = {'node_list': '*',
                     'master_md5': {'dikt_key': 'dikt_value'}
                     }
-        mock_dapi.assert_has_calls([call(f=core_cluster.get_node_ruleset_integrity,
+        mock_dapi.assert_has_calls([call(f=cluster.get_node_ruleset_integrity,
                                          request_type="local_master",
                                          is_async=True,
                                          wait_for_complete=False,
