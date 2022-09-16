@@ -32,6 +32,7 @@
 #include "wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "wrappers/windows/winevt_wrappers.h"
 
 
 #include "syscheckd/syscheck.h"
@@ -5297,6 +5298,35 @@ void test_whodata_callback_4656_success(void **state) {
     assert_int_equal(result, 0);
 }
 
+void test_whodata_callback_4719_success(void **state) {
+    EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
+    EVT_HANDLE event = NULL;
+    EVT_VARIANT raw_data[] = {
+        { .UInt16Val=4719,              .Count=1, .Type=EvtVarTypeUInt16 },
+        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
+        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
+        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
+        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
+        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
+        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
+        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+    };
+    unsigned long result;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    successful_whodata_event_render(event, raw_data);
+
+    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_WHODATA_WIN_POL_CH);
+
+    result = whodata_callback(action, NULL, event);
+    assert_int_equal(result, 0);
+}
+
 void test_whodata_callback_4663_fail_to_get_mask(void **state) {
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
@@ -6788,7 +6818,9 @@ void test_state_checker_no_files_to_check(void **state) {
 
     expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
     expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_not_match_call("testing line not match, success", wfd);
+
+    expect_string(__wrap__mwarn, formatted_msg, "The 'Audit Policy Change' policy has been disabled. Changes in the configured policies are not detected.");
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7730,12 +7762,28 @@ void test_policy_check_not_match(void **state) {
     assert_int_equal(ret, 0);
 }
 
+void test_policy_check_wpopenv_fail(void **state) {
+    int ret;
+
+    will_return(__wrap_wpopenv, NULL);
+    expect_string(__wrap__merror, formatted_msg, "Cannot execute commmand: auditpol /get /Subcategory:\"{0CCE921D-69AE-11D9-BED3-505054503030}\" /r");
+
+    ret = policy_check("{0CCE921D-69AE-11D9-BED3-505054503030}");
+
+    assert_int_equal(ret, -1);
+}
+
 void test_win_whodata_release_resources(void **state) {
+    will_return_count(__wrap_os_random, 12345, 2);
+    syscheck.wdata.fd = __real_OSHash_Create();
+
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    will_return(wrap_EvtClose, 0);
 
     win_whodata_release_resources(&syscheck.wdata);
 
@@ -7903,6 +7951,7 @@ int main(void) {
         /* policy_check */
         cmocka_unit_test_setup_teardown(test_policy_check_match, setup_policy_check, teardown_policy_check),
         cmocka_unit_test_setup_teardown(test_policy_check_not_match, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test(test_policy_check_wpopenv_fail),
         /* policy_check */
         cmocka_unit_test(test_win_whodata_release_resources),
     };
@@ -7920,6 +7969,7 @@ int main(void) {
         cmocka_unit_test(test_whodata_callback_4656_duplicate_handle_id_fail_to_delete),
         cmocka_unit_test(test_whodata_callback_4656_duplicate_handle_id_fail_to_readd),
         cmocka_unit_test(test_whodata_callback_4656_success),
+        cmocka_unit_test(test_whodata_callback_4719_success),
         cmocka_unit_test_setup_teardown(test_whodata_callback_4663_fail_to_get_mask, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test_setup_teardown(test_whodata_callback_4663_no_permissions, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test(test_whodata_callback_4663_fail_to_recover_event),
