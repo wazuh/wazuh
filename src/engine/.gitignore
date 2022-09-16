@@ -13,6 +13,9 @@
 # Executables
 *.out
 
+# Exclude automatic reports
+test/scripts/valgrindReport.log
+
 ### CMake ###
 CMakeLists.txt.user
 CMakeCache.txt
