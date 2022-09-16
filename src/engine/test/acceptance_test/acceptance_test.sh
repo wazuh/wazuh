@@ -7,6 +7,11 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+# Save the working directory and change to the directory where the script is
+OLD_PWD=`pwd`
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+cd $SCRIPT_DIR
+
 # ------------------------ Tests configuration section ------------------------
 
 DO_TEST_ANALYSISD=false
@@ -16,13 +21,14 @@ DO_TEST_ENGINE=true
 STATS_MONITOR_POLL_TIME_SECS=0.1
 
 # Benchmark configuration
-BT_TIME=5
+BT_TIME=360
 BT_RATE=0
-BT_INPUT=./utils/test_logs.txt
+BT_INPUT=./utils/zz_test.log
+BT_OUTPUT=/tmp/filepath.txt
 
 # Engine Configurations
-ENGINE_BUILD_ABSOLUTE_PATH=/root/repos/wazuh/src/engine/build
-ENGINE_LISTEN_PORT=6000
+ENGINE_BUILD_ABSOLUTE_PATH=$(realpath ../../build)
+ENGINE_LISTEN_PORT=5054
 ENGINE_N_THREADS=8
 
 # Constants for the test
@@ -47,10 +53,6 @@ then
     fi
 fi
 
-# Save the working directory and change to the directory where the script is
-OLD_PWD=`pwd`
-SCRIPT_DIR=$(dirname $(readlink -f $0))
-cd $SCRIPT_DIR
 
 # --------------------------- Analysisd test section ---------------------------
 
@@ -134,11 +136,13 @@ fi
 if $DO_TEST_ENGINE;
 then
 
-    TEST_NAME="engine-test-${RANDOM}"
+    TEST_NAME="engine-bench-${ENGINE_N_THREADS}-threads-${RANDOM}"
 
     cd $ENGINE_BUILD_ABSOLUTE_PATH
 
-    GLOG_logtostderr=1 ./main --file_storage ../test/assets/ --endpoint tcp:localhost:$ENGINE_LISTEN_PORT --threads $ENGINE_N_THREADS &
+    # Clear the alert file
+    echo -n > $BT_OUTPUT
+    ./main run --endpoint "tcp:127.0.0.1:5054" --threads $ENGINE_N_THREADS --file_storage ../test/assets --environment demo-environment --kvdb_path ../test/assets/zz_kvdb/ -l 0 &
 
     ENGINE_PID=$!
 
@@ -150,7 +154,8 @@ then
 
     MONITOR_PID=$!
 
-    go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T -p tcp -s localhost:$ENGINE_LISTEN_PORT
+    # go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f -T
+    go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f
 
     kill -INT $MONITOR_PID
     kill -INT $ENGINE_PID
