@@ -17,8 +17,7 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 using namespace helper::base;
 
-// <field>: +kvdb_extract/<DB>/<ref_key>
-base::Expression opBuilderKVDBExtract(const std::any& definition)
+base::Expression KVDBExtract(const std::any& definition, bool merge)
 {
     // Extract parameters from any
     auto [targetField, name, raw_parameters] =
@@ -36,8 +35,13 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
     const auto key = parameters[1];
 
     // Get DB
-    KVDBManager::get().addDb(dbName, false);
+    // TODO: Fix once KVDB is refactored
     auto kvdb = KVDBManager::get().getDB(dbName);
+    if (!kvdb)
+    {
+        KVDBManager::get().addDb(dbName, false);
+    }
+    kvdb = KVDBManager::get().getDB(dbName);
     if (!kvdb)
     {
         const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
@@ -47,8 +51,15 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
     // Trace messages
     std::string successTrace = fmt::format("[{}] -> Success", name);
     std::string failureTrace1 =
-        fmt::format("[{}] -> Failure: field [{}] not found", name, key.m_value);
+        fmt::format("[{}] -> Failure: key [{}] not found", name, key.m_value);
     std::string failureTrace2 = fmt::format("[{}] -> Failure", name);
+    std::string failureTrace3 = fmt::format("[{}] -> Failure: Target field [{}] not "
+                                            "found",
+                                            name,
+                                            targetField);
+    std::string failureTrace4 =
+        fmt::format("[{}] -> Failure: Fields type mismatch when merging", name);
+
     // Return Expression
     return base::Term<base::EngineOp>::create(
         name,
@@ -80,14 +91,52 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
-            // Create and add string to event
+            // Create Json and add to event
             else
             {
-                event->setString(dbValue, targetField);
+                // TODO: Maybe add non throw version of this method
+                try
+                {
+                    json::Json value {dbValue.c_str()};
+                    if (merge)
+                    {
+                        // Failure cases on merge
+                        if (!event->exists(targetField))
+                        {
+                            return base::result::makeFailure(event, failureTrace3);
+                        }
+                        else if (event->type(targetField) != value.type()
+                                 || (!value.isObject() && !value.isArray()))
+                        {
+                            return base::result::makeFailure(event, failureTrace4);
+                        }
+                        event->merge(value, targetField);
+                    }
+                    else
+                    {
+                        event->set(targetField, value);
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
             }
 
             return base::result::makeSuccess(event, successTrace);
         });
+}
+
+// <field>: +kvdb_extract/<DB>/<ref_key>
+base::Expression opBuilderKVDBExtract(const std::any& definition)
+{
+    return KVDBExtract(definition, false);
+}
+
+// <field>: +kvdb_extract_merge/<DB>/<ref_key>
+base::Expression opBuilderKVDBExtractMerge(const std::any& definition)
+{
+    return KVDBExtract(definition, true);
 }
 
 base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool checkExist)

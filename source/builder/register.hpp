@@ -41,7 +41,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderFileOutput, "output.file");
 
     // KVDB
-    Registry::registerBuilder(builders::opBuilderKVDBExtract, "helper.kvdb_extract");
+    Registry::registerBuilder(builders::opBuilderKVDBExtract, "helper.kvdb_get");
+    Registry::registerBuilder(builders::opBuilderKVDBExtractMerge, "helper.kvdb_get_merge");
     Registry::registerBuilder(builders::opBuilderKVDBMatch, "helper.kvdb_match");
     Registry::registerBuilder(builders::opBuilderKVDBNotMatch, "helper.kvdb_not_match");
 
