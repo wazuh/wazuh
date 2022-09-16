@@ -21,6 +21,7 @@ type rateConfig struct {
 	dstFile    string // Path to the output file
 	truncFile  bool   // Truncate the output file
 	concurrent int    // Number of concurrent connections
+	fullFormat bool   // Use full format msg. Dont preppend  1:[123] agent->server: log
 }
 
 // Report of rate benchmark
@@ -55,6 +56,8 @@ func main() {
 	var sockProto string
 	// header size in message
 	var header bool
+	// Full format msg
+	var fullFormat bool
 
 	// Parcer arguments
 	// Bench
@@ -73,6 +76,7 @@ func main() {
 		`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
 	//flag.BoolVar(&verbose, "v", false, "Verbose mode")
 	flag.BoolVar(&header, "b", false, "Use secure msg protocol. Preappend a header with size of logs (int32) before send")
+	flag.BoolVar(&fullFormat, "f", false, "Use full format msg. Dont preppend  1:[123] agent->server: log")
 	flag.Parse()
 
 	// Validate parameters
@@ -89,7 +93,7 @@ func main() {
 	defer conn.Close()
 
 	// if benchmark is a rate benchmark
-	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile, truncateWatched, concurrent}
+	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile, truncateWatched, concurrent, fullFormat}
 	tReport := rateTest(rateConfig, conn, header)
 	printReport(tReport, rateConfig)
 
@@ -157,7 +161,7 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 			for i := int(0); i < report.repeat; i++ {
 				for _, line := range BatchEvents {
 					until := time.Now().Add(sleepTimeNano)
-					sendLogSock(conn, header, line)
+					sendLogSock(conn, header, line, config.fullFormat)
 					eps += 1
 					report.totalEvents++
 					for time.Now().Before(until) {
@@ -168,7 +172,7 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 			}
 			for i := int(0); i < report.rest; i++ {
 				until := time.Now().Add(sleepTimeNano)
-				sendLogSock(conn, header, BatchEvents[i])
+				sendLogSock(conn, header, BatchEvents[i], config.fullFormat)
 				eps += 1
 				report.totalEvents++
 				for time.Now().Before(until) {
@@ -226,10 +230,14 @@ func connectToSock(protocol string, address string) net.Conn {
 }
 
 // Exit on fail
-func sendLogSock(conn net.Conn, header bool, message string) {
+func sendLogSock(conn net.Conn, header bool, message string, fullFormat bool) {
 	var payload []byte
 
-	payload = []byte("1:[123] (hostname_test_bench) any->/var/some_location:" + message)
+	if fullFormat {
+		payload = []byte(message)
+	} else {
+		payload = []byte("1:[123] (hostname_test_bench) any->/var/some_location:" + message)
+	}
 
 	if header {
 		secMsg := new(bytes.Buffer)
