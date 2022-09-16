@@ -8,13 +8,10 @@ using namespace builder::internals;
 class RegisterTest : public ::testing::Test
 {
 protected:
-    void TearDown() override
-    {
-        Registry::clear();
-    }
+    void TearDown() override { Registry::clear(); }
 };
 
-TEST(RegisterTest, AllBuildersRegistered)
+TEST_F(RegisterTest, AllBuildersRegistered)
 {
     ASSERT_NO_THROW(registerBuilders());
 
@@ -33,7 +30,8 @@ TEST(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("stage.outputs"));
     ASSERT_NO_THROW(Registry::getBuilder("output.file"));
 
-    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_extract"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_get"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_get_merge"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_match"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_not_match"));
 
