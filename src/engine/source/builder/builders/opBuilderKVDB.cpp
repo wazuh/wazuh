@@ -59,6 +59,10 @@ base::Expression KVDBExtract(const std::any& definition, bool merge)
                                             targetField);
     std::string failureTrace4 =
         fmt::format("[{}] -> Failure: Fields type mismatch when merging", name);
+    std::string failureTrace5 = fmt::format("[{}] -> Failure: Malformed JSON for key "
+                                            "[{}]",
+                                            name,
+                                            key.m_value);
 
     // Return Expression
     return base::Term<base::EngineOp>::create(
@@ -119,7 +123,7 @@ base::Expression KVDBExtract(const std::any& definition, bool merge)
                 }
                 catch (const std::exception& e)
                 {
-                    return base::result::makeFailure(event, failureTrace2);
+                    return base::result::makeFailure(event, failureTrace5);
                 }
             }
 
