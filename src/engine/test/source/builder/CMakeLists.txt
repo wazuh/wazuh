@@ -158,6 +158,7 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringIPVersion_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRenameField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperMerge_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 
