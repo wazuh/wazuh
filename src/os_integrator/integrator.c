@@ -54,6 +54,9 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     /* Connecting to syslog. */
     while(integrator_config[s])
     {
+        #ifdef WAZUH_UNIT_TESTING
+            break;
+        #endif
         integrator_config[s]->enabled = 1;
 
         snprintf(integration_path, 2048 -1, "%s/%s", INTEGRATORDIR, integrator_config[s]->name);
@@ -119,7 +122,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     }
 
     /* Infinite loop reading the alerts and inserting them. */
-    while(1)
+    while(FOREVER())
     {
 
         /* Get JSON message if available (timeout of 5 seconds) */
@@ -260,7 +263,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             {
                 if(integrator_config[s]->alert_format != NULL && strncmp(integrator_config[s]->alert_format, "json", 4) == 0){
                     char * unformatted = cJSON_PrintUnformatted(al_json);
-                    fprintf(fp, "%s", unformatted);
+                    fprintf(fp, "%s\n", unformatted);
                     temp_file_created = 1;
                     mdebug2("file %s was written.", exec_tmp_file);
                     fclose(fp);
@@ -423,8 +426,10 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             s++;
 
             /* Clearing the memory */
-            if(temp_file_created == 1)
+            if(temp_file_created == 1) {
                 unlink(exec_tmp_file);
+                temp_file_created = 0;
+            }
 
         }
 
