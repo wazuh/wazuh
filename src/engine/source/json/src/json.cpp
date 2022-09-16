@@ -932,12 +932,16 @@ void Json::merge(rapidjson::Value& source, std::string_view path)
                     {
                         if (dstValue->HasMember(srcIt->name))
                         {
-                            dstValue->FindMember(srcIt->name)->value = srcIt->value;
+                            rapidjson::Value cpyValue {srcIt->value,
+                                                       m_document.GetAllocator()};
+                            dstValue->FindMember(srcIt->name)->value = cpyValue;
                         }
                         else
                         {
+                            rapidjson::Value cpyValue {srcIt->value,
+                                                       m_document.GetAllocator()};
                             dstValue->AddMember(
-                                srcIt->name, srcIt->value, m_document.GetAllocator());
+                                srcIt->name, cpyValue, m_document.GetAllocator());
                         }
                     }
                 }

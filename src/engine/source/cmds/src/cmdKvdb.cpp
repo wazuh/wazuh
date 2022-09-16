@@ -91,25 +91,21 @@ void kvdb(const std::string& kvdbPath,
             auto kvdbHandle = kvdbManager.getDB(kvdbName);
             for (const auto& [key, value] : entries.value())
             {
-                if (!value.getString())
+
+                try
                 {
-                    WAZUH_LOG_WARN("Key [{}] omitted. Expected string value", key);
+                    auto jsValue = value.str();
+                    kvdbHandle->write(key, jsValue);
                 }
-                else
+                catch (const std::exception& e)
                 {
-                    try
-                    {
-                        kvdbHandle->write(key, value.getString().value());
-                    }
-                    catch (const std::exception& e)
-                    {
-                        WAZUH_LOG_ERROR("Error while writing key [{}] to KVDB [{}]: {}",
-                                        key,
-                                        kvdbName,
-                                        utils::getExceptionStack(e));
-                    }
+                    WAZUH_LOG_ERROR("Error while writing key [{}] to KVDB [{}]: {}",
+                                    key,
+                                    kvdbName,
+                                    utils::getExceptionStack(e));
                 }
             }
+
             // TODO: Remove closing DB when KVDBManager destructor core dump is fixed
             kvdbHandle->close();
         }
