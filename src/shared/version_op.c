@@ -665,9 +665,9 @@ os_info *get_unix_version()
                     while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
                         char *key = strtok_r(buff, ":", &save_ptr);
                         if (key) {
-                            const char *expected_key = "SystemVersion";
-                            char *trimmed_key = os_strip_char(key, ' ');
-                            if (trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
+                            const char *expected_key = "System Version";
+                            char *trimmed_key = w_strtrim(key);
+                            if (NULL != trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
                                 char *value = strtok_r(NULL, " ", &save_ptr);
                                 if (value) {
                                     w_strdup(value, info->os_name);
@@ -675,7 +675,6 @@ os_info *get_unix_version()
                                     mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
                                 }
                             }
-                            os_free (trimmed_key);
                             if(info->os_name) {
                                 break;
                             }

@@ -515,7 +515,8 @@ TEST_F(SysInfoParsersTest, MacOSOsDefaultName)
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
     EXPECT_FALSE(parser.parseSystemProfiler(MACOS_SYSTEM_PROFILER, output));
     EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
-    EXPECT_TRUE(output["os_name"] == nullptr);
+    // default name is responsability of the caller
+    EXPECT_EQ(output["os_name"], nullptr);
     EXPECT_EQ("10.14.6", output["os_version"]);
     EXPECT_EQ("darwin", output["os_platform"]);
     EXPECT_EQ("18G103", output["os_build"]);

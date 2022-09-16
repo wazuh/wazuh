@@ -399,16 +399,16 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         {"System Version", "os_name"},
     };
     std::stringstream data{in};
-    nlohmann::json tmp;
-    auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, tmp) };
+    nlohmann::json info;
+    auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, info) };
 
     if (ret)
     {
-        constexpr auto PATTERN_MATCH{R"(([^\s]+) ([^\s]+) ([^\s]+))"};
+        constexpr auto PATTERN_MATCH{R"(^([^\s]+) [^\s]+ [^\s]+$)"};
         std::string match;
         std::regex pattern{PATTERN_MATCH};
 
-        if (Utils::findRegexInString(tmp["os_name"], match, pattern, 1))
+        if (Utils::findRegexInString(info["os_name"], match, pattern, 1))
         {
             output["os_name"] = std::move(match);
         }

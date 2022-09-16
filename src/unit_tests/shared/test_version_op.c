@@ -912,7 +912,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_fgets, "\n");
 
     expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "System Version: macOS 10.12 (16A323)\n");
+    will_return(__wrap_fgets, "    System Version: macOS 10.12 (16A323)\n");
 
     expect_value(__wrap_pclose, stream, 1);
     will_return(__wrap_pclose, 1);
