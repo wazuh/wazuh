@@ -1456,7 +1456,7 @@ TEST(hlpTests_WazuhProtocol, wazuhProtocolCaseV)
 }
 
 // XML parser tests
-TEST(hlpTests_ParseXml, success)
+TEST(hlpTests_ParseXml, successDefault)
 {
     const char* expression = "<_xml/xml>";
     const char* event =
@@ -1469,7 +1469,7 @@ TEST(hlpTests_ParseXml, success)
     bool ret = parseOp(event, result);
     ASSERT_TRUE(static_cast<bool>(ret));
 
-    ASSERT_EQ(std::any_cast<std::shared_ptr<json::Json>>(result["_xml"])->str(), expected.jsonString);
+    ASSERT_EQ(std::any_cast<json::Json>(result["_xml"]).str(), expected.jsonString);
 }
 
 TEST(hlpTests_ParseXml, failureWrongXml)
@@ -1494,4 +1494,33 @@ TEST(hlpTests_ParseXml, failureNotXml)
     ParseResult result;
     bool ret = parseOp(event, result);
     ASSERT_FALSE(static_cast<bool>(ret));
+}
+
+TEST(hlpTests_ParseXml, failureModuleNotSupported)
+{
+    const char* expression = "<_xml/xml/notsupported>";
+
+    ASSERT_THROW(getParserOp(expression), std::runtime_error);
+}
+
+TEST(hlpTests_ParseXml, failureMultipleArguments)
+{
+    const char* expression = "<_xml/xml/windows/other>";
+
+    ASSERT_THROW(getParserOp(expression), std::runtime_error);
+}
+
+TEST(hlpTests_ParseXml, successWinModule)
+{
+    const char* expression = "<_xml/xml/windows>";
+    const char* event =
+        R"(<EventData><Data Name='SubjectUserSid'>S-1-5-21-3541430928-2051711210-1391384369-1001</Data><Data Name='SubjectUserName'>vagrant</Data><Data Name='SubjectDomainName'>VAGRANT-2012-R2</Data><Data Name='SubjectLogonId'>0x1008e</Data><Data Name='TargetUserSid'>S-1-0-0</Data><Data Name='TargetUserName'>bosch</Data><Data Name='TargetDomainName'>VAGRANT-2012-R2</Data><Data Name='Status'>0xc000006d</Data><Data Name='FailureReason'>%%2313</Data><Data Name='SubStatus'>0xc0000064</Data><Data Name='LogonType'>2</Data><Data Name='LogonProcessName'>seclogo</Data><Data Name='AuthenticationPackageName'>Negotiate</Data><Data Name='WorkstationName'>VAGRANT-2012-R2</Data><Data Name='TransmittedServices'>-</Data><Data Name='LmPackageName'>-</Data><Data Name='KeyLength'>0</Data><Data Name='ProcessId'>0x344</Data><Data Name='ProcessName'>C:\\Windows\\System32\\svchost.exe</Data><Data Name='IpAddress'>::1</Data><Data Name='IpPort'>0</Data></EventData>)";
+    JsonString expected {
+        R"({"EventData":{"SubjectUserSid":"S-1-5-21-3541430928-2051711210-1391384369-1001","SubjectUserName":"vagrant","SubjectDomainName":"VAGRANT-2012-R2","SubjectLogonId":"0x1008e","TargetUserSid":"S-1-0-0","TargetUserName":"bosch","TargetDomainName":"VAGRANT-2012-R2","Status":"0xc000006d","FailureReason":"%%2313","SubStatus":"0xc0000064","LogonType":"2","LogonProcessName":"seclogo","AuthenticationPackageName":"Negotiate","WorkstationName":"VAGRANT-2012-R2","TransmittedServices":"-","LmPackageName":"-","KeyLength":"0","ProcessId":"0x344","ProcessName":"C:\\\\Windows\\\\System32\\\\svchost.exe","IpAddress":"::1","IpPort":"0"}})"};
+
+    ParserFn parseOp = getParserOp(expression);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+    ASSERT_TRUE(static_cast<bool>(ret));
+    ASSERT_EQ(std::any_cast<json::Json>(result["_xml"]).str(), expected.jsonString);
 }
