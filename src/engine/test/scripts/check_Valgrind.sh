@@ -1,4 +1,4 @@
-#!bash
+#!/bin/bash
 
 # Search the test directory
 OLD_PWD=`pwd`
@@ -47,14 +47,35 @@ for testAbs in "${bin_arr[@]}"
 do
     relativePath=$(realpath --relative-to="${BUILD_DIR}" "${testAbs}")
     nm -an $testAbs | grep -q '__asan\|__tsan\|__msan'
-    if [ $? -eq 0 ]; then
+    if [ $? -eq 1 ]; then
         echo "🟢 $relativePath"
     else
-        echo "🔴 $relativePath failed, no compile with asan"
+        echo "🔴 $relativePath failed, compile with asan"
         exit 1
     fi
 done
 
-# Exclude KVDBTest.KVDBConcurrency
-# ctest --test-dir "${TEST_DIR}" --output-on-failure --exclude-regex KVDBTest.KVDBConcurrency
-ctest --test-dir "${TEST_DIR}" --output-on-failure
+# clear the Valgrind log with the date
+VALGRIND_LOG="${SCRIPT_DIR}/valgrindReport.log"
+echo -n > $VALGRIND_LOG
+echo "**************************************************************************" |& tee -a ${VALGRIND_LOG}
+echo "                Valgrind report on $(date)" |& tee -a ${VALGRIND_LOG}
+echo "**************************************************************************" |& tee -a ${VALGRIND_LOG}
+
+# Run Valgrind on all test
+for test in "${test_arr[@]}"
+do
+    # Exclude kvdb_test
+    # if [[ $test == *"kvdb_test"* ]]; then
+    #     continue
+    # fi
+    echo "==========================================================================="  |& tee -a ${VALGRIND_LOG}
+    relativePath=$(realpath --relative-to="${TEST_DIR}" "${test}")
+    echo "Running Valgrind on ${relativePath}: " |& tee -a ${VALGRIND_LOG}
+    echo "--------------------------------------------------------------------------"  |& tee -a ${VALGRIND_LOG}
+
+    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes $test |& tee -a ${VALGRIND_LOG}
+
+    echo "==========================================================================="  |& tee -a ${VALGRIND_LOG}
+    echo -e "\n\n\n" |& tee -a ${VALGRIND_LOG}
+done
