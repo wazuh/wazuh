@@ -98,7 +98,36 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                 sca_check_data = sca_check_query.run()
 
             id_check_list = [check['id'] for check in sca_check_data['items']]
+            flag_id_check_list_changed = False
 
+            # Apply search on compliance and rules
+            if search is not None:
+                with WazuhDBQuerySCACheckRelational(agent_id=agent_list[0], table="sca_check_compliance",
+                                                    search=search) as sca_check_compliance_query:
+                    compliance_items_search = sca_check_compliance_query.run()['items']
+
+                with WazuhDBQuerySCACheckRelational(agent_id=agent_list[0], table="sca_check_rules",
+                                                    search=search) as sca_check_rules_query:
+                    rules_items_search = sca_check_rules_query.run()['items']
+
+                for compliance in compliance_items_search:
+                    if compliance['id_check'] not in id_check_list:
+                        flag_id_check_list_changed = True
+                        id_check_list.append(compliance['id_check'])
+                for rule in rules_items_search:
+                    if rule['id_check'] not in id_check_list:
+                        flag_id_check_list_changed = True
+                        id_check_list.append(rule['id_check'])
+
+            # Get SCA checks if id_check_list was updated (here we do not use filters, query or search)
+            if flag_id_check_list_changed:
+                with WazuhDBQuerySCACheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort,
+                                          policy_id=policy_id, filters=None, search=None,
+                                          query=",".join(
+                                              f"id={id_check}" for id_check in id_check_list)) as sca_check_query:
+                    sca_check_data = sca_check_query.run()
+
+            # Get compliance and rules
             with WazuhDBQuerySCACheckRelational(agent_id=agent_list[0], table="sca_check_compliance",
                                                 id_check_list=id_check_list) as sca_check_compliance_query:
                 sca_check_compliance_items = sca_check_compliance_query.run()['items']
