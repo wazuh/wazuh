@@ -9,16 +9,22 @@
 
 #include "../active_responses.h"
 
-#define GREP        "/usr/bin/grep"
-#define PFCTL       "/sbin/pfctl"
-#define PFCTL_RULES "/etc/pf.conf"
-#define PFCTL_TABLE "wazuh_fwtable"
+#define GREP        ("/usr/bin/grep")
+#define PFCTL       ("/sbin/pfctl")
+#define PFCTL_RULES ("/etc/pf.conf")
+#define PFCTL_TABLE ("wazuh_fwtable")
+#define RCCONF      ("/etc/rc.conf")
+#define LAUNCHCTL   ("/bin/launchctl")
 
 static int checking_if_its_configured(const char *path, const char *table);
+static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
+static int write_cmd_to_file(const char *path, const char *cmd);
 
 int main (int argc, char **argv) {
     (void)argc;
     char log_msg[OS_MAXSTR];
+    char output_buf[OS_MAXSTR];
+    int isEnabledFirewall = 0;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -81,6 +87,9 @@ int main (int argc, char **argv) {
 
         char *exec_cmd1[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
         char *exec_cmd2[4] = { NULL, NULL, NULL, NULL };
+        char *exec_cmd3[4] = { NULL, NULL, NULL, NULL };
+        char *exec_cmd4[4] = { NULL, NULL, NULL, NULL };
+        char *exec_cmd5[4] = { NULL, NULL, NULL, NULL };
 
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
@@ -92,6 +101,15 @@ int main (int argc, char **argv) {
 
                     const char *arg2[4] = { PFCTL, "-k", srcip, NULL };
                     memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
+
+                    const char *arg3[4] = { PFCTL, "-s", "info", NULL };
+                    memcpy(exec_cmd3, arg3, sizeof(exec_cmd3));
+
+                    const char *arg4[4] = { LAUNCHCTL, "start", "/Library/LaunchDaemons/pf.plist", NULL };
+                    memcpy(exec_cmd4, arg4, sizeof(exec_cmd4));
+                    
+                    const char *arg5[4] = { PFCTL, "-f", PFCTL_RULES, NULL };
+                    memcpy(exec_cmd5, arg5, sizeof(exec_cmd5));
                 } else {
                     const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL };
                     memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
@@ -101,6 +119,48 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
+                
+                int retVal = 0;
+                retVal = write_cmd_to_file(RCCONF, "pf_enable=\"YES\"");
+                retVal = write_cmd_to_file(RCCONF, "pf_rules=\"/etc/pf.conf\"");
+                retVal = write_cmd_to_file(RCCONF, "pflog_enable=\"YES\"");
+                retVal = write_cmd_to_file(RCCONF, "pflog_logfile=\"/var/log/pflog\"");
+                
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1, "table <%s> persist #%s", PFCTL_TABLE, PFCTL_TABLE);
+                retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
+                
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1, "block in quick from <%s> to any", PFCTL_TABLE);
+                retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
+                
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1, "block out quick from any to <%s>", PFCTL_TABLE);
+                retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
+
+                if (exec_cmd4[0] && strcmp(exec_cmd4[0], PFCTL) == 0) {
+                    wfd = wpopenv(PFCTL, exec_cmd4, W_BIND_STDOUT);
+                    if (!wfd) {
+                        memset(log_msg, '\0', OS_MAXSTR);
+                        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                        write_debug_file(argv[0], log_msg);
+                        cJSON_Delete(input_json);
+                        return OS_INVALID;
+                    }
+                    wpclose(wfd);
+                }
+
+                if (exec_cmd5[0] && strcmp(exec_cmd5[0], PFCTL) == 0) {
+                    wfd = wpopenv(PFCTL, exec_cmd5, W_BIND_STDOUT);
+                    if (!wfd) {
+                        memset(log_msg, '\0', OS_MAXSTR);
+                        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                        write_debug_file(argv[0], log_msg);
+                        cJSON_Delete(input_json);
+                        return OS_INVALID;
+                    }
+                    wpclose(wfd);
+                }
                 return OS_SUCCESS;
             }
         } else {
@@ -112,6 +172,32 @@ int main (int argc, char **argv) {
         }
 
         // Executing it
+
+        if (exec_cmd3[0] && strcmp(exec_cmd3[0], PFCTL) == 0) {
+            wfd = wpopenv(PFCTL, exec_cmd3, W_BIND_STDOUT);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                return OS_INVALID;
+            }
+            else {
+                while (fgets(output_buf, OS_MAXSTR -1, wfd->file_out) && 0  == isEnabledFirewall) {   
+                    isEnabledFirewall = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
+                }
+
+                if (( 0 == isEnabledFirewall )) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "{\"message\":\"Firewall is disabled\",\"profile\":\"%s\",\"status\":\"%s\"}",
+                            "undefined", 1 == isEnabledFirewall ? "active" : "inactive" 
+                    );
+                    write_debug_file(argv[0], log_msg);
+                }
+            }
+            wpclose(wfd);
+        }
+        
         if (exec_cmd1[0] && strcmp(exec_cmd1[0], PFCTL) == 0) {
             wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
             if (!wfd) {
@@ -164,3 +250,45 @@ static int checking_if_its_configured(const char *path, const char *table) {
     }
     return OS_INVALID;
 }
+
+/*
+   retVal = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
+   return 1 if for example with patter1:"Status :" find "Enabled"
+   
+*/
+static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2){
+    int retVal = 0;
+    const char *pos = NULL;
+    if ( str_pattern_1 != NULL) {
+        pos = strstr(output_buf, str_pattern_1);
+    }
+    
+    if ( pos != NULL) {
+        char state[OS_MAXSTR];
+        char buffer[OS_MAXSTR];
+        if (str_pattern_2 != NULL) {
+            snprintf(buffer, OS_MAXSTR -1 , "%%*s %%%lds",strlen(str_pattern_2));
+            if (pos && sscanf(pos, buffer /*"%*s %7s"*/, state) == 1 ) {
+                if (strcmp(state, str_pattern_2) == 0) {
+                    retVal = 1;       
+                } else {
+                    retVal = 0; 
+                }
+            }
+        }
+    }
+    return  retVal;
+}
+
+static int write_cmd_to_file(const char *path, const char *cmd) {
+    int retVal = 0;
+    if (path != NULL && cmd != NULL) {
+        FILE *fp = fopen(path, "a+");
+        if (fp != NULL) {
+    	    fprintf(fp, "%s\n", cmd);
+	        retVal = 1;
+        }
+        fclose(fp);
+    }
+    return retVal;
+ }
