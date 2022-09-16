@@ -33,7 +33,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,sqlite3_column_text \
                         -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_bind_int64\
                         -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config \
-                        -Wl,--wrap,wdb_global_create_backup \
+                        -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state\
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
@@ -51,7 +51,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity -Wl,--wrap,wdb_global_get_backups \
                              -Wl,--wrap,wdb_global_restore_backup -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                              -Wl,--wrap,wdb_global_select_group_belong -Wl,--wrap,wdb_global_set_agent_groups -Wl,--wrap,wdb_global_sync_agent_groups_get \
-                             -Wl,--wrap,wdb_global_get_group_agents \
+                             -Wl,--wrap,wdb_global_get_group_agents -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")

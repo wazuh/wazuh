@@ -91,4 +91,8 @@ int __wrap_wdb_commit2(wdb_t * wdb);
 
 void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb);
 
+int __wrap_wdb_vacuum(__attribute__((unused))sqlite3 * db);
+
+int __wrap_wdb_get_db_state(__attribute__((unused))wdb_t * wdb);
+
 #endif

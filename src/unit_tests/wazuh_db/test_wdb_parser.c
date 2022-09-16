@@ -3701,6 +3701,128 @@ void test_wdb_parse_global_backup_create_success(void **state) {
     os_free(query);
 }
 
+/* Tests agent vacuum */
+
+void test_wdb_parse_agent_vacuum_commit_error(void **state) {
+    int result = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 vacuum", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vacuum");
+
+    will_return(__wrap_wdb_commit2, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot end transaction.");
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot end transaction");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_agent_vacuum_vacuum_error(void **state) {
+    int result = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 vacuum", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vacuum");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    will_return(__wrap_wdb_vacuum, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot vacuum database.");
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot vacuum database");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_agent_vacuum_success(void **state) {
+    int result = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 vacuum", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vacuum");
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    will_return(__wrap_wdb_vacuum, OS_SUCCESS);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(result, OS_SUCCESS);
+
+    os_free(query);
+}
+
+/* Tests agent get_fragmentation */
+
+void test_wdb_parse_agent_get_fragmentation_error(void **state) {
+    int result = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 get_fragmentation", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: get_fragmentation");
+
+    will_return(__wrap_wdb_get_db_state, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot get database fragmentation.");
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot get database fragmentation");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_get_fragmentation_success(void **state) {
+    int result = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    char* response = NULL;
+    os_strdup("{\"fragmentation\":50}", response);
+
+    os_strdup("agent 000 get_fragmentation", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: get_fragmentation");
+
+    will_return(__wrap_wdb_get_db_state, 50);
+
+    will_return(__wrap_cJSON_PrintUnformatted, response);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok {\"fragmentation\":50}");
+    assert_int_equal(result, OS_SUCCESS);
+
+    os_free(query);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -3878,6 +4000,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup, test_teardown),
+        /* wdb_parse_agent_vacuum */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_commit_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_vacuum_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_success, test_setup, test_teardown),
+        /* wdb_parse_agent_get_fragmentation */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_agent_get_fragmentation_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_fragmentation_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
