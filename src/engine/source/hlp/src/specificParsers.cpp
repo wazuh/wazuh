@@ -1279,6 +1279,55 @@ bool parseBoolean(const char** it, Parser const& parser, ParseResult& result)
     return true;
 }
 
+// XML modules
+using xmlModule =
+    std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
+static bool
+xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
+{
+    if ("Data" != std::string{node.name()})
+    {
+        return false;
+    }
+
+    path += "/" + std::string {node.attribute("Name").value()};
+    docJson.setString(node.text().as_string(), path);
+
+    return true;
+}
+
+static std::unordered_map<std::string_view, xmlModule> xmlModules = {
+    {"default", nullptr},
+    {"windows", xmlWinModule},
+};
+
+// Xml module special rules
+bool configureXmlParser(Parser& parser, std::vector<std::string_view> const& args)
+{
+    if (args.empty())
+    {
+        parser.options.push_back("default");
+    }
+    else if (args.size() == 1)
+    {
+        if (xmlModules.find(args[0]) != xmlModules.end())
+        {
+            parser.options.push_back(std::string {args[0]});
+        }
+        else
+        {
+            throw std::runtime_error {fmt::format("Invalid xml module: [{}]", args[0])};
+        }
+    }
+    else
+    {
+        throw std::runtime_error {
+            "Invalid number of arguments for xml module, expected 0 or 1"};
+    }
+
+    return true;
+}
+
 /**
  * @brief Transform an XML document into a JSON document.
  *
@@ -1286,36 +1335,51 @@ bool parseBoolean(const char** it, Parser const& parser, ParseResult& result)
  * @param docJson Output JSON document.
  * @param path Path to the current node.
  */
-static void xmlToJson(std::shared_ptr<pugi::xml_node> docXml,
-                      std::shared_ptr<json::Json> docJson,
+static void xmlToJson(pugi::xml_node& docXml,
+                      json::Json& docJson,
+                      xmlModule mod,
                       std::string path = "")
 {
+    // TODO: add array support
     // Iterate over the xml generating the corresponding json
-    for (auto node : docXml->children())
+    for (auto node : docXml.children())
     {
         // Ignore text nodes as they are handled by the parent
         if (node.type() == pugi::node_pcdata)
         {
             continue;
         }
+
         std::string localPath {path};
-        localPath += "/" + std::string {node.name()};
-        docJson->setObject(localPath);
 
-        auto text = node.text();
-        if (!text.empty())
+        // Check if we have special rules and if are applied
+        auto processed = false;
+        if (mod)
         {
-            docJson->setString(text.as_string(), localPath + "/#text");
+            processed = mod(node, docJson, localPath);
         }
 
-        for (auto attr : node.attributes())
+        if (!processed)
         {
-            docJson->setString(attr.value(), localPath + "/@" + attr.name());
+            localPath += "/" + std::string {node.name()};
+            docJson.setObject(localPath);
+
+            auto text = node.text();
+            if (!text.empty())
+            {
+                docJson.setString(text.as_string(), localPath + "/#text");
+            }
+
+            for (auto attr : node.attributes())
+            {
+                docJson.setString(attr.value(), localPath + "/@" + attr.name());
+            }
         }
 
+        // Process children
         if (!node.first_child().empty())
         {
-            xmlToJson(std::make_shared<pugi::xml_node>(node), docJson, localPath);
+            xmlToJson(node, docJson, mod, localPath);
         }
     }
 }
@@ -1325,14 +1389,14 @@ bool parseXml(const char** it, Parser const& parser, ParseResult& result)
     // TODO: same as parseJson, we are creating a Json object to obtain the json string
     // and later creating a Json object again, fix this on HLP refactor.
     bool success {false};
-    auto xmlDoc = std::make_shared<pugi::xml_document>();
-    auto jsonDoc = std::make_shared<json::Json>();
+    pugi::xml_document xmlDoc; // = std::make_shared<pugi::xml_document>();
+    json::Json jsonDoc;
 
-    auto parseResult = xmlDoc->load_buffer(*it, strlen(*it));
+    auto parseResult = xmlDoc.load_buffer(*it, strlen(*it));
 
     if (parseResult.status == pugi::status_ok)
     {
-        xmlToJson(xmlDoc, jsonDoc);
+        xmlToJson(xmlDoc, jsonDoc, xmlModules[parser.options[0]]);
         result[parser.name] = jsonDoc;
         success = true;
         *it += strlen(*it);
