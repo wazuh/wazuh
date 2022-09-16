@@ -55,14 +55,14 @@
   </rule>
 
   <rule id="62105" level="14" frequency="$MS_FREQ" timeframe="60">
-    <if_matched_sid>62101</if_matched_sid>
+    <if_matched_sid>62102</if_matched_sid>
     <description>Short-time multiple Windows Defender error events</description>
     <options>no_full_log</options>
     <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="62106" level="14" frequency="$MS_FREQ" timeframe="30">
-    <if_matched_sid>62102</if_matched_sid>
+    <if_matched_sid>62101</if_matched_sid>
     <description>Short-time multiple Windows Defender warning events</description>
     <options>no_full_log</options>
     <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
