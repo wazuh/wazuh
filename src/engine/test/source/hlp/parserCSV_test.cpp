@@ -136,6 +136,23 @@ TEST(parseCSV, extract_minor_fields_2_not_null_not_end_string)
 }
 
 
+TEST(parseCSV, extract_minor_fields_2_not_null_not_end_string_2)
+{
+    const char* logQl = "<_custom/csv/field_1/field_2>,<_dummy>";
+    const char* event = R"(hi1,hi2,hi3,hi4 bye)";
+    const char* expectedJSON = R"({"field_1":"hi1","field_2":"hi2"})";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(ret);
+    ASSERT_STREQ(expectedJSON, std::any_cast<JsonString>(result["_custom"]).jsonString.c_str());
+    ASSERT_EQ("hi3,hi4 bye", std::any_cast<std::string>(result["_dummy"]));
+}
+
 TEST(parseCSV, extract_exact_fields)
 {
     const char* logQl = "<_custom/csv/null_1/null_2/word/esacaped_1/no_escape,null_3/null_4/new/null_5/null_6/null_7>";
