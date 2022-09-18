@@ -25,6 +25,8 @@ int main (int argc, char **argv) {
     char log_msg[OS_MAXSTR];
     char output_buf[OS_MAXSTR];
     int isEnabledFirewall = 0;
+    static int isEnabledFirewallPrevious = 0;
+    static int isFirstEntryEnabledFirewall = 0;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -196,6 +198,24 @@ int main (int argc, char **argv) {
                 }
             }
             wpclose(wfd);
+
+
+            // reload pf.conf after detected that user turn on firewall
+            if ( 0 == isFirstEntryEnabledFirewall || (0 == isEnabledFirewallPrevious && 1 == isEnabledFirewall)){
+                if (exec_cmd5[0] && strcmp(exec_cmd5[0], PFCTL) == 0) {
+                    wfd = wpopenv(PFCTL, exec_cmd5, W_BIND_STDOUT);
+                    if (!wfd) {
+                        memset(log_msg, '\0', OS_MAXSTR);
+                        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                        write_debug_file(argv[0], log_msg);
+                        cJSON_Delete(input_json);
+                        return OS_INVALID;
+                    }
+                    wpclose(wfd);
+                }
+                isFirstEntryEnabledFirewall = 1;
+            }
+            isEnabledFirewallPrevious = isEnabledFirewall;
         }
         
         if (exec_cmd1[0] && strcmp(exec_cmd1[0], PFCTL) == 0) {
