@@ -717,7 +717,6 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*************************************************
 
 // field: +s_contains/value1/value2/...valueN
-// TODO: Add test for this helper
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -743,9 +742,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            // TODO FIx this, unused resolvedField
-            const auto resolvedField {event->getString(targetField)};
-            if (!resolvedField.has_value())
+            if (!event->exists(targetField))
             {
                 return base::result::makeFailure(event, failureTrace1);
             }
@@ -765,32 +762,39 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                     {
                         const auto resolvedParameter {
                             event->getString(parameter.m_value)};
-                        if (!resolvedParameter.has_value())
+                        if (resolvedParameter.has_value())
                         {
-                            return base::result::makeFailure(event, failureTrace3);
+                            cmpValue.setString(resolvedParameter.value());
                         }
-
-                        cmpValue.setString(resolvedParameter.value());
+                        else
+                        {
+                            continue;
+                        }
                     }
+                    break;
                     case helper::base::Parameter::Type::VALUE:
                     {
                         cmpValue.setString(parameter.m_value);
                     }
+                    break;
                     default:
                         throw std::runtime_error(fmt::format(
                             "[opBuilderHelperContains] invalid parameter type"));
                 }
 
-                if (std::find(resolvedArray.value().begin(),
-                              resolvedArray.value().end(),
-                              cmpValue)
-                    == resolvedArray.value().end())
+                // Check if the array contains the value
+                if (std::find_if(resolvedArray.value().begin(),
+                                 resolvedArray.value().end(),
+                                 [&cmpValue](const json::Json& value)
+                                 { return value == cmpValue; })
+                    != resolvedArray.value().end())
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    return base::result::makeSuccess(event, successTrace);
                 }
             }
 
-            return base::result::makeSuccess(event, successTrace);
+            // Not found
+            return base::result::makeFailure(event, failureTrace3);
         });
 }
 
