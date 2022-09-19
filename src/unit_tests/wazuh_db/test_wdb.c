@@ -30,6 +30,9 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 
+int wdb_execute_non_select_query(sqlite3 *db, const char *query);
+int wdb_select_from_temp_table(sqlite3 *db);
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -1113,9 +1116,36 @@ void test_wdb_select_from_temp_table_success_100(void **state) {
     os_free(db);
 }
 
+void test_wdb_get_db_state_initial_drop_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // drop table fail
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error, temporary table was previously created and it was not possible to drop it.");
+
+    assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
 void test_wdb_get_db_state_create_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // drop table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // create temp table fail
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -1137,6 +1167,12 @@ void test_wdb_get_db_state_create_error(void **state) {
 void test_wdb_get_db_state_insert_error_drop_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // drop table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // create temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -1174,6 +1210,12 @@ void test_wdb_get_db_state_insert_error_drop_success(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
 
+    // drop table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
     // create temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
@@ -1205,6 +1247,12 @@ void test_wdb_get_db_state_insert_error_drop_success(void **state) {
 void test_wdb_get_db_state_select_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // drop table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // create temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -1244,6 +1292,12 @@ void test_wdb_get_db_state_success_0(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
 
+    // drop table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
     // create temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
@@ -1279,6 +1333,12 @@ void test_wdb_get_db_state_success_0(void **state) {
 void test_wdb_get_db_state_success_100(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
+
+    // drop table success
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // create temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -1384,6 +1444,7 @@ int main() {
         cmocka_unit_test(test_wdb_select_from_temp_table_success_0),
         cmocka_unit_test(test_wdb_select_from_temp_table_success_100),
         // wdb_get_db_state
+        cmocka_unit_test(test_wdb_get_db_state_initial_drop_error),
         cmocka_unit_test(test_wdb_get_db_state_create_error),
         cmocka_unit_test(test_wdb_get_db_state_insert_error_drop_error),
         cmocka_unit_test(test_wdb_get_db_state_insert_error_drop_success),
