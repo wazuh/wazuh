@@ -234,7 +234,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition);
 
 /**
  * @brief Create `s_contains` helper function that filters events if the field
- * is an array and contains the specifieds value.
+ * is an array and contains one of the specified values.
  *
  * @param definition The filter definition.
  * @return base::Expression
