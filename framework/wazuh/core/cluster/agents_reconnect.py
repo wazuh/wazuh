@@ -33,7 +33,8 @@ class AgentsReconnectionPhases(str, Enum):
 class AgentsReconnect:
     """Class that encapsulates everything related to the agent reconnection algorithm."""
 
-    def __init__(self, logger, nodes, master_name, blacklisted_nodes, tolerance, nodes_stability_threshold) -> None:
+    def __init__(self, logger, nodes, master_name, blacklisted_nodes, tolerance, min_tolerance_window,
+                 nodes_stability_threshold, agents_connection_delay, lost_agents_percent, test_round_size) -> None:
         """Class constructor.
 
         Parameters
@@ -41,18 +42,27 @@ class AgentsReconnect:
         logger : Logger object
             Logger to use.
         nodes : list
-            List of nodes in the environment.
+            Nodes in the environment.
         master_name : str
             Name of the master node.
         blacklisted_nodes : set
-            Set of nodes that are not taken into account for the agents reconnection.
+            Nodes that are not taken into account for the agents reconnection.
         tolerance : float
             Tolerance in the difference between the most populated node and the least populated node.
+        min_tolerance_window : int
+            Minimum acceptable number of unbalanced agents.
         nodes_stability_threshold : int
             Number of consecutive checks that must be successful to consider the environment stable.
+        agents_connection_delay : int
+            Maximum delay in agents' last_keepalive after which they are considered disconnected.
+        lost_agents_percent : float
+            Maximum percentage of agents that can be disconnected without considering it an error.
+        test_round_size : float
+            Percentage of unbalanced active agents that can be reconnected at most in the test round.
         """
-        # Logger
+        # General
         self.logger = logger
+        self.current_phase = AgentsReconnectionPhases.NOT_STARTED
 
         # Check nodes stability
         self.nodes = nodes
@@ -67,26 +77,22 @@ class AgentsReconnect:
 
         # Check previous balance
         self.env_status = {}
-        self.lost_agents_percent = 0.1  # 10%
+        self.agents_connection_delay = agents_connection_delay
+        self.lost_agents_percent = lost_agents_percent
 
         # Check agents balance
         self.balance_threshold = 3
         self.tolerance = tolerance
+        self.min_tolerance_window = min_tolerance_window
         self.previous_deviation = None
         self.expected_deviation = 0
 
         # Reconnection phase
         self.expected_rounds = 0
         self.round_counter = 0
+        self.test_round_size = test_round_size
         self.reconnection_timestamp = 0
         self.reconnected_agents = []
-
-        # General
-        self.current_phase = AgentsReconnectionPhases.NOT_STARTED
-
-        # Sleep times
-        self.posbalance_sleep = 60
-        self.agents_connection_delay = 30
 
     def wazuh_exception_handler(func):
         async def wrapper(self, *args, **kwargs):
@@ -492,7 +498,7 @@ class AgentsReconnect:
             """
             agents_per_worker = [worker['total'] for worker in self.env_status.values()]
             mean = sum(agents_per_worker) / len(agents_per_worker)
-            tolerance_window = max(floor(mean * tolerance), 3)
+            tolerance_window = max(floor(mean * tolerance), self.min_tolerance_window)
             biggest_node = max(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
             smallest_node = min(self.env_status.keys(), key=lambda x: self.env_status[x]['total'])
 
@@ -517,7 +523,7 @@ class AgentsReconnect:
                                     'The cluster could remain unbalanced.')
 
             total_active_agents = sum(info['total'] for info in self.env_status.values())
-            max_test_assigns = max(min(total_active_agents * 0.05, max_assignments_per_node), 1)
+            max_test_assigns = max(min(total_active_agents * self.test_round_size, max_assignments_per_node), 1)
             predict_info = self.predict_distribution(self.env_status, max_test_assigns)
             self.logger.info(f'It can take up to {self.expected_rounds} rounds to reconnect {total_reconnect} agents.')
             # If test round is as big as a normal round, count itself as a normal round.
