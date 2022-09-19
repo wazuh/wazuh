@@ -29,9 +29,9 @@ normalize:
       _syscollectorEventOriginal.inventory.cpu_cores: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.cpu_mhz: +not_exists
+      - _syscollectorEventOriginal.inventory.cpu_MHz: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.cpu_mhz: "NULL"
+      _syscollectorEventOriginal.inventory.cpu_MHz: "NULL"
 
   - check:
       - _syscollectorEventOriginal.inventory.ram_total: +not_exists
@@ -49,5 +49,5 @@ normalize:
       _syscollectorEventOriginal.inventory.ram_usage: "NULL"
 
   - map:
-      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ hardware save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.board_serial/|/$_syscollectorEventOriginal.inventory.cpu_name/|/$_syscollectorEventOriginal.inventory.cpu_cores/|/$_syscollectorEventOriginal.inventory.cpu_mhz/|/$_syscollectorEventOriginal.inventory.ram_total/|/$_syscollectorEventOriginal.inventory.ram_free/|/$_syscollectorEventOriginal.inventory.ram_usage
+      _query: +s_concat/agent /$agent.id/ hardware save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.board_serial/|/$_syscollectorEventOriginal.inventory.cpu_name/|/$_syscollectorEventOriginal.inventory.cpu_cores/|/$_syscollectorEventOriginal.inventory.cpu_MHz/|/$_syscollectorEventOriginal.inventory.ram_total/|/$_syscollectorEventOriginal.inventory.ram_free/|/$_syscollectorEventOriginal.inventory.ram_usage
       _hardware_save_response: +wdb_update/$_query

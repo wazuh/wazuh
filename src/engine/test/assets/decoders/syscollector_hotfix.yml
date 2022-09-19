@@ -11,12 +11,12 @@ normalize:
   - check:
       - _syscollectorEventOriginal.hotfix: +exists
     map:
-      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ hotfix save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.hotfix
+      _query: +s_concat/agent /$agent.id/ hotfix save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.hotfix
       _hotfix_save_response: +wdb_update/$_query
 
   - check:
       - _syscollectorEventOriginal.hotfix: +not_exists
       - _syscollectorEventOriginal.type: +s_eq/hotfix_end
     map:
-      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ hotfix del /$_syscollectorEventOriginal.ID
+      _query: +s_concat/agent /$agent.id/ hotfix del /$_syscollectorEventOriginal.ID
       _hotfix_del_response: +wdb_update/$_query
