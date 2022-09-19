@@ -9,6 +9,7 @@ decoders:
   - suricata-http
   - suricata-stats
   - json
+  - windows-base
   - windows-security
   - apache-error
   - apache-access
