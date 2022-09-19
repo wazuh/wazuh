@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.8]
+## [v4.3.8] - 2022-09-19
 
 ### Manager
 
@@ -1341,7 +1341,14 @@ All notable changes to this project will be documented in this file.
 - Removed compatibility with deprecated configuration at Vulnerability Detector. ([#5879](https://github.com/wazuh/wazuh/pull/5879))
 
 
-## [v3.13.4]
+## [v3.13.6] - 2022-09-19
+
+### Fixed
+
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 (reported by @guragainroshan0). ([#14823](https://github.com/wazuh/wazuh/pull/14823))
+
+
+## [v3.13.4] - 2022-05-30
 
 ### Fixed
 
