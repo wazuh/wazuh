@@ -13,6 +13,13 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuhdb_op.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifdef WIN32
     #define getuid() 0
     #define chown(x, y, z) 0
@@ -32,10 +39,11 @@ const char* WDBC_RESULT[] = {
     [WDBC_UNKNOWN] = "unk"
 };
 
-static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
+static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_INSERT_INTO_TEMP_TABLE = "INSERT INTO s(pageno) SELECT pageno FROM dbstat ORDER BY path;";
 static const char *SQL_SELECT_TEMP_TABLE = "SELECT sum(s1.pageno+1==s2.pageno)*1.0/count(*) FROM s AS s1, s AS s2 WHERE s1.rowid+1=s2.rowid;";
 static const char *SQL_DROP_TEMP_TABLE = "DROP TABLE s;";
+static const char *SQL_DROP_TEMP_TABLE_IF_EXISTS = "DROP TABLE IF EXISTS s;";
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
@@ -263,6 +271,12 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED] = "SELECT DISTINCT NAME, VERSION, ARCHITECTURE, VENDOR, SOURCE, CPE, MSU_NAME, ITEM_ID FROM SYS_PROGRAMS WHERE TRIAGED != 1;",
     [WDB_STMT_SYS_PROGRAMS_SET_TRIAGED] = "UPDATE SYS_PROGRAMS SET TRIAGED = 1;",
 };
+
+/* Run a query without selecting any fields */
+STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query);
+
+/* Select from temp table */
+STATIC int wdb_select_from_temp_table(sqlite3 *db);
 
 wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -787,6 +801,11 @@ int wdb_vacuum(sqlite3 *db) {
 int wdb_get_db_state(wdb_t * wdb) {
     int result = OS_INVALID;
 
+    if (wdb_execute_non_select_query(wdb->db, SQL_DROP_TEMP_TABLE_IF_EXISTS) == OS_INVALID) {
+        mdebug1("Error, temporary table was previously created and it was not possible to drop it.");
+        return OS_INVALID;
+    }
+
     if (wdb_execute_non_select_query(wdb->db, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error creating temporary table.");
         return OS_INVALID;
@@ -809,7 +828,7 @@ int wdb_get_db_state(wdb_t * wdb) {
 }
 
 /* Run a query without selecting any fields */
-int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
+STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_SUCCESS;
 
@@ -833,7 +852,7 @@ int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
 }
 
 /* Select from temp table */
-int wdb_select_from_temp_table(sqlite3 *db) {
+STATIC int wdb_select_from_temp_table(sqlite3 *db) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
 

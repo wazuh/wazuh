@@ -588,7 +588,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "get_fragmentation") == 0) {
             int state = wdb_get_db_state(wdb);
-            if ( state < 0) {
+            if (state < 0) {
                 mdebug1("DB(%s) Cannot get database fragmentation.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
                 result = -1;
@@ -974,7 +974,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = -1;
             }
 
-            if ( result != -1) {
+            if (result != -1) {
                 if (wdb_vacuum(wdb->db) < 0) {
                     mdebug1("Global DB Cannot vacuum database.");
                     snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
@@ -986,7 +986,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "get_fragmentation") == 0) {
             int state = wdb_get_db_state(wdb);
-            if ( state < 0) {
+            if (state < 0) {
                 mdebug1("Global DB Cannot get database fragmentation.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
                 result = -1;
