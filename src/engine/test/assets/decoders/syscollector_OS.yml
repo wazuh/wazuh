@@ -5,7 +5,6 @@ parents:
 
 check:
   - _syscollectorEventOriginal.inventory: +exists
-  - _syscollectorEventOriginal.route: +s_eq/syscollector
   - _syscollectorEventOriginal.type: +s_eq/OS
 
 normalize:
@@ -28,11 +27,6 @@ normalize:
       - _syscollectorEventOriginal.inventory.architecture: +not_exists
     map:
       _syscollectorEventOriginal.inventory.architecture: "NULL"
-
-  - check:
-      - _syscollectorEventOriginal.inventory.cpu_cores: +not_exists
-    map:
-      _syscollectorEventOriginal.inventory.cpu_cores: "NULL"
 
   - check:
       - _syscollectorEventOriginal.inventory.os_name: +not_exists
@@ -99,8 +93,6 @@ normalize:
     map:
       _syscollectorEventOriginal.inventory.os_display_version: "NULL"
 
-  - check:
-      - _decode_osinfo_sectionon: +i_eq/1
-    map:
-      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ osinfo set /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.hostname/|/$_syscollectorEventOriginal.inventory.architecture/|/$_syscollectorEventOriginal.inventory.os_name/|/$_syscollectorEventOriginal.inventory.os_version/|/$_syscollectorEventOriginal.inventory.os_codename/|/$_syscollectorEventOriginal.inventory.os_major/|/$_syscollectorEventOriginal.inventory.os_minor/|/$_syscollectorEventOriginal.inventory.os_build/|/$_syscollectorEventOriginal.inventory.os_platform/|/$_syscollectorEventOriginal.inventory.sysname/|/$_syscollectorEventOriginal.inventory.release/|/$_syscollectorEventOriginal.inventory.version/|/$_syscollectorEventOriginal.inventory.os_release/|/$_syscollectorEventOriginal.inventory.os_patch/|/$_syscollectorEventOriginal.inventory.os_display_version
+  - map:
+      _query: +s_concat/agent /$agent.id/ osinfo set /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.hostname/|/$_syscollectorEventOriginal.inventory.architecture/|/$_syscollectorEventOriginal.inventory.os_name/|/$_syscollectorEventOriginal.inventory.os_version/|/$_syscollectorEventOriginal.inventory.os_codename/|/$_syscollectorEventOriginal.inventory.os_major/|/$_syscollectorEventOriginal.inventory.os_minor/|/$_syscollectorEventOriginal.inventory.os_build/|/$_syscollectorEventOriginal.inventory.os_platform/|/$_syscollectorEventOriginal.inventory.sysname/|/$_syscollectorEventOriginal.inventory.release/|/$_syscollectorEventOriginal.inventory.version/|/$_syscollectorEventOriginal.inventory.os_release/|/$_syscollectorEventOriginal.inventory.os_patch/|/$_syscollectorEventOriginal.inventory.os_display_version
       _hardware_save_result: +wdb_update/$_query
