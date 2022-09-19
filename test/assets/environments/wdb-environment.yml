@@ -1,7 +1,7 @@
 decoders:
+  - json
   - decoder_dbsync
   - decoder_ciscat
-  - decoder_ciscat_scan_info
   - decoder_sca
   - fim
   - fim_event
@@ -15,8 +15,7 @@ decoders:
   - syscollector_netinfo
   - syscollector_network
   - syscollector_network_end
-  - syscollector_network_ipv4
-  - syscollector_network_ipv6
+  - syscollector_network_ip
   - syscollector_OS
   - syscollector_port
   - syscollector_port_del

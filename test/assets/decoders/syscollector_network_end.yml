@@ -9,5 +9,5 @@ check:
 
 normalize:
   - map:
-      _query: +s_concat/agent /$_syscollectorEventOriginal.agent.id/ netinfo del /$_syscollectorEventOriginal.ID
+      _query: +s_concat/agent /$agent.id/ netinfo del /$_syscollectorEventOriginal.ID
       _netinfo_del_result: +wdb_update/$_query

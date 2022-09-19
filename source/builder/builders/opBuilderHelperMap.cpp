@@ -471,7 +471,12 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 
                     // Get field value
                     std::string resolvedField;
-                    if (event->isInt(parameter.m_value))
+                    if (event->isDouble(parameter.m_value))
+                    {
+                        resolvedField =
+                            std::to_string(event->getDouble(parameter.m_value).value());
+                    }
+                    else if (event->isInt(parameter.m_value))
                     {
                         resolvedField =
                             std::to_string(event->getInt(parameter.m_value).value());
