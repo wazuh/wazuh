@@ -239,13 +239,15 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_APP_ID)) {
-            if (*nodes[i]->content != '\0')
+            if (*nodes[i]->content != '\0') {
                 mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
                 os_strdup(nodes[i]->content, api_config->application_id);
+            }
         } else if (!strcmp(nodes[i]->element, XML_APP_KEY)) {
-            if (*nodes[i]->content != '\0')
+            if (*nodes[i]->content != '\0') {
                 mwarn(DEPRECATED_MESSAGE, nodes[i]->element, WM_AZURE_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);
                 os_strdup(nodes[i]->content, api_config->application_key);
+            }
         } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
             if (*nodes[i]->content != '\0')
                 os_strdup(nodes[i]->content, api_config->auth_path);

@@ -88,10 +88,10 @@ int ReadExecConfig()
         *tmp_str = '\0';
         tmp_str += 3;
 
-        // Directory transversal test
+        // Directory traversal test
 
         if (w_ref_parent_folder(str_pt)) {
-            merror("Active response command '%s' vulnerable to directory transversal attack. Ignoring.", str_pt);
+            merror("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", str_pt);
             exec_cmd[exec_size][0] = '\0';
         } else {
             /* Write the full command path */
@@ -163,6 +163,11 @@ char *GetCommandbyName(const char *name, int *timeout)
     // Filter custom commands
 
     if (name[0] == '!') {
+        if (w_ref_parent_folder(name + 1)) {
+            mwarn("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", name + 1);
+            return NULL;
+        }
+
         static char command[OS_FLSIZE];
 
         if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, name + 1) >= (int)sizeof(command)) {

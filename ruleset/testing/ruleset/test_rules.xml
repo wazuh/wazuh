@@ -464,4 +464,17 @@
   <description>No-alerting disabled.</description>
 </rule>
 
+<!-- Trigger parent rule, do not crash -->
+<!-- Sep  5 13:14:00 User test_wrong_ifsid[12345]:Test -->
+
+<rule id="999275" level="3">
+  <decoded_as>test_wrong_ifsid</decoded_as>
+  <description>Wrong ifsid test.</description>
+</rule>
+
+<rule id="999276" level="3">
+  <if_sid>999275|1</if_sid>
+  <description>Wrong ifsid test.</description>
+</rule>
+
 </group>
