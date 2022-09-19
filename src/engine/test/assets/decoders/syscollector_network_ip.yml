@@ -1,0 +1,66 @@
+name: syscollector_network_ip
+
+parents:
+  - syscollector_network
+
+check:
+  - _iface_save_response: +is_true
+
+normalize:
+  - check:
+      - _syscollectorEventOriginal.iface.IPv6: +exists
+      - _syscollectorEventOriginal.iface.IPv6.gateway: +not_exists
+    map:
+      _syscollectorEventOriginal.iface.IPv6.gateway: "NULL"
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv6: +exists
+      - _syscollectorEventOriginal.iface.IPv6.DHCP: +not_exists
+    map:
+      _syscollectorEventOriginal.iface.IPv6.DHCP: "NULL"
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv6: +exists
+      - _syscollectorEventOriginal.iface.IPv6.metric: +not_exists
+    map:
+      _syscollectorEventOriginal.iface.IPv6.metric: "NULL"
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv6: +exists
+  - map:
+      _queryIPv6: +s_concat/agent /$agent.id/ netproto save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.iface.name/|1|/$_syscollectorEventOriginal.iface.IPv6.gateway/|/$_syscollectorEventOriginal.iface.IPv6.DHCP/|/$_syscollectorEventOriginal.iface.IPv6.metric
+      _netproto_ipv6_save_result: +wdb_update/$_queryIPv6
+
+  - check:
+      - _netproto_ipv6_save_result: +is_true
+    map:
+      _result_saveNetInfoIPv6: +saveNetInfoIPv6/$agent.id/$_syscollectorEventOriginal.ID/$_syscollectorEventOriginal.iface.name/$_syscollectorEventOriginal.iface.IPv6
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv4: +exists
+      - _syscollectorEventOriginal.iface.IPv4.gateway: +not_exists
+    map:
+      _syscollectorEventOriginal.iface.IPv4.gateway: "NULL"
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv4: +exists
+      - _syscollectorEventOriginal.iface.IPv4.DHCP: +not_exists
+    map:
+      _syscollectorEventOriginal.iface.IPv4.DHCP: "NULL"
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv4: +exists
+      - _syscollectorEventOriginal.iface.IPv4.metric: +not_exists
+    map:
+      _syscollectorEventOriginal.iface.IPv4.metric: "NULL"
+
+  - check:
+      - _syscollectorEventOriginal.iface.IPv4: +exists
+  - map:
+      _queryIPv4: +s_concat/agent /$agent.id/ netproto save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.iface.name/|0|/$_syscollectorEventOriginal.iface.IPv4.gateway/|/$_syscollectorEventOriginal.iface.IPv4.DHCP/|/$_syscollectorEventOriginal.iface.IPv4.metric
+      _netproto_ipv4_save_result: +wdb_update/$_queryIPv4
+
+  - check:
+      - _netproto_ipv4_save_result: +is_true
+    map:
+      _result_saveNetInfoIPv4: +saveNetInfoIPv4/$agent.id/$_syscollectorEventOriginal.ID/$_syscollectorEventOriginal.iface.name/$_syscollectorEventOriginal.iface.IPv4
