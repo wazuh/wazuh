@@ -54,9 +54,6 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     /* Connecting to syslog. */
     while(integrator_config[s])
     {
-        #ifdef WAZUH_UNIT_TESTING
-            break;
-        #endif
         integrator_config[s]->enabled = 1;
 
         snprintf(integration_path, 2048 -1, "%s/%s", INTEGRATORDIR, integrator_config[s]->name);

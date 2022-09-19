@@ -51,6 +51,9 @@ static int test_teardown(void **state) {
     IntegratorConfig *virustotal_config = state[0];
     IntegratorConfig *pagerduty_config = state[1];
 
+    os_free(virustotal_config->path);
+    os_free(pagerduty_config->path);
+
     os_free(virustotal_config);
     os_free(pagerduty_config);
 
@@ -82,6 +85,16 @@ void test_OS_IntegratorD(void **state) {
     will_return(__wrap_jqueue_open, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "JSON file queue connected.");
+
+    expect_string(__wrap_File_DateofChange, file, "integrations/virustotal");
+    will_return(__wrap_File_DateofChange, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enabling integration for: 'virustotal'.");
+
+    expect_string(__wrap_File_DateofChange, file, "integrations/pagerduty");
+    will_return(__wrap_File_DateofChange, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enabling integration for: 'pagerduty'.");
 
     will_return(__wrap_FOREVER, 1);
 
