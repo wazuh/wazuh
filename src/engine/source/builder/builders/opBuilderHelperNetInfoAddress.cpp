@@ -169,20 +169,21 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
             {
                 return base::result::makeFailure(event, failureTrace + agent_id_path);
             }
-            const auto& agent_id = event->getString(agent_id_path).value_or("NULL");
+            const auto agent_id {event->getString(agent_id_path).value_or("NULL")};
 
             if (!event->exists(scan_id_path) || !event->isInt(scan_id_path))
             {
                 return base::result::makeFailure(event, failureTrace + scan_id_path);
             }
-            const auto& resultValue = event->getInt(scan_id_path).value_or(0);
-            const auto& scan_id = resultValue == 0 ? "NULL" : std::to_string(resultValue);
+            const auto resultValue {event->getInt(scan_id_path)};
+            const auto scan_id {
+                resultValue.has_value() ? std::to_string(resultValue.value()) : "NULL"};
 
             if (!event->exists(name_path) || !event->isString(name_path))
             {
                 return base::result::makeFailure(event, failureTrace + name_path);
             }
-            const auto& name = event->getString(name_path).value_or("NULL");
+            const auto name = event->getString(name_path).value_or("NULL");
 
             // Cheking base object existence
             if (!event->exists(ipObject_path))
