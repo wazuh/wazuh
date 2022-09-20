@@ -117,20 +117,6 @@ void run(const std::string& kvdbPath,
         destroy();
         return;
     }
-    // TODO: Handle errors on construction
-    builder::Builder<catalog::Catalog> _builder(_catalog);
-    decltype(_builder.buildEnvironment(environment)) env;
-    try
-    {
-        env = _builder.buildEnvironment(environment);
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Exception while building environment: [{}]",
-                        utils::getExceptionStack(e));
-        destroy();
-        return;
-    }
 
     // Processing Workers (Router), Router is replicated in each thread
     // TODO: handle hot modification of routes
@@ -139,6 +125,20 @@ void run(const std::string& kvdbPath,
         std::thread t {
             [=, &eventBuffer = server.output()]()
             {
+                // TODO: Handle errors on construction
+                builder::Builder<catalog::Catalog> _builder(_catalog);
+                decltype(_builder.buildEnvironment(environment)) env;
+                try
+                {
+                    env = _builder.buildEnvironment(environment);
+                }
+                catch (const std::exception& e)
+                {
+                    WAZUH_LOG_ERROR("Exception while building environment: [{}]",
+                                    utils::getExceptionStack(e));
+                    destroy();
+                    return -1;
+                }
                 auto controller = rxbk::buildRxPipeline(env);
 
                 // Thread loop
