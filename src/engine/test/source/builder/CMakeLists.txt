@@ -121,43 +121,44 @@ add_executable(baseHelper
 gtest_discover_tests(baseHelper)
 
 add_executable(opBuilderHelperCheck_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntNotEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThanEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThan_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntLessThanEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntLessThan_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExists_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThan_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThanEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntLessThan_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntLessThanEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntNotEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIPCIDRCheck_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNotExists_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringNotEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringStarts_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringGreaterThanEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringGreaterThan_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLessThanEqual_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLessThan_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatch_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatch_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIPCIDRCheck_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringGreaterThan_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringGreaterThanEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLessThan_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLessThanEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringNotEqual_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringStarts_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperTypeCheck_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperContainsString_test.cpp
 )
 gtest_discover_tests(opBuilderHelperCheck_test)
 
 add_executable(opBuilderHelperMap_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendSplitString_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendString_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLO_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRenameField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringFromArray_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringFromHexa_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendString_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendSplitString_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringIPVersion_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRenameField_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLO_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringReplace_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperMerge_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHexToNumber_test.cpp
@@ -165,8 +166,8 @@ add_executable(opBuilderHelperMap_test
 gtest_discover_tests(opBuilderHelperMap_test)
 
 add_executable(opBuilderWdb_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbUpdate_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbQuery_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbUpdate_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
 gtest_discover_tests(opBuilderWdb_test)

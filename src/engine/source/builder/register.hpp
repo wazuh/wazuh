@@ -94,20 +94,22 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperIsFalse, "helper.is_false");
 
     // Map Helpers
+    Registry::registerBuilder(builders::opBuilderHelperAppendSplitString,
+                              "helper.s_to_array");
+    Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
     Registry::registerBuilder(builders::opBuilderHelperIntCalc, "helper.i_calc");
-    Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
-    Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
-    Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
+    Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,
+                              "helper.s_ipVersion");
+    Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperStringConcat, "helper.s_concat");
     Registry::registerBuilder(builders::opBuilderHelperStringFromArray,
                               "helper.s_fromArray");
     Registry::registerBuilder(builders::opBuilderHelperStringFromHexa,
                               "helper.s_fromHexa");
-    Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
-    Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
-    Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,
-                              "helper.s_ipVersion");
-    Registry::registerBuilder(builders::opBuilderHelperAppendSplitString, "helper.s_to_array");
+    Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
+    Registry::registerBuilder(builders::opBuilderHelperStringReplace, "helper.s_replace");
+    Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
+    Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
     Registry::registerBuilder(builders::opBuilderHelperHexToNumber, "helper.s_hex_to_number");
     Registry::registerBuilder(builders::opBuilderHelperMerge, "helper.merge");
 

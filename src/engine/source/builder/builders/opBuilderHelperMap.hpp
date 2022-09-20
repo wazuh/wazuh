@@ -99,6 +99,20 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition);
  */
 base::Expression opBuilderHelperHexToNumber(const std::any& definition);
 
+/**
+ * @brief Transforms a string by replacing, if exists, every ocurrence of a substring by a
+ * new one.
+ * Example
+ * Original String: 'String with values: extras, expert, ex, flexible, exexes'
+ * Substring to replace: 'ex'
+ * New substring: 'dummy'
+ * Result:'String with values: dummytras, dummypert, dummy, fldummyible, dummydummyes'
+ * @param definition The transformation definition.
+ * @throw std::runtime_error if the first parameter is empty
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperStringReplace(const std::any& definition);
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
