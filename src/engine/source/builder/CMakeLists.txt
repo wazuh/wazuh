@@ -7,6 +7,12 @@
 # ###################################################################################################
 # Dependencies
 # ###################################################################################################
+
+# If debug is enabled, Add the RE2_ON_VALGRIND definition for RE2 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(RE2_ON_VALGRIND)
+endif()
+
 CPMAddPackage(
   NAME RE2
   GITHUB_REPOSITORY google/re2
