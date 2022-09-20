@@ -16,14 +16,18 @@ namespace yml2json
 
 namespace internal
 {
+constexpr auto QUOTED_TAG = "!";
 
-inline rapidjson::Value
-parse_scalar(const YAML::Node &node,
-             rapidjson::Document::AllocatorType &allocator)
+inline rapidjson::Value parse_scalar(const YAML::Node& node,
+                                     rapidjson::Document::AllocatorType& allocator)
 {
 
     rapidjson::Value v;
-    if (int i = 0; YAML::convert<int>::decode(node, i))
+    if (QUOTED_TAG == node.Tag())
+    {
+        v.SetString(node.as<std::string>().c_str(), allocator);
+    }
+    else if (int i = 0; YAML::convert<int>::decode(node, i))
     {
         v.SetInt(i);
     }
@@ -47,8 +51,8 @@ parse_scalar(const YAML::Node &node,
     return v;
 }
 
-inline rapidjson::Value yaml2json(const YAML::Node &root,
-                                  rapidjson::Document::AllocatorType &allocator)
+inline rapidjson::Value yaml2json(const YAML::Node& root,
+                                  rapidjson::Document::AllocatorType& allocator)
 {
 
     rapidjson::Value v;
@@ -62,7 +66,7 @@ inline rapidjson::Value yaml2json(const YAML::Node &root,
         case YAML::NodeType::Sequence:
             v.SetArray();
 
-            for (auto &&node : root)
+            for (auto&& node : root)
             {
                 v.PushBack(yaml2json(node, allocator), allocator);
             }
@@ -72,12 +76,12 @@ inline rapidjson::Value yaml2json(const YAML::Node &root,
         case YAML::NodeType::Map:
             v.SetObject();
 
-            for (auto &&it : root)
+            for (auto&& it : root)
             {
-                v.AddMember(rapidjson::Value(it.first.as<std::string>().c_str(),
-                                             allocator),
-                            yaml2json(it.second, allocator),
-                            allocator);
+                v.AddMember(
+                    rapidjson::Value(it.first.as<std::string>().c_str(), allocator),
+                    yaml2json(it.second, allocator),
+                    allocator);
             }
 
             break;
@@ -90,7 +94,7 @@ inline rapidjson::Value yaml2json(const YAML::Node &root,
 
 } // namespace internal
 
-inline rapidjson::Document loadYMLfromFile(const std::string &filepath)
+inline rapidjson::Document loadYMLfromFile(const std::string& filepath)
 {
     // YAML::Node root = YAML::LoadAllFromFile(filepath)[x];
     YAML::Node root = YAML::LoadFile(filepath);
@@ -110,11 +114,11 @@ inline rapidjson::Document loadYMLfromFile(const std::string &filepath)
  * @return rapidjson::Document The parsed YAML string.
  * @throws YAML::ParserException If the YAML string is invalid.
  */
-inline rapidjson::Document loadYMLfromString(const std::string &yamlStr)
+inline rapidjson::Document loadYMLfromString(const std::string& yamlStr)
 {
     YAML::Node root = YAML::Load(yamlStr);
     rapidjson::Document doc, tmpAllocator;
-    rapidjson::Document::AllocatorType &allocator = tmpAllocator.GetAllocator();
+    rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
 
     rapidjson::Value val = internal::yaml2json(root, allocator);
     doc.CopyFrom(val, doc.GetAllocator());
