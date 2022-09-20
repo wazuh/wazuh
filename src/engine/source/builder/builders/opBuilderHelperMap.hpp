@@ -86,6 +86,19 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition);
  */
 base::Expression opBuilderHelperStringFromHexa(const std::any& definition);
 
+/**
+ * @brief Transforms a string of hexadecimal digits into a number
+ * i.e: 'targetField: +s_hex_to_number/0x1234' then 'targetField' would be 4660
+ * Fail if the string is not a valid hexadecimal number or the reference is not found.
+ *
+ * @param definition The transformation definition.
+ * @return base::Expression
+ *
+ * @throw std::runtime_error if the parameter is not a reference, or more than one
+ * parameter is provided
+ */
+base::Expression opBuilderHelperHexToNumber(const std::any& definition);
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
