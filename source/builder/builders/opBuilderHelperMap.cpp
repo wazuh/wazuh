@@ -652,6 +652,52 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
         });
 }
 
+base::Expression opBuilderHelperHexToNumber(const std::any& definition)
+{
+    const auto [targetField, name, rawParameters] =
+        helper::base::extractDefinition(definition);
+    const auto parameters = helper::base::processParameters(rawParameters);
+    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParameterType(parameters[0],
+                                     helper::base::Parameter::Type::REFERENCE);
+    const auto sourceField = parameters.at(0);
+
+    const auto traceName =
+        helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", traceName);
+    const auto failureTrace1 = fmt::format(
+        "[{}] -> Failure: parameter is not a string or it doesn't exist", traceName);
+    const auto failureTrace2 = fmt::format(
+        "[{}] -> Failure: Bad hexadecimal string", traceName);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        traceName,
+        [=, targetField = std::move(targetField), sourceField = std::move(sourceField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Getting string field from a reference
+            const auto refStrHEX = event->getString(sourceField.m_value);
+            if (!refStrHEX.has_value())
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+            std::stringstream ss;
+            ss << refStrHEX.value();
+            int result;
+            ss >> std::hex >> result;
+            if (ss.fail() || !ss.eof())
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            event->setInt(result, targetField);
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
