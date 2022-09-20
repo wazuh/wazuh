@@ -108,6 +108,7 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperIPVersionFromIPStr,
                               "helper.s_ipVersion");
     Registry::registerBuilder(builders::opBuilderHelperAppendSplitString, "helper.s_to_array");
+    Registry::registerBuilder(builders::opBuilderHelperHexToNumber, "helper.s_hex_to_number");
     Registry::registerBuilder(builders::opBuilderHelperMerge, "helper.merge");
 
     // DB sync
