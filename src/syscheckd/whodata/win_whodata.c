@@ -11,6 +11,8 @@
 #include "hash_op.h"
 #include "../syscheck.h"
 #include "syscheck_op.h"
+#include "ntsecapi.h"
+#include "combaseapi.h"
 
 #ifdef WIN_WHODATA
 
@@ -148,10 +150,9 @@ void replace_device_path(char **path);
 /**
  * @brief Function to check if a global policy is configured as Success.
  *
- * @param guid Unique identifier of the policy.
- * @return int -1 on failure, 1 if the policy is configured properly or 0 otherwise.
+ * @return int 1 if the policies are configured properly or 0 if not.
  */
-int policy_check(const char *guid);
+int policy_check();
 
 STATIC void win_whodata_release_resources(whodata *wdata) {
     directory_t *dir_it;
@@ -988,46 +989,100 @@ int whodata_audit_start() {
     return 0;
 }
 
-int policy_check(const char *guid) {
-    char subcategory_parameter[OS_SIZE_2048 + 1] = {0};
-    char buffer[OS_MAXSTR] = {0};
-    wfd_t *wfd = NULL;
-    unsigned int line = 0;
-    int ret_value = 0;
-    char *lowercase_guid = NULL;
+int policy_check() {
+    static const char *guid_PolicyChange = "{6997984d-797a-11d9-bed3-505054503030}";
+    static const char *guid_AuditPolicy = "{0CCE922F-69AE-11D9-BED3-505054503030}";
 
-    snprintf(subcategory_parameter, OS_SIZE_2048, "/Subcategory:\"%s\"", guid);
-    os_strdup(guid, lowercase_guid);
-    str_lowercase(lowercase_guid);
-    char *cmd[5] = { "auditpol", "/get", subcategory_parameter, "/r" };
-    wfd = wpopenv(cmd[0], cmd, W_BIND_STDOUT);
-    if (wfd == NULL) {
-        merror("Cannot execute commmand: auditpol /get %s /r", subcategory_parameter);
-        os_free(lowercase_guid);
-        return -1;
+    static const char *guid_ObjectAccess = "{6997984a-797a-11d9-bed3-505054503030}";
+    static const char *guid_FileSystem = "{0CCE921D-69AE-11D9-BED3-505054503030}";
+    static const char *guid_Handle =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
+
+    int file_system_success = 0;
+    int handle_manipulation_success = 0;
+    LSA_HANDLE PolicyHandle;
+    NTSTATUS Status;
+    LSA_OBJECT_ATTRIBUTES ObjectAttributes;
+    PPOLICY_AUDIT_EVENTS_INFO AuditEvents;
+    GUID *pAuditSubCategoryGuids = NULL;
+    AUDIT_POLICY_INFORMATION *pAuditPolicies = NULL;
+
+    ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
+
+    Status = LsaOpenPolicy(NULL, &ObjectAttributes, POLICY_VIEW_AUDIT_INFORMATION, &PolicyHandle);
+
+    if(!Status) {
+        Status = LsaQueryInformationPolicy(PolicyHandle, PolicyAuditEventsInformation, (PVOID *)&AuditEvents);
+
+        if(!Status) {
+            if(AuditEvents->AuditingMode) {
+                GUID auditCategoryId;
+                ULONG subCategoryCount = 0;
+                ULONG policyAuditEventType = 0;
+                char guid_string[40];
+
+                while (policyAuditEventType < AuditEvents->MaximumAuditEventCount) {
+                    if(AuditLookupCategoryGuidFromCategoryId((POLICY_AUDIT_EVENT_TYPE)policyAuditEventType, &auditCategoryId) == FALSE) {
+                        merror("AuditLookupCategoryGuidFromCategoryId fail");
+                        LsaFreeMemory(AuditEvents);
+                        LsaClose(PolicyHandle);
+                        return -1;
+                    }
+                    snprintf(guid_string, 40, "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
+                                                auditCategoryId.Data1, auditCategoryId.Data2, auditCategoryId.Data3,
+                                                auditCategoryId.Data4[0], auditCategoryId.Data4[1], auditCategoryId.Data4[2], auditCategoryId.Data4[3],
+                                                auditCategoryId.Data4[4], auditCategoryId.Data4[5], auditCategoryId.Data4[6], auditCategoryId.Data4[7]);
+
+                    if(!strcmp(guid_string, guid_PolicyChange) || !strcmp(guid_string, guid_ObjectAccess)) {
+                        if(AuditEnumerateSubCategories(&auditCategoryId, FALSE, &pAuditSubCategoryGuids, &subCategoryCount) == FALSE) {
+                            merror("AuditEnumerateSubCategories fail");
+                            LsaFreeMemory(AuditEvents);
+                            LsaClose(PolicyHandle);
+                            return -1;
+                        }
+
+                        if(AuditQuerySystemPolicy(pAuditSubCategoryGuids, subCategoryCount, &pAuditPolicies) == FALSE) {
+                            merror("AuditQuerySystemPolicy fail");
+                            LsaFreeMemory(AuditEvents);
+                            LsaClose(PolicyHandle);
+                            return -1;
+                        }
+
+                        // Probe each subcategory in the category
+                        for(ULONG subcategoryIndex = 0; subcategoryIndex < 2; subcategoryIndex++) {
+                            AUDIT_POLICY_INFORMATION currentPolicy = pAuditPolicies[subcategoryIndex];
+
+                            snprintf(guid_string, 40, "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
+                                                        currentPolicy.AuditSubCategoryGuid.Data1, currentPolicy.AuditSubCategoryGuid.Data2, currentPolicy.AuditSubCategoryGuid.Data3,
+                                                        currentPolicy.AuditSubCategoryGuid.Data4[0], currentPolicy.AuditSubCategoryGuid.Data4[1], currentPolicy.AuditSubCategoryGuid.Data4[2], currentPolicy.AuditSubCategoryGuid.Data4[3],
+                                                        currentPolicy.AuditSubCategoryGuid.Data4[4], currentPolicy.AuditSubCategoryGuid.Data4[5], currentPolicy.AuditSubCategoryGuid.Data4[6], currentPolicy.AuditSubCategoryGuid.Data4[7]);
+
+                            if(currentPolicy.AuditingInformation & POLICY_AUDIT_EVENT_SUCCESS) {
+                                if(!strcmp(guid_string, guid_AuditPolicy)) {
+                                    mwarn("The 'Audit Policy Change' policy has been disabled. Changes in the configured policies are not detected.");
+                                }
+                                if(!strcmp(guid_string, guid_FileSystem)) {
+                                    file_system_success = 1;
+                                }
+                                if(!strcmp(guid_string, guid_Handle)) {
+                                    handle_manipulation_success = 1;
+                                }
+                            }
+                        }
+                    }
+                    policyAuditEventType++;
+                }
+            } else {
+                merror("Auditing Disabled");
+            }
+        }
+        LsaFreeMemory(AuditEvents);
+        LsaClose(PolicyHandle);
     }
 
-    // loop through the policies
-    while (fgets(buffer, OS_MAXSTR - 60, wfd->file_out)) {
-        if (line == 0) { // skip the first line
-            line++;
-            continue;
-        }
-        str_lowercase(buffer);
-        if (strstr(buffer, lowercase_guid) && strstr(buffer, "success")) {
-            ret_value = 1;
-            break;
-        }
-    }
-    wpclose(wfd);
-    os_free(lowercase_guid)
-    return ret_value;
+    return file_system_success && handle_manipulation_success;
 }
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
-    static const char *FILE_SYSTEM_GUID = "{0CCE921D-69AE-11D9-BED3-505054503030}";
-    static const char *HANDLE_MAN_GUID =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
-    static const char *POLICY_CHANGE_GUID = "{0CCE922F-69AE-11D9-BED3-505054503030}";
     int exists;
     whodata_dir_status *d_status;
     int interval;
@@ -1050,14 +1105,11 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
     while (atomic_int_get(&whodata_end) == 0) {
         // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
-        if (policy_check(FILE_SYSTEM_GUID) == 0 || policy_check(HANDLE_MAN_GUID) == 0) {
+        // Check the Audit Policy Change policy, if disabled, show a warning but keep whodata monitoring.
+        if (policy_check() == 0) {
             merror(FIM_ERROR_WHODATA_WIN_POL_CH);
             win_whodata_release_resources(&syscheck.wdata);
             break;
-        }
-        // Check the Audit Policy Change policy, if disabled, show a warning but keep whodata monitoring.
-        if(policy_check(POLICY_CHANGE_GUID) == 0) {
-            mwarn("The 'Audit Policy Change' policy has been disabled. Changes in the configured policies are not detected.");
         }
 
         w_rwlock_wrlock(&syscheck.directories_lock);
