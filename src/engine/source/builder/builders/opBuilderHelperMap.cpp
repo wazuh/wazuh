@@ -83,10 +83,9 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
                                                      StringOperator op)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
@@ -342,10 +341,9 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
 {
 
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
@@ -431,10 +429,9 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 {
 
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number of parameters
     if (parameters.size() < 2)
     {
@@ -511,8 +508,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 // field: +s_fromArray/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
-    const auto [targetField, name, rawParameters] =
-        helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     const auto parameters = helper::base::processParameters(rawParameters);
     helper::base::checkParametersSize(parameters, 2);
 
@@ -577,8 +573,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 // field: +s_fromHexa/$<hex_reference>
 base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
 {
-    const auto [targetField, name, rawParameters] =
-        helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
 
     const auto parameters = helper::base::processParameters(rawParameters);
 
@@ -707,6 +702,113 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
         });
 }
 
+// field: +s_replace/old_substring/new_substring
+base::Expression opBuilderHelperStringReplace(const std::any& definition)
+{
+    // Extract parameters from any
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
+    auto parameters {helper::base::processParameters(rawParameters)};
+    // Assert expected number of parameters
+    helper::base::checkParametersSize(parameters, 2);
+    // Format name for the tracer
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    const auto paramOldSubstr = parameters.at(0);
+    if (paramOldSubstr.m_value.empty())
+    {
+        throw std::runtime_error(
+                        fmt::format("First parameter of '{}' cannot be empty.", name));
+    }
+    const auto paramNewSubstr = parameters.at(1);
+
+    // Tracing messages
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: [{}] not found", name, targetField)};
+    const auto failureTrace2 {
+        fmt::format("[{}] -> Failure: [{}] is empty", name, targetField)};
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=,
+         targetField = std::move(targetField),
+         paramOldSubstr = std::move(paramOldSubstr),
+         paramNewSubstr = std::move(paramNewSubstr)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            // Get field value
+            std::optional<std::string> resolvedField {event->getString(targetField)};
+
+            // Check if field is a string
+            if (!resolvedField.has_value())
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            // Check if field is a string
+            if (resolvedField.value().empty())
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            auto newString {resolvedField.value()};
+
+            std::string oldSubstring {paramOldSubstr.m_value};
+            if (helper::base::Parameter::Type::REFERENCE == paramOldSubstr.m_type)
+            {
+                resolvedField = event->getString(paramOldSubstr.m_value);
+
+                // Check if field is a string
+                if (!resolvedField.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace1);
+                }
+
+                // Check if field is a string
+                if (resolvedField.value().empty())
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
+
+                oldSubstring = resolvedField.value();
+            }
+
+            std::string newSubstring {paramNewSubstr.m_value};
+            if (helper::base::Parameter::Type::REFERENCE == paramNewSubstr.m_type)
+            {
+                resolvedField = event->getString(paramNewSubstr.m_value);
+
+                // Check if field is a string
+                if (!resolvedField.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace1);
+                }
+
+                // Check if field is a string
+                if (resolvedField.value().empty())
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
+
+                newSubstring = resolvedField.value();
+            }
+
+            size_t start_pos = 0;
+            while((start_pos = newString.find(oldSubstring, start_pos)) != std::string::npos)
+            {
+                newString.replace(start_pos, oldSubstring.length(), newSubstring);
+                start_pos += newSubstring.length();
+            }
+
+            event->setString(newString, targetField);
+
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
@@ -715,10 +817,9 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
 base::Expression opBuilderHelperIntCalc(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Format name for the tracer
@@ -738,10 +839,9 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
 base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
     // Parameter type check
@@ -968,10 +1068,9 @@ base::Expression opBuilderHelperMerge(const std::any& definition)
 base::Expression opBuilderHelperDeleteField(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 0);
     // Format name for the tracer
@@ -1003,10 +1102,9 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
 base::Expression opBuilderHelperRenameField(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(raw_parameters)};
+    auto parameters {helper::base::processParameters(rawParameters)};
     // Assert expected number and type of parameters
     helper::base::checkParametersSize(parameters, 1);
     auto sourceField = parameters[0];
