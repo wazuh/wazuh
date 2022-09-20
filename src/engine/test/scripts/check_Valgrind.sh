@@ -73,7 +73,7 @@ do
     relativePath=$(realpath --relative-to="${TEST_DIR}" "${test}")
     echo "Running Valgrind on ${relativePath}: " |& tee -a ${VALGRIND_LOG}
     echo "--------------------------------------------------------------------------"  |& tee -a ${VALGRIND_LOG}
-
+    echo "cmd: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ${test}"
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes $test |& tee -a ${VALGRIND_LOG}
 
     echo "==========================================================================="  |& tee -a ${VALGRIND_LOG}

@@ -1,12 +1,14 @@
 #include "expression.hpp"
 
+#include <atomic>
+
 namespace base
 {
 using Expression = std::shared_ptr<Formula>;
 
 unsigned int Formula::generateId()
 {
-    static unsigned int id = 0;
+    static std::atomic<unsigned int> id{0};
     return id++;
 }
 
