@@ -178,7 +178,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
         }
 
         /* Check ignore and restrict log regex, if configured. */
-        if (check_log_regex(lf->regex_ignore, lf->regex_restrict, str)) {
+        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
             continue;
         }
 

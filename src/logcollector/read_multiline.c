@@ -102,7 +102,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         linesgot = 0;
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
             /* Send message to queue */
             mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);

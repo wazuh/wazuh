@@ -133,7 +133,7 @@ STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
 #endif
 
-int check_log_regex(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line) {
+int check_ignore_and_restrict(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line) {
 
     if (ignore_exp) {
         /* Check ignore regex, if it matches, do not process the log */

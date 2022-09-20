@@ -130,7 +130,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
         size = strlen(read_buffer);
         if (size > 0) {
             /* Check ignore and restrict log regex, if configured. */
-            if (check_log_regex(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
+            if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
                 continue;
             }
 

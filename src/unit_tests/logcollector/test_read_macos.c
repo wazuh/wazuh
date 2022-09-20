@@ -1823,6 +1823,7 @@ void test_read_macos_faulty_waitpid(void ** state) {
 void test_read_macos_log_ignored(void ** state) {
     logreader lf;
     int dummy_rc;
+    char log_str[PATH_MAX + 1] = {0};
 
     os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
     os_calloc(1, sizeof(wfd_t), lf.macos_log->processes.stream.wfd);
@@ -1840,7 +1841,10 @@ void test_read_macos_log_ignored(void ** state) {
     will_return(__wrap_can_read, 1);
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
     will_return(__wrap_w_expression_match, true);
-    expect_string(__wrap__mdebug2, formatted_msg, "(1976): Avoiding the log line '2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name' due to ignore config: 'ignore.*'.");
+
+    snprintf(log_str, PATH_MAX, LF_MATCH_REGEX, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name", "ignore", "ignore.*");
+    expect_string(__wrap__mdebug2, formatted_msg, log_str);
+
     will_return(__wrap_can_read, 0);
 
     expect_any(__wrap_waitpid, __pid);

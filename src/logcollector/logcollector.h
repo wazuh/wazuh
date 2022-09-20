@@ -98,8 +98,15 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it);
 /* Read multi line logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it);
 
-/* Check ignore and restrict setting with pcre2 regex */
-int check_log_regex(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line);
+/**
+ * @brief Check if any logs should be ignored
+ *
+ * @param ignore_exp Ignore regex expression to be checked
+ * @param restrict_exp Restrict regex expression to be checked
+ * @param log_line Log where to search for a match
+ * @return 0 if log should be processed, 1 if log should be ignored
+ */
+int check_ignore_and_restrict(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line);
 
 /**
  * @brief Read multi line logs with variable lenght

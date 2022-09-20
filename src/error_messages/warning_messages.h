@@ -133,6 +133,7 @@
                                                 "'log_format'. Default value will be used."
 #define LOGCOLLECTOR_MISSING_LOCATION_MACOS     "(8006): Missing 'location' element when using 'macos' as " \
                                                 "'log_format'. Default value will be used."
+#define LOGCOLLECTOR_DEFAULT_REGEX_TYPE         "(8007): Invalid type in %s regex '%d', setting by default pcre2 regex."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."

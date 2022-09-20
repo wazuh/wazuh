@@ -1683,6 +1683,8 @@ void test_read_multiline_regex_log_ignored(void ** state) {
     logreader lf = {0};
     int rc = 0;
     int drop_it = 0;
+    char log_str[PATH_MAX + 1] = {0};
+
     w_calloc_expression_t(&lf.regex_ignore, EXP_TYPE_PCRE2);
     w_expression_compile(lf.regex_ignore, "ignore.*", 0);
 
@@ -1705,7 +1707,9 @@ void test_read_multiline_regex_log_ignored(void ** state) {
     will_return(__wrap_w_expression_match, true);
 
     will_return(__wrap_w_expression_match, true);
-    expect_string(__wrap__mdebug2, formatted_msg, "(1976): Avoiding the log line 'ignore this log' due to ignore config: 'ignore.*'.");
+
+    snprintf(log_str, PATH_MAX, LF_MATCH_REGEX, "ignore this log", "ignore", "ignore.*");
+    expect_string(__wrap__mdebug2, formatted_msg, log_str);
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 10);

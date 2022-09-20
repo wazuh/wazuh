@@ -156,7 +156,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
            rlines > 0 && (maximum_lines == 0 || count_lines < maximum_lines)) {
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
             /* Send message to queue */
             w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }

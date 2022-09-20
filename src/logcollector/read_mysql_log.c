@@ -242,7 +242,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
         mdebug2("Reading mysql messages: '%s'", buffer);
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
             /* Send message to queue */
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }

@@ -161,6 +161,7 @@
 #define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s."
 #define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s."
 #define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
+#define LOGCOLLECTOR_IGNORE_AND_RESTRICT_ERROR      "(1608): Invalid configuration in logcollector, ignore and restrict patterns are the same."
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
@@ -245,7 +246,7 @@
 #define SET_FLAGS_ERROR "(1973): The flags couldn't be set in the file descriptor: %s (%d)."
 #define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
 #define LF_LOG_REGEX    "(1975): Syntax error on regex %s: '%s'"
-#define LF_MATCH_REGEX  "(1976): Avoiding the log line '%s' due to %s config: '%s'."
+#define LF_MATCH_REGEX  "(1976): Ignoring the log line '%s' due to %s config: '%s'"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

@@ -37,7 +37,7 @@ static void audit_send_msg(char **cache, int top, int drop_it, logreader *lf) {
     message[n] = '\0';
 
     /* Check ignore and restrict log regex, if configured. */
-    if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, message)) {
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, message)) {
         /* Send message to queue */
         w_msg_hash_queues_push(message, (char *)lf->file, strlen(message) + 1, lf->log_target, LOCALFILE_MQ);
     }

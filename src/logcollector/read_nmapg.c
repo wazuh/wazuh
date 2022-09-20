@@ -254,7 +254,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         } while (*p == ',' && (p++));
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_log_regex(lf->regex_ignore, lf->regex_restrict, final_msg)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, final_msg)) {
             /* Send message to queue */
             w_msg_hash_queues_push(final_msg, lf->file, strlen(final_msg) + 1, lf->log_target, HOSTINFO_MQ);
         }
