@@ -24,6 +24,8 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 # Options
 option(ENGINE_BUILD_TEST "Generate tests" ON)
 option(ENGINE_BUILD_ASAN "Enable address sanitizer" OFF)
+option(ENGINE_BUILD_TSAN "Enable thread sanitizer" OFF)
+option(ENGINE_BUILD_UBSAN "Enable undefined behavior sanitizer" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
@@ -39,9 +41,20 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions ( WAZUH_DEBUG )
 endif()
 
+# Add the Sanitizers
 if (ENGINE_BUILD_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address -fno-omit-frame-pointer)
+endif()
+
+if (ENGINE_BUILD_TSAN)
+    add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=thread -fno-omit-frame-pointer)
+endif()
+
+if (ENGINE_BUILD_UBSAN)
+    add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=undefined -fno-omit-frame-pointer)
 endif()
 
 # Ensures that we do an out of source build
