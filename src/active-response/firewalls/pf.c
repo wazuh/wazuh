@@ -229,9 +229,14 @@ static int checking_if_its_configured(const char *path, const char *table) {
     return OS_INVALID;
 }
 
-/*
-   retVal = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
-   return 1 if for example with patter1:"Status :" find "Enabled"
+/**
+ * @brief search a pair pattern1 and after pattern2
+ * @param output_buf buffer where search
+ * @param str_pattern_1 pattern search to match
+ * @param str_pattern_2 pattern search to match
+ * @return 1 or 0 
+ * @example retVal = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
+ * @example if for example with patter1:"Status :" find "Enabled", its return 1
 */
 static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2){
     int retVal = 0;
@@ -257,6 +262,12 @@ static int isEnabledFromPattern(const char * output_buf, const char * str_patter
     return  retVal;
 }
 
+/**
+ * @brief write to file path
+ * @param path path to file
+ * @param cmd command or text to write inside file
+ * @return 1 or 0 
+*/
 static int write_cmd_to_file(const char *path, const char *cmd) {
     int retVal = 0;
     if (path != NULL && cmd != NULL) {
