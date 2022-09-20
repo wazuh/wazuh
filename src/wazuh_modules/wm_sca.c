@@ -87,29 +87,28 @@ static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars);
 static void wm_sca_set_condition(const char * const c_cond, int *condition);
 static char * wm_sca_get_value(char *buf, int *type);
 static char * wm_sca_get_pattern(char *value);
-static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason, w_exp_type_t engine);
-static int wm_sca_check_file_list_for_contents(const char * const file_list, char * const pattern, char **reason, w_exp_type_t engine);
+static int wm_sca_check_file_contents(const char * const file, char **reason, w_expression_t * regex_engine);
+static int wm_sca_check_file_list_for_contents(const char * const file_list, char **reason, w_expression_t * regex_engine);
 static int wm_sca_check_file_existence(const char * const file, char **reason);
 static int wm_sca_check_file_list_for_existence(const char * const file_list, char **reason);
-static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason, w_exp_type_t engine);
-static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason, w_exp_type_t engine);
-static int wm_sca_test_positive_minterm(char * const minterm, const char * const str, char **reason, w_exp_type_t engine);
-static int wm_sca_pattern_matches(const char * const str, const char * const pattern, char **reason, w_exp_type_t engine); // Check pattern match
-static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason, w_exp_type_t engine);
+static int wm_sca_check_file_list(const char * const file_list, char **reason, w_expression_t * regex_engine);
+static int wm_sca_read_command(char *command, wm_sca_t * data, char **reason, w_expression_t * regex_engine);
+static int wm_sca_test_positive_minterm(const char * const str, char **reason, w_expression_t * regex_engine);
+static int wm_sca_pattern_matches(const char * const str, char **reason, w_expression_t * regex_engine); // Check pattern match
+static int wm_sca_check_dir(const char * const dir, const char * const file, char **reason, w_expression_t * regex_engine);
 static int wm_sca_check_dir_existence(const char * const dir, char **reason);
-static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason, w_exp_type_t engine);
-static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **reason, w_exp_type_t engine);
+static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char **reason, w_expression_t * regex_engine);
+static int wm_sca_check_process_is_running(OSList *p_list, char **reason, w_expression_t * regex_engine);
 #ifndef WIN32
 static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason);
 #endif
 static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number, char **reason);
 
 #ifdef WIN32
-static int wm_check_registry_entry(char * const value, char **reason);
-static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason);
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char **reason, w_expression_t * regex_engine);
 static char *wm_sca_os_winreg_getkey(char *reg_entry);
-static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, char **reason);
-static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char *reg_value, char **reason);
+static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char **reason, w_expression_t * regex_engine);
+static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char **reason, w_expression_t * regex_engine);
 #endif
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
@@ -826,8 +825,11 @@ static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffe
 }
 #endif
 
-static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
-    char * const file, char * const pattern, char **reason, w_exp_type_t engine)
+static int wm_sca_check_dir_list(wm_sca_t * const data,
+                                 char * const dir_list,
+                                 char * const file,
+                                 char **reason,
+                                 w_expression_t * regex_engine)
 {
     char *f_value_copy;
     os_strdup(dir_list, f_value_copy);
@@ -850,7 +852,7 @@ static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
             if (file == NULL) {
                 check_result = wm_sca_check_dir_existence(dir, reason);
             } else {
-                check_result = wm_sca_check_dir(dir, file, pattern, reason, engine);
+                check_result = wm_sca_check_dir(dir, file, reason, regex_engine);
             }
 
             if (check_result == RETURN_FOUND) {
@@ -1003,15 +1005,14 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
         mdebug2("Initial rule-aggregator value por this type of rule is '%d'",  g_found);
         mdebug1("Beginning rules evaluation.");
         const cJSON * const engine = cJSON_GetObjectItem(check, "regex_type");
-        w_exp_type_t regex_engine;
+        w_expression_t * regex_engine;
         if (!engine) {
-            regex_engine = EXP_TYPE_OSREGEX;
-            minfo("Field 'regex_type' is not present, SCA will use os_regex to check the rules.");
+            w_calloc_expression_t(&regex_engine, EXP_TYPE_OSREGEX);
         }
         else {
-            regex_engine = EXP_TYPE_PCRE2;
+            w_calloc_expression_t(&regex_engine, EXP_TYPE_PCRE2);
         }
-
+        mdebug1("SCA will use %s to check the rules.", w_expression_get_regex_type(regex_engine));
         const cJSON *const rules = cJSON_GetObjectItem(check, "rules");
         if (!rules) {
             merror("Skipping check %s '%s': No rules found.", _check_id_str, c_title->valuestring);
@@ -1098,9 +1099,9 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 if (!rule_location) {
                     continue;
-                }
-
-                const int result = wm_sca_check_file_list(rule_location, pattern, &reason, regex_engine);
+                }      
+                w_expression_compile(regex_engine, pattern, OS_RETURN_SUBSTRING);
+                const int result = wm_sca_check_file_list(rule_location, &reason, regex_engine);
                 if (result == RETURN_FOUND || result == RETURN_INVALID) {
                     found = result;
                 }
@@ -1150,7 +1151,8 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                     }
 
                     mdebug2("Running command: '%s'", rule_location);
-                    const int val = wm_sca_read_command(rule_location, pattern, data, &reason, regex_engine);
+                    w_expression_compile(regex_engine, pattern, OS_RETURN_SUBSTRING);
+                    const int val = wm_sca_read_command(rule_location, data, &reason, regex_engine);
                     if (val == RETURN_FOUND) {
                         mdebug2("Command output matched.");
                         found = RETURN_FOUND;
@@ -1197,7 +1199,8 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 }
 
                 char * const pattern = wm_sca_get_pattern(file);
-                found = wm_sca_check_dir_list(data, rule_location, file, pattern, &reason, regex_engine);
+                w_expression_compile(regex_engine, pattern, OS_RETURN_SUBSTRING);
+                found = wm_sca_check_dir_list(data, rule_location, file, &reason, regex_engine);
                 mdebug2("Check directory rule result: %d", found);
                 os_free(rule_location);
 
@@ -1209,7 +1212,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 }
 
                 mdebug2("Checking process: '%s'", value);
-                if (wm_sca_check_process_is_running(p_list, value, &reason, regex_engine)) {
+                if (wm_sca_check_process_is_running(p_list, &reason, regex_engine)) {
                     mdebug2("Process found.");
                     found = RETURN_FOUND;
                 } else {
@@ -1224,7 +1227,10 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
         #ifdef WIN32
             else if (type == WM_SCA_TYPE_REGISTRY) {
                 /* Check windows registry */
-                found = wm_check_registry_entry(value, &reason);
+                char * const entry = wm_sca_get_pattern(value);
+                char * const pattern = wm_sca_get_pattern(entry);
+                w_expression_compile(regex_engine, pattern, OS_RETURN_SUBSTRING);
+                found = wm_sca_is_registry(value, entry, &reason, regex_engine);
 
                 char _b_msg[OS_SIZE_1024 + 1];
                 _b_msg[OS_SIZE_1024] = '\0';
@@ -1485,9 +1491,9 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
     return RETURN_INVALID;
 }
 
-static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason, w_exp_type_t engine)
+static int wm_sca_check_file_contents(const char * const file, char **reason, w_expression_t * regex_engine)
 {
-    mdebug2("Checking contents of file '%s' against pattern '%s'", file, pattern);
+    mdebug2("Checking contents of file '%s' against pattern '%s'", file, w_expression_get_regex_pattern(regex_engine));
 
     #ifdef WIN32
     const char *realpath_buffer = file;
@@ -1521,8 +1527,8 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
     char buf[OS_SIZE_2048 + 1];
     while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
         os_trimcrlf(buf);
-        result = wm_sca_pattern_matches(buf, pattern, reason, engine);
-        mdebug2("(%s)(%s) -> %d", pattern, *buf != '\0' ? buf : "EMPTY_LINE" , result);
+        result = wm_sca_pattern_matches(buf, reason, regex_engine);
+        mdebug2("(%s)(%s) -> %d", w_expression_get_regex_pattern(regex_engine), *buf != '\0' ? buf : "EMPTY_LINE" , result);
 
         if (result) {
             mdebug2("Match found. Skipping the rest.");
@@ -1531,14 +1537,14 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
     }
 
     fclose(fp);
-    mdebug2("Result for (%s)(%s) -> %d", pattern, file, result);
+    mdebug2("Result for (%s)(%s) -> %d", w_expression_get_regex_pattern(regex_engine), file, result);
     return result;
 }
 
-static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason, w_exp_type_t engine)
+static int wm_sca_check_file_list(const char * const file_list, char **reason, w_expression_t * regex_engine)
 {
-    if (pattern) {
-        return wm_sca_check_file_list_for_contents(file_list, pattern, reason, engine);
+    if (w_expression_get_regex_pattern(regex_engine)) {
+        return wm_sca_check_file_list_for_contents(file_list, reason, regex_engine);
     }
 
     return wm_sca_check_file_list_for_existence(file_list, reason);
@@ -1582,9 +1588,9 @@ static int wm_sca_check_file_list_for_existence(const char * const file_list, ch
     return result_accumulator;
 }
 
-static int wm_sca_check_file_list_for_contents(const char * const file_list, char * const pattern, char **reason, w_exp_type_t engine)
+static int wm_sca_check_file_list_for_contents(const char * const file_list, char **reason, w_expression_t * regex_engine)
 {
-    mdebug1("Checking file list '%s' with '%s'", file_list, pattern);
+    mdebug1("Checking file list '%s' with '%s'", file_list, w_expression_get_regex_pattern(regex_engine));
 
     if (!file_list) {
         return RETURN_NOT_FOUND;
@@ -1611,7 +1617,7 @@ static int wm_sca_check_file_list_for_contents(const char * const file_list, cha
             continue;
         }
 
-        const int contents_check_result = wm_sca_check_file_contents(file, pattern, reason, engine);
+        const int contents_check_result = wm_sca_check_file_contents(file, reason, regex_engine);
         if (contents_check_result == RETURN_FOUND) {
             result_accumulator = RETURN_FOUND;
             mdebug2("Match found in '%s'. Skipping the rest.", file);
@@ -1626,25 +1632,25 @@ static int wm_sca_check_file_list_for_contents(const char * const file_list, cha
         }
     }
 
-    mdebug1("Result for (%s)(%s) -> %d", pattern, file_list, result_accumulator);
+    mdebug1("Result for (%s)(%s) -> %d", w_expression_get_regex_pattern(regex_engine), file_list, result_accumulator);
 
     os_free(file_list_copy);
     return result_accumulator;
 }
 
-static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason, w_exp_type_t engine)
+static int wm_sca_read_command(char *command, wm_sca_t * data, char **reason, w_expression_t * regex_engine)
 {
     if (command == NULL) {
         mdebug1("No Command specified Returning.");
         return RETURN_NOT_FOUND;
     }
 
-    if (pattern == NULL) {
+    if (!w_expression_get_regex_pattern(regex_engine)) {
         mdebug1("No pattern given. Returning FOUND.");
         return RETURN_FOUND;
     }
 
-    mdebug1("Executing command '%s', and testing output with pattern '%s'", command, pattern);
+    mdebug1("Executing command '%s', and testing output with pattern '%s'", command, w_expression_get_regex_pattern(regex_engine));
     char *cmd_output = NULL;
     int result_code;
 
@@ -1699,14 +1705,14 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
     for (i=0; output_line[i] != NULL; i++) {
         char *buf = output_line[i];
         os_trimcrlf(buf);
-        result = wm_sca_pattern_matches(buf, pattern, reason, engine);
+        result = wm_sca_pattern_matches(buf, reason, regex_engine);
         if (result == RETURN_FOUND){
             break;
         }
     }
 
     free_strarray(output_line);
-    mdebug2("Result for (%s)(%s) -> %d", pattern, command, result);
+    mdebug2("Result for (%s)(%s) -> %d", w_expression_get_regex_pattern(regex_engine), command, result);
     return result;
 }
 
@@ -1800,7 +1806,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
     return RETURN_INVALID;
 }
 
-int wm_sca_regex_numeric_comparison (const char * const pattern, const char *const str, char **reason, w_exp_type_t engine)
+int wm_sca_regex_numeric_comparison (const char * const pattern, const char *const str, char **reason, w_expression_t * regex_engine)
 {
     char *pattern_copy;
     os_strdup(pattern, pattern_copy);
@@ -1821,9 +1827,9 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
     partial_comparison_ref += 9;
     mdebug2("REGEX: '%s'. Partial comparison: '%s'", pattern_copy_ref, partial_comparison_ref);
 
-    OSRegex regex;
-    memset(&regex, 0, sizeof(OSRegex));
-    if (!OSRegex_Compile(pattern_copy_ref, &regex, OS_RETURN_SUBSTRING)) {
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    if (w_expression_compile(regex, pattern_copy_ref, OS_RETURN_SUBSTRING)) {
         mdebug2("Cannot compile regex '%s'", pattern_copy_ref);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
@@ -1833,42 +1839,42 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
         return RETURN_INVALID;
     }
 
-    if (!OSRegex_Execute(str, &regex)) {
+    if (w_expression_match(regex, str, NULL, NULL)) {
         mdebug2("No match found for regex '%s'", pattern_copy_ref);
         os_free(pattern_copy);
-        OSRegex_FreePattern(&regex);
+        w_free_expression_t(&regex);
         return RETURN_NOT_FOUND;
     }
 
-    if (!regex.d_sub_strings[0]) {
+    if (!regex->regex->d_sub_strings[0]) {
         mdebug2("Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         }
         os_free(pattern_copy);
-        OSRegex_FreePattern(&regex);
+        w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
 
-    mdebug2("Captured value: '%s'", regex.d_sub_strings[0]);
+    mdebug2("Captured value: '%s'", regex->regex->d_sub_strings[0]);
 
     errno = 0;
     char *strtol_end_ptr = NULL;
-    const long int value_captured = strtol(regex.d_sub_strings[0], &strtol_end_ptr, 10);
+    const long int value_captured = strtol(regex->regex->d_sub_strings[0], &strtol_end_ptr, 10);
 
-    if (errno != 0 || strtol_end_ptr == regex.d_sub_strings[0]) {
-        mdebug2("Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
+    if (errno != 0 || strtol_end_ptr == regex->regex->d_sub_strings[0]) {
+        mdebug2("Conversion error. Cannot convert '%s' to integer.", regex->regex->d_sub_strings[0]);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
+            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex->regex->d_sub_strings[0]);
         }
         os_free(pattern_copy);
-        OSRegex_FreePattern(&regex);
+        w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
 
-    OSRegex_FreePattern(&regex);
+    w_free_expression_t(&regex);
 
     mdebug2("Converted value: '%ld'", value_captured);
 
@@ -1879,33 +1885,31 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
     return result;
 }
 
-int wm_sca_test_positive_minterm(char * const minterm, const char * const str, char **reason, w_exp_type_t engine)
+int wm_sca_test_positive_minterm(const char * const str, char **reason, w_expression_t * regex_engine)
 {
-    const char *pattern_ref = minterm;
-    w_expression_t * regex;
-    w_expression_compile(regex, pattern_ref, EXP_TYPE_OSREGEX);
+    const char *pattern_ref = w_expression_get_regex_pattern(regex_engine);
     if (strncasecmp(pattern_ref, "r:", 2) == 0) {
         pattern_ref += 2;
-        if (w_expression_match(regex, str, NULL, NULL)) {
+        if (w_expression_match(regex_engine, str, NULL, NULL)) {
             return RETURN_FOUND;
         }
     } else if (strncasecmp(pattern_ref, "n:", 2) == 0) {
         pattern_ref += 2;
-        return wm_sca_regex_numeric_comparison(pattern_ref, str, reason, engine);
+        return wm_sca_regex_numeric_comparison(pattern_ref, str, reason, regex_engine);
     } else if (strcasecmp(pattern_ref, str) == 0) {
         return RETURN_FOUND;
     }
     return RETURN_NOT_FOUND;
 }
 
-int wm_sca_pattern_matches(const char * const str, const char * const pattern, char **reason, w_exp_type_t engine)
+int wm_sca_pattern_matches(const char * const str, char **reason, w_expression_t * regex_engine)
 {
     if (str == NULL) {
         return 0;
     }
 
     char *pattern_copy = NULL;
-    os_strdup(pattern, pattern_copy);
+    os_strdup(w_expression_get_regex_pattern(regex_engine), pattern_copy);
     char *pattern_copy_ref = pattern_copy;
     char *minterm = NULL;
     int test_result = RETURN_FOUND;
@@ -1916,12 +1920,12 @@ int wm_sca_pattern_matches(const char * const str, const char * const pattern, c
             minterm++;
             negated = 1;
         }
-        const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str, reason, engine);
+        const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, reason, regex_engine);
         test_result *= minterm_result;
         mdebug2("Testing minterm (%s%s)(%s) -> %d", negated ? "!" : "", minterm, *str != '\0' ? str : "EMPTY_LINE", minterm_result);
     }
 
-    mdebug2("Pattern test result: (%s)(%s) -> %d", pattern, *str != '\0' ? str : "EMPTY_LINE", test_result);
+    mdebug2("Pattern test result: (%s)(%s) -> %d", w_expression_get_regex_pattern(regex_engine), *str != '\0' ? str : "EMPTY_LINE", test_result);
     os_free(pattern_copy);
     return test_result;
 }
@@ -1960,11 +1964,11 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
     return RETURN_INVALID;
 }
 
-static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason, w_exp_type_t engine)
+static int wm_sca_check_dir(const char * const dir, const char * const file, char **reason,  w_expression_t * regex_engine)
 {
     mdebug2("Checking directory '%s'%s%s%s%s", dir,
         file ? " -> "  : "", file ? file : "",
-        pattern ? " -> " : "", pattern ? pattern: "");
+        w_expression_get_regex_pattern(regex_engine) ? " -> " : "", w_expression_get_regex_pattern(regex_engine) ? w_expression_get_regex_pattern(regex_engine): "");
 
     #ifdef WIN32
     const char *realpath_buffer = dir;
@@ -2023,11 +2027,11 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         }
 
         if (S_ISDIR(statbuf_local.st_mode)) {
-            result = wm_sca_check_dir(f_name, file, pattern, reason, engine);
+            result = wm_sca_check_dir(f_name, file, reason, regex_engine);
         } else if (((file && strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
                 || OS_Match2(file, entry->d_name))
         {
-            result = wm_sca_check_file_list(f_name, pattern, reason, engine);
+            result = wm_sca_check_file_list(f_name, reason, regex_engine);
         } else {
             mdebug2("Skipping directory entry '%s'", f_name);
             continue;
@@ -2049,7 +2053,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     return result_accumulator;
 }
 
-static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **reason, w_exp_type_t engine)
+static int wm_sca_check_process_is_running(OSList *p_list, char **reason, w_expression_t * regex_engine)
 {
     if (p_list == NULL) {
         if (*reason == NULL) {
@@ -2059,7 +2063,7 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
         return RETURN_INVALID;
     }
 
-    if (!value) {
+    if (!w_expression_get_regex_pattern(regex_engine)) {
         return RETURN_NOT_FOUND;
     }
 
@@ -2067,7 +2071,7 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
     while (l_node) {
         W_Proc_Info *pinfo = (W_Proc_Info *)l_node->data;
         /* Check if value matches */
-        if (wm_sca_pattern_matches(pinfo->p_path, value, reason, engine)) {
+        if (wm_sca_pattern_matches(pinfo->p_path, reason, regex_engine)) {
             return RETURN_FOUND;
         }
 
@@ -2084,14 +2088,7 @@ void wm_sca_destroy(wm_sca_t * data) {
 
 #ifdef WIN32
 
-static int wm_check_registry_entry(char * const value, char **reason)
-{
-    char * const entry = wm_sca_get_pattern(value);
-    char * const pattern = wm_sca_get_pattern(entry);
-    return wm_sca_is_registry(value, entry, pattern, reason);
-}
-
-static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason)
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char **reason, w_expression_t * regex_engine)
 {
     char *rk = wm_sca_os_winreg_getkey(entry_name);
 
@@ -2105,11 +2102,11 @@ static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_valu
         return RETURN_INVALID;
     }
 
-    int returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, reason);
+    int returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reason, regex_engine);
 
     int returned_value_32 = RETURN_NOT_FOUND;
     if (returned_value_64 != RETURN_FOUND) {
-        returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, reason);
+        returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reason, regex_engine);
     }
 
     int ret_value = RETURN_NOT_FOUND;
@@ -2171,8 +2168,12 @@ static char *wm_sca_os_winreg_getkey(char *reg_entry)
     return (ret);
 }
 
-static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,
-                         char *reg_option, char *reg_value, char **reason)
+static int wm_sca_test_key(char *subkey,
+                           char *full_key_name,
+                           unsigned long arch,
+                           char *reg_option,
+                           char **reason,
+                           w_expression_t * regex_engine)
 {
     mdebug2("Checking '%s' in the %dBIT subsystem.", full_key_name, arch == KEY_WOW64_64KEY ? 64 : 32);
 
@@ -2213,14 +2214,18 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
 
     /* If option is set, set test_result as the value of query key */
     if (reg_option) {
-        ret_val = wm_sca_winreg_querykey(oshkey, full_key_name, reg_option, reg_value, reason);
+        ret_val = wm_sca_winreg_querykey(oshkey, full_key_name, reg_option, reason, regex_engine);
     }
 
     RegCloseKey(oshkey);
     return ret_val;
 }
 
-static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char *reg_value, char **reason, w_exp_type_t engine)
+static int wm_sca_winreg_querykey(HKEY hKey,
+                                  const char *full_key_name,
+                                  char *reg_option,
+                                  char **reason,
+                                  w_expression_t * regex_engine)
 {
     int rc;
     DWORD i, j;
@@ -2327,7 +2332,7 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
             mdebug2("Considering value '%s' -> '%s' == '%s': Value found.", full_key_name, value_buffer, reg_option);
 
             /* If a value is not present and the option matches return found */
-            if (!reg_value) {
+            if (!w_expression_get_regex_pattern(regex_engine)) {
                 mdebug2("No value data especified. Existence check for '%s': 1", full_key_name);
                 return RETURN_FOUND;
             }
@@ -2378,19 +2383,19 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
             }
 
-            mdebug2("Checking value data '%s' with rule '%s'", var_storage, reg_value);
+            mdebug2("Checking value data '%s' with rule '%s'", var_storage, w_expression_get_regex_pattern(regex_engine));
 
-            int result = wm_sca_pattern_matches(var_storage, reg_value, reason, engine);
+            int result = wm_sca_pattern_matches(var_storage, reason, regex_engine);
             return result;
         }
     }
 
-    if (*reason == NULL && reg_value){
+    if (*reason == NULL && w_expression_get_regex_pattern(regex_engine)){
         os_malloc(OS_MAXSTR, *reason);
         sprintf(*reason, "Key '%s' not found for registry '%s'", reg_option, full_key_name);
     }
 
-    return reg_value ? RETURN_INVALID : RETURN_NOT_FOUND;
+    return  w_expression_get_regex_pattern(regex_engine) ? RETURN_INVALID : RETURN_NOT_FOUND;
 }
 #endif
 
