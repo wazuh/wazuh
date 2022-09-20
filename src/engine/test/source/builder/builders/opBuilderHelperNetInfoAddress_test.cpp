@@ -80,7 +80,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": 123,
@@ -177,7 +177,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name"
@@ -211,7 +211,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -288,7 +288,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -356,7 +356,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -429,7 +429,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -496,7 +496,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_othe
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -574,7 +574,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -657,7 +657,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
@@ -731,7 +731,7 @@ TEST(opBuilderHelperNetInfoTest, False_result_when_no_address)
             {
                 "original":
                 {
-                    "ID": "123456",
+                    "ID": 123456,
                     "iface":
                     {
                         "name": "iface_name",
