@@ -18,6 +18,19 @@
 namespace
 {
 std::atomic<bool> gs_doRun = true;
+
+void destroy()
+{
+    WAZUH_LOG_INFO("Destroying Engine resources");
+    KVDBManager::get().~KVDBManager();
+    logging::loggingTerm();
+}
+
+void sigint_handler(const int signum)
+{
+    gs_doRun = false;
+}
+
 } // namespace
 
 namespace cmd
@@ -40,11 +53,15 @@ void test(const std::string& kvdbPath,
         case 1: logConfig.logLevel = logging::LogLevel::Info; break;
         case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
         case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default: WAZUH_LOG_ERROR("Invalid log level: {}", logLevel);
+        default:
+            WAZUH_LOG_WARN("Invalid log level [{}]: Log level setted to [Error]",
+                           logLevel);
+            logging::LogLevel::Error;
     }
     logging::loggingInit(logConfig);
 
     KVDBManager::init(kvdbPath);
+    KVDBManager& kvdbManager = KVDBManager::get();
 
     catalog::Catalog _catalog(catalog::StorageType::Local, fileStorage);
 
@@ -62,6 +79,7 @@ void test(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while registering builders: [{}]",
                         utils::getExceptionStack(e));
+        destroy();
         return;
     }
 
@@ -103,6 +121,7 @@ void test(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while building environment: [{}]",
                         utils::getExceptionStack(e));
+        destroy();
         return;
     }
 
@@ -268,5 +287,6 @@ void test(const std::string& kvdbPath,
     }
 
     controller.complete();
+    destroy();
 }
 } // namespace cmd

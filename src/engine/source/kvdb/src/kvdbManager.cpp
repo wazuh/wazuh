@@ -61,11 +61,6 @@ KVDBManager::KVDBManager()
     }
 }
 
-KVDBManager::~KVDBManager()
-{
-    m_availableKVDBs.clear();
-}
-
 KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
 {
     std::unique_lock lk(mMtx);

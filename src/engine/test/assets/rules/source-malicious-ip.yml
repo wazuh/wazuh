@@ -2,7 +2,7 @@ name: source-malicious-ip
 
 check:
   - source.ip: +exists
-  - source.ip: +kvdb_match/malicious_ip
+  - source.ip: +kvdb_match/malicious-ip
 
 normalize:
   - map:
