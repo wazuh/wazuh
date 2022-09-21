@@ -111,7 +111,12 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
     Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
     Registry::registerBuilder(builders::opBuilderHelperHexToNumber, "helper.s_hex_to_number");
+    // Map helpers: JSON functions
     Registry::registerBuilder(builders::opBuilderHelperMerge, "helper.merge");
+    // Map helpers: Hash functions
+    Registry::registerBuilder(builders::opBuilderHelperHashSHA1, "helper.hash_sha1");
+    // Map helpers: Time functions
+    Registry::registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "helper.t_epoch");
 
     // DB sync
     Registry::registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
@@ -127,8 +132,6 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6,
                               "helper.saveNetInfoIPv6");
 
-    // SHA1
-    Registry::registerBuilder(builders::opBuilderHelperHashSHA1, "helper.hash_sha1");
 }
 } // namespace builder::internals
 

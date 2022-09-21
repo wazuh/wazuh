@@ -218,6 +218,17 @@ base::Expression opBuilderHelperMerge(const std::any& definition);
  */
 base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition);
 
+//*************************************************
+//*              Time tranform                    *
+//*************************************************
+/**
+ * @brief Get unix epoch time in seconds from system clock
+ * @param definition The transformation definition.
+ * @throw std::runtime_error if the parameter is not a reference
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H
