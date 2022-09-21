@@ -63,37 +63,33 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFile.Close
 
     If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-        If WAZUH_MANAGER <> "" and InStr(WAZUH_MANAGER,",") > 0 Then 'list of address
+        If WAZUH_PROTOCOL <> "" Then
+            protocol_list=Split(WAZUH_PROTOCOL,",")
+        End If
+
+        If WAZUH_MANAGER <> "" Then 'list of address
+            re.Pattern = "<server>.*</server>"
             ip_list=Split(WAZUH_MANAGER,",")
             formatted_list ="    </server>" & vbCrLf
             not_replaced = True
-            for each ip in ip_list
-                If not_replaced Then
-                    strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
-                    not_replaced = False
-                Else
+            for i=0 to UBound(ip_list)
                     formatted_list = formatted_list & "    <server>" & vbCrLf
-                    formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
+                    formatted_list = formatted_list & "      <address>" & ip_list.Item(i) & "</address>" & vbCrLf
                     formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+                    if protocol_list.Item(i) <> "" then
+                        formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list.Item(i)) & "</protocol>" & vbCrLf
+                    Else
+                        formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
+                    End If
                     formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     formatted_list = formatted_list & "    </server>" & vbCrLf
                 End If
             next
-            strText = Replace(strText, "    </server>", formatted_list)
+
+            strText = re.Replace(strText, formatted_list)
+
         ElseIf WAZUH_MANAGER <> "" and InStr(strText,"<address>") > 0 Then
             strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & WAZUH_MANAGER & "</address>")
-
-        ElseIf WAZUH_MANAGER <> "" Then 'single address
-            ' Fix for the legacy server-ip and server-hostname keynames
-            Set re = new regexp
-            re.Pattern = "<server-ip>.*</server-ip>"
-            re.Global = True
-            strText = re.Replace(strText, "<server-ip>" & WAZUH_MANAGER & "</server-ip>")
-            re.Pattern = "<server-hostname>.*</server-hostname>"
-            re.Global = True
-            strText = re.Replace(strText, "<server-hostname>" & WAZUH_MANAGER & "</server-hostname>")
-            strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & WAZUH_MANAGER & "</address>")
-        End If
 
         If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
             If InStr(strText, "<port>") > 0 Then
@@ -103,18 +99,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                 strText = Replace(strText, "</client>", "  <port>" & WAZUH_MANAGER_PORT & "</port>"& vbCrLf &"  </client>")
             End If
 
-        End If
-
-        If WAZUH_PROTOCOL <> "" Then
-            If InStr(strText, "<protocol>") > 0 Then
-                Set re = new regexp
-                re.Pattern = "<protocol>.*</protocol>"
-                re.Global = True
-                strText = re.Replace(strText, "<protocol>" & LCase(WAZUH_PROTOCOL) & "</protocol>")
-            Else
-            ' Fix for the legacy files (not including the key)
-                strText = Replace(strText, "</client>", "   <protocol>" & LCase(WAZUH_PROTOCOL) & "</protocol>"& vbCrLf &"  </client>")
-            End If
         End If
 
         If WAZUH_KEEP_ALIVE_INTERVAL <> "" Then
