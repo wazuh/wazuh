@@ -83,20 +83,15 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                     End If
                     formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     formatted_list = formatted_list & "    </server>" & vbCrLf
-                End If
             next
 
             strText = re.Replace(strText, formatted_list)
 
-        ElseIf WAZUH_MANAGER <> "" and InStr(strText,"<address>") > 0 Then
-            strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & WAZUH_MANAGER & "</address>")
+        End If
 
         If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
             If InStr(strText, "<port>") > 0 Then
                 strText = Replace(strText, "<port>1514</port>", "<port>" & WAZUH_MANAGER_PORT & "</port>")
-            Else
-                ' Fix for the legacy files (not including the key)
-                strText = Replace(strText, "</client>", "  <port>" & WAZUH_MANAGER_PORT & "</port>"& vbCrLf &"  </client>")
             End If
 
         End If
@@ -107,9 +102,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                 re.Pattern = "<notify_time>.*</notify_time>"
                 re.Global = True
                 strText = re.Replace(strText, "<notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>")
-            Else
-                ' Fix for the legacy files (not including the key)
-                strText = Replace(strText, "</client>", "   <notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>"& vbCrLf &"  </client>")
             End If
         End If
 
@@ -119,10 +111,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                 re.Pattern = "<time-reconnect>.*</time-reconnect>"
                 re.Global = True
                 strText = re.Replace(strText, "<time-reconnect>" & WAZUH_TIME_RECONNECT & "</time-reconnect>")
-            Else
-                ' Fix for the legacy files (not including the key)
-                strText = Replace(strText, "</client>", "   <time-reconnect>" & WAZUH_TIME_RECONNECT & "</time-reconnect>"& vbCrLf &"  </client>")
-
             End If
         End If
 
