@@ -21,6 +21,13 @@ namespace
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
+void destroy()
+{
+    WAZUH_LOG_INFO("Destroying Engine resources");
+    KVDBManager::get().~KVDBManager();
+    logging::loggingTerm();
+}
+
 // variables for handling threads
 std::atomic<bool> gs_doRun = true;
 std::vector<std::thread> gs_threadList;
@@ -34,6 +41,9 @@ void sigint_handler(const int signum)
     {
         t.join();
     };
+
+    // Destroy all data
+    destroy();
 
     // TODO: this should not be necessary, but server threads are not terminating.
     exit(0);
@@ -69,7 +79,10 @@ void run(const std::string& kvdbPath,
         case 1: logConfig.logLevel = logging::LogLevel::Info; break;
         case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
         case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default: WAZUH_LOG_ERROR("Invalid log level: {}", logLevel);
+        default:
+            WAZUH_LOG_WARN("Invalid log level [{}]: Log level setted to [Error]",
+                           logLevel);
+            logging::LogLevel::Error;
     }
     logging::loggingInit(logConfig);
 
@@ -81,6 +94,7 @@ void run(const std::string& kvdbPath,
         WAZUH_LOG_ERROR("Could not configure server for endpoint [{}], engine "
                         "inizialization aborted.",
                         endpoint);
+        destroy();
         return;
     }
 
@@ -100,6 +114,7 @@ void run(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while registering builders: [{}]",
                         utils::getExceptionStack(e));
+        destroy();
         return;
     }
     // TODO: Handle errors on construction
@@ -113,6 +128,7 @@ void run(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while building environment: [{}]",
                         utils::getExceptionStack(e));
+        destroy();
         return;
     }
 
@@ -157,7 +173,6 @@ void run(const std::string& kvdbPath,
     }
 
     server.run();
-
-    logging::loggingTerm();
+    destroy();
 }
 } // namespace cmd
