@@ -102,7 +102,8 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition);
 /**
  * @brief Transforms a string by replacing, if exists, every ocurrence of a substring by a
  * new one.
- * Example
+ *
+ * i.e:
  * Original String: 'String with values: extras, expert, ex, flexible, exexes'
  * Substring to replace: 'ex'
  * New substring: 'dummy'
