@@ -94,12 +94,16 @@ add_adress_block() {
     fi
 
     # Write the client configuration block
-    for i in ${SET_ADDRESSES};
+    for i in ${!SET_ADDRESSES[@]};
     do
         echo "    <server>" >> ${TMP_SERVER}
-        echo "      <address>$i</address>" >> ${TMP_SERVER}
+        echo "      <address>${SET_ADDRESSES[i]}</address>" >> ${TMP_SERVER}
         echo "      <port>1514</port>" >> ${TMP_SERVER}
-        echo "      <protocol>tcp</protocol>" >> ${TMP_SERVER}
+        if [ -n ${PROTOCOLS[i]} ]; then
+            echo "      <protocol>${PROTOCOLS[i]}</protocol>" >> ${TMP_SERVER}
+        else
+            echo "      <protocol>tcp</protocol>" >> ${TMP_SERVER}
+        fi 
         echo "    </server>" >> ${TMP_SERVER}
     done
 
@@ -297,7 +301,9 @@ main () {
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
         WAZUH_MANAGER=$(echo ${WAZUH_MANAGER} | sed "s#,#;#g")
+        WAZUH_PROTOCOL=$(echo ${WAZUH_PROTOCOL} | sed "s#,#;#g")
         ADDRESSES="$(echo ${WAZUH_MANAGER} | awk '{split($0,a,";")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
+        PROTOCOLS="$(echo ${WAZUH_PROTOCOL} | awk '{split($0,a,";")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
         if echo ${ADDRESSES} | grep ' ' > /dev/null 2>&1 ; then
             # Get uniques values
             ADDRESSES=$(echo "${ADDRESSES}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
