@@ -12,6 +12,8 @@
 
 #include <logging/logging.hpp>
 
+#include <iostream>
+
 static const struct Option
 {
     rocksdb::ReadOptions read;
@@ -38,6 +40,7 @@ struct KVDB::Impl
         , m_txDb(nullptr)
         , m_db(nullptr)
         , m_state(State::Invalid)
+        , m_shouldCleanupFiles(false)
     {
         WAZUH_ASSERT_MSG(!m_name.empty(),
                          "Trying to create a DB with an empty name");
