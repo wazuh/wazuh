@@ -23,6 +23,9 @@ from wazuh.rbac.decorators import expose_resources
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
+UPGRADE_CHUNK_SIZE = 500
+UPGRADE_RESULT_CHUNK_SIZE = 97
+
 # Error codes generated from upgrade socket error codes that should be excluded in upgrade functions
 # 1819 -> The WPK for this platform is not available
 # 1820 -> Upgrade procedure could not start. Agent already upgrading
@@ -1148,7 +1151,8 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
 
-        agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
+        agents_result_chunks = [eligible_agents[x:x + UPGRADE_CHUNK_SIZE] for x in
+                                range(0, len(eligible_agents), UPGRADE_CHUNK_SIZE)]
 
         agent_results = list()
         for agents_chunk in agents_result_chunks:
@@ -1257,7 +1261,8 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
 
-        agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
+        agents_result_chunks = [eligible_agents[x:x + UPGRADE_RESULT_CHUNK_SIZE] for x in
+                                range(0, len(eligible_agents), UPGRADE_RESULT_CHUNK_SIZE)]
 
         task_results = list()
         for agents_chunk in agents_result_chunks:
