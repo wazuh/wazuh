@@ -83,8 +83,6 @@ delete_auto_enrollment_tag() {
 
 # Change address block of the ossec.conf
 add_adress_block() {
-    # Getting function parameters on new variable
-    SET_ADDRESSES="$@"
 
     # Remove the server configuration
     if [ "${use_unix_sed}" = "False" ] ; then
@@ -94,12 +92,12 @@ add_adress_block() {
     fi
 
     # Write the client configuration block
-    for i in ${!SET_ADDRESSES[@]};
+    for i in ${!ADDRESSES[@]};
     do
         echo "    <server>" >> ${TMP_SERVER}
-        echo "      <address>${SET_ADDRESSES[i]}</address>" >> ${TMP_SERVER}
+        echo "      <address>${ADDRESSES[i]}</address>" >> ${TMP_SERVER}
         echo "      <port>1514</port>" >> ${TMP_SERVER}
-        if [ -n ${PROTOCOLS[i]} ]; then
+        if [ -n "${PROTOCOLS[i]}" ]; then
             echo "      <protocol>${PROTOCOLS[i]}</protocol>" >> ${TMP_SERVER}
         else
             echo "      <protocol>tcp</protocol>" >> ${TMP_SERVER}
@@ -300,28 +298,17 @@ main () {
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
-        WAZUH_MANAGER=$(echo ${WAZUH_MANAGER} | sed "s#,#;#g")
-        WAZUH_PROTOCOL=$(echo ${WAZUH_PROTOCOL} | sed "s#,#;#g")
-        ADDRESSES="$(echo ${WAZUH_MANAGER} | awk '{split($0,a,";")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
-        PROTOCOLS="$(echo ${WAZUH_PROTOCOL} | awk '{split($0,a,";")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
-        if echo ${ADDRESSES} | grep ' ' > /dev/null 2>&1 ; then
-            # Get uniques values
-            ADDRESSES=$(echo "${ADDRESSES}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
-            add_adress_block "${ADDRESSES}"
-            if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
-                WAZUH_REGISTRATION_SERVER="$(echo $ADDRESSES | cut -d ' ' -f 1)"
-            fi
-        else
-            # Single address
-            edit_value_tag "address" ${WAZUH_MANAGER}
-            if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
-                WAZUH_REGISTRATION_SERVER="${WAZUH_MANAGER}"
-            fi
+        ADDRESSES=( $(echo ${WAZUH_MANAGER} | sed "s#,# #g") )
+        PROTOCOLS=( $(echo $(tolower ${WAZUH_PROTOCOL}) | sed "s#,# #g") )
+        # Get uniques values
+        ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
+        add_adress_block "${ADDRESSES}"
+        if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
+            WAZUH_REGISTRATION_SERVER="${ADDRESSES[0]}"
         fi
     fi
 
     # Options to be modified in ossec.conf
-    edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
     edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
     edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
