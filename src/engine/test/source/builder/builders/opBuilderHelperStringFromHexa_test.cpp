@@ -109,3 +109,36 @@ TEST(opBuilderHelperStringFromHexa, allThePrintableCharacters)
               "abcdefghijklmnopqrstuvwxyz{|}~",
               result.payload()->getString("/output").value());
 }
+
+TEST(opBuilderHelperStringFromHexa, emptyString)
+{
+    const std::vector<std::string> arguments {"$sourceField"};
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    auto event = std::make_shared<json::Json>("{\"sourceField\": "
+                                              "\"\"}");
+
+    auto op = opBuilderHelperStringFromHexa(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_STREQ("", result.payload()->getString("/output").value().data());
+}
+
+TEST(opBuilderHelperStringFromHexa, fieldNotAString)
+{
+    const std::vector<std::string> arguments {"$sourceField"};
+    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+
+    auto event = std::make_shared<json::Json>("{\"sourceField\": 123456}");
+
+    auto op = opBuilderHelperStringFromHexa(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event);
+
+    ASSERT_FALSE(result);
+
+    ASSERT_FALSE(result.payload()->exists("/output"));
+}

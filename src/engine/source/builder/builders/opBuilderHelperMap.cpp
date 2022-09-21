@@ -443,8 +443,8 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const auto failureTrace1 {fmt::format(
-        "[{}] -> Failure: Parameter must be string or int: ", name)};
+    const auto failureTrace1 {
+        fmt::format("[{}] -> Failure: Parameter must be string or int: ", name)};
     const auto failureTrace2 {
         fmt::format("[{}] -> Failure: not found parameter: ", name)};
 
@@ -463,7 +463,8 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
                     // Check path exists
                     if (!event->exists(parameter.m_value))
                     {
-                        return base::result::makeFailure(event, failureTrace2 + parameter.m_value);
+                        return base::result::makeFailure(
+                            event, failureTrace2 + parameter.m_value);
                     }
 
                     // Get field value
@@ -482,13 +483,14 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
                     {
                         resolvedField = event->getString(parameter.m_value).value();
                     }
-                    else if(event->isObject(parameter.m_value))
+                    else if (event->isObject(parameter.m_value))
                     {
                         resolvedField = event->str(parameter.m_value).value();
                     }
                     else
                     {
-                        return base::result::makeFailure(event, failureTrace1 + parameter.m_value);
+                        return base::result::makeFailure(
+                            event, failureTrace1 + parameter.m_value);
                     }
 
                     result.append(resolvedField);
@@ -508,7 +510,8 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 // field: +s_fromArray/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] =
+        helper::base::extractDefinition(definition);
     const auto parameters = helper::base::processParameters(rawParameters);
     helper::base::checkParametersSize(parameters, 2);
 
@@ -573,7 +576,8 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 // field: +s_fromHexa/$<hex_reference>
 base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    const auto [targetField, name, rawParameters] =
+        helper::base::extractDefinition(definition);
 
     const auto parameters = helper::base::processParameters(rawParameters);
 
@@ -604,21 +608,14 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
         {
             std::string strHex {};
 
-            if (helper::base::Parameter::Type::REFERENCE == sourceField.m_type)
+            // Getting string field from a reference
+            const auto refStrHEX = event->getString(sourceField.m_value);
+            if (!refStrHEX.has_value())
             {
-                // Getting string field from a reference
-                const auto refStrHEX = event->getString(sourceField.m_value);
-                if (!refStrHEX.has_value())
-                {
-                    return base::result::makeFailure(event, failureTrace1);
-                }
+                return base::result::makeFailure(event, failureTrace1);
+            }
 
-                strHex = refStrHEX.value();
-            }
-            else
-            {
-                return base::result::makeFailure(event, failureTrace2);
-            }
+            strHex = refStrHEX.value();
 
             const auto lenHex = strHex.length();
 
@@ -718,7 +715,7 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition)
     if (paramOldSubstr.m_value.empty())
     {
         throw std::runtime_error(
-                        fmt::format("First parameter of '{}' cannot be empty.", name));
+            fmt::format("First parameter of '{}' cannot be empty.", name));
     }
     const auto paramNewSubstr = parameters.at(1);
 
@@ -797,7 +794,8 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition)
             }
 
             size_t start_pos = 0;
-            while((start_pos = newString.find(oldSubstring, start_pos)) != std::string::npos)
+            while ((start_pos = newString.find(oldSubstring, start_pos))
+                   != std::string::npos)
             {
                 newString.replace(start_pos, oldSubstring.length(), newSubstring);
                 start_pos += newSubstring.length();
