@@ -121,7 +121,7 @@ base::Expression KVDBExtract(const std::any& definition, bool merge)
                         event->set(targetField, value);
                     }
                 }
-                catch (const std::exception& e)
+                catch (const std::runtime_error& e)
                 {
                     return base::result::makeFailure(event, failureTrace5);
                 }
@@ -152,11 +152,19 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
     checkParameterType(parameters[0], Parameter::Type::VALUE);
     name = formatHelperFilterName(targetField, name, parameters);
 
-    auto kvdb = KVDBManager::get().getDB(parameters[0].m_value);
+    const auto dbName = parameters[0].m_value;
+
+    // Get DB
+    // TODO: Fix once KVDB is refactored
+    auto kvdb = KVDBManager::get().getDB(dbName);
     if (!kvdb)
     {
-        auto msg =
-            fmt::format("[{}] DB isn't available for usage", parameters[0].m_value);
+        KVDBManager::get().addDb(dbName, false);
+    }
+    kvdb = KVDBManager::get().getDB(dbName);
+    if (!kvdb)
+    {
+        const auto msg {fmt::format("[{}] DB isn't available for usage", dbName)};
         throw std::runtime_error(std::move(msg));
     }
 
