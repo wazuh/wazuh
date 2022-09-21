@@ -47,6 +47,7 @@
 #include "expression.h"
 #include "os_xml/os_xml.h"
 #include "exec_op.h"
+#include "list_op.h"
 
 extern int maximum_files;
 extern int total_files;
@@ -205,8 +206,8 @@ typedef struct _logreader {
     logtarget * log_target;
     int duplicated;
     char *exclude;
-    w_expression_t * regex_ignore;
-    w_expression_t * regex_restrict;
+    OSList *regex_ignore;
+    OSList *regex_restrict;
     wlabel_t *labels;
     pthread_mutex_t mutex;
     int exists;

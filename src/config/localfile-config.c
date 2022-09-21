@@ -462,13 +462,25 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
 
-            w_calloc_expression_t(&logf[pl].regex_ignore, regex_type);
+            if (logf[pl].regex_ignore == NULL) {
+                logf[pl].regex_ignore = OSList_Create();
+                if (logf[pl].regex_ignore == NULL) {
+                    merror(MEM_ERROR, errno, strerror(errno));
+                    return (OS_INVALID);
+                }
+                OSList_SetFreeDataPointer(logf[pl].regex_ignore, (void (*)(void *))w_free_expression);
+            }
+            w_expression_t * expression_ignore;
 
-            if (!w_expression_compile(logf[pl].regex_ignore, node[i]->content, 0)) {
+            w_calloc_expression_t(&expression_ignore, regex_type);
+
+            if (!w_expression_compile(expression_ignore, node[i]->content, 0)) {
                 merror(LF_LOG_REGEX, "ignore", node[i]->content);
-                w_free_expression_t(&logf[pl].regex_ignore);
+                w_free_expression_t(&expression_ignore);
                 return (OS_INVALID);
             }
+            OSList_InsertData(logf[pl].regex_ignore, NULL, expression_ignore);
+
         } else if (strcasecmp(node[i]->element, xml_localfile_restrict) == 0) {
             regex_type = EXP_TYPE_PCRE2;
             if (node[i]->attributes && node[i]->values && node[i]->attributes[0]) {
@@ -480,24 +492,28 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
 
-            w_calloc_expression_t(&logf[pl].regex_restrict, regex_type);
+            if (logf[pl].regex_restrict == NULL) {
+                logf[pl].regex_restrict = OSList_Create();
+                if (logf[pl].regex_restrict == NULL) {
+                    merror(MEM_ERROR, errno, strerror(errno));
+                    return (OS_INVALID);
+                }
+                OSList_SetFreeDataPointer(logf[pl].regex_restrict, (void (*)(void *))w_free_expression);
+            }
+            w_expression_t * expression_restrict;
 
-            if (!w_expression_compile(logf[pl].regex_restrict, node[i]->content, 0)) {
+            w_calloc_expression_t(&expression_restrict, regex_type);
+
+            if (!w_expression_compile(expression_restrict, node[i]->content, 0)) {
                 merror(LF_LOG_REGEX, "restrict", node[i]->content);
-                w_free_expression_t(&logf[pl].regex_restrict);
+                w_free_expression_t(&expression_restrict);
                 return (OS_INVALID);
             }
+            OSList_InsertData(logf[pl].regex_restrict, NULL, expression_restrict);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
-        }
-
-        if (logf[pl].regex_ignore != NULL & logf[pl].regex_restrict != NULL) {
-            if (!strcmp(w_expression_get_regex_pattern(logf[pl].regex_ignore),
-                        w_expression_get_regex_pattern(logf[pl].regex_restrict))) {
-                merror(LOGCOLLECTOR_IGNORE_AND_RESTRICT_ERROR);
-                return (OS_INVALID);
-            }
         }
 
         i++;
@@ -793,8 +809,14 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->exclude);
         os_free(logf->query_level);
 
-        w_free_expression_t(&logf->regex_ignore);
-        w_free_expression_t(&logf->regex_restrict);
+        if (logf->regex_ignore) {
+            OSList_Destroy(logf->regex_ignore);
+            logf->regex_ignore = NULL;
+        }
+        if (logf->regex_restrict) {
+            OSList_Destroy(logf->regex_restrict);
+            logf->regex_restrict = NULL;
+        }
 
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {

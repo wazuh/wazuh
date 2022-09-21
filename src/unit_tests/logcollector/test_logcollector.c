@@ -155,6 +155,20 @@ static int setup_regex(void **state) {
     regex_config->regex_ignore = NULL;
     regex_config->regex_restrict = NULL;
 
+    regex_config->regex_ignore = OSList_Create();
+    if (regex_config->regex_ignore == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return -1;
+    }
+    OSList_SetFreeDataPointer(regex_config->regex_ignore, (void (*)(void *))w_free_expression);
+
+    regex_config->regex_restrict = OSList_Create();
+    if (regex_config->regex_restrict == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return -1;
+    }
+    OSList_SetFreeDataPointer(regex_config->regex_restrict, (void (*)(void *))w_free_expression);
+
     *state = regex_config;
 
     return 0;
@@ -163,8 +177,14 @@ static int setup_regex(void **state) {
 static int teardown_regex(void **state) {
     logreader *regex_config = *state;
 
-    w_free_expression_t(&regex_config->regex_ignore);
-    w_free_expression_t(&regex_config->regex_restrict);
+    if (regex_config->regex_ignore) {
+        OSList_Destroy(regex_config->regex_ignore);
+        regex_config->regex_ignore = NULL;
+    }
+    if (regex_config->regex_restrict) {
+        OSList_Destroy(regex_config->regex_restrict);
+        regex_config->regex_restrict = NULL;
+    }
 
     os_free(regex_config);
 

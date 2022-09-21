@@ -161,7 +161,6 @@
 #define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s."
 #define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s."
 #define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
-#define LOGCOLLECTOR_IGNORE_AND_RESTRICT_ERROR      "(1608): Invalid configuration in logcollector, ignore and restrict patterns are the same."
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."

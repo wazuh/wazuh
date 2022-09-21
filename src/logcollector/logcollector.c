@@ -133,21 +133,29 @@ STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
 #endif
 
-int check_ignore_and_restrict(w_expression_t * ignore_exp, w_expression_t * restrict_exp, const char *log_line) {
+int check_ignore_and_restrict(OSList * ignore_exp_list, OSList * restrict_exp_list, const char *log_line) {
+    OSListNode *node_it;
+    w_expression_t *dir_it;
 
-    if (ignore_exp) {
-        /* Check ignore regex, if it matches, do not process the log */
-        if (w_expression_match(ignore_exp, log_line, NULL, NULL)) {
-            mdebug2(LF_MATCH_REGEX, log_line, "ignore", w_expression_get_regex_pattern(ignore_exp));
-            return true;
+    if (ignore_exp_list) {
+        OSList_foreach(node_it, ignore_exp_list) {
+            dir_it = node_it->data;
+            /* Check ignore regex, if it matches, do not process the log */
+            if (w_expression_match(dir_it, log_line, NULL, NULL)) {
+                mdebug2(LF_MATCH_REGEX, log_line, "ignore", w_expression_get_regex_pattern(dir_it));
+                return true;
+            }
         }
     }
 
-    if (restrict_exp) {
-        /* Check restrict regex, only if match log is processed */
-        if (!w_expression_match(restrict_exp, log_line, NULL, NULL)) {
-            mdebug2(LF_MATCH_REGEX, log_line, "restrict", w_expression_get_regex_pattern(restrict_exp));
-            return true;
+    if (restrict_exp_list) {
+        OSList_foreach(node_it, ignore_exp_list) {
+            dir_it = node_it->data;
+            /* Check restrict regex, only if match every log is processed */
+            if (!w_expression_match(dir_it, log_line, NULL, NULL)) {
+                mdebug2(LF_MATCH_REGEX, log_line, "restrict", w_expression_get_regex_pattern(dir_it));
+                return true;
+            }
         }
     }
 
