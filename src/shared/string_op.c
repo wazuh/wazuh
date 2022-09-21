@@ -307,71 +307,110 @@ char * wstr_replace(const char * string, const char * search, const char * repla
 
 // Locate first occurrence of non '\\' escaped character in string
 
-char * wstr_chr(char * str, int character) {
+char * wstr_chr(const char * str, char character) {
 
     return wstr_chr_escape(str, character, '\\');
 }
 
 // Locate first occurrence of non escaped character in string
 
-char * wstr_chr_escape(char * str, int character, int escape) {
-    char escaped = 0;
+char * wstr_chr_escape(const char * str, char character, char escape) {
+    bool escaped = false;
 
     for (;*str != '\0'; str++) {
         if (!escaped) {
             if (*str == character) {
-                return str;
+                return (char *)str;
             }
             if (*str == escape) {
-                escaped = 1;
+                escaped = true;
             }
         } else {
-            escaped = 0;
+            escaped = false;
         }
     }
-
     return NULL;
 }
 
 // Escape a specific character from a character string
 
-ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int escape, int toescape) {
+ssize_t wstr_escape(char *dststr, size_t dst_size, const char *str, char escape, char match) {
 
-    char * str_cpy = (char *) str;
-    if (str_cpy == NULL || dststr == NULL) {
+    if (str == NULL || dststr == NULL) {
         return OS_INVALID;
     }
 
-    unsigned int a = 0;
-    while (*str_cpy != '\0' && a < dst_size -1) {
-        if (*str_cpy == toescape || *str_cpy == escape) {
-            dststr[a++] = escape;
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
+
+    char charset[3] = {escape, match, '\0'};
+
+    do {
+        z = strcspn(str + i, charset);
+
+        if (str[i + z] == '\0' || (j + z) >= dst_size) {
+            z = (z + j <= dst_size) ? z : (dst_size - j - 1);
+            // End of str
+            strncpy(dststr + j, str + i, z);
+        } else {
+            // Reserved character
+            strncpy(dststr + j, str + i, z);
+            dststr[j + z] = escape;
+            if (str[i + z] == escape) {
+                dststr[j + z + 1] = escape;
+            } else {
+                dststr[j + z + 1] = match;
+            }
+            z++;
+            j++;
         }
-        dststr[a++] = *str_cpy++;
-    }
-    dststr[a] = '\0';
-    return a;
+
+        j += z;
+        i += z;
+    } while (str[i] != '\0' && j < dst_size -1);
+
+    dststr[j] = '\0';
+    return j;
 }
 
 // Unescape a specific character from a character string
 
-ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int escape) {
+ssize_t wstr_unescape(char *dststr, size_t dst_size, const char *str, char escape) {
 
-    char * str_cpy = (char *) str;
-    if (str_cpy == NULL || dststr == NULL) {
+    if (str == NULL || dststr == NULL) {
         return OS_INVALID;
     }
 
-    unsigned int a = 0;
-    while (*str_cpy != '\0' && a < dst_size -1) {
-        if (*str_cpy == escape && *(str_cpy + 1) != '\0') {
-            str_cpy++;
-        }
-        dststr[a++] = *str_cpy++;
-    }
+    size_t i = 0;   // Read position
+    size_t j = 0;   // Write position
+    size_t z;       // Span length
 
-    dststr[a] = '\0';
-    return a;
+    char charset[2] = {escape, '\0'};
+
+    do {
+        z = strcspn(str + i, charset);
+        z = (z + j <= dst_size) ? z : (dst_size - j - 1);
+
+        strncpy(dststr + j, str + i, z);
+        j += z;
+        i += z;
+
+        if (str[i] != '\0' && j < dst_size -1) {
+
+            if (str[i + 1] == escape) {
+                dststr[j++] = str[i++];
+            }
+            else if (str[i + 1] == '\0') {
+                dststr[j++] = str[i];
+            }
+            i++;
+        }
+
+    } while (str[i] != '\0' && j < dst_size -1);
+
+    dststr[j] = '\0';
+    return j;
 }
 
 #ifdef WIN32

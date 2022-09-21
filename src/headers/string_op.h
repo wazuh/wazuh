@@ -100,36 +100,40 @@ char* filter_special_chars(const char *string);
 char * wstr_replace(const char * string, const char * search, const char * replace);
 
 // Locate first occurrence of non escaped character in string
-char * wstr_chr(char * str, int character);
+char * wstr_chr(const char * str, char character);
 
-/* Locate first occurrence of non escaped character in string
+/**
+ * @brief Locate first occurrence of non escaped character in string.
  *
- * str must be a valid pointer to a string where look for a non escaped character.
- * character int is the value of the non escaped character.
- * escape int is the value of the operator used to escape.
- * Returns a char *, represents the position of the non escaped character, or NULL if fail.
- */char * wstr_chr_escape(char * str, int character, int escape);
-
-/* Escape a specific character from a character string
- *
- * dststr must be a valid pointer to a char buffer where escaped string will be stored.
- * dst_size must be an unsigned int value, to avoid overflow the buffer.
- * str must be a valid pointer to a string to escape.
- * escape int is the value of the operator used to escape.
- * toescape int is the value to escape.
- * Returns a ssize_t, represents the size of the dststr if success, or OS_INVALID if fail.
+ * @param str A valid pointer to a string where look for a non escaped character.
+ * @param character The non escaped character.
+ * @param escape The character used to escape.
+ * @return The position of the non escaped character, or NULL if fail.
  */
-ssize_t wstr_escape(char *dststr, unsigned int dst_size, const char *str, int escape, int toescape);
+char * wstr_chr_escape(const char * str, char character, char escape);
 
-/* Unescape a specific character from a character string
+/**
+ * @brief Escape a specific character from a character string.
  *
- * dststr must be a valid pointer to a char buffer where unescaped string will be stored.
- * dst_size must be an unsigned int value, to avoid overflow the buffer.
- * str must be a valid pointer to a string to unescape.
- * escape int is the value of the operator used to unescape.
- * Returns a ssize_t, represents the size of the dststr if success, or OS_INVALID if fail.
+ * @param dststr A valid pointer to a char buffer where escaped string will be stored.
+ * @param dst_size The dststr size to control buffer overflow.
+ * @param str A valid pointer to a string to escape.
+ * @param escape The character used to escape.
+ * @param match The value to escape.
+ * @return The size of the dststr if success, or OS_INVALID if fail.
  */
-ssize_t wstr_unescape(char *dststr, unsigned int dst_size, const char *str, int escape);
+ssize_t wstr_escape(char *dststr, size_t dst_size, const char *str, char escape, char match);
+
+/**
+ * @brief Unescape a specific character from a character string.
+ *
+ * @param dststr A valid pointer to a char buffer where unescaped string will be stored.
+ * @param dst_size The dststr size to control buffer overflow.
+ * @param str A valid pointer to a string to unescape.
+ * @param escape The character used to unescape.
+ * @return The size of the dststr if success, or OS_INVALID if fail.
+ */
+ssize_t wstr_unescape(char *dststr, size_t dst_size, const char *str, char escape);
 
 // Free string array
 void free_strarray(char ** array);
