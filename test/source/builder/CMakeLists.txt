@@ -162,6 +162,7 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperMerge_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHexToNumber_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperTimeEpoch_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 

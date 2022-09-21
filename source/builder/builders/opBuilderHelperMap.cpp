@@ -670,8 +670,8 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
     const auto failureTrace1 = fmt::format(
         "[{}] -> Failure: parameter is not a string or it doesn't exist", traceName);
-    const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: Bad hexadecimal string", traceName);
+    const auto failureTrace2 =
+        fmt::format("[{}] -> Failure: Bad hexadecimal string", traceName);
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -1195,6 +1195,44 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+//*************************************************
+//*              Time tranform                    *
+//*************************************************
+
+// field: +t_epoch
+base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition) {
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters {helper::base::processParameters(rawParameters)};
+
+    // Check parameters
+    helper::base::checkParametersSize(parameters, 0);
+
+    // Tracing
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
+
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const auto failureTrace {fmt::format("[{}] -> Failure (overflow)", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            auto sec = std::chrono::duration_cast<std::chrono::seconds>(
+                           std::chrono::system_clock::now().time_since_epoch())
+                           .count();
+            // TODO: Delete this and dd SetInt64 or SetIntAny to JSON class, get
+            // Number of any type (fix concat helper)
+            if (sec > std::numeric_limits<int>::max())
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+            event->setInt(sec, targetField);
             return base::result::makeSuccess(event, successTrace);
         });
 }
