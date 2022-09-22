@@ -8,7 +8,7 @@
 
 using namespace hlp;
 
-TEST(hlpTests_ParseXml, successDefault)
+TEST(parseXML, successDefault)
 {
     const char* expression = "<_xml/xml>";
     const char* event =
@@ -24,7 +24,7 @@ TEST(hlpTests_ParseXml, successDefault)
     ASSERT_EQ(std::any_cast<json::Json>(result["_xml"]).str(), expected.jsonString);
 }
 
-TEST(hlpTests_ParseXml, failureWrongXml)
+TEST(parseXML, failureWrongXml)
 {
     const char* expression = "<_xml/xml>";
     const char* event =
@@ -36,7 +36,7 @@ TEST(hlpTests_ParseXml, failureWrongXml)
     ASSERT_FALSE(static_cast<bool>(ret));
 }
 
-TEST(hlpTests_ParseXml, failureNotXml)
+TEST(parseXML, failureNotXml)
 {
     const char* expression = "<_xml/xml>";
     const char* event =
@@ -48,21 +48,21 @@ TEST(hlpTests_ParseXml, failureNotXml)
     ASSERT_FALSE(static_cast<bool>(ret));
 }
 
-TEST(hlpTests_ParseXml, failureModuleNotSupported)
+TEST(parseXML, failureModuleNotSupported)
 {
     const char* expression = "<_xml/xml/notsupported>";
 
     ASSERT_THROW(getParserOp(expression), std::runtime_error);
 }
 
-TEST(hlpTests_ParseXml, failureMultipleArguments)
+TEST(parseXML, failureMultipleArguments)
 {
     const char* expression = "<_xml/xml/windows/other>";
 
     ASSERT_THROW(getParserOp(expression), std::runtime_error);
 }
 
-TEST(hlpTests_ParseXml, successWinModule)
+TEST(parseXML, successWinModule)
 {
     const char* expression = "<_xml/xml/windows>";
     const char* event =
