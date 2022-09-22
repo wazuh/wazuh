@@ -1056,6 +1056,54 @@ void test_error_client_secret_path_1(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_error_api_type(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<interval>10</interval>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+            "<api_type>invalid</api_type>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'api_type' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_error_api_type_1(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<interval>10</interval>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+            "<api_type></api_type>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_type' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
 void test_wm_office365_dump_no_options(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *test = "{\"office365\":{\"enabled\":\"no\",\"only_future_events\":\"no\"}}";
@@ -3129,6 +3177,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_client_secret_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_type, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_type_1, setup_test_read, teardown_test_read),
     };
     const struct CMUnitTest tests_functionality[] = {
         cmocka_unit_test_setup_teardown(test_wm_office365_main_disabled, setup_conf, teardown_conf),
