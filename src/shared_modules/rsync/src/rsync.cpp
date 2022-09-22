@@ -15,6 +15,7 @@
 #include "rsync_exception.h"
 #include "dbsyncWrapper.h"
 #include "rsyncImplementation.h"
+#include "loggerHelper.h"
 
 
 #ifdef __cplusplus
@@ -213,6 +214,7 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     if (!gs_logFunction)
     {
         gs_logFunction = logFunction;
+        Log::debugVerbose.assignLogFunction(logFunction);
     }
 }
 

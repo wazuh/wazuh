@@ -17,6 +17,7 @@
 #include "defs.h"
 #include "mq_op.h"
 #include "headers/logging_helper.h"
+#include "commonDefs.h"
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
@@ -90,6 +91,30 @@ static void wm_sys_send_dbsync_message(const void* data) {
     wm_sys_send_message(data, DBSYNC_MQ);
 }
 
+static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
+
+    switch(level) {
+        case SYS_LOG_ERROR:
+            mterror(WM_SYS_LOGTAG, "%s", log);
+            break;
+        case SYS_LOG_INFO:
+            mtinfo(WM_SYS_LOGTAG, "%s", log);
+            break;
+        case SYS_LOG_DEBUG:
+            mtdebug1(WM_SYS_LOGTAG, "%s", log);
+            break;
+        case SYS_LOG_DEBUG_VERBOSE:
+            mtdebug2(WM_SYS_LOGTAG, "%s", log);
+            break;
+        default:;
+    }
+}
+
+static void wm_log_debug_verbose( const char* log) {
+
+    mtdebug2(":rsync", "%s", log);
+}
+
 static void wm_sys_log_config(wm_sys_t *sys)
 {
     cJSON * config_json = wm_sys_dump(sys);
@@ -133,6 +158,15 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
         syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
+
+        void* rsync_module = NULL;
+        if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
+            void (*rsync_initialize_ptr)(log_fnc_t) = so_get_function_sym(rsync_module, "rsync_initialize");
+            rsync_initialize_ptr(wm_log_debug_verbose);
+            #ifndef WIN32
+            so_free_library(rsync_module);
+            #endif
+        }
     } else {
 #ifdef __hpux
         mtinfo(WM_SYS_LOGTAG, "Not supported in HP-UX.");

@@ -97,16 +97,6 @@ int main(int argc, char **argv)
         mdebug2("Created new thread for the '%s' module.", cur_module->tag);
     }
 
-    // Enabling RSync logging function only if the library was loaded for one of wmodules
-    if(so_check_module_loaded("syscollector")) {
-        rsync_initialize(&logFunction);
-        mwarn("Library enabled!");
-    }
-    else{
-        mwarn("Library not enabled!");
-
-    }
-
     // Start com request thread
     w_create_thread(wmcom_main, NULL);
 

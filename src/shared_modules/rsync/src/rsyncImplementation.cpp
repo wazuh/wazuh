@@ -13,6 +13,7 @@
 #include "makeUnique.h"
 #include "stringHelper.h"
 #include "hashHelper.h"
+#include "loggerHelper.h"
 #include "messageCreatorFactory.h"
 #include "rsync.hpp"
 
@@ -110,7 +111,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
 
-        RemoteSync::logMessage(std::string("Remote sync started: " + RSync::IntegrityCommands[checksumCtx.rightCtx.type]));
+        Log::debugVerbose << "Remote sync started: " << RSync::IntegrityCommands[checksumCtx.rightCtx.type] << std::endl;
     }
     else
     {

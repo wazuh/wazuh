@@ -58,7 +58,7 @@ void* so_check_module_loaded(const char *so){
 #else
     snprintf(file_name, 4096-1, "lib%s.so", so);
 #endif
-    return dlopen(file_name, RTLD_NOLOAD);
+    return dlopen(file_name, RTLD_NOLOAD | RTLD_LAZY);
 #endif
 }
 
