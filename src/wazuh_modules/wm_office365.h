@@ -19,6 +19,8 @@
 #define WM_OFFICE365_DEFAULT_INTERVAL 60
 #define WM_OFFICE365_DEFAULT_CURL_MAX_SIZE 1048576L
 #define WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT 60L
+#define WM_OFFICE365_DEFAULT_API_LOGIN_FQDN "login.microsoftonline.com"
+#define WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "manage.office.com"
 
 #define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
@@ -38,6 +40,8 @@ typedef struct wm_office365_auth {
     char *client_id;
     char *client_secret_path;
     char *client_secret;
+    char *login_fqdn;
+    char *management_fqdn;
     struct wm_office365_auth *next;
 } wm_office365_auth;
 
