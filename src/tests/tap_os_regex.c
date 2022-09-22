@@ -878,7 +878,7 @@ int main(void) {
     TAP_TEST_MSG(test_no_rc_execute(), "There is no race condition in OSRegex_Execute_ex().");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n    ENDING TEST  - OS_REGEX   \n\n");
-    return 0;
+    return r;
 }

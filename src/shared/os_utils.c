@@ -1,6 +1,6 @@
 /*
  * Shared functions for Rootcheck events decoding
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -168,6 +168,9 @@ int w_del_plist(OSList *p_list)
         free(p_node);
         p_node = NULL;
     }
+
+    pthread_mutex_destroy(&(p_list->mutex));
+    pthread_rwlock_destroy(&(p_list->wr_mutex));
 
     free(p_list);
 

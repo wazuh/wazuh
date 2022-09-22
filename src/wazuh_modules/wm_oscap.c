@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for OpenSCAP
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -42,61 +42,40 @@ const char *WM_OSCAP_LOCATION = "wodle_open-scap";  // Location field for event 
 void* wm_oscap_main(wm_oscap *oscap) {
 
     wm_oscap_eval *eval;
-    time_t time_start = 0;
-    time_t time_sleep = 0;
-
     // Check configuration and show debug information
     wm_oscap_setup(oscap);
+    char * timestamp = NULL;
     mtinfo(WM_OSCAP_LOGTAG, "Module started.");
-
-    // First sleeping
-
-    if (!oscap->flags.scan_on_start) {
-        time_start = time(NULL);
-
-        // On first run, take into account the interval of time specified
-        if (oscap->state.next_time == 0) {
-            oscap->state.next_time = time_start + oscap->interval;
-        }
-
-        if (oscap->state.next_time > time_start) {
-            mtinfo(WM_OSCAP_LOGTAG, "Waiting for turn to evaluate.");
-            time_sleep = oscap->state.next_time - time_start;
-            wm_delay(1000 * time_sleep);
-        }
-    }
 
     // Main loop
 
-    while (1) {
+    do {
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(oscap->scan_config), WM_OSCAP_LOGTAG, oscap->flags.scan_on_start);
 
-        mtinfo(WM_OSCAP_LOGTAG, "Starting evaluation.");
-
-        // Get time and execute
-        time_start = time(NULL);
-
-        for (eval = oscap->evals; eval; eval = eval->next)
-            if (!eval->flags.error)
-                wm_oscap_run(eval);
-
-        time_sleep = time(NULL) - time_start;
-
-        mtinfo(WM_OSCAP_LOGTAG, "Evaluation finished.");
-
-        if ((time_t)oscap->interval >= time_sleep) {
-            time_sleep = oscap->interval - time_sleep;
-            oscap->state.next_time = oscap->interval + time_start;
-        } else {
-            mterror(WM_OSCAP_LOGTAG, "Interval overtaken.");
-            time_sleep = oscap->state.next_time = 0;
+        if (oscap->state.next_time == 0) {
+            oscap->state.next_time = oscap->scan_config.time_start + time_sleep;
         }
 
         if (wm_state_io(WM_OSCAP_CONTEXT.name, WM_IO_WRITE, &oscap->state, sizeof(oscap->state)) < 0)
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
-        // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
-    }
+        if (time_sleep) {
+            const int next_scan_time = sched_get_next_scan_time(oscap->scan_config);
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_OSCAP_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
+            w_sleep_until(next_scan_time);
+        }
+
+        mtinfo(WM_OSCAP_LOGTAG, "Starting evaluation.");
+
+        for (eval = oscap->evals; eval; eval = eval->next)
+            if (!eval->flags.error)
+                wm_oscap_run(eval);
+
+        mtinfo(WM_OSCAP_LOGTAG, "Evaluation finished.");
+
+    }  while (FOREVER());
 
     return NULL;
 }
@@ -120,7 +99,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
@@ -244,7 +223,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     os_free(command);
 
     char *line;
-    char *save_ptr;
+    char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
     }
@@ -273,11 +252,6 @@ void wm_oscap_check() {
         mtwarn(WM_OSCAP_LOGTAG, "No evals defined. Exiting...");
         pthread_exit(NULL);
     }
-
-    // Check if interval
-
-    if (!oscap->interval)
-        oscap->interval = WM_OSCAP_DEF_INTERVAL;
 
     // Check timeout and flags for evals
 
@@ -325,9 +299,10 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_scp = cJSON_CreateObject();
 
+    sched_scan_dump(&(oscap->scan_config), wm_scp);
+    
     if (oscap->flags.enabled) cJSON_AddStringToObject(wm_scp,"disabled","no"); else cJSON_AddStringToObject(wm_scp,"disabled","yes");
     if (oscap->flags.scan_on_start) cJSON_AddStringToObject(wm_scp,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_scp,"scan-on-start","no");
-    cJSON_AddNumberToObject(wm_scp,"interval",oscap->interval);
     cJSON_AddNumberToObject(wm_scp,"timeout",oscap->timeout);
     if (oscap->evals) {
         cJSON *evals = cJSON_CreateArray();

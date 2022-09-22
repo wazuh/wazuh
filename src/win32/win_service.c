@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -80,6 +80,12 @@ int os_stop_service()
 
         CloseServiceHandle(schSCManager);
     }
+
+    /*
+    * Sleep for a short period of time to avoid possible race-conditions with
+    * newer instances of ossec-agent.
+    */
+    Sleep(300); //milliseconds
 
     return (rc);
 }

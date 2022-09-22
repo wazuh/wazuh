@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -47,6 +47,13 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     if (!id) {
         snprintf(_id, 9, "%03d", ++keys->id_counter);
         id = _id;
+    }
+    else {
+        char *endptr;
+        int id_number = strtol(id, &endptr, 10);
+
+        if ('\0' == *endptr && id_number > keys->id_counter)
+            keys->id_counter = id_number;
     }
 
     if (!key) {
@@ -164,14 +171,21 @@ int OS_RemoveAgent(const char *u_id) {
     }
 
     // Remove DB from wazuh-db
+    int sock = -1;
+    int error;
     snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
-    wdb_send_query(wdbquery, &wdboutput);
-
-    if (wdboutput) {
+    os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
+    if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
         mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
-        os_free(wdboutput);
+    } else {
+        merror("Could not remove the DB of the agent %s. Error: %d.", u_id, error);
     }
 
+    if (sock >= 0) {
+        close(sock);
+    }
+
+    os_free(wdboutput);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
@@ -355,6 +369,16 @@ int OS_IsValidName(const char *u_name)
     }
 
     return (1);
+}
+
+void OS_ConvertToValidAgentName(char *u_name) {
+    size_t i, uname_length = strlen(u_name);
+    while((i = strspn(u_name, VALID_AGENT_NAME_CHARS)), i < uname_length )
+    {
+        // Invalid character detected, delete it
+        memmove(u_name + i, u_name + i + 1, uname_length - i);
+        uname_length--;
+    }
 }
 
 int NameExist(const char *u_name)
@@ -593,7 +617,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent *dp;
+        struct dirent *dp = NULL;
 
         if (!csv_output && !json_output) {
             printf("\nList of agentless devices:\n");
@@ -696,6 +720,7 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
     char path[OS_FLSIZE + 1];
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror("Unspecified uid or gid.");
@@ -704,7 +729,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for year ^*/
 
-    strftime(timestamp, 40, "%Y", localtime(&now));
+    strftime(timestamp, 40, "%Y", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -715,7 +740,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for month */
 
-    strftime(timestamp, 40, "%Y/%b", localtime(&now));
+    strftime(timestamp, 40, "%Y/%b", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -726,7 +751,7 @@ char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_
 
     /* Directory for day */
 
-    strftime(timestamp, 40, "%Y/%b/%d", localtime(&now));
+    strftime(timestamp, 40, "%Y/%b/%d", localtime_r(&now, &tm_result));
     snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
 
     if (IsDir(path) != 0) {
@@ -767,13 +792,14 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 {
     File file;
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("Couldn't open timestamp file.");
         return;
     }
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&now, &tm_result));
     fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
     fclose(file.fp);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
@@ -885,7 +911,7 @@ int OS_LoadUid() {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, USER, GROUPGLOBAL);
+        merror(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
         return -1;
     } else {
         return 0;

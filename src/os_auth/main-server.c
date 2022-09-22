@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -23,12 +23,14 @@
  *
  */
 
+#include "shared.h"
 #include "auth.h"
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
 #include "wazuhdb_op.h"
+#include "os_err.h"
 
 /* Prototypes */
 static void help_authd(void) __attribute((noreturn));
@@ -51,25 +53,22 @@ static char *authpass = NULL;
 static SSL_CTX *ctx;
 static int remote_sock = -1;
 
-char shost[512];
-authd_config_t config;
-keystore keys;
-static struct client pool[AUTH_POOL];
-static volatile int pool_i = 0;
-static volatile int pool_j = 0;
+/* client queue */
+static w_queue_t *client_queue = NULL;
+
 volatile int write_pending = 0;
 volatile int running = 1;
-static struct keynode *queue_insert = NULL;
-static struct keynode *queue_backup = NULL;
-static struct keynode *queue_remove = NULL;
-static struct keynode * volatile *insert_tail;
-static struct keynode * volatile *backup_tail;
-static struct keynode * volatile *remove_tail;
 
-pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
+extern struct keynode *queue_insert;
+extern struct keynode *queue_backup;
+extern struct keynode *queue_remove;
+extern struct keynode * volatile *insert_tail;
+extern struct keynode * volatile *backup_tail;
+extern struct keynode * volatile *remove_tail;
+
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond_new_client = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
+
 
 /* Print help statement */
 static void help_authd()
@@ -379,7 +378,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     if (!run_foreground) {
@@ -449,7 +448,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     fclose(fp);
-
+    
     /* Start SSL */
     ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
@@ -491,7 +490,7 @@ int main(int argc, char **argv)
     }
 
     /* Initialize queues */
-
+    client_queue = queue_init(AUTH_POOL);
     insert_tail = &queue_insert;
     backup_tail = &queue_backup;
     remove_tail = &queue_remove;
@@ -505,16 +504,18 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    status = pthread_create(&thread_writer, NULL, run_writer, NULL);
+    if (!config.worker_node) {
+        status = pthread_create(&thread_writer, NULL, run_writer, NULL);
 
-    if (status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
-    }
+        if (status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
 
-    if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
     }
 
     /* Create PID files */
@@ -560,552 +561,190 @@ int main(int argc, char **argv)
                     }
                 }
             }
+            struct client *new_client;
+            os_malloc(sizeof(struct client), new_client);
+            new_client->socket = client_sock;
+            new_client->addr = _nc.sin_addr;
 
-            w_mutex_lock(&mutex_pool);
-
-            if (full(pool_i, pool_j)) {
+            if (queue_push_ex(client_queue, new_client) == -1) {
                 merror("Too many connections. Rejecting.");
                 close(client_sock);
-            } else {
-                pool[pool_i].socket = client_sock;
-                pool[pool_i].addr = _nc.sin_addr;
-                forward(pool_i);
-                w_cond_signal(&cond_new_client);
             }
-
-            w_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
-            merror("at run_local_server(): accept(): %s", strerror(errno));
+            merror("at main(): accept(): %s", strerror(errno));
     }
 
     close(remote_sock);
 
     /* Join threads */
-
-    w_mutex_lock(&mutex_pool);
-    w_cond_signal(&cond_new_client);
-    w_mutex_unlock(&mutex_pool);
     w_mutex_lock(&mutex_keys);
     w_cond_signal(&cond_pending);
     w_mutex_unlock(&mutex_keys);
 
+    
     pthread_join(thread_dispatcher, NULL);
-    pthread_join(thread_writer, NULL);
-    pthread_join(thread_local_server, NULL);
+    if (!config.worker_node) {
+        pthread_join(thread_writer, NULL);
+        pthread_join(thread_local_server, NULL);
+    }
 
+    queue_free(client_queue);
     minfo("Exiting...");
     return (0);
 }
 
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
-    struct client client;
-    char srcip[IPSIZE + 1];
+    char ip[IPSIZE + 1];    
     int ret;
-    int parseok;
-    char *tmpstr;
-    double antiquity;
-    int acount;
-    char response[2048];
+    char* buf = NULL;
     SSL *ssl;
-    char *id_exist = NULL;
-    char * buf = NULL;
-    int index;
+    char response[2048];
+    response[2047] = '\0';
 
     authd_sigblock();
 
     /* Initialize some variables */
-    memset(srcip, '\0', IPSIZE + 1);
-
-    OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+    memset(ip, '\0', IPSIZE + 1);
+    
+    if (!config.worker_node) {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed, 1);
+    }
     mdebug1("Dispatch thread ready");
 
     while (running) {
-        w_mutex_lock(&mutex_pool);
+        const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
+        struct client *client = queue_pop_ex_timedwait(client_queue, &timeout);
 
-        while (empty(pool_i, pool_j) && running)
-            w_cond_wait(&cond_new_client, &mutex_pool);
 
-        client = pool[pool_j];
-        forward(pool_j);
-        w_mutex_unlock(&mutex_pool);
+        if (!client)
+            continue;
 
-        if (!running)
-            break;
-
-        strncpy(srcip, inet_ntoa(client.addr), IPSIZE - 1);
+        strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, client.socket);
+        SSL_set_fd(ssl, client->socket);
         ret = SSL_accept(ssl);
 
         if (ssl_error(ssl, ret)) {
             mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
-            close(client.socket);
+            close(client->socket);
+            os_free(client);
             continue;
         }
 
-        minfo("New connection from %s", srcip);
+        minfo("New connection from %s", ip);
 
         /* Additional verification of the agent's certificate. */
 
         if (config.flags.verify_host && config.agent_ca) {
-            if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
+            if (check_x509_cert(ssl, ip) != VERIFY_TRUE) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
-                close(client.socket);
+                close(client->socket);
+                os_free(client);
                 continue;
             }
         }
 
         os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-
-        buf[0] = '\0';
-        ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
+        buf[0] = '\0'; 
+        ret = wrap_SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
         if (ret <= 0) {
             switch (ssl_error(ssl, ret)) {
             case 0:
-                minfo("Client timeout from %s", srcip);
+                minfo("Client timeout from %s", ip);
                 break;
             default:
                 merror("SSL Error (%d)", ret);
             }
-
             SSL_free(ssl);
-            close(client.socket);
+            close(client->socket);
+            os_free(client);
             free(buf);
             continue;
-        }
-
-        buf[ret] = '\0';
-        parseok = 0;
-        tmpstr = buf;
-
+        }      
+        buf[ret] = '\0';  
+             
         mdebug2("Request received: <%s>", buf);
-
-        /* Checking for shared password authentication. */
-        if(authpass) {
-            /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
-            if (strncmp(tmpstr, "OSSEC PASS: ", 12) == 0) {
-                tmpstr = tmpstr + 12;
-
-                if (strlen(tmpstr) > strlen(authpass) && strncmp(tmpstr, authpass, strlen(authpass)) == 0) {
-                    tmpstr += strlen(authpass);
-
-                    if (*tmpstr == ' ') {
-                        tmpstr++;
-                        parseok = 1;
-                    }
-                }
-            }
-
-            if (parseok == 0) {
-                merror("Invalid password provided by %s. Closing connection.", srcip);
-                SSL_free(ssl);
-                close(client.socket);
-                free(buf);
-                continue;
-            }
-        }
-
-        /* Checking for action A (add agent) */
-        parseok = 0;
-
+        bool enrollment_ok = FALSE;
         char *agentname = NULL;
-        if (strncmp(tmpstr, "OSSEC A:'", 9) == 0) {
-            agentname = tmpstr + 9;
-            tmpstr += 9;
-            while (*tmpstr != '\0') {
-                if (*tmpstr == '\'') {
-                    *tmpstr = '\0';
-                    minfo("Received request for a new agent (%s) from: %s", agentname, srcip);
-                    parseok = 1;
-                    break;
+        char *centralized_group = NULL;
+        char* new_id = NULL;
+        char* new_key = NULL;
+        if(OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)){
+            if (config.worker_node) {                
+                minfo("Dispatching request to master node");
+                if( 0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, NULL) ) {
+                    enrollment_ok = TRUE;
+                } 
+            }
+            else {
+                w_mutex_lock(&mutex_keys);                
+                if(OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)){
+                    if(OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)){
+                        enrollment_ok = TRUE;
+                    }
                 }
-                tmpstr++;
+                w_mutex_unlock(&mutex_keys); 
             }
         }
-        tmpstr++;
 
-        char fname[2048];
-        if (parseok == 0) {
-            merror("Invalid request for new agent from: %s", srcip);
-        } else {
-            acount = 2;
-            response[2047] = '\0';
-            fname[2047] = '\0';
-
-            if (!OS_IsValidName(agentname)) {
-                merror("Invalid agent name: %s from %s", agentname, srcip);
-                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                free(buf);
-                continue;
-            }
-
-            /* Check for valid centralized group */
-            char centralized_group[OS_SIZE_65536] = {0};
-            char centralized_group_token[2] = "G:";
-
-            if(strncmp(++tmpstr,centralized_group_token,2)==0)
-            {
-
-                char group_path[PATH_MAX] = {0};
-                sscanf(tmpstr," G:\'%65535[^\']\"",centralized_group);
-
-                const char delim[2] = ",";
-                char *multigroup = strchr(centralized_group,MULTIGROUP_SEPARATOR);
-                char groups_path[PATH_MAX + 1] = {0};
-                strcpy(groups_path,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s");
-
-                /* Validate the group name */
-                int valid = 0;
-                valid = w_validate_group_name(centralized_group);
-
-                if(valid < 0) {
-
-                    merror("Invalid group name: %.255s... ,",centralized_group);
-
-                    switch (valid) {
-                        case -6:
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", centralized_group);
-                            break;
-                        case -5:
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", centralized_group);
-                            break;
-                        case -4:
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", centralized_group);
-                            break;
-                        case -3:
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", centralized_group);
-                            break;
-                        case -2:
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", centralized_group);
-                            break;
-                        case -1:
-                            snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", centralized_group);
-                            break;
-                    }
-
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                    free(buf);
-                    continue;
-                }
-
-                if(!multigroup){
-                    if(snprintf(group_path,PATH_MAX,groups_path,centralized_group) >= PATH_MAX){
-                        merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
-                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group path is too large\n\n", centralized_group);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        free(buf);
-                        continue;
-                    }
-                    /* Check if group exists */
-                    DIR *group_dir = opendir(group_path);
-                    if (!group_dir) {
-                        merror("Invalid group: %.255s",centralized_group);
-                        snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        free(buf);
-                        continue;
-                    }
-                    closedir(group_dir);
-                }else{
-                    int error = 0;
-                    int max_multigroups = 0;
-                    char *groups_added;
-
-                    groups_added = wstr_delete_repeated_groups(centralized_group);
-                    mdebug1("Multigroup is: %s",groups_added);
-                    snprintf(centralized_group,OS_SIZE_65536,"%s",groups_added);
-                    char *group = strtok(groups_added, delim);
-
-                    while( group != NULL ) {
-                        DIR * dp;
-                        char dir[PATH_MAX + 1] = {0};
-                        error = 0;
-
-                        /* Check limit */
-                        if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
-                            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
-                            snprintf(response, 2048, "Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP);
-                            SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            SSL_write(ssl, response, strlen(response));
-                            SSL_free(ssl);
-                            close(client.socket);
-                            error = 1;
-                            break;
-                        }
-
-                        /* Validate the group name */
-                        int valid = 0;
-                        valid = w_validate_group_name(group);
-
-                        switch(valid){
-                            case -2:
-                                merror("Invalid group name: %.255s... ,",group);
-                                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group);
-                                SSL_write(ssl, response, strlen(response));
-                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                                SSL_write(ssl, response, strlen(response));
-                                SSL_free(ssl);
-                                close(client.socket);
-                                error = 1;
-                                break;
-
-
-                            case -1:
-                                merror("Invalid group name: %.255s... ,",centralized_group);
-                                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);
-                                SSL_write(ssl, response, strlen(response));
-                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                                SSL_write(ssl, response, strlen(response));
-                                SSL_free(ssl);
-                                close(client.socket);
-                                error = 1;
-                                break;
-
-                        }
-
-                        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
-
-                        dp = opendir(dir);
-
-                        if (!dp) {
-                            merror("Invalid group: %.255s",group);
-                            snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);
-                            SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            SSL_write(ssl, response, strlen(response));
-                            SSL_free(ssl);
-                            close(client.socket);
-                            error = 1;
-                            break;
-                        }
-
-                        group = strtok(NULL, delim);
-                        max_multigroups++;
-                        closedir(dp);
-                    }
-
-                    os_free(groups_added);
-
-                    if(error){
-                        free(buf);
-                        continue;
-                    }
-                }
-                /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
-                tmpstr+= 2+strlen(centralized_group)+2;
-            }else{
-                tmpstr--;
-            }
-
-            /* Check for IP when client uses -i option */
-            int use_client_ip = 0;
-            char client_source_ip[IPSIZE + 1] = {0};
-            char client_source_ip_token[3] = "IP:";
-
-            if(strncmp(++tmpstr,client_source_ip_token,3)==0)
-            {
-                sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
-
-                /* If IP: != 'src' overwrite the srcip */
-                if(strncmp(client_source_ip,"src",3) != 0)
-                {
-                    if (!OS_IsValidIP(client_source_ip, NULL)) {
-                        merror("Invalid IP: '%s'", client_source_ip);
-                        snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        free(buf);
-                        continue;
-                    }
-
-                    memcpy(srcip,client_source_ip,IPSIZE);
-                }
-
-                use_client_ip = 1;
-            }
-
-            w_mutex_lock(&mutex_keys);
-
-            /* Check for duplicated IP */
-
-            if (config.flags.use_source_ip || use_client_ip) {
-                if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
-                    if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-                        id_exist = keys.keyentries[index]->id;
-                        minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
-
-                        OS_RemoveAgentGroup(id_exist);
-                        add_backup(keys.keyentries[index]);
-                        OS_DeleteKey(&keys, id_exist, 0);
-                    } else {
-                        w_mutex_unlock(&mutex_keys);
-                        merror("Duplicated IP %s", srcip);
-                        snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        free(buf);
-                        continue;
-                    }
-                }
-            }
-
-            /* Check whether the agent name is the same as the manager */
-
-            if (!strcmp(agentname, shost)) {
-                w_mutex_unlock(&mutex_keys);
-                merror("Invalid agent name %s (same as manager)", agentname);
-                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                free(buf);
-                continue;
-            }
-
-            /* Check for duplicated names */
-
-            if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-                if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-                    id_exist = keys.keyentries[index]->id;
-                    minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
-
-                    add_backup(keys.keyentries[index]);
-                    OS_DeleteKey(&keys, id_exist, 0);
-                } else {
-                    strncpy(fname, agentname, 2048);
-
-                    while (OS_IsAllowedName(&keys, fname) >= 0) {
-                        snprintf(fname, 2048, "%s%d", agentname, acount);
-
-                        if (++acount > MAX_TAG_COUNTER)
-                            break;
-                    }
-
-                    if (acount > MAX_TAG_COUNTER) {
-                        w_mutex_unlock(&mutex_keys);
-                        merror("Invalid agent name %s (duplicated)", agentname);
-                        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                        SSL_write(ssl, response, strlen(response));
-                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        SSL_write(ssl, response, strlen(response));
-                        SSL_free(ssl);
-                        close(client.socket);
-                        free(buf);
-                        continue;
-                    }
-
-                    agentname = fname;
-                }
-            }
-
-            /* Check for agents limit */
-
-            if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-                w_mutex_unlock(&mutex_keys);
-                merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-                snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                free(buf);
-                continue;
-            }
-
-            /* Add the new agent */
-
-            if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
-                w_mutex_unlock(&mutex_keys);
-                merror("Unable to add agent: %s (internal error)", agentname);
-                snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                SSL_write(ssl, response, strlen(response));
-                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                SSL_write(ssl, response, strlen(response));
-                SSL_free(ssl);
-                close(client.socket);
-                free(buf);
-                continue;
-            }
-
-            /* Add the agent to the centralized configuration group */
-            if(*centralized_group) {
-                char path[PATH_MAX];
-
-                if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-                    w_mutex_unlock(&mutex_keys);
-                    merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-                    OS_RemoveAgent(keys.keyentries[index]->id);
-                    merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
-                    snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                    free(buf);
-                    continue;
-                }
-            }
-
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, (config.flags.use_source_ip || use_client_ip) ? srcip : "any", keys.keyentries[index]->key);
-            minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
+        if(enrollment_ok)
+        {
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", new_id, agentname, ip, new_key);
+            minfo("Agent key generated for '%s' (requested by %s)", agentname, ip);
             ret = SSL_write(ssl, response, strlen(response));
 
-            if (ret < 0) {
-                merror("SSL write error (%d)", ret);
-                merror("Agent key not saved for %s", agentname);
-                ERR_print_errors_fp(stderr);
-                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-            } else {
-                /* Add pending key to write */
-                add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
-                write_pending = 1;
-                w_cond_signal(&cond_pending);
+            if (config.worker_node) {
+                if (ret < 0) {
+                    merror("SSL write error (%d)", ret);
+                    
+                    ERR_print_errors_fp(stderr);       
+                    if (0 != w_request_agent_remove_clustered(NULL, new_id, TRUE)) {
+                        merror("Agent key unable to be shared with %s and unable to delete from master node", agentname);
+                    }
+                    else {
+                        merror("Agent key not saved for %s", agentname);
+                    }
+                }
             }
-
-            w_mutex_unlock(&mutex_keys);
+            else{     
+                if (ret < 0) {
+                    merror("SSL write error (%d)", ret);
+                    merror("Agent key not saved for %s", agentname);
+                    ERR_print_errors_fp(stderr);
+                    OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+                } else {
+                    /* Add pending key to write */
+                    add_insert(keys.keyentries[keys.keysize - 1], centralized_group);
+                    write_pending = 1;
+                    w_cond_signal(&cond_pending);
+                }
+            }  
         }
-
+        else {
+            SSL_write(ssl, response, strlen(response));
+            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+            SSL_write(ssl, response, strlen(response));  
+        }
+            
         SSL_free(ssl);
-        close(client.socket);
-        free(buf);
+        close(client->socket);   
+        os_free(client);
+        os_free(buf);
+        os_free(agentname);
+        os_free(centralized_group);
+        os_free(new_id);
+        os_free(new_key);
     }
 
     SSL_CTX_free(ctx);
     mdebug1("Dispatch thread finished");
     return NULL;
 }
+
 
 /* Thread for writing keystore onto disk */
 void* run_writer(__attribute__((unused)) void *arg) {
@@ -1117,7 +756,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *next;
     time_t cur_time;
     char wdbquery[OS_SIZE_128];
-    char *wdboutput;
+    char wdboutput[128];
+    int wdb_sock = -1;
 
     authd_sigblock();
 
@@ -1171,8 +811,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);
@@ -1190,8 +829,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveAgentGroup(cur->id);
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
-            wdb_send_query(wdbquery, &wdboutput);
-            os_free(wdboutput);
+            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);
             free(cur->name);
@@ -1201,49 +839,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
     }
 
     return NULL;
-}
-
-// Append key to insertion queue
-void add_insert(const keyentry *entry,const char *group) {
-    struct keynode *node;
-
-    os_calloc(1, sizeof(struct keynode), node);
-    node->id = strdup(entry->id);
-    node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
-    node->group = NULL;
-
-    if(group != NULL)
-        node->group = strdup(group);
-
-    (*insert_tail) = node;
-    insert_tail = &node->next;
-}
-
-// Append key to backup queue
-void add_backup(const keyentry *entry) {
-    struct keynode *node;
-
-    os_calloc(1, sizeof(struct keynode), node);
-    node->id = strdup(entry->id);
-    node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
-
-    (*backup_tail) = node;
-    backup_tail = &node->next;
-}
-
-// Append key to deletion queue
-void add_remove(const keyentry *entry) {
-    struct keynode *node;
-
-    os_calloc(1, sizeof(struct keynode), node);
-    node->id = strdup(entry->id);
-    node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
-
-    (*remove_tail) = node;
-    remove_tail = &node->next;
 }
 
 /* To avoid hp-ux requirement of strsignal */

@@ -2,7 +2,7 @@
   -  Syslog rules
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -19,7 +19,7 @@
   <rule id="1001" level="2">
     <match>^Couldn't open /etc/securetty</match>
     <description>File missing. Root access unrestricted.</description>
-    <group>pci_dss_10.2.4,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>pci_dss_10.2.4,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="1002" level="2">
@@ -30,38 +30,41 @@
 
   <rule id="1003" level="13" maxsize="1025" noalert="1">
     <description>Non standard syslog message (size too large).</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
     <group>gpg13_4.3,</group>
   </rule>
 
   <rule id="1004" level="5">
     <match>^exiting on signal</match>
     <description>Syslogd exiting (logging stopped).</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="1005" level="5">
     <program_name>syslogd</program_name>
     <match>^restart</match>
     <description>Syslogd restarted.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="1006" level="5">
     <regex>^syslogd \S+ restart</regex>
     <description>Syslogd restarted.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="1007" level="7">
     <match>file system full|No space left on device</match>
     <description>File system full.</description>
-    <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="1008" level="5">
     <match>killed by SIGTERM</match>
     <description>Process exiting (killed).</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.3,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.3,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="1009" level="0">
@@ -120,7 +123,10 @@
   <rule id="2301" level="10">
     <match>^Deactivating service </match>
     <description>xinetd: Excessive number connections to a service.</description>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group> <!-- SYSLOG,XINETD -->
 
@@ -135,14 +141,17 @@
     <match>authinternal failed|Failed to authorize|</match>
     <match>Wrong password given for|login failed|Auth: Login incorrect|</match>
     <match>Failed to authenticate user</match>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <description>syslog: User authentication failure.</description>
   </rule>
 
   <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
-    <description>syslog: User missed the password more than one time.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <description>syslog: User missed the password more than one time</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2503" level="5">
@@ -150,25 +159,31 @@
     <regex>^libwrap refused connection|</regex>
     <regex>Connection from \S+ denied</regex>
     <description>syslog: Connection blocked by Tcp Wrappers.</description>
-    <group>access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <id>T1095</id>
+    </mitre>
+    <group>access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>syslog: Illegal root login.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2505" level="3">
     <match>^ROOT LOGIN  on</match>
     <description>syslog: Physical root login.</description>
-    <group>pci_dss_10.2.2,gpg13_7.8,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,</group>
+    <group>pci_dss_10.2.2,gpg13_7.8,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2506" level="3">
     <match>^Authentication passed</match>
     <description>syslog: Pop3 Authentication passed.</description>
-    <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2507" level="0">
@@ -189,7 +204,7 @@
     <same_id />
     <match>RESULT tag=97 err=49</match>
     <description>OpenLDAP authentication failed.</description>
-    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group> <!-- SYSLOG,ACESSCONTROL -->
@@ -207,7 +222,10 @@
     <if_sid>2550</if_sid>
     <regex>^Connection from \S+ on illegal port$</regex>
     <description>Connection to rshd from unprivileged port. Possible network scan.</description>
-    <group>connection_attempt,pci_dss_10.6.1,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>connection_attempt,pci_dss_10.6.1,gpg13_7.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group>
 
@@ -275,6 +293,9 @@
     <match>Oversized packet received from</match>
     <description>Error message from the kernel. </description>
     <description>Ping of death attack.</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -283,7 +304,10 @@
     <regex>Promiscuous mode enabled|</regex>
     <regex>device \S+ entered promiscuous mode</regex>
     <description>Interface entered in promiscuous(sniffing) mode.</description>
-    <group>promisc,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,</group>
+    <mitre>
+      <id>T1040</id>
+    </mitre>
+    <group>promisc,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="5105" level="0">
@@ -310,7 +334,10 @@
     <match>Out of Memory: </match>
     <description>System running out of memory. </description>
     <description>Availability of the system is in risk.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5109" level="4">
@@ -340,8 +367,11 @@
   <rule id="5113" level="7">
     <if_sid>5100</if_sid>
     <match>Kernel log daemon terminating</match>
-    <group>system_shutdown,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>system_shutdown,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>System is shutting down.</description>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
   </rule>
 
   <rule id="5130" level="7">
@@ -360,12 +390,18 @@
     <if_sid>5100</if_sid>
     <match>module verification failed</match>
     <description>Unsigned kernel module was loaded</description>
+    <mitre>
+      <id>T1215</id>
+    </mitre>
   </rule>
 
   <rule id="5133" level="11">
     <if_sid>5100</if_sid>
     <match>PKCS#7 signature not signed with a trusted key</match>
     <description>Signed but untrusted kernel module was loaded</description>
+    <mitre>
+      <id>T1215</id>
+    </mitre>
   </rule>
 
   <rule id="5134" level="7">
@@ -445,14 +481,17 @@
     <if_sid>2830</if_sid>
     <match>REPLACE</match>
     <description>Crontab entry changed.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2833" level="8">
     <if_sid>2832</if_sid>
     <match>^(root)</match>
     <description>Root's crontab entry changed.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_10.2.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_AC.6,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_10.2.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group> <!-- SYSLOG,CRON -->
@@ -460,7 +499,7 @@
 
 
 <!-- Su messages -->
-<group name="syslog, su,">
+<group name="syslog,su,">
   <rule id="5300" level="0" noalert="1">
     <decoded_as>su</decoded_as>
     <description>Initial grouping for su messages.</description>
@@ -470,14 +509,17 @@
    <if_sid>5300</if_sid>
    <match>authentication failure; |failed|BAD su|^-</match>
    <description>User missed the password to change UID (user id).</description>
-   <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+   <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5302" level="9">
     <if_sid>5301</if_sid>
     <user>^root</user>
     <description>User missed the password to change UID to root.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4</group>
   </rule>
 
   <rule id="5303" level="3">
@@ -485,7 +527,10 @@
     <regex>session opened for user root|^'su root'|</regex>
     <regex>^+ \S+ \S+\proot$|^\S+ to root on|^SU \S+ \S+ + \S+ \S+-root$</regex>
     <description>User successfully changed UID to root.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.6,gpg13_7.8,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.6,gpg13_7.8,gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5304" level="3">
@@ -493,7 +538,10 @@
     <regex>session opened for user|succeeded for|</regex>
     <regex>^+|^\S+ to |^SU \S+ \S+ + </regex>
     <description>User successfully changed UID.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.6,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.6,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5305" level="4">
@@ -519,7 +567,7 @@
   <rule id="7101" level="8">
     <match>Integrity Check failed: File could not</match>
     <description>Problems with the tripwire checking.</description>
-    <group>pci_dss_10.5.5,pci_dss_10.6.1,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.5.5,pci_dss_10.6.1,gdpr_II_5.1.f,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_AU.6,tsc_PI1.4,tsc_PI1.5,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,tsc_CC8.1,</group>
   </rule>
 </group> <!-- SYSLOG,TRIPWIRE -->
 
@@ -530,25 +578,34 @@
   <rule id="5901" level="8">
     <match>^new group</match>
     <description>New group added to the system.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
+    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5902" level="8">
     <match>^new user|^new account added</match>
     <description>New user added to the system.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5903" level="3">
     <match>^delete user|^account deleted|^remove group</match>
     <description>Group (or user) deleted from the system.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
+    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5904" level="8">
     <match>^changed user</match>
     <description>Information from the user was changed.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,</group>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>pci_dss_10.2.7,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5905" level="0">
@@ -571,21 +628,30 @@
     <if_sid>5400</if_sid>
     <match>incorrect password attempt</match>
     <description>Failed attempt to run sudo.</description>
-    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5402" level="3">
     <if_sid>5400</if_sid>
     <regex> ; USER=root ; COMMAND=| ; USER=root ; TSID=\S+ ; COMMAND=</regex>
     <description>Successful sudo to ROOT executed.</description>
-    <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5407" level="3">
     <if_sid>5400</if_sid>
     <regex> ; USER=\S+ ; COMMAND=| ; USER=\S+ ; TSID=\S+ ; COMMAND=</regex>
     <description>Successful sudo executed.</description>
-    <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5403" level="4">
@@ -593,27 +659,36 @@
     <options>alert_by_email</options>
     <if_fts></if_fts>
     <description>First time user executed sudo.</description>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
   </rule>
 
   <rule id="5404" level="10">
     <if_sid>5401</if_sid>
     <match>3 incorrect password attempts</match>
-    <description>Three failed attempts to run sudo.</description>
-    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <description>Three failed attempts to run sudo</description>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5405" level="5">
     <if_sid>5400</if_sid>
     <match>user NOT in sudoers</match>
     <description>Unauthorized user attempted to use sudo.</description>
-    <group>pci_dss_10.2.2,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,nist_800_53_AC.7,</group>
+    <mitre>
+      <id>T1169</id>
+    </mitre>
+    <group>pci_dss_10.2.2,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="5406" level="5">
     <if_sid>5400</if_sid>
     <match>command not allowed</match>
     <description>Command not allowed.</description>
-    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group> <!-- SYSLOG, SUDO -->
@@ -650,6 +725,9 @@
     <if_fts></if_fts>
     <group>authentication_success,</group>
     <description>First time user logged in.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
   </rule>
 </group>
 
@@ -683,28 +761,28 @@
     <if_sid>2900</if_sid>
     <field name="dpkg_status">^install$</field>
     <description>New dpkg (Debian Package) requested to install.</description>
-    <group>pci_dss_10.6.1,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,tsc_CC8.1,</group>
   </rule>
 
   <rule id="2902" level="7">
      <if_sid>2900</if_sid>
      <field name="dpkg_status">^status installed$</field>
      <description>New dpkg (Debian Package) installed.</description>
-     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,</group>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
    </rule>
 
    <rule id="2903" level="7">
      <if_sid>2900</if_sid>
      <field name="dpkg_status">^remove$|^purge$</field>
      <description>Dpkg (Debian Package) removed.</description>
-     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,</group>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
    </rule>
 
    <rule id="2904" level="7">
      <if_sid>2900</if_sid>
      <field name="dpkg_status">^status half-configured$</field>
      <description>Dpkg (Debian Package) half configured.</description>
-     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,</group>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
    </rule>
 </group>
 
@@ -724,21 +802,21 @@
   <rule id="2932" level="7">
     <if_sid>2930,2931</if_sid>
     <match>^Installed</match>
-    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,</group>
+    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
     <description>New Yum package installed.</description>
   </rule>
 
   <rule id="2933" level="7">
     <if_sid>2930,2931</if_sid>
     <match>^Updated</match>
-    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,</group>
+    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
     <description>Yum package updated.</description>
   </rule>
 
   <rule id="2934" level="7">
     <if_sid>2930,2931</if_sid>
     <match>^Erased</match>
-    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,</group>
+    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,tsc_CC8.1,</group>
     <description>Yum package deleted.</description>
   </rule>
 
@@ -759,21 +837,21 @@
     <if_sid>2935</if_sid>
     <status>FAILED</status>
     <description>Possible Disk failure. SCSI controller error.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2938" level="12">
     <if_sid>2936</if_sid>
     <action>failed</action>
     <description>SCSI RAID ARRAY ERROR, drive failed.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2939" level="12">
     <if_sid>2936</if_sid>
     <action>degraded</action>
     <description>SCSI RAID is now in a degraded status.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2940" level="0">
@@ -815,6 +893,9 @@
     <decoded_as>gpasswd</decoded_as>
     <match>added by</match>
     <description>User added to group.</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
     <group>gpg13_7.9,gpg13_4.13,gdpr_IV_32.2,</group>
   </rule>
 
@@ -822,6 +903,9 @@
     <if_sid>2960</if_sid>
     <field name="group">sudo</field>
     <description>User added to group sudo.</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
     <group>gpg13_7.9,gpg13_4.13,gdpr_IV_32.2,</group>
   </rule>
 
@@ -837,14 +921,17 @@
     <if_sid>2962</if_sid>
     <match>Connect: </match>
     <description>perdition: New connection.</description>
-    <group>connection_attempt,pci_dss_10.6.1,</group>
+    <group>connection_attempt,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="2964" level="10" frequency="4" timeframe="30">
     <if_matched_sid>2963</if_matched_sid>
     <same_source_ip />
     <description>perdition: Multiple connection attempts from same source.</description>
-    <group>recon,pci_dss_11.4,</group>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>recon,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>

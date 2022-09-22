@@ -1,7 +1,7 @@
 # Remember!
 # pip install sphinx_rtd_theme
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # -*- coding: utf-8 -*-
 #
 # WazuhDocs documentation build configuration file, created by

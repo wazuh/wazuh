@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -272,8 +272,10 @@ def test_private_load_decoders_from_file(open_mock):
         assert isinstance(result, dict)
 
 
+@patch('wazuh.decoder.Decoder.get_decoders_files', return_value={'items': [{'file': 'whatever', 'path': 'whatever',
+                                                                            'status': 'whatever'}]})
 @patch('wazuh.decoder.load_wazuh_xml', side_effect=Exception)
-def test_private_load_decoders_from_file_exceptions(mock_load):
+def test_private_load_decoders_from_file_exceptions(mock_load, mock_get_decoders):
     """Test exceptions for load wazuh xml."""
     with pytest.raises(WazuhException, match='.* 1501 .*'):
         Decoder.get_decoders()

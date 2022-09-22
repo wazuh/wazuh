@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Restore alerts from Wazuh alerts folder to Elasticsearch cluster.
-# Copyright (C) 2015-2019, Wazuh Inc.All rights reserved.
+# Copyright (C) 2015-2020, Wazuh Inc.All rights reserved.
 # Wazuh.com
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public

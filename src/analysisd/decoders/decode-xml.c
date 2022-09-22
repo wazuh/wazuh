@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -99,7 +99,7 @@ static int os_setdecoderids(const char *p_name)
 
                 /* Set parent name */
                 free(nnode->name);
-                nnode->name = strdup(tmp_name);
+                os_strdup(tmp_name, nnode->name);
             }
 
             /* Id cannot be 0 */
@@ -172,6 +172,7 @@ int ReadDecodeXML(const char *file)
     const char *xml_ftscomment = "ftscomment";
     const char *xml_accumulate = "accumulate";
     const char *xml_nullfield = "json_null_field";
+    const char *xml_arraystructure = "json_array_structure";
 
     int i = 0;
     OSDecoderInfo *NULL_Decoder_tmp = NULL;
@@ -280,7 +281,7 @@ int ReadDecodeXML(const char *file)
         /* Default values to the list */
         pi->parent = NULL;
         pi->id = 0;
-        pi->name = strdup(node[i]->values[0]);
+        os_strdup(node[i]->values[0], pi->name);
         pi->order = NULL;
         pi->plugindecoder = NULL;
         pi->fts = 0;
@@ -293,7 +294,7 @@ int ReadDecodeXML(const char *file)
         pi->get_next = 0;
         pi->regex_offset = 0;
         pi->prematch_offset = 0;
-        pi->flags = SHOW_STRING;
+        pi->flags = SHOW_STRING | JSON_ARRAY;
 
         regex = NULL;
         prematch = NULL;
@@ -427,11 +428,22 @@ int ReadDecodeXML(const char *file)
 
             else if (strcasecmp(elements[j]->element, xml_nullfield) == 0) {
                 if (strcmp(elements[j]->content, "discard") == 0) {
-                    pi->flags = DISCARD;
+                    pi->flags |= DISCARD;
                 } else if (strcmp(elements[j]->content, "empty") == 0) {
-                    pi->flags = EMPTY;
+                    pi->flags |= EMPTY;
                 } else if (strcmp(elements[j]->content, "string") == 0) {
-                    pi->flags = SHOW_STRING;
+                    pi->flags |= SHOW_STRING;
+                } else {
+                    merror(INVALID_ELEMENT, elements[j]->element, elements[j]->content);
+                    goto cleanup;
+                }
+            }
+
+            else if (strcasecmp(elements[j]->element, xml_arraystructure) == 0) {
+                if (strcmp(elements[j]->content, "csv") == 0) {
+                    pi->flags |= CSV_STRING;
+                } else if (strcmp(elements[j]->content, "array") == 0) {
+                    pi->flags |= JSON_ARRAY;
                 } else {
                     merror(INVALID_ELEMENT, elements[j]->element, elements[j]->content);
                     goto cleanup;
@@ -475,7 +487,7 @@ int ReadDecodeXML(const char *file)
 
                 norder = OS_StrBreak(',', elements[j]->content, Config.decoder_order_size);
                 s_norder = norder;
-                os_calloc(Config.decoder_order_size, sizeof(void *), pi->order);
+                os_calloc(Config.decoder_order_size, sizeof(void *(*)(struct _Eventinfo *, char *, const char *)), pi->order);
                 os_calloc(Config.decoder_order_size, sizeof(char *), pi->fields);
 
                 /* Check the values from the order */
@@ -522,7 +534,7 @@ int ReadDecodeXML(const char *file)
                         pi->order[order_int] = SystemName_FP;
                     } else {
                         pi->order[order_int] = DynamicField_FP;
-                        pi->fields[order_int] = strdup(word);
+                        os_strdup(word, pi->fields[order_int]);
                     }
 
                     free(*norder);

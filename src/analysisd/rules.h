@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -17,24 +17,31 @@
 #include "active-response.h"
 #include "lists.h"
 
-/* Event context  - stored on a uint8 */
-#define SAME_USER           0x001 /* 1   */
-#define SAME_SRCIP          0x002 /* 2   */
-#define SAME_ID             0x004 /* 4   */
-#define SAME_LOCATION       0x008 /* 8   */
-#define DIFFERENT_URL       0x010 /* */
-#define DIFFERENT_SRCIP     0x200
-#define DIFFERENT_SRCGEOIP  0x400
-#define SAME_SRCPORT        0x020
-#define SAME_DSTPORT        0x040
-#define SAME_DODIFF         0x100
-#define SAME_FIELD          0x080
-#define NOT_SAME_FIELD      0x800
-#define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
-#define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
-#define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
-#define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
-#define GLOBAL_FREQUENCY    0x1000
+/* Event fields - stored on a u_int32_t */
+#define FIELD_SRCIP      0x01
+#define FIELD_ID         0x02
+#define FIELD_DSTIP      0x04
+#define FIELD_SRCPORT    0x08
+#define FIELD_DSTPORT    0x10
+#define FIELD_SRCUSER    0x20
+#define FIELD_USER       0x40
+#define FIELD_PROTOCOL   0x80
+#define FIELD_ACTION     0x100
+#define FIELD_URL        0x200
+#define FIELD_DATA       0x400
+#define FIELD_EXTRADATA  0x800
+#define FIELD_STATUS     0x1000
+#define FIELD_SYSTEMNAME 0x2000
+#define FIELD_SRCGEOIP   0x4000
+#define FIELD_DSTGEOIP   0x8000
+#define FIELD_LOCATION   0x10000
+#define N_FIELDS         17
+
+#define FIELD_DYNAMICS   0x20000
+#define FIELD_AGENT      0x40000
+
+#define FIELD_DODIFF     0x01
+#define FIELD_GFREQUENCY 0x02
 
 /* Alert options  - store on a uint16 */
 #define DO_FTS          0x0001
@@ -109,6 +116,8 @@ typedef struct _RuleInfo {
 
     /* Context options */
     u_int16_t context_opts;
+    u_int32_t same_field;
+    u_int32_t different_field;
 
     /* Category */
     u_int8_t category;
@@ -190,6 +199,8 @@ typedef struct _RuleInfo {
     /* Dynamic fields to compare between events */
     char ** same_fields;
     char ** not_same_fields;
+
+    char ** mitre_id;
 } RuleInfo;
 
 
@@ -198,7 +209,6 @@ typedef struct _RuleNode {
     struct _RuleNode *next;
     struct _RuleNode *child;
 } RuleNode;
-
 
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);

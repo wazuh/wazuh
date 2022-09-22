@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -24,7 +24,6 @@
  */
 
 #include "shared.h"
-#include "check_cert.h"
 #include <openssl/ssl.h>
 #include "auth.h"
 
@@ -66,33 +65,15 @@ static void help_agent_auth()
 
 int main(int argc, char **argv)
 {
-    int key_added = 0;
     int c;
     int test_config = 0;
-    int auto_method = 0;
 #ifndef WIN32
     gid_t gid = 0;
     const char *group = GROUPGLOBAL;
 #endif
-
-    int sock = 0, port = DEFAULT_PORT, ret = 0;
-    char *ciphers = DEFAULT_CIPHERS;
-    const char *dir = DEFAULTDIR;
-    char *authpass = NULL;
-    const char *manager = NULL;
-    const char *ipaddress = NULL;
-    const char *agentname = NULL;
-    const char *agent_cert = NULL;
-    const char *agent_key = NULL;
-    const char *ca_cert = NULL;
-    const char *centralized_group = NULL;
-    const char *sender_ip = NULL;
-    int use_src_ip = 0;
-    char lhostname[512 + 1];
-    char * buf;
-    SSL_CTX *ctx;
-    SSL *ssl;
-    BIO *sbio;
+    w_enrollment_target *target_cfg = w_enrollment_target_init();
+    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
+    char *server_address = NULL;
     bio_err = 0;
     int debug_level = 0;
 
@@ -133,7 +114,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-g needs an argument");
                 }
-                dir = optarg;
+                mwarn(DEPRECATED_OPTION_WARN,"-D");
                 break;
 #endif
             case 't':
@@ -143,20 +124,20 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                manager = optarg;
+                server_address = optarg;
                 break;
             case 'A':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                agentname = optarg;
+                target_cfg->agent_name = strdup(optarg);
                 break;
             case 'p':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                port = atoi(optarg);
-                if (port <= 0 || port >= 65536) {
+                target_cfg->port = atoi(optarg);
+                if (target_cfg->port <= 0 || target_cfg->port >= 65536) {
                     merror_exit("Invalid port: %s", optarg);
                 }
                 break;
@@ -164,49 +145,49 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                ciphers = optarg;
+                cert_cfg->ciphers = strdup(optarg);
                 break;
             case 'v':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                ca_cert = optarg;
+                cert_cfg->ca_cert = strdup(optarg);
                 break;
             case 'x':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                agent_cert = optarg;
+                cert_cfg->agent_cert = strdup(optarg);
                 break;
             case 'k':
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                agent_key = optarg;
+                cert_cfg->agent_key = strdup(optarg);
                 break;
             case 'P':
                 if (!optarg)
                     merror_exit("-%c needs an argument", c);
 
-                authpass = optarg;
+                cert_cfg->authpass = strdup(optarg);
                 break;
             case 'a':
-                auto_method = 1;
+                cert_cfg->auto_method = 1;
                 break;
             case 'G':
                 if(!optarg){
                     merror_exit("-%c needs an argument",c);
                 }
-                centralized_group = optarg;
+                target_cfg->centralized_group = strdup(optarg);
                 break;
             case 'I':
                 if(!optarg){
                     merror_exit("-%c needs an argument",c);
                 }
-                sender_ip = optarg;
+                target_cfg->sender_ip = strdup(optarg);
                 break;
             case 'i':
-                use_src_ip = 1;
+                target_cfg->use_src_ip = 1;
                 break;
             default:
                 help_agent_auth();
@@ -232,7 +213,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    if (sender_ip && use_src_ip) {
+    if (target_cfg->sender_ip && target_cfg->use_src_ip) {
         merror("Options '-I' and '-i' are uncompatible.");
         exit(1);
     }
@@ -244,7 +225,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
@@ -270,241 +251,17 @@ int main(int argc, char **argv)
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
-    if (agentname == NULL) {
-        lhostname[512] = '\0';
-        if (gethostname(lhostname, 512 - 1) != 0) {
-            merror("Unable to extract hostname. Custom agent name not set.");
-            exit(1);
-        }
-        agentname = lhostname;
-    }
-
-
-    /* Start SSL */
-    ctx = os_ssl_keys(0, dir, ciphers, agent_cert, agent_key, ca_cert, auto_method);
-    if (!ctx) {
-        merror("SSL error. Exiting.");
-        exit(1);
-    }
-
-    if (!manager) {
+    if (!server_address) {
         merror("Manager IP not set.");
         exit(1);
     }
 
-    /* Check to see if the manager to connect to was specified as an IP address
-     * or hostname on the command line. If it was given as a hostname then ensure
-     * the hostname is preserved so that certificate verification can be done.
-     */
-    if (!(ipaddress = OS_GetHost(manager, 3))) {
-        merror("Could not resolve hostname: %s\n", manager);
-        exit(1);
-    }
-
-    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
-    buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
-
-    /* Checking if there is a custom password file */
-    if (authpass == NULL) {
-        FILE *fp;
-        fp = fopen(AUTHDPASS_PATH, "r");
-        buf[0] = '\0';
-
-        if (fp) {
-            buf[4096] = '\0';
-            char *ret = fgets(buf, 4095, fp);
-
-            if (ret && strlen(buf) > 2) {
-                /* Remove newline */
-                if (buf[strlen(buf) - 1] == '\n')
-                    buf[strlen(buf) - 1] = '\0';
-
-                authpass = strdup(buf);
-            }
-
-            fclose(fp);
-            minfo("Using password specified on file: %s", AUTHDPASS_PATH);
-        }
-    }
-    if (!authpass) {
-        minfo("No authentication password provided.");
-    }
-
-    /* Connect via TCP */
-    sock = OS_ConnectTCP(port, ipaddress, 0);
-    if (sock <= 0) {
-        merror("Unable to connect to %s:%d", ipaddress, port);
-        free(buf);
-        exit(1);
-    }
-
-    /* Connect the SSL socket */
-    ssl = SSL_new(ctx);
-    sbio = BIO_new_socket(sock, BIO_NOCLOSE);
-    SSL_set_bio(ssl, sbio, sbio);
-
-    ERR_clear_error();
-    ret = SSL_connect(ssl);
-    if (ret <= 0) {
-        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(ssl, ret));
-        ERR_print_errors_fp(stderr);  // This function empties the error queue
-        free(buf);
-        exit(1);
-    }
-
-    minfo("Connected to %s:%d", ipaddress, port);
-
-    /* Additional verification of the manager's certificate if a hostname
-     * rather than an IP address is given on the command line. Could change
-     * this to do the additional validation on IP addresses as well if needed.
-     */
-    if (ca_cert) {
-        minfo("Verifying manager's certificate");
-        if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
-            merror("Unable to verify server certificate.");
-            free(buf);
-            exit(1);
-        }
-    }
-    else {
-        mwarn("Registering agent to unverified manager.");
-    }
-
-    minfo("Using agent name as: %s", agentname);
-
-    if (authpass) {
-        snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'", authpass, agentname);
-    }
-    else {
-        snprintf(buf, 2048, "OSSEC A:'%s'", agentname);
-    }
-
-    if(centralized_group){
-        char * opt_buf = NULL;
-        os_calloc(OS_SIZE_65536, sizeof(char), opt_buf);
-        snprintf(opt_buf,OS_SIZE_65536," G:'%s'",centralized_group);
-        strncat(buf,opt_buf,OS_SIZE_65536);
-        free(opt_buf);
-    }
-
-    if(sender_ip){
-		/* Check if this is strictly an IP address using a regex */
-		if (OS_IsValidIP(sender_ip, NULL))
-		{
-			char opt_buf[256] = {0};
-			snprintf(opt_buf,254," IP:'%s'",sender_ip);
-			strncat(buf,opt_buf,254);
-		} else {
-			merror("Invalid IP address provided with '-I' option.");
-			free(buf);
-			exit(1);
-		}
-    }
-
-    if(use_src_ip)
-    {
-        char opt_buf[10] = {0};
-        snprintf(opt_buf,10," IP:'src'");
-        strncat(buf,opt_buf,10);
-    }
-
-    /* Append new line character */
-    strncat(buf,"\n",1);
-    ret = SSL_write(ssl, buf, strlen(buf));
-    if (ret < 0) {
-        merror("SSL write error (unable to send message.)");
-        ERR_print_errors_fp(stderr);
-        free(buf);
-        exit(1);
-    }
-
-    minfo("Send request to manager. Waiting for reply.");
-
-    while (1) {
-        ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
-        switch (SSL_get_error(ssl, ret)) {
-            case SSL_ERROR_NONE:
-                buf[ret] = '\0';
-                if (strncmp(buf, "ERROR", 5) == 0) {
-                    char *tmpstr;
-                    tmpstr = strchr(buf, '\n');
-                    if (tmpstr) {
-                        *tmpstr = '\0';
-                    }
-                    if (strlen(buf) > 7 && !strncmp(buf, "ERROR: ", 7)) {
-                        char *tmpbuf;
-                        tmpbuf = strchr(buf, ' ');
-                        tmpbuf++;
-                        if (tmpbuf && tmpbuf[0] != '\0') {
-                            merror("%s (from manager)", tmpbuf);
-                        }
-                    }
-                } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
-                    char *key;
-                    char *tmpstr;
-                    char **entry;
-                    minfo("Received response with agent key");
-
-                    key = buf;
-                    key += 9;
-                    tmpstr = strchr(key, '\'');
-                    if (!tmpstr) {
-                        merror("Invalid key received. Closing connection.");
-                        free(buf);
-                        exit(1);
-                    }
-                    *tmpstr = '\0';
-                    entry = OS_StrBreak(' ', key, 4);
-                    if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
-                            !OS_IsValidIP(entry[2], NULL) || !OS_IsValidName(entry[3])) {
-                        merror("Invalid key received (2). Closing connection.");
-                        free(buf);
-                        exit(1);
-                    }
-
-                    {
-                        FILE *fp;
-
-                        umask(0026);
-                        fp = fopen(KEYSFILE_PATH, "w");
-
-                        if (!fp) {
-                            merror("Unable to open key file: %s", KEYSFILE_PATH);
-                            free(buf);
-                            exit(1);
-                        }
-                        fprintf(fp, "%s\n", key);
-                        fclose(fp);
-                    }
-                    key_added = 1;
-                    minfo("Valid key created. Finished.");
-                }
-                break;
-            case SSL_ERROR_ZERO_RETURN:
-            case SSL_ERROR_SYSCALL:
-                if (key_added == 0) {
-                    merror("Unable to create key. Either wrong password or connection not accepted by the manager.");
-                }
-                minfo("Connection closed.");
-                free(buf);
-                exit(!key_added);
-                break;
-            default:
-                merror("SSL read (unable to receive message)");
-                free(buf);
-                exit(1);
-                break;
-        }
-
-    }
-
-    /* Shut down the socket */
-    if (key_added == 0) {
-        merror("Unable to create key. Either wrong password or connection not accepted by the manager.");
-    }
-    SSL_CTX_free(ctx);
-    close(sock);
-    free(buf);
-
-    exit(0);
+    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
+    int ret = w_enrollment_request_key(cfg, server_address); 
+    
+    w_enrollment_target_destroy(target_cfg);
+    w_enrollment_cert_destroy(cert_cfg);
+    w_enrollment_destroy(cfg);
+    
+    exit((ret == 0) ? 0 : 1);
 }

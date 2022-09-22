@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -44,6 +44,13 @@ int ClientConf(const char *cfgfile)
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
+    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
+    w_enrollment_target *target_cfg = w_enrollment_target_init();
+
+    // Initialize enrollment_cfg
+    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
+    agt->enrollment_cfg->allow_localhost = 0; // Localhost not allowed in auto-enrollment
+
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
         ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
         return (OS_INVALID);
@@ -60,7 +67,7 @@ int ClientConf(const char *cfgfile)
         mwarn("Client buffer throughput too low: set to %d eps", min_eps);
         agt->events_persec = min_eps;
     }
-
+    
     return (1);
 }
 
@@ -91,10 +98,43 @@ cJSON *getClientConfig(void) {
             cJSON *server = cJSON_CreateObject();
             cJSON_AddStringToObject(server,"address",agt->server[i].rip);
             cJSON_AddNumberToObject(server,"port",agt->server[i].port);
+            cJSON_AddNumberToObject(server,"max_retries", agt->server[i].max_retries);
+            cJSON_AddNumberToObject(server,"retry_interval", agt->server[i].retry_interval);
+    
             if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }
         cJSON_AddItemToObject(client,"server",servers);
+    }
+
+    if (agt->enrollment_cfg) {
+        cJSON *enrollment_cfg = cJSON_CreateObject();
+        cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment_cfg->enabled ? "yes" : "no");
+        cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment_cfg->delay_after_enrollment);
+
+        if (agt->enrollment_cfg->target_cfg->manager_name)
+            cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);
+        
+        cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg->target_cfg->port);
+        
+        if (agt->enrollment_cfg->target_cfg->agent_name)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment_cfg->target_cfg->agent_name);
+        if (agt->enrollment_cfg->target_cfg->centralized_group)   
+            cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment_cfg->target_cfg->centralized_group);
+        
+        cJSON_AddStringToObject(enrollment_cfg, "ssl_cipher", agt->enrollment_cfg->cert_cfg->ciphers);
+        
+        if (agt->enrollment_cfg->cert_cfg->ca_cert)
+            cJSON_AddStringToObject(enrollment_cfg, "server_certificate_path", agt->enrollment_cfg->cert_cfg->ca_cert);
+        if (agt->enrollment_cfg->cert_cfg->agent_cert)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_certificate_path", agt->enrollment_cfg->cert_cfg->agent_cert);
+        if (agt->enrollment_cfg->cert_cfg->agent_key)    
+            cJSON_AddStringToObject(enrollment_cfg, "agent_key_path", agt->enrollment_cfg->cert_cfg->agent_key);
+        if(agt->enrollment_cfg->cert_cfg->authpass)
+            cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass);
+        
+        cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
+        cJSON_AddItemToObject(client,"auto_enrollment",enrollment_cfg);
     }
     cJSON_AddItemToObject(root,"client",client);
 
@@ -139,7 +179,7 @@ cJSON *getLabelsConfig(void) {
             cJSON_AddItemToObject(labels, "", label);
         }
     }
-    
+
     cJSON_AddItemToObject(root, "labels", labels);
 
     return root;

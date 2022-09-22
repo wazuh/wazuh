@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -9,6 +9,10 @@
  */
 
 #include "shared.h"
+
+#ifdef UNIT_TESTING
+#define static
+#endif
 
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
@@ -145,6 +149,10 @@ int getNetmask(unsigned int mask, char *strmask, size_t size)
     if (mask == 0) {
         snprintf(strmask, size, "/any");
         return (1);
+    }
+
+    if (!_mask_inited) {
+        _init_masks();
     }
 
     for (i = 0; i <= 31; i++) {
@@ -839,7 +847,8 @@ int w_validate_wday(const char * day_str) {
 // Acceptable format: hh:mm (24 hour format)
 char * w_validate_time(const char * time_str) {
 
-    int hour, min;
+    int hour = -1;
+    int min = -1;
     char * ret_time = NULL;
 
     if (!time_str) {

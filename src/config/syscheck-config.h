@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -11,6 +11,41 @@
 #ifndef SYSCHECKC_H
 #define SYSCHECKC_H
 
+typedef enum fim_event_mode {
+    FIM_SCHEDULED,
+    FIM_REALTIME,
+    FIM_WHODATA
+} fim_event_mode;
+
+typedef enum fdb_stmt {
+    FIMDB_STMT_INSERT_DATA,
+    FIMDB_STMT_INSERT_PATH,
+    FIMDB_STMT_GET_PATH,
+    FIMDB_STMT_UPDATE_DATA,
+    FIMDB_STMT_UPDATE_PATH,
+    FIMDB_STMT_GET_LAST_PATH,
+    FIMDB_STMT_GET_FIRST_PATH,
+    FIMDB_STMT_GET_ALL_ENTRIES,
+    FIMDB_STMT_GET_NOT_SCANNED,
+    FIMDB_STMT_SET_ALL_UNSCANNED,
+    FIMDB_STMT_GET_PATH_COUNT,
+    FIMDB_STMT_GET_DATA_ROW,
+    FIMDB_STMT_GET_COUNT_RANGE,
+    FIMDB_STMT_GET_PATH_RANGE,
+    FIMDB_STMT_DELETE_PATH,
+    FIMDB_STMT_DELETE_DATA,
+    FIMDB_STMT_GET_PATHS_INODE,
+    FIMDB_STMT_GET_PATHS_INODE_COUNT,
+    FIMDB_STMT_SET_SCANNED,
+    FIMDB_STMT_GET_INODE_ID,
+    FIMDB_STMT_GET_COUNT_PATH,
+    FIMDB_STMT_GET_COUNT_DATA,
+    FIMDB_STMT_GET_INODE,
+    FIMDB_STMT_SIZE
+} fdb_stmt;
+
+#define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
+
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
 #define WIN_WHODATA 1
 #endif
@@ -18,22 +53,25 @@
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
+#define MAX_FILE_LIMIT  2147483647
 
 /* Checking options */
-#define CHECK_MD5SUM        0000001
-#define CHECK_PERM          0000002
-#define CHECK_SIZE          0000004
-#define CHECK_OWNER         0000010
-#define CHECK_GROUP         0000020
-#define CHECK_SHA1SUM       0000040
-#define CHECK_REALTIME      0000100
-#define CHECK_SEECHANGES    0000200
-#define CHECK_MTIME         0000400
-#define CHECK_INODE         0001000
-#define CHECK_SHA256SUM     0002000
-#define CHECK_WHODATA       0004000
-#define CHECK_ATTRS         0010000
-#define CHECK_FOLLOW        0020000
+#define CHECK_SIZE          00000001
+#define CHECK_PERM          00000002
+#define CHECK_OWNER         00000004
+#define CHECK_GROUP         00000010
+#define CHECK_MTIME         00000020
+#define CHECK_INODE         00000040
+#define CHECK_MD5SUM        00000100
+#define CHECK_SHA1SUM       00000200
+#define CHECK_SHA256SUM     00000400
+// 0001000 0002000 0004000 Reserved for future hash functions
+#define CHECK_ATTRS         00010000
+#define CHECK_SEECHANGES    00020000
+#define CHECK_FOLLOW        00040000
+#define REALTIME_ACTIVE     00100000
+#define WHODATA_ACTIVE      00200000
+#define SCHEDULED_ACTIVE    00400000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -51,16 +89,26 @@
 #define WD_CHECK_WHODATA    0x0000002
 #define WD_CHECK_REALTIME   0x0000004
 #define WD_IGNORE_REST      0x0000008
+#define PATH_SEP '\\'
+#else
+#define PATH_SEP '/'
 #endif
 
-#define SK_CONF_UNPARSED -2
-#define SK_CONF_UNDEFINED -1
+#define SK_CONF_UNPARSED    -2
+#define SK_CONF_UNDEFINED   -1
+
+#define FIM_DB_MEMORY       1
+#define FIM_DB_DISK         0
+
+#define FIM_TYPE_FILE       0
+#define FIM_TYPE_REGISTRY   1
 
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
 
-#include <stdio.h>
-#include "os_regex/os_regex.h"
+#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
+#include "headers/integrity_op.h"
+#include "external/sqlite/sqlite3.h"
 
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
@@ -88,7 +136,11 @@ typedef struct whodata_evt {
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
     char *inode;  // Linux
+    char *dev;  // Linux
+    char *parent_name; // Linux
+    char *parent_cwd;
     int ppid;  // Linux
+    char *cwd; // Linux
 #ifndef WIN32
     unsigned int process_id;
 #else
@@ -96,7 +148,6 @@ typedef struct whodata_evt {
     unsigned int mask;
     int dir_position;
     char deleted;
-    char ignore_not_exist;
     char ignore_remove_event;
     char scan_directory;
     whodata_event_node *wnode;
@@ -142,7 +193,6 @@ typedef struct whodata {
     OSHash *fd;                         // Open file descriptors
     OSHash *directories;                // Directories checked by whodata mode
     int interval_scan;                  // Time interval between scans of the checking thread
-    int whodata_setup;                  // Worth 1 when there is some directory configured with whodata
     whodata_dir_status *dirs_status;    // Status list
     char **device;                       // Hard disk devices
     char **drive;                        // Drive letter
@@ -165,36 +215,79 @@ typedef struct registry_regex {
 
 #endif
 
-typedef struct syscheck_node {
-    char *checksum;
-    int dir_position;
-} syscheck_node;
+typedef struct fim_entry_data {
+    // Checksum attributes
+    unsigned int size;
+    char * perm;
+    char * attributes;
+    char * uid;
+    char * gid;
+    char * user_name;
+    char * group_name;
+    unsigned int mtime;
+    unsigned long int inode;
+    os_md5 hash_md5;
+    os_sha1 hash_sha1;
+    os_sha256 hash_sha256;
+
+    // Options
+    fim_event_mode mode;
+    time_t last_event;
+    unsigned int entry_type;
+    unsigned long int dev;
+    unsigned int scanned;
+    int options;
+    os_sha1 checksum;
+} fim_entry_data;
+
+
+typedef struct fim_entry {
+    char *path;
+    fim_entry_data *data;
+} fim_entry;
+
+
+typedef struct fim_inode_data {
+    int items;
+    char ** paths;
+} fim_inode_data;
+
+typedef struct fdb_transaction_t
+{
+    time_t last_commit;
+    time_t interval;
+} fdb_transaction_t;
+
+typedef struct fdb_t
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
+    fdb_transaction_t transaction;
+} fdb_t;
 
 typedef struct _config {
-    unsigned int tsleep;            /* sleep for sometime for daemon to settle */
-    int sleep_after;
     int rootcheck;                  /* set to 0 when rootcheck is disabled */
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
-    int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
     size_t file_max_size;           /* max file size for calculating hashes */
 
-    short skip_nfs;
+    fs_set skip_fs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
     unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
-    unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
+    unsigned int enable_whodata:1;  /* At least one directory configured with whodata */
+    unsigned int enable_synchronization:1;    /* Enable database synchronization */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 
-    char *remote_db;
-    char *db;
-
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
+
+    unsigned int file_limit;        /* maximum number of files to monitor */
+    unsigned int file_limit_enabled;    /* Enable file_limit option */
 
     char **ignore;                  /* list of files/dirs to ignore */
     OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
@@ -203,51 +296,96 @@ typedef struct _config {
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
     char **dir;                     /* array of directories to be scanned */
-    char **converted_links;                       /* array of converted links directories */
+    char **symbolic_links;         /* array of converted links directories */
     OSMatch **filerestrict;
     int *recursion_level;
 
     char **tag;                     /* array of tags for each directory */
+    long max_sync_interval;         /* Maximum Synchronization interval (seconds) */
+    long sync_interval;             /* Synchronization interval (seconds) */
+    long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
+    long sync_queue_size;           /* Data synchronization message queue size */
+    long sync_max_eps;              /* Maximum events per second for synchronization messages. */
+    unsigned max_eps;               /* Maximum events per second. */
 
     /* Windows only registry checking */
 #ifdef WIN32
+    char realtime_change;                       // Variable to activate the change to realtime from a whodata monitoring
     registry *registry_ignore;                  /* list of registry entries to ignore */
     registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
     registry *registry;                         /* array of registry entries to be scanned */
-    FILE *reg_fp;
     int max_fd_win_rt;
     whodata wdata;
     whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
-    whodata_event_list w_rlist; // List of events removed from Whodata mode in the last seconds
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
 
-    OSHash *fp;
-    OSHash *last_check;
-    OSHash *local_hash;
-    OSHash *inode_hash;
+    pthread_mutex_t fim_entry_mutex;
+    pthread_mutex_t fim_scan_mutex;
+    pthread_mutex_t fim_realtime_mutex;
 
     rtfim *realtime;
+    fdb_t *database;
+    int database_store;
 
     char *prefilter_cmd;
+    int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
-
 } syscheck_config;
 
+/**
+ * @brief Organizes syscheck directories and related data according to their priority (whodata-realtime-scheduled) and in alphabetical order
+ *
+ * @param syscheck Syscheck configuration structure
+ */
+void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, int overwrite) __attribute__((nonnull(1, 2)));
+/**
+ * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
+ *
+ * @param syscheck Syscheck configuration structure
+ * @param entry Entry to be dumped
+ * @param vals Indicates the system arch for registries and the attributes for folders to be set
+ * @param reg 1 if it's a registry, 0 if not
+ * @param restrictfile The restrict regex to be set
+ * @param recursion_level The recursion level to be set
+ * @param tag The tag to be set
+ * @param link If the added entry is pointed by a symbolic link
+ */
+void dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, const char *link) __attribute__((nonnull(1, 2)));
 
-void set_linked_path(syscheck_config *syscheck, const char *entry, int position);
-
+/**
+ * @brief Converts a bit mask with syscheck options to a human readable format
+ *
+ * @param [out] buf The buffer to write the check options in
+ * @param [in] buflen The size of the buffer
+ * @param [in] opts The bit mask of the options
+ * @return A text version of the directory check option bits
+ */
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
-/* Frees the Syscheck struct  */
-void Free_Syscheck(syscheck_config * config);
-char* check_ascci_hex (char *input);
+/**
+ * @brief Frees the memory of a syscheck configuration structure
+ *
+ * @param [out] config The syscheck configuration to free
+ */
+void Free_Syscheck(syscheck_config *config);
 
+/**
+ * @brief Transforms an ASCII text to HEX
+ *
+ * @param input The input text to transform
+ * @return The HEX string on success, the original string on failure
+ */
+char *check_ascci_hex(char *input);
+
+/**
+ * @brief Logs the real time engine status
+ *
+ */
 void log_realtime_status(int);
 
 #endif /* SYSCHECKC_H */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "read-agents.h"
 #include "os_net/os_net.h"
+#include "wazuhdb_op.h"
 
 #ifndef WIN32
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output, cJSON *json_output,
@@ -179,7 +180,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
                                    int csv_output, cJSON *json_output)
 {
     int f_found = 0;
-    struct tm *tm_time;
+    struct tm tm_result = { .tm_sec = 0 };
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
     OSRegex reg;
@@ -305,8 +306,8 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
                 goto cleanup;
             }
 
-            tm_time = localtime(&change_time);
-            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            localtime_r(&change_time, &tm_result);
+            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
             if (json_output) {
                 json_entry = cJSON_CreateObject();
@@ -372,7 +373,7 @@ cleanup:
 static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, int csv_output, cJSON *json_output)
 {
     int f_found = 0;
-    struct tm *tm_time;
+    struct tm tm_result = { .tm_sec = 0 };
 
     char read_day[24 + 1];
     char saved_read_day[24 + 1];
@@ -425,15 +426,15 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
             }
             changed_file_name++;
 
-            tm_time = localtime(&change_time);
-            strftime(read_day, 23, "%Y %h %d", tm_time);
+            localtime_r(&change_time, &tm_result);
+            strftime(read_day, 23, "%Y %h %d", &tm_result);
             if (strcmp(read_day, saved_read_day) != 0) {
                 if (!(csv_output || json_output)) {
                     printf("\nChanges for %s:\n", read_day);
                 }
                 strncpy(saved_read_day, read_day, 23);
             }
-            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
             if (json_output) {
                 cJSON *entry = cJSON_CreateObject();
@@ -540,7 +541,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
     /* Time from the message */
     time_t s_time = 0;
     time_t i_time = 0;
-    struct tm *tm_time;
+    struct tm tm_result = { .tm_sec = 0 };
 
     char old_day[24 + 1];
     char read_day[24 + 1];
@@ -568,8 +569,8 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
 
     if (!(csv_output || json_output)) {
         if (show_last) {
-            tm_time = localtime(time_last_scan);
-            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            localtime_r(time_last_scan, &tm_result);
+            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
             printf("\nLast scan: %s\n\n", read_day);
         } else if (resolved) {
@@ -638,10 +639,10 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
             i++;
         }
 
-        tm_time = localtime((time_t *)&s_time);
-        strftime(read_day, 23, "%Y %h %d %T", tm_time);
-        tm_time = localtime((time_t *)&i_time);
-        strftime(old_day, 23, "%Y %h %d %T", tm_time);
+        localtime_r((time_t *)&s_time, &tm_result);
+        strftime(read_day, 23, "%Y %h %d %T", &tm_result);
+        localtime_r((time_t *)&i_time, &tm_result);
+        strftime(old_day, 23, "%Y %h %d %T", &tm_result);
 
         if (json_output) {
             char json_buffer[OS_MAXSTR + 1];
@@ -896,12 +897,11 @@ const char *print_agent_status(agent_status_t status)
 int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec)
 {
     int rc;
-    char agt_msg[OS_SIZE_1024 + 1];
-
-    agt_msg[OS_SIZE_1024] = '\0';
+    char *agt_msg;
+    os_malloc(OS_MAXSTR * sizeof(char), agt_msg);
 
     if (!exec) {
-        snprintf(agt_msg, OS_SIZE_1024,
+        snprintf(agt_msg, OS_MAXSTR,
                  "%s %c%c%c %s %s",
                  "(msg_to_agent) []",
                  (agt_id == NULL) ? ALL_AGENTS_C : NONE_C,
@@ -910,7 +910,7 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
                  agt_id != NULL ? agt_id : "(null)",
                  msg);
     } else {
-        snprintf(agt_msg, OS_SIZE_1024,
+        snprintf(agt_msg, OS_SIZE_20480,
                  "%s %c%c%c %s %s - %s (from_the_server) (no_rule_id)",
                  "(msg_to_agent) []",
                  (agt_id == NULL) ? ALL_AGENTS_C : NONE_C,
@@ -928,10 +928,11 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
             merror("Remoted socket error.");
         }
         merror("Error communicating with remoted queue (%d).", rc);
-
+        free(agt_msg);
         return (-1);
     }
 
+    free(agt_msg);
     return (0);
 }
 
@@ -980,13 +981,14 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     time_t fim_end;
     char *timestamp;
     char *tmp_str = NULL;
+    char buf_ptr[26];
 
     fim_start = scantime_fim(agent_id, "start_scan");
     fim_end = scantime_fim(agent_id, "end_scan");
-    if (fim_start < 0) {
+    if (fim_start <= 0) {
         os_strdup("Unknown", agt_info->syscheck_time);
     } else if (fim_start > fim_end){
-        os_strdup(ctime(&fim_start), timestamp);
+        os_strdup(w_ctime(&fim_start, buf_ptr, sizeof(buf_ptr)), timestamp);
 
         /* Remove newline */
         tmp_str = strchr(timestamp, '\n');
@@ -997,7 +999,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
         snprintf(agt_info->syscheck_time, OS_SIZE_128, "%s (Scan in progress)", timestamp);
         os_free(timestamp);
     } else {
-        os_strdup(ctime(&fim_start), agt_info->syscheck_time);
+        os_strdup(w_ctime(&fim_start, buf_ptr, sizeof(buf_ptr)), agt_info->syscheck_time);
 
         /* Remove newline */
         tmp_str = strchr(agt_info->syscheck_time, '\n');
@@ -1005,10 +1007,10 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
             *tmp_str = '\0';
         }
     }
-    if (fim_end < 0) {
+    if (fim_end <= 0) {
         os_strdup("Unknown", agt_info->syscheck_endtime);
     } else {
-        os_strdup(ctime(&fim_end), agt_info->syscheck_endtime);
+        os_strdup(w_ctime(&fim_end, buf_ptr, sizeof(buf_ptr)), agt_info->syscheck_endtime);
     }
 
     /* Agent name of null, means it is the server info */
@@ -1044,7 +1046,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 
             s_time = (time_t)atoi(tmp_str);
 
-            os_strdup(ctime(&s_time), agt_info->rootcheck_time);
+            os_strdup(w_ctime(&s_time, buf_ptr, sizeof(buf_ptr)), agt_info->rootcheck_time);
 
             /* Remove newline */
             tmp_str = strchr(agt_info->rootcheck_time, '\n');
@@ -1060,7 +1062,8 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
             time_t s_time = 0;
             tmp_str = buf + 1;
             s_time = (time_t)atoi(tmp_str);
-            os_strdup(ctime(&s_time), agt_info->rootcheck_endtime);
+
+            os_strdup(w_ctime(&s_time, buf_ptr, sizeof(buf_ptr)), agt_info->rootcheck_endtime);
 
             /* Remove newline */
             tmp_str = strchr(agt_info->rootcheck_endtime, '\n');
@@ -1090,6 +1093,7 @@ static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
 {
     char buf[1024 + 1];
     struct stat file_status;
+    char buf_ptr[26];
 
     /* No keepalive for the server */
     if (!agent_name) {
@@ -1100,8 +1104,7 @@ static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
     if (stat(buf, &file_status) < 0) {
         return (strdup("Unknown"));
     }
-
-    return (strdup(ctime(&file_status.st_mtime)));
+    return (strdup(w_ctime(&file_status.st_mtime, buf_ptr, sizeof(buf_ptr))));
 }
 
 /* Internal function. Extract operating system. */
@@ -1272,7 +1275,7 @@ char **get_agents(int flag,int mon_time)
     size_t f_size = 0;
     char **f_files = NULL;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
 
     /* Open the directory */
     dp = opendir(AGENTINFO_DIR);
@@ -1343,125 +1346,29 @@ char **get_agents(int flag,int mon_time)
 }
 
 #ifndef WIN32
-int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) {
-    char response[OS_SIZE_6144];
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
-    int wdb_socket = -1;
-    int size = strlen(wazuhdb_query);
-    int retval = -2;
-
-    // Connect to socket
-    if (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144),
-            wdb_socket < 0) {
-        switch (errno) {
-        case ENOENT:
-            merror("%s: Cannot find '%s'.", source, WDB_LOCAL_SOCK);
-            break;
-        default:
-            merror("%s: Cannot connect to '%s': %s (%d).",
-                    source, WDB_LOCAL_SOCK, strerror(errno), errno);
-        }
-        return -2;
-    }
-
-    // Send query to Wazuh DB
-    if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            merror("%s: database socket is full", source);
-        } else if (errno == EPIPE) {
-            // Retry to connect
-            mwarn("%s: Connection with wazuh-db lost. Reconnecting.", source);
-            close(wdb_socket);
-
-            if (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144),
-                    wdb_socket < 0) {
-                switch (errno) {
-                case ENOENT:
-                    merror("%s: Cannot find '%s'. Please check that Wazuh DB is running.",
-                            source, WDB_LOCAL_SOCK);
-                    break;
-                default:
-                    merror("%s: Cannot connect to '%s': %s (%d)",
-                            source, WDB_LOCAL_SOCK, strerror(errno), errno);
-                }
-                return (-2);
-            }
-
-            if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query)) {
-                merror("%s: in send reattempt (%d) '%s'.", source, errno, strerror(errno));
-                close(wdb_socket);
-                return (-2);
-            }
-        } else {
-            merror("%s: in send (%d) '%s'.", source, errno, strerror(errno));
-        }
-    }
-
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(wdb_socket, &fdset);
-
-    if (select(wdb_socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("%s: in select (%d) '%s'.", source, errno, strerror(errno));
-        close(wdb_socket);
-        return (-2);
-    }
-
-    // Receive response from socket
-    if (OS_RecvSecureTCP(wdb_socket, response, OS_SIZE_6144 - 1) > 0) {
-        os_strdup(response, *output);
-
-        if (response[0] == 'o' && response[1] == 'k') {
-            retval = 0;
-        } else {
-            merror("%s: Bad response '%s'.", source, response);
-        }
-    } else {
-        merror("%s: no response from wazuh-db.", source);
-    }
-
-    close(wdb_socket);
-    return retval;
-}
-
 time_t scantime_fim (const char *agent_id, const char *scan) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
-    char *output;
-    int db_result;
-    time_t ts;
+    char *message;
+    time_t ts = -1;
+    int wdb_socket = -1;
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_get %s",
             agent_id, scan
     );
 
-    db_result = query_wazuhdb(wazuhdb_query, "Read Agents", &response);
-
-    switch (db_result) {
-    case -2:
-        merror("FIM decoder: Bad result getting scan date '%s'.", wazuhdb_query);
-        // Fallthrough
-    case -1:
-        os_free(wazuhdb_query);
-        os_free(response);
-        return (-1);
+    if (wdbc_query_ex(&wdb_socket, wazuhdb_query, response, OS_SIZE_6144) == 0) {
+        if (wdbc_parse_result(response, &message) == WDBC_OK) {
+            ts = atol(message);
+            mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, (long int)ts);
+        }
     }
 
-    output = strchr(response, ' ');
-    if(output) {
-        ts = atol(output);
-        *(output++) = '\0';
-    } else {
-        ts = -1;
-    }
-
-    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, (long int)ts);
-
-    os_free(wazuhdb_query);
-    os_free(response);
+    free(wazuhdb_query);
+    free(response);
     return (ts);
 }
 #endif

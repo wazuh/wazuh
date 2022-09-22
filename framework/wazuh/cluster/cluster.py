@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
@@ -28,6 +28,7 @@ import glob
 import gzip
 from functools import reduce
 import zipfile
+from contextvars import ContextVar
 
 logger = logging.getLogger('wazuh')
 
@@ -381,10 +382,11 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
             if o_f is None:
                 o_f = open(common.ossec_path + output_file, 'wb')
 
-            header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path, ''),
-                                       datetime.utcfromtimestamp(stat_data.st_mtime))
             with open(full_path, 'rb') as f:
                 data = f.read()
+
+            header = "{} {} {}".format(len(data), filename.replace(common.ossec_path, ''),
+                                       datetime.utcfromtimestamp(stat_data.st_mtime))
 
             o_f.write((header + '\n').encode() + data)
 
@@ -461,6 +463,11 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         return '{}/cluster-{}.log.gz'.format(log_path, day)
 
 
+# Context vars
+context_tag: ContextVar[str] = ContextVar('tag', default='')
+context_subtag: ContextVar[str] = ContextVar('subtag', default='')
+
+
 class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.
@@ -479,8 +486,8 @@ class ClusterFilter(logging.Filter):
         self.subtag = subtag
 
     def filter(self, record):
-        record.tag = self.tag
-        record.subtag = self.subtag
+        record.tag = context_tag.get() if context_tag.get() != '' else self.tag
+        record.subtag = context_subtag.get() if context_subtag.get() != '' else self.subtag
         return True
 
     def update_tag(self, new_tag: str):

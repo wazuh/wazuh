@@ -35,7 +35,7 @@ class AbstractServerHandler(c_common.Handler):
         self.loop = loop
         self.last_keepalive = time.time()
         self.tag = tag
-        self.logger_filter.update_tag(self.tag)
+        cluster.context_tag.set(self.tag)
         self.name = None
         self.ip = None
         self.transport = None
@@ -88,6 +88,7 @@ class AbstractServerHandler(c_common.Handler):
         :param data: client's data -> name
         :return: successful result
         """
+
         self.name = data.decode()
         if self.name in self.server.clients:
             self.logger.error("Could not accept incoming connection: ID {} already present".format(data))
@@ -99,7 +100,7 @@ class AbstractServerHandler(c_common.Handler):
         else:
             self.server.clients[self.name] = self
             self.tag = '{} {}'.format(self.tag, self.name)
-            self.logger_filter.update_tag(self.tag)
+            cluster.context_tag.set(self.tag)
             return b'ok', 'Client {} added'.format(self.name).encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
@@ -159,9 +160,10 @@ class AbstractServer:
         self.cluster_items = cluster_items
         self.enable_ssl = enable_ssl
         self.tag = tag
-        self.logger = logger.getChild(tag)
+        self.logger = logging.getLogger('wazuh')
         # logging tag
-        self.logger.addFilter(cluster.ClusterFilter(tag=tag, subtag="Main"))
+        cluster.context_tag.set(self.tag)
+        cluster.context_subtag.set("Main")
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
@@ -279,6 +281,7 @@ class AbstractServer:
         """
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
+        cluster.context_tag.set(self.tag)
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 

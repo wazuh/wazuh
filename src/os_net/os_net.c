@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -419,16 +419,17 @@ char *OS_RecvTCP(int socket, int sizet)
     return (ret);
 }
 
-/* Receive a TCP packet (from an open socket) */
+/* Receive a TCP packet (from an open socket)
+   Returns the number of bytes received,
+   or -1 if an error occurred */
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 {
     int retsize;
 
     if ((retsize = recv(socket, buffer, sizet - 1, 0)) > 0) {
         buffer[retsize] = '\0';
-        return (0);
     }
-    return (-1);
+    return (retsize);
 }
 
 /* Receive a UDP packet */
@@ -553,10 +554,10 @@ int OS_SetKeepalive(int socket)
 }
 
 // Set keepalive parameters for a socket
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt)
 {
     if (cnt > 0) {
-#if !defined(sun) && !defined(WIN32)
+#if !defined(sun) && !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
         }
@@ -576,7 +577,7 @@ void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
 #else
         mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
 #endif
-#elif !defined(WIN32)
+#elif !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
             merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
         }
@@ -596,7 +597,7 @@ void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
 #else
         mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
 #endif
-#elif !defined(WIN32)
+#elif !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
         }

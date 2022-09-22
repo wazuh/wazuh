@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for AWS S3 integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January 08, 2018.
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
@@ -55,10 +55,10 @@ typedef struct wm_aws_service {
 } wm_aws_service;
 
 typedef struct wm_aws {
+    sched_scan_config scan_config;
     char *bucket;                       // DEPRECATE
     char *access_key;                   // DEPRECATE
     char *secret_key;                   // DEPRECATE
-    unsigned long interval;
     int queue_fd;
     unsigned int enabled:1;
     unsigned int run_on_start:1;

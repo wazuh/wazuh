@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * July 5, 2016.
  *
  * This program is free software; you can redistribute it
@@ -335,7 +335,7 @@ int wdb_create_agent_db(int id, const char *name) {
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL);
+        merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
         return -1;
     }
 
@@ -620,13 +620,14 @@ int wdb_update_agent_multi_group(int id, char *group) {
     const char delim[2] = ",";
     if (group) {
         char *multi_group;
+        char *save_ptr = NULL;
 
         multi_group = strchr(group, MULTIGROUP_SEPARATOR);
 
         if (multi_group) {
 
             /* Get the first group */
-            multi_group = strtok(group, delim);
+            multi_group = strtok_r(group, delim, &save_ptr);
 
             while( multi_group != NULL ) {
 
@@ -641,7 +642,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
                     return -1;
                 }
 
-                multi_group = strtok(NULL, delim);
+                multi_group = strtok_r(NULL, delim, &save_ptr);
             }
         } else {
 
@@ -824,7 +825,7 @@ int wdb_update_groups(const char *dirname) {
 
     /* Add new groups from the folder /etc/shared if they dont exists on database */
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
 
     if (!(dir = opendir(dirname))) {
         merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));

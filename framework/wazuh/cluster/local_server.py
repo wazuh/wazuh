@@ -11,6 +11,7 @@ from wazuh import common, exception
 from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
 from wazuh.exception import WazuhException
+from wazuh.cluster.cluster import context_tag, context_subtag
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -28,7 +29,8 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.transport = transport
         self.server.clients[self.name] = self
         self.tag = "Local " + self.name
-        self.logger_filter.update_tag(self.tag)
+        # modify filter tags with context vars
+        context_tag.set(self.tag)
         self.logger.info('Connection received in local server.')
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
@@ -155,6 +157,9 @@ class LocalServerHandlerMaster(LocalServerHandler):
         :param data: Received payload
         :return: A response
         """
+        #modify logger filter tag in LocalServerHandlerMaster entry point
+        context_tag.set("Local " + self.name)
+
         if command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b' ' + data)
             return b'ok', b'Added request to API requests queue'
@@ -233,6 +238,9 @@ class LocalServerHandlerWorker(LocalServerHandler):
         :param data: Received payload
         :return: A response
         """
+        #modify logger filter tag in LocalServerHandlerWorker entry point
+        context_tag.set("Local " + self.name)
+
         self.logger.debug2("Command received: {}".format(command))
         if command == b'dapi':
             api_call_name = json.loads(data.decode())['function']

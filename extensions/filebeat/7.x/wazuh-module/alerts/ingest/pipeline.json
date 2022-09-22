@@ -56,7 +56,7 @@
     },
     {
       "geoip": {
-        "field": "data.aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4",
+        "field": "data.gcp.jsonPayload.sourceIP",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,

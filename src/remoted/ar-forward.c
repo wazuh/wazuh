@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -22,10 +22,10 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     int key_id = 0;
     int ar_location = 0;
     const char * path = isChroot() ? ARQUEUE : DEFAULTDIR ARQUEUE;
-
-    char msg_to_send[OS_SIZE_1024 + 1];
-
-    char msg[OS_SIZE_1024 + 1];
+    char *msg_to_send;
+    os_calloc(OS_MAXSTR, sizeof(char), msg_to_send);
+    char *msg;
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
     char *location = NULL;
     char *ar_location_str = NULL;
     char *ar_agent_id = NULL;
@@ -37,11 +37,9 @@ void *AR_Forward(__attribute__((unused)) void *arg)
         merror_exit(QUEUE_ERROR, path, strerror(errno));
     }
 
-    memset(msg, '\0', OS_SIZE_1024 + 1);
-
     /* Daemon loop */
     while (1) {
-        if (OS_RecvUnix(arq, OS_SIZE_1024, msg)) {
+        if (OS_RecvUnix(arq, OS_MAXSTR - 1, msg)) {
 
             mdebug2("Active response request received: %s", msg);
 
@@ -108,11 +106,11 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
             /* Create the new message */
             if (ar_location & NO_AR_MSG) {
-                snprintf(msg_to_send, OS_SIZE_1024, "%s%s",
+                snprintf(msg_to_send, OS_MAXSTR, "%s%s",
                          CONTROL_HEADER,
                          tmp_str);
             } else {
-                snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s",
+                snprintf(msg_to_send, OS_MAXSTR, "%s%s%s",
                          CONTROL_HEADER,
                          EXECD_HEADER,
                          tmp_str);

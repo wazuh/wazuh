@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Wazuh Ruleset Update
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -265,7 +265,7 @@ def get_new_ruleset(source, url, branch_name=None):
         try:
             f_url = requests.get(url_ruleset)
         except requests.exceptions.RequestException as e:
-            exit(2, "\tDownload Error:{0}.\nExit.".format(e.reason))
+            exit(2, "\tDownload Error:{0}.\nExit.".format(e))
 
         if f_url.ok:
             with open(ruleset_zip, "wb") as f_local:

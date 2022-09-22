@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * March 9, 2017.
  *
  * This program is free software; you can redistribute it
@@ -62,11 +62,11 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         if (sys->state.next_time > time_start) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
-            wm_delay(1000 * (sys->state.next_time - time_start));
+            w_time_delay(1000 * (sys->state.next_time - time_start));
         }
     } else {
         // Wait for Wazuh DB start
-        wm_delay(1000);
+        w_time_delay(1000);
     }
 
     // Main loop
@@ -179,7 +179,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             mterror(WM_SYS_LOGTAG, "Couldn't save running state: %s (%d)", strerror(errno), errno);
 
         // If time_sleep=0, yield CPU
-        wm_delay(1000 * time_sleep);
+        w_time_delay(1000 * time_sleep);
     }
 
     return NULL;
@@ -202,7 +202,7 @@ static void wm_sys_setup(wm_sys_t *_sys) {
     int i;
     // Connect to socket
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+        w_time_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");

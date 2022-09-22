@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * December 18, 2018.
  *
  * This program is free software; you can redistribute it
@@ -13,6 +13,9 @@
 #include "shared.h"
 #include "audit_op.h"
 
+#ifdef UNIT_TESTING
+#define static
+#endif
 
 static w_audit_rules_list *_audit_rules_list;
 
@@ -49,8 +52,8 @@ int audit_print_reply(struct audit_reply *rep) {
             } else if (field == AUDIT_FILTERKEY) {
                 free(key);
                 if (rep->ruledata->values[i]) {
-                    key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]);
-                    offset += rep->ruledata->values[i];
+                    key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]); //LCOV_EXCL_LINE
+                    offset += rep->ruledata->values[i]; //LCOV_EXCL_LINE
                 } else {
                     key = strdup("");
                 }
@@ -111,7 +114,7 @@ void kernel_get_reply(int fd) {
                 continue;
             }
 
-            if ((retval = audit_print_reply(&rep)) == 0) {
+            if (retval = audit_print_reply(&rep), retval == 0) {
                 break;
             } else {
                 i = 0;
@@ -121,7 +124,6 @@ void kernel_get_reply(int fd) {
 }
 
 
-// Converts Audit relative paths into absolute paths
 char *audit_clean_path(char *cwd, char *path) {
 
     char *file_ptr = path;
@@ -149,7 +151,6 @@ char *audit_clean_path(char *cwd, char *path) {
 }
 
 
-// Restart Auditd service
 int audit_restart(void) {
 
     wfd_t * wfd;
@@ -181,7 +182,6 @@ int audit_restart(void) {
 }
 
 
-// Add / delete rules
 int audit_manage_rules(int action, const char *path, const char *key) {
 
     int retval, output;
@@ -207,7 +207,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
             type = AUDIT_WATCH;
         }
     } else {
-        mdebug2("audit_manage_rules(): Cannot stat %s", path);
+        mdebug2(FIM_STAT_FAILED, path, errno, strerror(errno));
         retval = -1;
         goto end;
     }
@@ -243,9 +243,11 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     os_malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1, cmd);
 
     if (snprintf(cmd, AUDIT_MAX_KEY_LEN, "key=%s", key) < 0) {
+        //LCOV_EXCL_START
         free(cmd);
         retval = -1;
         goto end;
+        //LCOV_EXCL_STOP
     } else {
         output = audit_rule_fieldpair_data(&myrule, cmd, flags);
         if (output) {
@@ -268,7 +270,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     }
 
     if (retval <= 0) {
-        mdebug2("audit_manage_rules(): Error adding/deleting rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
+        mdebug2("audit_manage_rules(): Cann't adding/deleting rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
     }
 
 end:
@@ -278,52 +280,13 @@ end:
 }
 
 
-// Add rule into Auditd rules list
 int audit_add_rule(const char *path, const char *key) {
     return audit_manage_rules(ADD_RULE, path, key);
 }
 
 
-// Delete rule
 int audit_delete_rule(const char *path, const char *key) {
     return audit_manage_rules(DELETE_RULE, path, key);
-}
-
-
-// Check if exists rule '-a task,never'
-int audit_check_lock_output(void) {
-    int retval;
-    int audit_handler;
-
-    int flags = AUDIT_FILTER_TASK;
-
-    audit_handler = audit_open();
-    if (audit_handler < 0) {
-        return (-1);
-    }
-
-    struct audit_rule_data *myrule = NULL;
-    os_malloc(sizeof(struct audit_rule_data), myrule);
-    memset(myrule, 0, sizeof(struct audit_rule_data));
-
-    retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
-
-    if (retval == -17) {
-        audit_rule_free_data(myrule);
-        audit_close(audit_handler);
-        return 1;
-    } else {
-        // Delete if it was inserted
-        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
-        audit_rule_free_data(myrule);
-        audit_close(audit_handler);
-        if (retval < 0) {
-            mdebug2("audit_delete_rule_data = (%i) %s", retval, audit_errno_to_name(abs(retval)));
-            merror("Error removing test rule. Audit output is blocked.");
-            return 1;
-        }
-        return 0;
-    }
 }
 
 
@@ -343,7 +306,7 @@ void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element) {
             wlist->size *= 2;
             wlist->list = (w_audit_rule **)realloc(wlist->list, wlist->size * sizeof(w_audit_rule *));
             if (!wlist->list) {
-                merror_exit(MEM_ERROR, errno, strerror(errno));
+                merror_exit(MEM_ERROR, errno, strerror(errno)); //LCOV_EXCL_LINE
             }
         }
         wlist->list[wlist->used++] = element;

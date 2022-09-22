@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,15 +11,22 @@
 #ifndef AGENT_OP_H
 #define AGENT_OP_H
 
-/* Check if syscheck is to be executed/restarted
- * Returns 1 on success or 0 on failure (shouldn't be executed now)
+/**
+ * @brief Check if syscheck is to be executed/restarted
+ * @return 1 on success or 0 on failure (shouldn't be executed now).
  */
 int os_check_restart_syscheck(void);
 
-/* Set syscheck to be restarted
- * Returns 1 on success or 0 on failure
+/**
+ * @brief Check if rootcheck is to be executed/restarted
+ * @return 1 on success or 0 on failure (shouldn't be executed now).
  */
-int os_set_restart_syscheck(void);
+int os_check_restart_rootcheck(void);
+
+/**
+ * @brief Set syscheck and rootcheck to be restarted
+ */
+void os_set_restart_syscheck(void);
 
 /* Read the agent name for the current agent
  * Returns NULL on error
@@ -64,9 +71,11 @@ int create_multigroup_dir(const char * multigroup);
 char* hostname_parse(const char *path);
 
 /* Validates the group name
- * Returns 0 on success or  -1 on failure
+ * @params response must be a 2048 buffer or NULL
+ * Returns 0 on success or  -x on failure
  */
-int w_validate_group_name(const char *group);
+
+int w_validate_group_name(const char *group, char *response);
 
 int set_agent_multigroup(char * group);
 
@@ -78,8 +87,16 @@ int auth_connect();
 // Close socket if valid.
 int auth_close(int sock);
 
-// Add agent. Returns 0 on success or -1 on error.
-int auth_add_agent(int sock, char *id, const char *name, const char *ip, const char *key, int force, int json_format,const char *agent_id,int exit_on_error);
+// Send a local agent add request.
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error);
+
+#ifndef WIN32
+// Send a clustered agent add request.
+int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id);
+
+// Send a clustered agent remove request.
+int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
+#endif
 
 // Get the agent id
 char * get_agent_id_from_name(const char *agent_name);

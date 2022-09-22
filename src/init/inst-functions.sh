@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -79,7 +79,7 @@ DisableAuthd()
     echo "  <auth>" >> $NEWCONFIG
     echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     echo "    <port>1515</port>" >> $NEWCONFIG
-    echo "    <use_source_ip>yes</use_source_ip>" >> $NEWCONFIG
+    echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
     echo "    <force_insert>yes</force_insert>" >> $NEWCONFIG
     echo "    <force_time>0</force_time>" >> $NEWCONFIG
     echo "    <purge>yes</purge>" >> $NEWCONFIG
@@ -112,22 +112,6 @@ WriteRootcheck()
       echo "  <rootcheck>" >> $NEWCONFIG
       echo "    <disabled>yes</disabled>" >> $NEWCONFIG
       echo "  </rootcheck>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-}
-
-##########
-# WriteOpenSCAP()
-##########
-WriteOpenSCAP()
-{
-    # Adding to the config file
-    if [ "X$OPENSCAP" = "Xyes" ]; then
-      OPENSCAP_TEMPLATE=$(GetTemplate "wodle-openscap.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      if [ "$OPENSCAP_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OPENSCAP_TEMPLATE=$(GetTemplate "wodle-openscap.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      fi
-      cat ${OPENSCAP_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
 }
@@ -186,29 +170,6 @@ WriteConfigurationAssessment()
       SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
-    fi
-}
-
-##########
-# InstallOpenSCAPFiles()
-##########
-InstallOpenSCAPFiles()
-{
-    cd ..
-    OPENSCAP_FILES_PATH=$(GetTemplate "openscap.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    cd ./src
-    if [ "$OPENSCAP_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "SCAP security policies are not available for this OS version."
-    else
-        echo "Installing SCAP security policies..."
-        OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
-        for file in $OPENSCAP_FILES; do
-            if [ -f "../wodles/oscap/content/$file" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
-            else
-                echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
-            fi
-        done
     fi
 }
 
@@ -416,9 +377,6 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # OpenSCAP
-    WriteOpenSCAP "agent"
-
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
         WriteCISCAT "agent"
@@ -518,9 +476,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write OpenSCAP
-    WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
@@ -644,9 +599,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # Write OpenSCAP
-    WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
     if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
@@ -795,6 +747,8 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim/db
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/sca
@@ -973,7 +927,7 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/msu.json.gz ${PREFIX}/queue/vulnerabilities/dictionaries
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE} || exit 1
 }
 
 TransferShared()
@@ -1028,11 +982,16 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/oscap/oscap
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
-    InstallOpenSCAPFiles
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
+
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/gcloud
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/gcloud.py ${PREFIX}/wodles/gcloud/gcloud.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/integration.py ${PREFIX}/wodles/gcloud/integration.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/tools.py ${PREFIX}/wodles/gcloud/tools.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/gcloud/gcloud
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener.py
@@ -1076,12 +1035,18 @@ InstallAgent()
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
-        InstallOpenSCAPFiles
     fi
 
     if [ ! -d ${PREFIX}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3
+    fi
+
+    if [ ! -d ${PREFIX}/wodles/gcloud ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/gcloud
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/gcloud.py ${PREFIX}/wodles/gcloud/gcloud
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/integration.py ${PREFIX}/wodles/gcloud/integration.py
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/tools.py ${PREFIX}/wodles/gcloud/tools.py
     fi
 
     if [ ! -d ${PREFIX}/wodles/docker ]; then

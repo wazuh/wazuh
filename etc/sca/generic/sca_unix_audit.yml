@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # Audit for UNIX systems
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -143,6 +143,7 @@ checks:
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*\t*HostbasedAuthentication\s*\t*no'

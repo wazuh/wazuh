@@ -2,7 +2,7 @@
   <auth>
     <disabled>no</disabled>
     <port>1515</port>
-    <use_source_ip>yes</use_source_ip>
+    <use_source_ip>no</use_source_ip>
     <force_insert>yes</force_insert>
     <force_time>0</force_time>
     <purge>yes</purge>

@@ -193,7 +193,7 @@ int main(void) {
     TAP_TEST_MSG(test_md5_sha1_cmd_file_fail(), "MD5+SHA1 non-existing file to read from using command.");
 
     TAP_PLAN;
-    TAP_SUMMARY;
+    int r = tap_summary();
     printf("\n    ENDING TEST  - OS_CRYPTO   \n\n");
-    return 0;
+    return r;
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -27,6 +27,7 @@ static void files_lock_init(void);
 static void check_text_only();
 static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
+static void set_can_read(int value);
 
 /* Global variables */
 int loop_timeout;
@@ -56,31 +57,15 @@ static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
 #endif
 
+/* can read synchronization */
+static int _can_read = 0;
+static pthread_rwlock_t can_read_rwlock;
+
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
-
-static char *rand_keepalive_str(char *dst, int size)
-{
-    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                               "0123456789"
-                               "!@#$%^&*()_+-=;'[],./?";
-    int i;
-    int len;
-    srandom_init();
-    len = os_random() % (size - 10);
-    len = len >= 0 ? len : -len;
-
-    strncpy(dst, "--MARK--: ", 12);
-    for ( i = 10; i < len; ++i ) {
-        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
-    }
-    dst[i] = '\0';
-    return dst;
-}
 
 /* Handle file management */
 void LogCollectorStart()
@@ -91,7 +76,6 @@ void LogCollectorStart()
     int f_free_excluded = 0;
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
-    char keepalive[1024];
     logreader *current;
 
     /* Create store data */
@@ -114,7 +98,6 @@ void LogCollectorStart()
     check_pattern_expand_excluded();
 
     w_mutex_init(&mutex, NULL);
-
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -192,7 +175,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif
@@ -281,8 +264,9 @@ void LogCollectorStart()
         } else {
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
-            set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -318,14 +302,15 @@ void LogCollectorStart()
     // Start com request thread
     w_create_thread(lccom_main, NULL);
 #endif
-
+    set_can_read(1);
     /* Daemon loop */
     while (1) {
 
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
-
+            set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
@@ -348,7 +333,9 @@ void LogCollectorStart()
         }
 
         if (f_check >= vcheck_files) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
+            set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
             f_reload += f_check;
@@ -384,7 +371,9 @@ void LogCollectorStart()
                     nanosleep(&delay, NULL);
                 }
 
+                set_can_read(0); // Stop reading threads
                 w_rwlock_wrlock(&files_update_rwlock);
+                set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
 
@@ -583,7 +572,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
                     else if (current->size > tmp_stat.st_size)
 #endif
@@ -744,11 +733,6 @@ void LogCollectorStart()
             f_check = 0;
         }
 
-        if (!os_iswait()) {
-            rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
-            w_msg_hash_queues_push(keepalive, "ossec-keepalive", strlen(keepalive) + 1, default_target, LOCALFILE_MQ);
-        }
-
         if (mq_log_builder_update() == -1) {
             mdebug1("Output log pattern data could not be updated.");
         }
@@ -762,11 +746,11 @@ void LogCollectorStart()
 
 int update_fname(int i, int j)
 {
-    struct tm *p;
     time_t __ctime = time(0);
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (j < 0) {
         lf = &logff[i];
@@ -774,15 +758,15 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime(&__ctime);
+    localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
-    if (p->tm_mday == _cday) {
+    if (tm_result.tm_mday == _cday) {
         return (0);
     }
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, lf->ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
         merror_exit(PARSE_ERROR, lf->ffile);
     }
@@ -800,7 +784,7 @@ int update_fname(int i, int j)
         return (1);
     }
 
-    _cday = p->tm_mday;
+    _cday = tm_result.tm_mday;
     return (0);
 }
 
@@ -1345,7 +1329,7 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -1778,6 +1762,15 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
+    if ((result < 0) && !reported) {
+        #ifndef WIN32
+            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #else
+            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #endif
+            reported = 1;
+    }
+
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
@@ -1785,15 +1778,6 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
-
-        if (!reported) {
-#ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#endif
-            reported = 1;
-        }
     }
 
     return result;
@@ -1823,17 +1807,57 @@ void * w_output_thread(void * args){
 
     while(1)
     {
+        int sleep_time = 5;
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            merror(QUEUE_SEND);
+        if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+            // When dealing with this type of messages we don't want any of them to be lost
+            // Continuously attempt to reconnect to the queue and send the message.
 
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                #ifdef CLIENT
+                merror("Unable to send message to '%s' (ossec-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #else
+                merror("Unable to send message to '%s' (ossec-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                #endif
+
+                while(1) {
+                    if(logr_queue = StartMQ(DEFAULTQPATH, WRITE), logr_queue >= 0) {
+                        if (SendMSG(logr_queue, message->buffer, message->file, message->queue_mq) == 0) {
+                            minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
+                            break;  //  We sent the message successfully, we can go on.
+                        }
+                    }
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    if(sleep_time < 300)
+                        sleep_time += 5;
+                }
+            }
+
+        } else {
+            const int MAX_RETRIES = 3;
+            int retries = 0;
+            while (retries < MAX_RETRIES) {
+                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
+                    merror(QUEUE_SEND);
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    sleep_time += 5;
+                    retries++;
+                } else {
+                    break;
+                }
+            }
+            if (retries == MAX_RETRIES) {
+                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
             }
         }
-
         free(message->file);
         free(message->buffer);
         free(message);
@@ -2162,6 +2186,7 @@ void files_lock_init()
 #endif
 
     w_rwlock_init(&files_update_rwlock, &attr);
+    w_rwlock_init(&can_read_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
 }
 
@@ -2254,7 +2279,7 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2360,3 +2385,18 @@ static void check_pattern_expand_excluded() {
     }
 }
 #endif
+
+
+static void set_can_read(int value){
+    w_rwlock_wrlock(&can_read_rwlock);
+    _can_read = value;
+    w_rwlock_unlock(&can_read_rwlock);
+}
+
+int can_read() {
+    int ret;
+    w_rwlock_rdlock(&can_read_rwlock);
+    ret = _can_read;
+    w_rwlock_unlock(&can_read_rwlock);
+    return ret;
+}

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -29,7 +29,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 
     if (strcmp(node->attributes[0], XML_NAME)) {
-        merror("Module attribute is not '%s'.", XML_NAME);
+        merror("Module attribute is not '%s'", XML_NAME);
         return OS_INVALID;
     }
 
@@ -68,7 +68,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     // Get children
 
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->values[0]);
+        mdebug1("Empty configuration for module '%s'", node->values[0]);
     }
 
     // Select module by name
@@ -111,7 +111,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #endif
     else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
-        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
+        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);
         if (wm_aws_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -204,7 +204,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
 
     // Get children
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->element);
+        mdebug1("Empty configuration for module '%s'", node->element);
     }
 
     //Policy Monitoring Module
@@ -213,6 +213,65 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
+int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //Google Cloud module
+    if (!strcmp(node->element, WM_GCP_CONTEXT.name)) {
+#ifndef WIN32
+        if (wm_gcp_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#else
+        mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
+#endif
     }
 
     OS_ClearNode(children);
@@ -260,7 +319,7 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 
     // Get children
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->element);
+        mdebug1("Empty configuration for module '%s'", node->element);
     }
 
     // Fluent Forwarder Module

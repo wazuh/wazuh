@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -296,8 +296,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                 case UI_MENU_MANAGE_START:
 
                     /* Start OSSEC  -- must have a valid config before */
-                    if ((strcmp(config_inst.key, FL_NOKEY) != 0) &&
-                            (strcmp(config_inst.server, FL_NOSERVER) != 0)) {
+                    if (strcmp(config_inst.server, FL_NOSERVER) != 0) {
                         ret_code = os_start_service();
                     } else {
                         ret_code = 0;

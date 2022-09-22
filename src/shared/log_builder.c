@@ -1,11 +1,9 @@
 /**
  * @file log_builder.c
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief Definition of the shared log builder library
- * @version 0.1
  * @date 2019-12-06
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (c) 2015-2020 Wazuh, Inc.
  */
 
 /*
@@ -16,6 +14,7 @@
  */
 
 #include "shared.h"
+#include "client-agent/agentd.h"
 
 /**
  * @brief Update the hostname value
@@ -101,6 +100,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
     if (!pattern) {
         return strdup(logmsg);
     }
+
+    assert(&builder->rwlock != NULL);
 
     os_malloc(OS_MAXSTR, final);
     os_strdup(pattern, _pattern);
@@ -239,7 +240,7 @@ int log_builder_update_host_ip(log_builder_t * builder) {
     char * host_ip = NULL;
 
 #ifdef WIN32
-    host_ip = get_win_agent_ip();
+    host_ip = get_agent_ip();
 
     if (host_ip == NULL) {
         mdebug1("Cannot update host IP.");

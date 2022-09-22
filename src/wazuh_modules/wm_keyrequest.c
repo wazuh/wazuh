@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for remote key requests
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * November 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -382,7 +382,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         if (sock = auth_connect(), sock < 0) {
             mwarn("Could not connect to authd socket. Is authd running?");
         } else {
-            auth_add_agent(sock, id, agent_name->valuestring, agent_address->valuestring, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
+            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
             close(sock);
         }
         cJSON_Delete(agent_infoJSON);

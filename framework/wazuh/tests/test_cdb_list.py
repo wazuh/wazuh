@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -11,6 +11,7 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh import WazuhException
         from wazuh.cdb_list import get_lists, get_path_lists, get_list_from_file
+
 
 class TestCDBList(TestCase):
 
@@ -72,9 +73,9 @@ class TestCDBList(TestCase):
         self.assertEqual(cm.exception.code, 1406)
 
         result = get_path_lists(limit=1)
-        self.assertEqual(result['totalItems'], 1)
+        self.assertEqual(len(result['items']), 1)
         result = get_path_lists(limit=3)
-        self.assertEqual(result['totalItems'], 3)
+        self.assertEqual(len(result['items']), 3)
 
     def test_get_path_lists_offset(self):
         result_a = get_path_lists(offset=0)
@@ -97,6 +98,7 @@ class TestCDBList(TestCase):
         result_a = get_path_lists(sort={'fields': ['name'], 'order': 'asc'})
         result_b = get_path_lists(sort={'fields': ['name'], 'order': 'desc'})
         self.assertNotEqual(result_a, result_b)
+
 
 @pytest.mark.parametrize('error_type, expected_exception', [
     (IOError, 1006),

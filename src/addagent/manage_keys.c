@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -196,7 +196,7 @@ int k_extract(const char *cmdextract, int json_output)
         json_root = cJSON_CreateObject();
 
     if (cmdextract) {
-        user_input = strdup(cmdextract);
+        os_strdup(cmdextract, user_input);
         FormatID(user_input);
 
         if (!IDExist(user_input, 1)) {
@@ -327,6 +327,7 @@ int k_bulkload(const char *cmdbulk)
     char ip[FILE_SIZE + 1];
     char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
+    char *save_ptr;
 
     sock = auth_connect();
 
@@ -354,11 +355,11 @@ int k_bulkload(const char *cmdbulk)
         }
 
         memset(ip, '\0', FILE_SIZE + 1);
-        token = strtok(line, delims);
+        token = strtok_r(line, delims, &save_ptr);
         strncpy(ip, trimwhitespace(token), FILE_SIZE - 1);
 
         memset(name, '\0', FILE_SIZE + 1);
-        token = strtok(NULL, delims);
+        token = strtok_r(NULL, delims, &save_ptr);
 
         if (!token)
             merror_exit(SYNTAX_ERROR, cmdbulk);
@@ -466,7 +467,7 @@ int k_bulkload(const char *cmdbulk)
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
         } else {
-            if (auth_add_agent(sock, id, name, ip, NULL, -1, 0,NULL,1) < 0) {
+            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, -1, 0,NULL,1) < 0) {
                 goto cleanup;
             }
         }

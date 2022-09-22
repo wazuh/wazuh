@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -139,13 +139,29 @@ start()
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            failed=false
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
+                failed=true
+            else
+                j=0;
+                while [ $failed = false ]; do
+                    pstatus ${i};
+                    if [ $? = 1 ]; then
+                        break;
+                    fi
+                    sleep 1;
+                    j=`expr $j + 1`;
+                    if [ "$j" = "${MAX_ITERATION}" ]; then
+                        failed=true
+                    fi
+                done
+            fi
+            if [ $failed = true ]; then
                 echo "${i} did not start";
                 unlock;
                 exit 1;
             fi
-
             echo "Started ${i}..."
         else
             echo "${i} already running..."
@@ -219,7 +235,8 @@ stopa()
 
             if ! wait_pid $pid
             then
-                echo "Process ${i} couldn't be killed.";
+                echo "Process ${i} couldn't be terminated. It will be killed.";
+                kill -9 $pid
             fi
         else
             echo "${i} not running...";

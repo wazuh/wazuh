@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,12 +12,17 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
+#ifdef UNIT_TESTING
+// Remove static qualifier from tests
+#define static
+#endif
+
 #ifdef WIN32
 #define unlink(x) _unlink(x)
 #endif
 
 /* Prototypes */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status) __attribute__((nonnull));
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 #ifdef WIN32
@@ -29,7 +34,7 @@ static const char *STR_MORE_CHANGES = "More changes...";
 #ifndef WIN32
 #define PATH_OFFSET 1
 #else
-#define PATH_OFFSET 3
+#define PATH_OFFSET 0
 #endif
 
 static char* filter(const char *string) {
@@ -47,7 +52,7 @@ static char* filter(const char *string) {
         clen = strcspn(ptr + 1, "\"\\$`");
         out = realloc(out, len + clen + 3);
         if(!out){
-            merror_exit(MEM_ERROR, errno, strerror(errno));
+            merror_exit(MEM_ERROR, errno, strerror(errno)); // LCOV_EXCL_LINE
         }
         out[len] = '\\';
         out[len + 1] = *ptr;
@@ -120,8 +125,6 @@ int symlink_to_dir (const char *filename) {
 }
 #endif
 
-/* Return TRUE if the file name match one of the ``nodiff`` entries.
-   Return FALSE otherwise */
 int is_nodiff(const char *filename){
     if (syscheck.nodiff){
         int i;
@@ -144,7 +147,7 @@ int is_nodiff(const char *filename){
 }
 
 /* Generate diffs alerts */
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time, __attribute__((unused)) int status)
 {
     size_t n = 0;
     FILE *fp;
@@ -152,15 +155,35 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     char path[PATH_MAX + 1];
     char buf[OS_MAXSTR + 1];
     char compressed_file[PATH_MAX + 1];
+    char filename_abs[PATH_MAX];
 
     path[PATH_MAX] = '\0';
+    if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
+        merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
+        return NULL;
+    }
+
+#ifdef WIN32
+    {
+        char * filename_strip = os_strip_char(filename_abs, ':');
+
+        if (filename_strip == NULL) {
+            merror("Cannot remove heading colon from full path '%s'", filename_abs);
+            return NULL;
+        }
+
+        strncpy(filename_abs, filename_strip, sizeof(filename_abs));
+        filename_abs[sizeof(filename_abs) - 1] = '\0';
+        free(filename_strip);
+    }
+#endif
 
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
-             DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
+             DIFF_DIR_PATH, filename_abs + PATH_OFFSET, (int)alert_diff_time);
 
-    fp = fopen(path, "rb");
+    fp = wfopen(path, "rb");
     if (!fp) {
-        merror(FIM_ERROR_GENDIFF_OPEN);
+        merror(FIM_ERROR_GENDIFF_OPEN, path);
         return (NULL);
     }
 
@@ -172,6 +195,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     case 0:
         merror(FIM_ERROR_GENDIFF_READ);
         return (NULL);
+    #ifndef WIN32
     case OS_MAXSTR - OS_SK_HEADER - 1:
         buf[n] = '\0';
         n -= strlen(STR_MORE_CHANGES);
@@ -181,6 +205,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
         strcpy(buf + n, STR_MORE_CHANGES);
         break;
+    #endif
     default:
         buf[n] = '\0';
     }
@@ -190,6 +215,25 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         return NULL;
     }
 
+    // On Windows we handle long diffs after adapting the fc output.
+    if(status) {
+        char *p = strchr(buf, '\n');
+
+        n = strlen(diff_str);
+
+        if(p && p[1] != '*') {
+            // If the second line does not start with '*', an error message was printed,
+            // most likely stating that the files are "too different"
+            if(n >= OS_MAXSTR - OS_SK_HEADER - 1 - strlen(STR_MORE_CHANGES)) {
+                n -= strlen(STR_MORE_CHANGES);
+
+                while (n > 0 && diff_str[n - 1] != '\n')
+                    n--;
+            }
+
+            strcpy(diff_str + n, STR_MORE_CHANGES);
+        }
+    }
 #else
     os_strdup(buf, diff_str);
 #endif
@@ -199,7 +243,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         PATH_MAX,
         "%s/local/%s/%s.gz",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 
@@ -219,12 +263,12 @@ static int seechanges_dupfile(const char *old, const char *current)
 
     buf[2048] = '\0';
 
-    fpr = fopen(old, "rb");
+    fpr = wfopen(old, "rb");
     if (!fpr) {
         return (0);
     }
 
-    fpw = fopen(current, "wb");
+    fpw = wfopen(current, "wb");
     if (!fpw) {
         fclose(fpr);
         return (0);
@@ -260,13 +304,14 @@ static int seechanges_createpath(const char *filename)
     char *tmpstr = NULL;
     char *newdir = NULL;
     char *next = NULL;
+    char *save_ptr = NULL;
 
     os_strdup(filename, buffer);
     newdir = buffer;
 #ifdef WIN32
-    tmpstr = strtok(buffer + PATH_OFFSET, "/\\");
+    tmpstr = strtok_r(buffer + PATH_OFFSET, "/\\", &save_ptr);
 #else
-    tmpstr = strtok(buffer + PATH_OFFSET, "/");
+    tmpstr = strtok_r(buffer + PATH_OFFSET, "/", &save_ptr);
 #endif
     if (!tmpstr) {
         merror(FIM_ERROR_GENDIFF_INVALID_PATH, filename);
@@ -275,9 +320,9 @@ static int seechanges_createpath(const char *filename)
     }
 
 #ifdef WIN32
-    while (next = strtok(NULL, "/\\"), next) {
+    while (next = strtok_r(NULL, "/\\", &save_ptr), next) {
 #else
-    while (next = strtok(NULL, "/"), next) {
+    while (next = strtok_r(NULL, "/", &save_ptr), next) {
 #endif
         if (IsDir(newdir) != 0) {
 #ifndef WIN32
@@ -325,12 +370,34 @@ char *seechanges_addfile(const char *filename)
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 
+    char filename_abs[PATH_MAX];
+
+    if (abspath(filename, filename_abs, sizeof(filename_abs)) == NULL) {
+        merror("Cannot get absolute path of '%s': %s (%d)", filename, strerror(errno), errno);
+        return NULL;
+    }
+
+#ifdef WIN32
+    {
+        char * filename_strip = os_strip_char(filename_abs, ':');
+
+        if (filename_strip == NULL) {
+            merror("Cannot remove heading colon from full path '%s'", filename_abs);
+            return NULL;
+        }
+
+        strncpy(filename_abs, filename_strip, sizeof(filename_abs));
+        filename_abs[sizeof(filename_abs) - 1] = '\0';
+        free(filename_strip);
+    }
+#endif
+
     snprintf(
         old_location,
         PATH_MAX,
         "%s/local/%s/%s",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 
@@ -339,7 +406,7 @@ char *seechanges_addfile(const char *filename)
         PATH_MAX,
         "%s/local/%s/%s.gz",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         DIFF_LAST_FILE
     );
 
@@ -377,7 +444,7 @@ char *seechanges_addfile(const char *filename)
         PATH_MAX,
         "%s/local/%s/state.%d",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         (int)old_date_of_change
     );
 
@@ -399,7 +466,7 @@ char *seechanges_addfile(const char *filename)
         PATH_MAX,
         "%s/local/%s/diff.%d",
         DIFF_DIR_PATH,
-        filename + PATH_OFFSET,
+        filename_abs + PATH_OFFSET,
         (int)new_date_of_change
     );
 
@@ -411,7 +478,7 @@ char *seechanges_addfile(const char *filename)
         /* Dont leak sensible data with a diff hanging around */
         FILE *fdiff;
         char* nodiff_message = "<Diff truncated because nodiff option>";
-        fdiff = fopen(diff_location, "wb");
+        fdiff = wfopen(diff_location, "wb");
         if (!fdiff){
             merror(FIM_ERROR_GENDIFF_OPEN_FILE, diff_location);
             goto cleanup;
@@ -431,8 +498,8 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            mdebug1(FIM_DIFF_SKIPPED);
-            goto cleanup;
+            mdebug1(FIM_DIFF_SKIPPED); //LCOV_EXCL_LINE
+            goto cleanup; //LCOV_EXCL_LINE
         }
 
         snprintf(
@@ -459,7 +526,11 @@ char *seechanges_addfile(const char *filename)
         }
 
         /* Success */
+#ifndef WIN32
         status = 0;
+#else
+        status = pstatus;
+#endif
     }
 
 cleanup:
@@ -476,8 +547,9 @@ cleanup:
     }
 
     /* Generate alert */
-    return (gen_diff_alert(filename, new_date_of_change));
+    return (gen_diff_alert(filename, new_date_of_change, status));
 }
+
 
 #ifdef WIN32
 
@@ -493,8 +565,8 @@ char *adapt_win_fc_output(char *command_output) {
     size_t written = 0;
 
     if (line = strchr(command_output, '\n'), !line) {
-        merror(FIM_ERROR_GENDIFF_SECONDLINE_MISSING);
-        return NULL;
+        mdebug2("%s: %s", FIM_ERROR_GENDIFF_SECONDLINE_MISSING, command_output);
+        return strdup(command_output);
     }
 
     os_calloc(OS_MAXSTR + 1, sizeof(char), adapted_output);

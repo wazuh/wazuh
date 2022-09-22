@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is free software; you can redistribute it
@@ -14,7 +14,6 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_BUCKET = "bucket";
 static const char *XML_SERVICE = "service";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_ACCESS_KEY = "access_key";
 static const char *XML_SECRET_KEY = "secret_key";
 static const char *XML_RUN_ON_START = "run_on_start";
@@ -39,7 +38,9 @@ static const char *CONFIG_BUCKET_TYPE = "config";
 static const char *VPCFLOW_BUCKET_TYPE = "vpcflow";
 static const char *CUSTOM_BUCKET_TYPE = "custom";
 static const char *GUARDDUTY_BUCKET_TYPE = "guardduty";
+static const char *WAF_BUCKET_TYPE = "waf";
 static const char *INSPECTOR_SERVICE_TYPE = "inspector";
+static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 
 // Parse XML
 
@@ -63,7 +64,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     aws_config->enabled = 1;
     aws_config->run_on_start = 1;
     aws_config->remove_from_bucket = 0;
-    aws_config->interval = WM_AWS_DEFAULT_INTERVAL;
+    sched_scan_init(&(aws_config->scan_config));
+    aws_config->scan_config.interval = WM_AWS_DEFAULT_INTERVAL;
     module->context = &WM_AWS_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = aws_config;
@@ -81,32 +83,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 aws_config->enabled = 1;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_AWS_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            aws_config->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if ((aws_config->interval == 0 && endptr == nodes[i]->content) || aws_config->interval == ULONG_MAX) {
-                merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'd':
-                aws_config->interval *= 86400;
-                break;
-            case 'h':
-                aws_config->interval *= 3600;
-                break;
-            case 'm':
-                aws_config->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid interval at module '%s'", WM_AWS_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -179,11 +155,13 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
                     if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CONFIG_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, GUARDDUTY_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CISCO_UMBRELLA_BUCKET_TYPE)
+                        || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
-                            CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE);
+                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', '%s' or '%s'",
+                            *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
+                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -394,11 +372,19 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);	
             return OS_INVALID;
         }
     }
+
+    const int sched_read = sched_scan_read(&(aws_config->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
+        return OS_INVALID;
+    }
+
 
     // Support legacy config
     if (aws_config->bucket) {

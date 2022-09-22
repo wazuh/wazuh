@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -279,7 +279,7 @@ class DistributedAPI:
             agents = agent.Agent.get_agents_overview(
                 select=select_node, filters={'group': self.input_json['arguments']['group_id']})['items']
             if len(agents) == 0:
-                raise WazuhException(1750)
+                raise WazuhException(1751)
             del self.input_json['arguments']['group_id']
             node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                          itertools.groupby(agents, key=operator.itemgetter('node_name'))}
@@ -368,11 +368,12 @@ class APIRequestQueue:
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server
-        self.logger = logging.getLogger('wazuh').getChild('dapi')
-        self.logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='D API'))
+        self.logger = logging.getLogger('wazuh')
         self.pending_requests = {}
 
     async def run(self):
+        cluster.context_tag.set('Cluster')
+        cluster.context_subtag.set('D API')
         while True:
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import re
 from itertools import groupby
 from operator import itemgetter
 
@@ -39,7 +40,8 @@ fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'references': '`references`',
                                 'result': 'result',
                                 'status': '`status`',
-                                'reason': 'reason'}
+                                'reason': 'reason',
+                                'condition': 'condition'}
 fields_translation_sca_check_compliance = {'compliance.key': 'key',
                                            'compliance.value': 'value'}
 fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
@@ -55,6 +57,12 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                  fields=fields_translation_sca, count_field='policy_id'):
         self.default_query = default_query
         self.count_field = count_field
+        self.special_fields = ('title', 'rationale', 'description', 'remediation', 'reason')
+
+        # Replace characters with special meaning in SQL with wildcards.
+        for field in self.special_fields:
+            if field in filters:
+                filters[field] = filters[field].replace("'", "_").replace('"', "_")
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
                               search=search, select=select, fields=fields, default_sort_field=default_sort_field,
@@ -65,7 +73,58 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         return self.default_query
 
     def _default_count_query(self):
-        return f"COUNT(DISTINCT {self.count_field})"
+        return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
+
+    def _parse_legacy_filters(self):
+        """
+        Parses legacy filters.
+        """
+        # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        legacy_filters_as_list = {}
+
+        # Do not split the value by commas if it is within special_fields.
+        for name, value in self.legacy_filters.items():
+            if isinstance(value, str) and name not in self.special_fields:
+                legacy_filters_as_list.update({name: value.split(',')})
+            else:
+                legacy_filters_as_list.update({name: value if isinstance(value, list) else [value]})
+        # each filter is represented using a dictionary containing the following fields:
+        #   * Value     -> Value to filter by
+        #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
+        #                  must be added to the field name.
+        #   * Operator  -> Operator to use in the database query. In legacy filters the only available one is =.
+        #   * Separator -> Logical operator used to join queries. In legacy filters, the AND operator is used when
+        #                  different fields are filtered and the OR operator is used when filtering by the same field
+        #                  multiple times.
+        #   * Level     -> The level defines the number of parenthesis the query has. In legacy filters, no
+        #                  parenthesis are used except when filtering over the same field.
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
+                                'field': '{}${}'.format(name, i),
+                                'operator': 'LIKE',
+                                'separator': 'OR' if len(value) > 1 else 'AND',
+                                'level': 0 if i == len(value) - 1 else 1}
+                               for name, value in legacy_filters_as_list.items()
+                               for subvalue, i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
+        if self.query_filters:
+            # if only traditional filters have been defined, remove last AND from the query.
+            self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
+
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if field_name in self.date_fields and re.match(r"^[0-9]+(\.([0-9]+))?$", q_filter['value']) is None:
+            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
+            # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
+            self._filter_date(q_filter, field_name)
+        else:
+            if q_filter['value'] is not None:
+                self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
+                    r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
+                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
+                                                 field_filter)
+                if not field_filter.isdigit():
+                    # filtering without being uppercase/lowercase sensitive
+                    self.query += ' COLLATE NOCASE'
+            else:
+                self.query += '{} IS null'.format(self.fields[field_name])
 
 
 def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,

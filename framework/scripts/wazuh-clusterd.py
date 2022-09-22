@@ -1,6 +1,6 @@
 #!/var/ossec/framework/python/bin/python3
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import logging
@@ -67,6 +67,8 @@ def print_version():
 # Master main
 #
 async def master_main(args, cluster_config, cluster_items, logger):
+    cluster.context_tag.set('Master')
+    cluster.context_subtag.set("Main")
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
                               cluster_items=cluster_items)
@@ -81,6 +83,8 @@ async def master_main(args, cluster_config, cluster_items, logger):
 # Worker main
 #
 async def worker_main(args, cluster_config, cluster_items, logger):
+    cluster.context_tag.set('Worker')
+    cluster.context_subtag.set("Main")
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
@@ -179,5 +183,8 @@ if __name__ == '__main__':
         asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
+    except MemoryError:
+        main_logger.error("Directory '/tmp' needs read, write & execution "
+                          "permission for 'ossec' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")

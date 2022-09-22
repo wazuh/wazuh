@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -14,6 +14,7 @@
 
 #include <shared.h>
 #include <pthread.h>
+#include <openssl/evp.h>
 #include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
@@ -49,16 +50,19 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
     WDB_STMT_FIM_INSERT_ENTRY,
+    WDB_STMT_FIM_INSERT_ENTRY2,
     WDB_STMT_FIM_UPDATE_ENTRY,
     WDB_STMT_FIM_DELETE,
     WDB_STMT_FIM_UPDATE_DATE,
     WDB_STMT_FIM_FIND_DATE_ENTRIES,
+    WDB_STMT_FIM_GET_ATTRIBUTES,
+    WDB_STMT_FIM_UPDATE_ATTRIBUTES,
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_DEL,
-    WDB_STMT_PROGRAM_GET,
     WDB_STMT_PROGRAM_UPD,
+    WDB_STMT_PROGRAM_GET,
     WDB_STMT_HWINFO_INSERT,
     WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HWINFO_DEL,
@@ -76,8 +80,6 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
-    WDB_STMT_SCAN_INFO_FIND,
-    WDB_STMT_SCAN_INFO_INSERT,
     WDB_STMT_SCAN_INFO_UPDATEFS,
     WDB_STMT_SCAN_INFO_UPDATEFE,
     WDB_STMT_SCAN_INFO_UPDATESS,
@@ -113,16 +115,25 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
-    WDB_STMT_SIZE
+    WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_DELETE_AROUND,
+    WDB_STMT_FIM_DELETE_RANGE,
+    WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT,
+    WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_SIZE,
+    WDB_STMT_PRAGMA_JOURNAL_WAL,
 } wdb_stmt;
 
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
-    char * agent_id;
+    char * id;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
+    time_t transaction_begin_time;
     pthread_mutex_t mutex;
     struct wdb_t * next;
 } wdb_t;
@@ -130,9 +141,15 @@ typedef struct wdb_t {
 typedef struct wdb_config {
     int sock_queue_size;
     int worker_pool_size;
-    int commit_time;
+    int commit_time_min;
+    int commit_time_max;
     int open_db_limit;
 } wdb_config;
+
+/// Enumeration of components supported by the integrity library.
+typedef enum {
+    WDB_FIM         ///< File integrity monitoring.
+} wdb_component_t;
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
@@ -142,6 +159,8 @@ extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
 extern char *schema_upgrade_v2_sql;
 extern char *schema_upgrade_v3_sql;
+extern char *schema_upgrade_v4_sql;
+extern char *schema_upgrade_v5_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;
@@ -151,6 +170,15 @@ extern OSHash * open_dbs;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
+
+/**
+ * @brief Open mitre database and store in DB poll.
+ *
+ * It is opened every time a query to Mitre database is done.
+ *
+ * @return wdb_t* Database Structure that store mitre database or NULL on failure.
+ */
+wdb_t * wdb_open_mitre();
 
 /* Close global database */
 void wdb_close_global();
@@ -191,11 +219,13 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
 int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size);
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file);
+int wdb_syscheck_save2(wdb_t * wdb, const char * payload);
 
 // Find file entry: returns 1 if found, 0 if not, or -1 on error.
 int wdb_fim_find_entry(wdb_t * wdb, const char * path);
 
 int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum_t * sum);
+int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data);
 
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
@@ -309,9 +339,6 @@ char* wdb_agent_group(int id);
 int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
-
-/* Initialize table metadata Returns 0 on success or -1 on error. */
-int wdb_metadata_initialize (wdb_t *wdb);
 
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
@@ -489,7 +516,7 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
-wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
+wdb_t * wdb_init(sqlite3 * db, const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
@@ -544,11 +571,26 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Function to get values from MITRE database.
+ * 
+ * @param wdb the MITRE struct database.
+ * @param input query to get a value.
+ * @param output response of the query.
+ * @retval 1 Success: response contains the value.
+ * @retval 0 On error: the value was not found.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
+
+int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
+
+int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
+
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp);
+
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
-int wdb_scan_info_init (wdb_t *wdb);
-int wdb_scan_info_find(wdb_t * wdb, const char * module);
-int wdb_scan_info_insert (wdb_t * wdb, const char *module);
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
 int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output);
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
@@ -561,6 +603,60 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
+
+/**
+ * @brief Query the checksum of a data range
+ *
+ * Check that the accumulated checksum of every item between begin and
+ * end (included) ordered alphabetically matches the checksum provided.
+ *
+ * On success, also delete every file between end and tail (if provided),
+ * none of them included.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param command Integrity check subcommand: "integrity_check_global", "integrity_check_left" or "integrity_check_right".
+ * @param payload Operation arguments in JSON format.
+ * @pre payload must contain strings "id", "begin", "end" and "checksum", and optionally "tail".
+ * @retval 2 Success: checksum matches.
+ * @retval 1 Success: checksum does not match.
+ * @retval 0 Success: no files were found in this range.
+ * @retval -1 On error.
+ */
+int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload);
+
+/**
+ * @brief Query a complete table clear
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param payload Operation arguments in JSON format.
+ * @pre payload must contain string "id".
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload);
+
+/**
+ * @brief Set the database journal mode to write-ahead logging
+ *
+ * @param db Pointer to an open database.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_journal_wal(sqlite3 *db);
+
+/**
+ * @brief Function to get a MITRE technique's name.
+ * 
+ * @param wdb the MITRE struct database.
+ * @param id MITRE technique's ID.
+ * @param output MITRE technique's name.
+ * @retval 1 Sucess: name found on MITRE database.
+ * @retval 0 On error: name not found on MITRE database.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

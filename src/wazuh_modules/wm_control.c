@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent control
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * January, 2019
  *
  * This program is free software; you can redistribute it
@@ -23,7 +23,7 @@ cJSON *wm_control_dump(void);
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
     (wm_routine)wm_control_main,
-    (wm_routine)wm_control_destroy,
+    (wm_routine)(void *)wm_control_destroy,
     (cJSON * (*)(const void *))wm_control_dump
 };
 

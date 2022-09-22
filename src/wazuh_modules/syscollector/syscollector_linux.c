@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Linux
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is free software; you can redistribute it
@@ -275,9 +275,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
     int random_id = os_random();
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -372,7 +370,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
 char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -395,10 +393,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    // Set timestamp
-
-    timestamp = w_get_timestamp(time(NULL));
-
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
@@ -406,7 +400,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     }
 
     // Set Little-endian order by default
-    if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
+    if (ret = dbp->set_lorder(dbp, 1234), ret != 0) {
         mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
     }
 
@@ -453,7 +447,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
         for (i = 0; i < index; i++) {
             offset = 16;
-            if ((ret = read_entry(bytes, info)) == 0) {
+            if ((ret = read_entry(bytes, info)), ret == 0) {
                 os_calloc(1, sizeof(rpm_data), info->next);
                 info = info->next;
             }
@@ -589,16 +583,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     FILE *fp;
     size_t length;
     int i, installed = 1;
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
     cJSON *package = NULL;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    timestamp = w_get_timestamp(time(NULL));
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -797,9 +787,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -854,9 +842,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-
-    timestamp = w_get_timestamp(time(NULL));
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -911,13 +897,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    timestamp = w_get_timestamp(time(NULL));
-
 
     if (random_id < 0)
         random_id = -random_id;
@@ -1014,7 +997,7 @@ hw_info *get_system_linux(){
     } else {
         char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
-            if ((aux_string = strstr(string, "model name")) != NULL){
+            if ((aux_string = strstr(string, "model name")), aux_string != NULL){
 
                 char *cpuname;
                 strtok_r(string, ":", &saveptr);
@@ -1025,7 +1008,7 @@ hw_info *get_system_linux(){
 
                 free(info->cpu_name);
                 info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
+            } else if ((aux_string = strstr(string, "cpu MHz")), aux_string != NULL){
 
                 char *frec;
                 strtok_r(string, ":", &saveptr);
@@ -1050,7 +1033,7 @@ hw_info *get_system_linux(){
         while (fgets(string, OS_MAXSTR, fp) != NULL){
             char *aux_string = NULL;
 
-            if ((aux_string = strstr(string, "MemTotal")) != NULL){
+            if ((aux_string = strstr(string, "MemTotal")), aux_string != NULL){
 
                 char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
@@ -1063,7 +1046,7 @@ hw_info *get_system_linux(){
                 } else {
                     info->ram_total = 0;
                 }
-            } else if ((aux_string = strstr(string, "MemFree")) != NULL){
+            } else if ((aux_string = strstr(string, "MemFree")), aux_string != NULL){
 
                 char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
@@ -1424,7 +1407,11 @@ char* get_default_gateway(char *ifa_name){
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 
             if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7){
-                if (destination == 00000000 && !strcmp(if_name, interface)){
+                if (destination != 00000000) {
+                    break;
+                }
+
+                if (!strcmp(if_name, interface)) {
                     address.s_addr = gateway;
                     snprintf(def_gateway, V_LENGTH, "%s|%d", inet_ntoa(*(struct in_addr *) &address), metric);
                     fclose(fp);
@@ -1443,7 +1430,7 @@ char* get_default_gateway(char *ifa_name){
 
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
-    char *timestamp;
+    char *timestamp = w_get_timestamp(time(NULL));
     int random_id = os_random();
 
     if (random_id < 0)
@@ -1451,8 +1438,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    timestamp = w_get_timestamp(time(NULL));
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 

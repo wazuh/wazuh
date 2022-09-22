@@ -1,6 +1,6 @@
 
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -42,14 +42,22 @@ class WazuhDBConnection:
         query_elements = query.split(" ")
         sql_first_index = 2 if query_elements[0] == 'agent' else 1
 
-        input_val_errors = [
-            (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
-            (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
-            (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
-            (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
-             query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
-            (not ';' in query, "Found a not valid symbol in database query: ;")
-        ]
+        if query_elements[0] == 'mitre':
+            input_val_errors = [
+                (query_elements[sql_first_index] == 'sql',
+                 'Incorrect WDB request type'),
+                (query_elements[2] == 'select',
+                 'Wrong SQL query for Mitre database')
+            ]
+        else:
+            input_val_errors = [
+                (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
+                (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
+                (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
+                (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
+                 query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
+                (not ';' in query, "Found a not valid symbol in database query: ;")
+            ]
 
         for check, error_text in input_val_errors:
             if not check:
@@ -153,18 +161,21 @@ class WazuhDBConnection:
         if 'count' not in query_lower:
             lim = 0
             if 'limit' in query_lower:
-                lim  = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
+                lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
-            regex = re.compile(r"\w+ \d+? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
+            regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
-            total = list(self._send(countq)[0].values())[0]
+            try:
+                total = list(self._send(countq)[0].values())[0]
+            except IndexError:
+                total = 0
 
             limit = lim if lim != 0 else total
 
             response = []
-            step = limit if limit < self.request_slice and limit > 0  else self.request_slice
+            step = limit if limit < self.request_slice and limit > 0 else self.request_slice
             try:
                 for off in range(offset, limit+offset, step):
                     send_request_to_wdb(query_lower, step, off, response)

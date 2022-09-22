@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,14 +13,16 @@
 #include <stdio.h>
 
 static const char *XML_ENABLED = "enabled";
-static const char *XML_SCAN_DAY = "day";
-static const char *XML_WEEK_DAY = "wday";
-static const char *XML_TIME = "time";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+
+#ifdef UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
+
 static unsigned int policies_count = 0;
 
 
@@ -80,20 +82,16 @@ static short eval_bool(const char *str)
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 {
     unsigned int i;
-    int month_interval = 0;
     wm_sca_t *sca;
 
     if(!module->data) {
         os_calloc(1, sizeof(wm_sca_t), sca);
         sca->enabled = 1;
         sca->scan_on_start = 1;
-        sca->scan_wday = -1;
-        sca->scan_day = 0;
-        sca->scan_time = NULL;
+        sched_scan_init(&(sca->scan_config));
         sca->skip_nfs = 1;
         sca->alert_msg = NULL;
         sca->queue = -1;
-        sca->interval = WM_DEF_INTERVAL / 2;
         sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -209,73 +207,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->enabled = enabled;
-        }
-        else if (!strcmp(nodes[i]->element, XML_WEEK_DAY))
-        {
-            sca->scan_wday = w_validate_wday(nodes[i]->content);
-            if (sca->scan_wday < 0 || sca->scan_wday > 6) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
-            if (!OS_StrIsNum(nodes[i]->content)) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return (OS_INVALID);
-            } else {
-                sca->scan_day = atoi(nodes[i]->content);
-                if (sca->scan_day < 1 || sca->scan_day > 31) {
-                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                    return (OS_INVALID);
-                }
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_TIME))
-        {
-            sca->scan_time = w_validate_time(nodes[i]->content);
-            if (!sca->scan_time) {
-                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            sca->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if (sca->interval == 0 || sca->interval == UINT_MAX) {
-                merror("Invalid interval value.");
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'M':
-                month_interval = 1;
-                sca->interval *= 60; // We can`t calculate seconds of a month
-                break;
-            case 'w':
-                sca->interval *= 604800;
-                break;
-            case 'd':
-                sca->interval *= 86400;
-                break;
-            case 'h':
-                sca->interval *= 3600;
-                break;
-            case 'm':
-                sca->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid interval value.");
-                return OS_INVALID;
-            }
-
-            if (sca->interval < 60) {
-                mwarn("Interval must be greater than 60 seconds. New interval value: 60s");
-                sca->interval = 60;
-            }
         }
         else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START))
         {
@@ -404,40 +335,15 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->skip_nfs = skip_nfs;
-        }
-        else
-        {
-            mwarn("No such tag <%s>", nodes[i]->element);
-        }
-    }
-
-    // Validate scheduled scan parameters and interval value
-
-    if (sca->scan_day && (sca->scan_wday >= 0)) {
-        merror("Options 'day' and 'wday' are not compatible.");
-        return OS_INVALID;
-    } else if (sca->scan_day) {
-        if (!month_interval) {
-            mwarn("Interval must be a multiple of one month. New interval value: 1M");
-            sca->interval = 60; // 1 month
-        }
-        if (!sca->scan_time)
-            sca->scan_time = strdup("00:00");
-    } else if (sca->scan_wday >= 0) {
-        if (w_validate_interval(sca->interval, 1) != 0) {
-            sca->interval = 604800;  // 1 week
-            mwarn("Interval must be a multiple of one week. New interval value: 1w");
-        }
-        if (sca->interval == 0)
-            sca->interval = 604800;
-        if (!sca->scan_time)
-            sca->scan_time = strdup("00:00");
-    } else if (sca->scan_time) {
-        if (w_validate_interval(sca->interval, 0) != 0) {
-            sca->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("Interval must be a multiple of one day. New interval value: 1d");
+        } 
+        else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
+        } else {
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);	
+            return OS_INVALID;
         }
     }
 
-    return 0;
+    const int sched_read = sched_scan_read(&(sca->scan_config), nodes, module->context->name);
+    return sched_read;
 }

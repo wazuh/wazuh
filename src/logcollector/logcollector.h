@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -97,7 +97,7 @@ void *read_json(logreader *lf, int *rc, int drop_it);
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
-void win_start_event_channel(char *evt_log, char future, char *query);
+int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time);
 void win_format_event_string(char *string);
 #endif
 
@@ -192,6 +192,10 @@ void w_create_input_threads();
 
 /* Set mutexes for each file */
 void w_set_file_mutexes();
+
+/* Read stop signal from reader threads */
+int can_read();
+
 extern int sample_log_length;
 extern int lc_debug_level;
 extern int accept_remote;

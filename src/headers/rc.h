@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -37,5 +37,6 @@
 #define HC_FIM_DB_SS        "fim-db-start-scan"
 #define HC_FIM_DB_ES        "fim-db-end-scan"
 #define CFGA_DB_DUMP        "sca-dump"
+#define HC_SK               "syscheck "
 
 #endif /* RC_H */

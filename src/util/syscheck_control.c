@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
         /* Clean all agents (and server) db */
         if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
-            struct dirent *entry;
+            struct dirent *entry = NULL;
 
             sys_dir = opendir(SYSCHECK_DIR);
             if (!sys_dir) {

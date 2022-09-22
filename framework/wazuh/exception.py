@@ -1,6 +1,6 @@
 
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -60,7 +60,7 @@ class WazuhException(Exception):
         1202: 'Argument \'status\' must be: enabled, disabled or all',
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
-        1205: 'Requirement not valid. Valid ones are pci, gdpr, gpg13, hipaa and nist-800-53',
+        1205: 'Requirement not valid. Valid ones are pci, gdpr, gpg13, hipaa, nist-800-53 and tsc',
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
@@ -149,8 +149,9 @@ class WazuhException(Exception):
         1746: "Could not parse current client.keys file",
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
-        1749: "Downgrading an agent requires the force flag. Use force=1 parameter the downgrade",
-        1750: 'The group does not exist or it is empty',
+        1749: "Downgrading an agent requires the force flag. Use force=1 parameter to force the downgrade",
+        1750: "Could not restart selected agent, active-response is disabled in the agent",
+        1751: 'The group does not exist or it is empty',
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

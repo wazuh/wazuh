@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -34,6 +34,9 @@ char *convert_windows_string(LPCWSTR string);
 
 // Convert double to string
 #define w_double_str(x) ({char *do_str; os_calloc(20, sizeof(char),do_str); snprintf(do_str, 19, "%f", x); do_str;})
+
+// Convert long to string
+#define w_long_str(x) ({char *do_str; os_calloc(32, sizeof(char),do_str); snprintf(do_str, 31, "%ld", x); do_str;})
 
 // Replace a character in a string
 #define wchr_replace(x, y, z) { char *x_it; for (x_it = x; *x_it != '\0'; x_it++) if (*x_it == y) *x_it = z; }
@@ -120,11 +123,44 @@ void w_remove_zero_dec(char *str_number);
 /* Similar to strtok_r but checks for full delim appearances */
 char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
-const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len);
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(const char * source, const char * str);
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len);
 
 char *decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size);
 
 /**
+ * @brief Parse boolean string
+ *
+ * @param string Input string.
+ * @pre string is not null.
+ * @retval 1 True.
+ * @retval 0 False.
+ * @retval -1 Cannot parse string.
+ */
+int w_parse_bool(const char * string);
+
+/**
+ * @brief Parse positive time string into seconds
+ *
+ * Format: ^[0-9]+(s|m|h|d|w)?
+ *
+ * s: seconds
+ * m: minutes
+ * h: hours
+ * d: days
+ * w: weeks
+ *
+ * Any character after the first byte is ignored.
+ *
+ * @param string Input string.
+ * @pre string is not null.
+ * @return Time represented in seconds.
+ * @retval -1 Cannot parse string, or value is negative.
+ */
+long w_parse_time(const char * string);
+
+/*
  * @brief Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
  *
  * @param s String.
@@ -153,5 +189,13 @@ char * wstr_escape_json(const char * string);
  * @return Pointer to a new string containg an unescaped copy of "string"
  */
 char * wstr_unescape_json(const char * string);
+
+/**
+ * @brief Lowercase a string
+ *
+ * @param string Input string
+ * @return Pointer to a new string containing a lowercased copy of "string"
+ */
+char * w_tolower_str(const char *string);
 
 #endif

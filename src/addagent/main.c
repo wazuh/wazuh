@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -14,10 +14,18 @@
 #if defined(__MINGW32__) || defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
+    assert(name);
+    assert(val);
+
     int len = strlen(name) + strlen(val) + 2;
-    char *str = (char *)malloc(len);
+    char *str;
+    os_malloc(len, str);
+
     snprintf(str, len, "%s=%s", name, val);
     putenv(str);
+
+    os_free(str);
+
     return 0;
 }
 #endif
@@ -217,7 +225,7 @@ int main(int argc, char **argv)
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Set the group */

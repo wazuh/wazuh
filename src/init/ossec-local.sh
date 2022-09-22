@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -327,7 +327,8 @@ stopa()
 
             if ! wait_pid $pid
             then
-                echo "Process ${i} couldn't be killed.";
+                echo "Process ${i} couldn't be terminated. It will be killed.";
+                kill -9 $pid
             fi
         else
             echo "${i} not running...";

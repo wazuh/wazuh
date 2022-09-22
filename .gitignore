@@ -90,5 +90,14 @@ src/ossec.test
 src/tap_*
 etc/preloaded-vars.conf
 
+# unit tests
+src/unit_tests/build/*
+
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
 active-response/firewall-drop.sh
+
+# Documentation folder
+documentation/
+
+# MSU for Vulnerability Detector
+src/wazuh_modules/vulnerability_detector/msu.json.gz
