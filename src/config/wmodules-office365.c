@@ -95,14 +95,10 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
-            // Create auth node
-            if (office365_auth) {
+            // Create new auth node if the current one is already configured (i.e., not the default)
+            if (office365_auth->tenant_id) {
                 os_calloc(1, sizeof(wm_office365_auth), office365_auth->next);
                 office365_auth = office365_auth->next;
-            } else {
-                // First office365_auth
-                os_calloc(1, sizeof(wm_office365_auth), office365_auth);
-                office365_config->auth = office365_auth;
             }
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
