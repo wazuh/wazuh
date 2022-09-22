@@ -21,6 +21,7 @@ static const char *XML_TENANT_ID            = "tenant_id";
 static const char *XML_CLIENT_ID            = "client_id";
 static const char *XML_CLIENT_SECRET_PATH   = "client_secret_path";
 static const char *XML_CLIENT_SECRET        = "client_secret";
+static const char *XML_API_TYPE             = "api_type";
 
 static const char *XML_SUBSCRIPTIONS                = "subscriptions";
 static const char *XML_SUBSCRIPTION                 = "subscription";
@@ -136,6 +137,29 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                     }
                     os_free(office365_auth->client_secret);
                     os_strdup(children[j]->content, office365_auth->client_secret);
+                } else if (!strcmp(children[j]->element, XML_API_TYPE)) {
+                    if (strlen(children[j]->content) == 0){
+                        merror("Empty content for tag '%s' at module '%s'.", XML_API_TYPE, WM_OFFICE365_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+                    else if (!strcmp(children[j]->content, "commercial")){
+                        office365_auth->login_fqdn = "login.microsoftonline.com";
+                        office365_auth->management_fqdn = "manage.office.com";
+                    }
+                    else if (!strcmp(children[j]->content, "gcc")){
+                        office365_auth->login_fqdn = "login.microsoftonline.com";
+                        office365_auth->management_fqdn = "manage-gcc.office.com";
+                    }
+                    else if (!strcmp(children[j]->content, "gcc-high")){
+                        office365_auth->login_fqdn = "login.microsoftonline.us";
+                        office365_auth->management_fqdn = "manage.office365.us";
+                    }
+                    else {
+                        merror("Invalid content for tag '%s' at module '%s'.", XML_API_TYPE, WM_OFFICE365_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
                 } else {
                     merror("No such tag '%s' at module '%s'.", children[j]->element, WM_OFFICE365_CONTEXT.name);
                     OS_ClearNode(children);
