@@ -541,7 +541,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
     }
 
     memset(auth_payload, '\0', OS_SIZE_8192);
-    snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, auth->client_id, current_auth->management_fqdn, auth_secret);
+    snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, auth->client_id, auth->management_fqdn, auth_secret);
 
     memset(url, '\0', OS_SIZE_8192);
     snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_URL, auth->login_fqdn, auth->tenant_id);
