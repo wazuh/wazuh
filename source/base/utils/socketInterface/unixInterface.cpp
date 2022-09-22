@@ -142,6 +142,8 @@ void unixInterface::socketConnect()
         WAZUH_LOG_WARN(
             "Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
     }
+
+    WAZUH_LOG_DEBUG("Connected to '{}'...", m_path);
 }
 
 } // namespace base::utils::socketInterface
