@@ -653,6 +653,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
         });
 }
 
+// field: +s_hex_to_number/$ref
 base::Expression opBuilderHelperHexToNumber(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] =
