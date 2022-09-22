@@ -102,7 +102,8 @@ static int wm_sca_check_process_is_running(OSList *p_list, char **reason, w_expr
 #ifndef WIN32
 static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason);
 #endif
-static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number, char **reason);
+static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number, char **reason, w_expression_t * regex_engine);
+static int wm_sca_regex_numeric_comparison (const char *const str, char **reason, w_expression_t * regex_engine);
 
 #ifdef WIN32
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char **reason, w_expression_t * regex_engine);
@@ -1491,7 +1492,9 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
     return RETURN_INVALID;
 }
 
-static int wm_sca_check_file_contents(const char * const file, char **reason, w_expression_t * regex_engine)
+static int wm_sca_check_file_contents(const char * const file,
+                                      char **reason,
+                                      w_expression_t * regex_engine)
 {
     mdebug2("Checking contents of file '%s' against pattern '%s'", file, w_expression_get_regex_pattern(regex_engine));
 
@@ -1588,7 +1591,9 @@ static int wm_sca_check_file_list_for_existence(const char * const file_list, ch
     return result_accumulator;
 }
 
-static int wm_sca_check_file_list_for_contents(const char * const file_list, char **reason, w_expression_t * regex_engine)
+static int wm_sca_check_file_list_for_contents(const char * const file_list,
+                                               char **reason,
+                                               w_expression_t * regex_engine)
 {
     mdebug1("Checking file list '%s' with '%s'", file_list, w_expression_get_regex_pattern(regex_engine));
 
@@ -1638,7 +1643,10 @@ static int wm_sca_check_file_list_for_contents(const char * const file_list, cha
     return result_accumulator;
 }
 
-static int wm_sca_read_command(char *command, wm_sca_t * data, char **reason, w_expression_t * regex_engine)
+static int wm_sca_read_command(char *command,
+                               wm_sca_t * data,
+                               char **reason,
+                               w_expression_t * regex_engine)
 {
     if (command == NULL) {
         mdebug1("No Command specified Returning.");
@@ -1716,7 +1724,10 @@ static int wm_sca_read_command(char *command, wm_sca_t * data, char **reason, w_
     return result;
 }
 
-static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number, char **reason)
+static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison,
+                                                   const long int number,
+                                                   char **reason,
+                                                   w_expression_t * regex_engine)
 {
     if (!partial_comparison) {
         if (*reason == NULL) {
@@ -1729,8 +1740,14 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
 
     mdebug2("Partial comparison '%s'", partial_comparison);
 
-    OSRegex regex;
-    if (!OSRegex_Compile("(\\d+)", &regex, OS_RETURN_SUBSTRING)) {
+    w_expression_t * regex;
+    if (strcmp(w_expression_get_regex_type(regex_engine), OSREGEX_STR) == 0) {
+            w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    }
+    else if (strcmp(w_expression_get_regex_type(regex_engine), PCRE2_STR) == 0) {
+            w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    }
+    if (!w_expression_compile(regex_engine, "(\\d+)", OS_RETURN_SUBSTRING)) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Cannot compile regex.");
@@ -1738,44 +1755,50 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
         mwarn("Cannot compile regex");
         return RETURN_INVALID;
     }
-
-    if (!OSRegex_Execute(partial_comparison, &regex)) {
+    regex_matching * regex_match = NULL;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+    if (!w_expression_match(regex, partial_comparison, NULL, regex_match)) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "No integer was found within the comparison '%s' ", partial_comparison);
         }
         mwarn("No integer was found within the comparison '%s' ", partial_comparison);
-        OSRegex_FreePattern(&regex);
+        os_free(regex_match);
+        w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
 
-    if (!regex.d_sub_strings[0]) {
+    if (!regex_match->sub_strings[0]) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "No number was captured.");
         }
         mwarn("No number was captured.");
-        OSRegex_FreePattern(&regex);
+        os_free(regex_match);
+        w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
 
-    mdebug2("Value given for comparison: '%s'", regex.d_sub_strings[0]);
+    mdebug2("Value given for comparison: '%s'", regex_match->sub_strings[0]);
 
     errno = 0;
     char *strtol_end_ptr = NULL;
-    const long int value_given = strtol(regex.d_sub_strings[0], &strtol_end_ptr, 10);
+    const long int value_given = strtol(regex_match->sub_strings[0], &strtol_end_ptr, 10);
 
-    if (errno != 0 || strtol_end_ptr == regex.d_sub_strings[0]) {
+    if (errno != 0 || strtol_end_ptr == regex_match->sub_strings[0]) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
+            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
         }
-        mwarn("Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
-        OSRegex_FreePattern(&regex);
+        mwarn("Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
+        os_free(regex_match);
+        w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
 
-    OSRegex_FreePattern(&regex);
+    os_free(regex_match);
+    w_free_expression_t(&regex);
+
 
     mdebug2("Value converted: '%ld'", value_given);
 
@@ -1806,10 +1829,12 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
     return RETURN_INVALID;
 }
 
-int wm_sca_regex_numeric_comparison (const char * const pattern, const char *const str, char **reason, w_expression_t * regex_engine)
+static int wm_sca_regex_numeric_comparison (const char *const str,
+                                            char **reason,
+                                            w_expression_t * regex_engine)
 {
     char *pattern_copy;
-    os_strdup(pattern, pattern_copy);
+    os_strdup(w_expression_get_regex_pattern(regex_engine), pattern_copy);
     char *pattern_copy_ref = pattern_copy;
     char *partial_comparison_ref = strstr(pattern_copy_ref, " compare ");
 
@@ -1827,65 +1852,57 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
     partial_comparison_ref += 9;
     mdebug2("REGEX: '%s'. Partial comparison: '%s'", pattern_copy_ref, partial_comparison_ref);
 
-    w_expression_t * regex;
-    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
-    if (w_expression_compile(regex, pattern_copy_ref, OS_RETURN_SUBSTRING)) {
-        mdebug2("Cannot compile regex '%s'", pattern_copy_ref);
-        if (*reason == NULL) {
-            os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Cannot compile regex '%s'", pattern_copy_ref);
-        }
-        os_free(pattern_copy);
-        return RETURN_INVALID;
-    }
+    regex_matching * regex_match = NULL;
+    os_calloc(1, sizeof(regex_matching), regex_match);
 
-    if (w_expression_match(regex, str, NULL, NULL)) {
+    if (w_expression_match(regex_engine, str, NULL, regex_match)) {
         mdebug2("No match found for regex '%s'", pattern_copy_ref);
         os_free(pattern_copy);
-        w_free_expression_t(&regex);
+        os_free(regex_match);
         return RETURN_NOT_FOUND;
     }
 
-    if (!regex->regex->d_sub_strings[0]) {
+    if (!regex_match->sub_strings[0]) {
         mdebug2("Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         }
         os_free(pattern_copy);
-        w_free_expression_t(&regex);
+        os_free(regex_match);
         return RETURN_INVALID;
     }
 
-    mdebug2("Captured value: '%s'", regex->regex->d_sub_strings[0]);
+    mdebug2("Captured value: '%s'", regex_match->sub_strings[0]);
 
     errno = 0;
     char *strtol_end_ptr = NULL;
-    const long int value_captured = strtol(regex->regex->d_sub_strings[0], &strtol_end_ptr, 10);
+    const long int value_captured = strtol(regex_match->sub_strings[0], &strtol_end_ptr, 10);
 
-    if (errno != 0 || strtol_end_ptr == regex->regex->d_sub_strings[0]) {
-        mdebug2("Conversion error. Cannot convert '%s' to integer.", regex->regex->d_sub_strings[0]);
+    if (errno != 0 || strtol_end_ptr == regex_match->sub_strings[0]) {
+        mdebug2("Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex->regex->d_sub_strings[0]);
+            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex_match->sub_strings[0]);
         }
         os_free(pattern_copy);
-        w_free_expression_t(&regex);
+        os_free(regex_match);
         return RETURN_INVALID;
     }
 
-    w_free_expression_t(&regex);
-
     mdebug2("Converted value: '%ld'", value_captured);
 
-    const int result = wm_sca_apply_numeric_partial_comparison(partial_comparison_ref, value_captured, reason);
+    const int result = wm_sca_apply_numeric_partial_comparison(partial_comparison_ref, value_captured, reason, regex_engine);
     mdebug2("Comparison result '%ld %s' -> %d", value_captured, partial_comparison_ref, result);
 
     os_free(pattern_copy);
+    os_free(regex_match);
     return result;
 }
 
-int wm_sca_test_positive_minterm(const char * const str, char **reason, w_expression_t * regex_engine)
+int wm_sca_test_positive_minterm(const char * const str,
+                                 char **reason,
+                                 w_expression_t * regex_engine)
 {
     const char *pattern_ref = w_expression_get_regex_pattern(regex_engine);
     if (strncasecmp(pattern_ref, "r:", 2) == 0) {
@@ -1895,14 +1912,16 @@ int wm_sca_test_positive_minterm(const char * const str, char **reason, w_expres
         }
     } else if (strncasecmp(pattern_ref, "n:", 2) == 0) {
         pattern_ref += 2;
-        return wm_sca_regex_numeric_comparison(pattern_ref, str, reason, regex_engine);
+        return wm_sca_regex_numeric_comparison(str, reason, regex_engine);
     } else if (strcasecmp(pattern_ref, str) == 0) {
         return RETURN_FOUND;
     }
     return RETURN_NOT_FOUND;
 }
 
-int wm_sca_pattern_matches(const char * const str, char **reason, w_expression_t * regex_engine)
+int wm_sca_pattern_matches(const char * const str,
+                           char **reason,
+                           w_expression_t * regex_engine)
 {
     if (str == NULL) {
         return 0;
@@ -1964,7 +1983,10 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
     return RETURN_INVALID;
 }
 
-static int wm_sca_check_dir(const char * const dir, const char * const file, char **reason,  w_expression_t * regex_engine)
+static int wm_sca_check_dir(const char * const dir,
+                            const char * const file,
+                            char **reason,
+                            w_expression_t * regex_engine)
 {
     mdebug2("Checking directory '%s'%s%s%s%s", dir,
         file ? " -> "  : "", file ? file : "",
@@ -2053,7 +2075,9 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     return result_accumulator;
 }
 
-static int wm_sca_check_process_is_running(OSList *p_list, char **reason, w_expression_t * regex_engine)
+static int wm_sca_check_process_is_running(OSList *p_list,
+                                           char **reason,
+                                           w_expression_t * regex_engine)
 {
     if (p_list == NULL) {
         if (*reason == NULL) {
@@ -2088,7 +2112,10 @@ void wm_sca_destroy(wm_sca_t * data) {
 
 #ifdef WIN32
 
-static int wm_sca_is_registry(char *entry_name, char *reg_option, char **reason, w_expression_t * regex_engine)
+static int wm_sca_is_registry(char *entry_name,
+                              char *reg_option,
+                              char **reason,
+                              w_expression_t * regex_engine)
 {
     char *rk = wm_sca_os_winreg_getkey(entry_name);
 
