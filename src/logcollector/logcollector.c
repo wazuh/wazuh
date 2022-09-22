@@ -149,7 +149,7 @@ int check_ignore_and_restrict(OSList * ignore_exp_list, OSList * restrict_exp_li
     }
 
     if (restrict_exp_list) {
-        OSList_foreach(node_it, ignore_exp_list) {
+        OSList_foreach(node_it, restrict_exp_list) {
             dir_it = node_it->data;
             /* Check restrict regex, only if match every log is processed */
             if (!w_expression_match(dir_it, log_line, NULL, NULL)) {

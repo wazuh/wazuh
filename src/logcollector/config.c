@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "list_op.h"
 
 /* To string size of max-size option */
 #define OFFSET_SIZE 11
@@ -105,6 +106,8 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
 
     unsigned int i = 0;
     unsigned int j;
+    OSListNode *node_it;
+    w_expression_t *dir_it;
 
     while ((!gl && list[i].target) || (gl && list[i].file)) {
         cJSON *file = cJSON_CreateObject();
@@ -195,8 +198,18 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
             cJSON_AddItemToObject(file, "multiline_regex", multiline);
         }
-        if (list[i].regex_ignore) cJSON_AddStringToObject(file, "ignore", w_expression_get_regex_pattern(list[i].regex_ignore));
-        if (list[i].regex_restrict) cJSON_AddStringToObject(file, "restrict", w_expression_get_regex_pattern(list[i].regex_restrict));
+        if (list[i].regex_ignore) {
+            OSList_foreach(node_it, list[i].regex_ignore) {
+                dir_it = node_it->data;
+                cJSON_AddStringToObject(file, "ignore", w_expression_get_regex_pattern(dir_it));
+            }
+        }
+        if (list[i].regex_restrict) {
+            OSList_foreach(node_it, list[i].regex_restrict) {
+                dir_it = node_it->data;
+                cJSON_AddStringToObject(file, "restrict", w_expression_get_regex_pattern(dir_it));
+            }
+        }
 
         cJSON_AddItemToArray(array, file);
         i++;

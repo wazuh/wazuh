@@ -1684,9 +1684,14 @@ void test_read_multiline_regex_log_ignored(void ** state) {
     int rc = 0;
     int drop_it = 0;
     char log_str[PATH_MAX + 1] = {0};
+    w_expression_t * expression_ignore;
 
-    w_calloc_expression_t(&lf.regex_ignore, EXP_TYPE_PCRE2);
-    w_expression_compile(lf.regex_ignore, "ignore.*", 0);
+    lf.regex_ignore = OSList_Create();
+    OSList_SetFreeDataPointer(lf.regex_ignore, (void (*)(void *))w_free_expression);
+
+    w_calloc_expression_t(&expression_ignore, EXP_TYPE_PCRE2);
+    w_expression_compile(expression_ignore, "ignore.*", 0);
+    OSList_InsertData(lf.regex_ignore, NULL, expression_ignore);
 
     w_multiline_config_t ml_confg = {0};
 
@@ -1730,9 +1735,13 @@ void test_read_multiline_regex_log_ignored(void ** state) {
 
     void * retval = read_multiline_regex(&lf, &rc, drop_it);
 
-    w_free_expression_t(&lf.regex_ignore);
     assert_ptr_equal(retval, NULL);
     assert_null(ml_confg.ctxt);
+
+    if (lf.regex_ignore) {
+        OSList_Destroy(lf.regex_ignore);
+        lf.regex_ignore = NULL;
+    }
 }
 
 // Test get_file_chunk

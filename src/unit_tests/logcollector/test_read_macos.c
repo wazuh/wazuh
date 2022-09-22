@@ -1824,11 +1824,18 @@ void test_read_macos_log_ignored(void ** state) {
     logreader lf;
     int dummy_rc;
     char log_str[PATH_MAX + 1] = {0};
+    w_expression_t * expression_ignore;
 
     os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
     os_calloc(1, sizeof(wfd_t), lf.macos_log->processes.stream.wfd);
-    w_calloc_expression_t(&lf.regex_ignore, EXP_TYPE_PCRE2);
-    w_expression_compile(lf.regex_ignore, "ignore.*", 0);
+
+    lf.regex_ignore = OSList_Create();
+    OSList_SetFreeDataPointer(lf.regex_ignore, (void (*)(void *))w_free_expression);
+
+    w_calloc_expression_t(&expression_ignore, EXP_TYPE_PCRE2);
+    w_expression_compile(expression_ignore, "ignore.*", 0);
+    OSList_InsertData(lf.regex_ignore, NULL, expression_ignore);
+
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->processes.stream.wfd->pid = getpid();
     lf.macos_log->is_header_processed = true;
@@ -1856,7 +1863,11 @@ void test_read_macos_log_ignored(void ** state) {
 
     os_free(lf.macos_log->processes.stream.wfd);
     os_free(lf.macos_log);
-    w_free_expression_t(&lf.regex_ignore);
+
+    if (lf.regex_ignore) {
+        OSList_Destroy(lf.regex_ignore);
+        lf.regex_ignore = NULL;
+    }
 }
 
 int main(void) {
