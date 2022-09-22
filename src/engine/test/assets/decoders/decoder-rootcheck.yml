@@ -7,9 +7,19 @@ normalize:
   - map:
       _time: +t_epoch
       _query: +s_concat/agent /$agent.id/ rootcheck save /$_time/ /$event.original
-      _result: +wdb_update/$_query
+      _result: +wdb_query/$_query
       wazuh.rootcheck.file: +r_ext/$event.original/(?:f|F)ile '(.*?)'
       _title: "+r_ext/$event.original/(.*?)(?:(?: {)|$)"
+
+  - check:
+      - _result: 2
+    map:
+      wazuh.rootcheck.fts: true
+
+  - check:
+      - _result: 1
+    map:
+      wazuh.rootcheck.update: true
 
   - check:
       - wazuh.rootcheck.file: +not_exists
