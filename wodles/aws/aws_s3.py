@@ -27,6 +27,7 @@
 #   18 - Invalid prefix
 
 import argparse
+import configparser
 import signal
 import socket
 import sqlite3
@@ -66,6 +67,7 @@ if sys.version_info[0] == 3:
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
+DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 
 # Enable/disable debug mode
 debug_level = 0
@@ -217,7 +219,7 @@ class WazuhIntegration:
     @staticmethod
     def default_config():
         args = {}
-        if not path.exists(path.join(path.expanduser('~'), '.aws', 'config')):
+        if not path.exists(DEFAULT_AWS_CONFIG_PATH):
             args['config'] = botocore.config.Config(
                 retries={
                     'max_attempts': 10,
@@ -1598,7 +1600,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 flow_log_id,
                 log_key,
                 processed_date,
-                created_date) 
+                created_date)
             VALUES (
                 :bucket_path,
                 :aws_account_id,
@@ -2005,7 +2007,7 @@ class AWSCustomBucket(AWSBucket):
                 aws_account_id,
                 log_key,
                 processed_date,
-                created_date) 
+                created_date)
             VALUES (
                 :bucket_path,
                 :aws_account_id,
@@ -3410,6 +3412,19 @@ def arg_valid_iam_role_duration(arg_string):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
     return int(arg_string)
 
+def get_aws_config_params() -> configparser.RawConfigParser:
+    """Read and retrieve parameters from aws config file
+
+    Returns
+    -------
+    configparser.RawConfigParser
+        the parsed config
+    """
+    config = configparser.RawConfigParser()
+    config.read(DEFAULT_AWS_CONFIG_PATH)
+
+    return config
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3553,10 +3568,15 @@ def main(argv):
                 raise Exception("Invalid type of service")
 
             if not options.regions:
-                debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
-                                   'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
-                                   'eu-central-1', 'eu-west-1']
+                aws_config = get_aws_config_params()
+
+                if aws_config.has_option(options.aws_profile, "region"):
+                    options.regions.append(aws_config.get(options.aws_profile, "region"))
+                else:
+                    debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
+                    options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
+                                       'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
+                                       'eu-central-1', 'eu-west-1']
 
             for region in options.regions:
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
