@@ -151,7 +151,7 @@ int main (int argc, char **argv) {
 
         // Executing it
 
-        if (exec_cmd3[0] != NULL) {
+        if (exec_cmd3[0] != NULL && action == ADD_COMMAND) {
             wfd = wpopenv(PFCTL, exec_cmd3, W_BIND_STDOUT);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
@@ -165,10 +165,10 @@ int main (int argc, char **argv) {
                     isEnabledFirewall = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
                 }
 
-                if (( 0 == isEnabledFirewall )) {
+                if (( 0 == isEnabledFirewall)) {
                     memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR -1, "{\"message\":\"Firewall is disabled\",\"profile\":\"%s\",\"status\":\"%s\"}",
-                            "undefined", 1 == isEnabledFirewall ? "active" : "inactive"
+                    snprintf(log_msg, OS_MAXSTR -1, "{\"message\":\"Active response may not have an effect\",\"profile\":\"%s\",\"status\":\"%s\",\"script\":\"pf\"}",
+                        "default", 1 == isEnabledFirewall ? "active" : "inactive"
                     );
                     write_debug_file(argv[0], log_msg);
                 }
@@ -279,4 +279,4 @@ static int write_cmd_to_file(const char *path, const char *cmd) {
         fclose(fp);
     }
     return retVal;
- }
+}
