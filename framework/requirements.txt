@@ -14,13 +14,13 @@ boto3==1.17.85
 botocore==1.20.85
 cachetools==4.1.0
 certifi==2020.4.5.1
-cffi==1.14.4
+cffi==1.15.1
 chardet==3.0.4
 charset-normalizer==2.0.4
 click==8.1.3
 clickclick==20.10.2
 connexion==2.6.0
-cryptography==3.3.2
+cryptography==38.0.1
 Cython==0.29.21
 defusedxml==0.6.0
 docker==4.2.0
@@ -61,7 +61,7 @@ proto-plus==1.19.0
 psutil==5.8.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
-pycparser==2.20
+pycparser==2.21
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-jose==3.1.0
