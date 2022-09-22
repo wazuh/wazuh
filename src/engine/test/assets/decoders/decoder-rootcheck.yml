@@ -12,12 +12,12 @@ normalize:
       _title: "+r_ext/$event.original/(.*?)(?:(?: {)|$)"
 
   - check:
-      - _result: 2
+      - _result: "2"
     map:
       wazuh.rootcheck.fts: true
 
   - check:
-      - _result: 1
+      - _result: "1"
     map:
       wazuh.rootcheck.update: true
 
