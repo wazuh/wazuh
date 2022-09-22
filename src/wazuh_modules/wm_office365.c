@@ -67,7 +67,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
  * @param error_msg Error message to complete in case of failure
  * @return 0 if no error, -1 otherwise
  */
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, int start, size_t max_size, char **error_msg);
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* management_fqdn, const char* client_id, const char* token, int start, size_t max_size, char **error_msg);
 
 /**
  * @brief Get a content blob through Office365 API
@@ -368,7 +368,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             }
 
             // Start subscription
-            if (wm_office365_manage_subscription(current_subscription, current_auth->client_id, access_token, 1, office365_config->curl_max_size, &error_msg)) {
+            if (wm_office365_manage_subscription(current_subscription, current_auth->management_fqdn, current_auth->client_id, access_token, 1, office365_config->curl_max_size, &error_msg)) {
                 wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id,
                     current_subscription->subscription_name, error_msg, office365_config->queue_fd);
                 current_subscription = next_subscription;
@@ -404,7 +404,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                 strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
                 memset(url, '\0', OS_SIZE_8192);
-                snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->client_id, current_subscription->subscription_name,
+                snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->management_fqdn, current_auth->client_id, current_subscription->subscription_name,
                     start_time_str, end_time_str);
 
                 scan_finished = 0;
@@ -541,10 +541,10 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
     }
 
     memset(auth_payload, '\0', OS_SIZE_8192);
-    snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, auth->client_id, auth_secret);
+    snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, auth->client_id, current_auth->management_fqdn, auth_secret);
 
     memset(url, '\0', OS_SIZE_8192);
-    snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_URL, auth->tenant_id);
+    snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_URL, auth->login_fqdn, auth->tenant_id);
 
     mtdebug1(WM_OFFICE365_LOGTAG, "Office 365 API access token URL: '%s'", url);
 
@@ -585,7 +585,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
     return access_token;
 }
 
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, int start, size_t max_size, char **error_msg) {
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* management_fqdn, const char* client_id, const char* token, int start, size_t max_size, char **error_msg) {
     char **headers = NULL;
     char url[OS_SIZE_8192];
     curl_response *response;
@@ -593,9 +593,9 @@ STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscript
 
     memset(url, '\0', OS_SIZE_8192);
     if (start) {
-        snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_SUBSCRIPTION_URL, client_id, WM_OFFICE365_API_SUBSCRIPTION_START, subscription->subscription_name);
+        snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_SUBSCRIPTION_URL, management_fqdn, client_id, WM_OFFICE365_API_SUBSCRIPTION_START, subscription->subscription_name);
     } else {
-        snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_SUBSCRIPTION_URL, client_id, WM_OFFICE365_API_SUBSCRIPTION_STOP, subscription->subscription_name);
+        snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_SUBSCRIPTION_URL, management_fqdn, client_id, WM_OFFICE365_API_SUBSCRIPTION_STOP, subscription->subscription_name);
     }
 
     mtdebug1(WM_OFFICE365_LOGTAG, "Office 365 API subscription URL: '%s'", url);
