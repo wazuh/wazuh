@@ -349,8 +349,8 @@ ssize_t wstr_escape(char *dststr, size_t dst_size, const char *str, char escape,
     do {
         z = strcspn(str + i, charset);
 
-        if (str[i + z] == '\0' || (j + z) >= dst_size) {
-            z = (z + j <= dst_size) ? z : (dst_size - j - 1);
+        if (str[i + z] == '\0' || (j + z) >= (dst_size - 2)) {
+            z = (z + j <= dst_size - 1) ? z : (dst_size - j - 1);
             // End of str
             strncpy(dststr + j, str + i, z);
         } else {
@@ -368,7 +368,7 @@ ssize_t wstr_escape(char *dststr, size_t dst_size, const char *str, char escape,
 
         j += z;
         i += z;
-    } while (str[i] != '\0' && j < dst_size -1);
+    } while (str[i] != '\0' && j < (dst_size - 2));
 
     dststr[j] = '\0';
     return j;
@@ -390,13 +390,13 @@ ssize_t wstr_unescape(char *dststr, size_t dst_size, const char *str, char escap
 
     do {
         z = strcspn(str + i, charset);
-        z = (z + j <= dst_size) ? z : (dst_size - j - 1);
+        z = (z + j <= dst_size - 1) ? z : (dst_size - j - 1);
 
         strncpy(dststr + j, str + i, z);
         j += z;
         i += z;
 
-        if (str[i] != '\0' && j < dst_size -1) {
+        if (str[i] != '\0' && j < (dst_size - 1)) {
 
             if (str[i + 1] == escape) {
                 dststr[j++] = str[i++];
@@ -407,7 +407,7 @@ ssize_t wstr_unescape(char *dststr, size_t dst_size, const char *str, char escap
             i++;
         }
 
-    } while (str[i] != '\0' && j < dst_size -1);
+    } while (str[i] != '\0' && j < (dst_size - 1));
 
     dststr[j] = '\0';
     return j;

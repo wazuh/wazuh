@@ -819,6 +819,52 @@ void test_wstr_escape_buff_overflow(void ** state) {
     assert_int_equal(ret, 9);
 }
 
+void test_wstr_escape_buff_overflow_escape_same_size(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "123456789", '\\', ':');
+    assert_string_equal(dststr, "12345678");
+    assert_int_equal(ret, 8);
+}
+
+
+void test_wstr_escape_buff_overflow_escape_same_size_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "12345678:", '\\', ':');
+    assert_string_equal(dststr, "12345678");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size_before_last_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "1234567:9", '\\', ':');
+    assert_string_equal(dststr, "1234567");
+    assert_int_equal(ret, 7);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "1234567::", '\\', ':');
+    assert_string_equal(dststr, "1234567");
+    assert_int_equal(ret, 7);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size_multi_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "123456:::", '\\', ':');
+    assert_string_equal(dststr, "123456\\:");
+    assert_int_equal(ret, 8);
+}
+
 void test_wstr_escape_buff_overflow_escape(void ** state) {
 
     char dststr[10];
@@ -903,6 +949,33 @@ void test_wstr_unescape_buff_overflow(void ** state) {
     ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1 2 3 4 5 6 7", '*');
     assert_string_equal(dststr, "1 2 3 4 5");
     assert_int_equal(ret, 9);
+}
+
+void test_wstr_unescape_buff_overflow_same_size(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1234567*9", '*');
+    assert_string_equal(dststr, "12345679");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_unescape_buff_overflow_same_size_last_escape(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "12345678*", '*');
+    assert_string_equal(dststr, "12345678");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1234567**", '*');
+    assert_string_equal(dststr, "1234567*");
+    assert_int_equal(ret, 8);
 }
 
 void test_wstr_unescape_buff_overflow_escape(void ** state) {
@@ -1047,6 +1120,11 @@ int main(void) {
         cmocka_unit_test(test_wstr_escape_backslash_and_colons_escape),
         cmocka_unit_test(test_wstr_escape_at_sign_and_asterisk),
         cmocka_unit_test(test_wstr_escape_buff_overflow),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_before_last_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_multi_colons),
         cmocka_unit_test(test_wstr_escape_buff_overflow_escape),
         cmocka_unit_test(test_wstr_escape_one_scape),
         // Test wstr_unescape
@@ -1058,6 +1136,9 @@ int main(void) {
         cmocka_unit_test(test_wstr_unescape_backslash_and_colons_escape),
         cmocka_unit_test(test_wstr_unescape_at_sign_and_asterisk),
         cmocka_unit_test(test_wstr_unescape_buff_overflow),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_same_size),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_same_size_last_escape),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk),
         cmocka_unit_test(test_wstr_unescape_buff_overflow_escape),
         cmocka_unit_test(test_wstr_unescape_one_scape),
         cmocka_unit_test(test_wstr_unescape_end_scape),
