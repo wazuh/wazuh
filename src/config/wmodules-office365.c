@@ -41,11 +41,15 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         module->context = &WM_OFFICE365_CONTEXT;
         module->tag = strdup(module->context->name);
         os_calloc(1, sizeof(wm_office365), office365_config);
+        os_calloc(1, sizeof(wm_office365_auth), office365_auth);
+        office365_config->auth = office365_auth;
 
         office365_config->enabled =            WM_OFFICE365_DEFAULT_ENABLED;
         office365_config->only_future_events = WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS;
         office365_config->interval =           WM_OFFICE365_DEFAULT_INTERVAL;
         office365_config->curl_max_size =      WM_OFFICE365_DEFAULT_CURL_MAX_SIZE;
+        office365_auth->login_fqdn =           WM_OFFICE365_DEFAULT_API_LOGIN_FQDN;
+        office365_auth->management_fqdn =      WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
 
         module->data = office365_config;
     } else {
@@ -188,6 +192,12 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
             } else if (!office365_auth->tenant_id) {
                 merror("'%s' is missing at module '%s'.", XML_TENANT_ID, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
+            }
+
+            // Keep backwards compatability with configs made prior to GCC(-High) support
+            if (!office365_auth->login_fqdn && !office365_auth->management_fqdn) {
+                office365_auth->login_fqdn = "login.microsoftonline.com";
+                office365_auth->management_fqdn = "manage-gcc.office.com";
             }
 
         } else if (!strcmp(nodes[i]->element, XML_SUBSCRIPTIONS)) {
