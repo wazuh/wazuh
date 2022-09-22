@@ -6,15 +6,11 @@
 
 using namespace hlp;
 
-using std::any_cast;
-using std::string;
-
 TEST(parseCSV, build)
 {
     ASSERT_NO_THROW(getParserOp("<_test/csv/field_1>"));
 
 }
-
 
 TEST(parseCSV, extract_exact_fields_1_not_null_end_string)
 {
