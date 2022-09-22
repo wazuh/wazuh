@@ -1543,6 +1543,7 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = "manage.office.com";
     int start = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
@@ -1578,7 +1579,7 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while managing subscription.");
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_null(error_msg);
@@ -1596,6 +1597,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = "manage.office.com";
     int start = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
@@ -1631,7 +1633,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_SUCCESS);
     assert_null(error_msg);
@@ -1649,6 +1651,7 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = "manage.office.com";
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
@@ -1686,7 +1689,7 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_null(error_msg);
@@ -1704,6 +1707,7 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = "manage.office.com";
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
@@ -1742,7 +1746,7 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_null(error_msg);
@@ -1760,6 +1764,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = "manage.office.com";
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
@@ -1795,7 +1800,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_SUCCESS);
     assert_null(error_msg);
@@ -1813,6 +1818,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 
     char *token = "test_token";
     char* client_id = "test_client_id";
+    char* management_fqdn = "manage.office.com";
     int start = 0;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
@@ -1850,7 +1856,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, management_fqdn, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
     assert_string_equal(error_msg, data->response->body);
