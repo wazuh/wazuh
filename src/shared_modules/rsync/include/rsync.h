@@ -40,6 +40,8 @@ extern "C" {
  */
 EXPORTED void rsync_initialize(log_fnc_t log_function);
 
+EXPORTED void rsync_initialize_log_function(full_log_fnc_t log_function);
+
 /**
  * @brief Turns off the services provided by the shared library.
  */

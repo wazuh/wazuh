@@ -44,6 +44,13 @@ public:
     static void initialize(std::function<void(const std::string&)> logFunction);
 
     /**
+     * @brief Initialize all the logs functions used by RSync.
+     *
+     * @param log_function Function pointer to the log function.
+     */
+    static void initializeLogFunction(full_log_fnc_t log_function);
+
+    /**
      * @brief Remote sync initializes the instance.
      *
      * @param threadPoolSize Size of the thread pool.
@@ -106,13 +113,6 @@ public:
      * @return RSYNC_HANDLE to be used in all internal calls.
      */
     RSYNC_HANDLE handle() { return m_handle; }
-
-    /**
-     * @brief Log message with the previously initialized gs_logFunction
-     *
-     * @param msg The message to log
-     */
-    static void logMessage(const std::string& msg);
 
 private:
     RSYNC_HANDLE m_handle;

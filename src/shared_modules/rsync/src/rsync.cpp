@@ -42,6 +42,11 @@ EXPORTED void rsync_initialize(log_fnc_t log_function)
     });
 }
 
+EXPORTED void rsync_initialize_log_function(full_log_fnc_t log_function)
+{
+    RemoteSync::initializeLogFunction(log_function);
+}
+
 EXPORTED void rsync_teardown(void)
 {
     RSyncImplementation::instance().release();
@@ -214,8 +219,16 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     if (!gs_logFunction)
     {
         gs_logFunction = logFunction;
-        Log::debugVerbose.assignLogFunction(logFunction);
     }
+}
+
+void RemoteSync::initializeLogFunction(full_log_fnc_t log_function)
+{
+    Log::debug.assignLogFunction(log_function);
+    Log::debugVerbose.assignLogFunction(log_function);
+    Log::info.assignLogFunction(log_function);
+    Log::warning.assignLogFunction(log_function);
+    Log::error.assignLogFunction(log_function);
 }
 
 void RemoteSync::teardown()

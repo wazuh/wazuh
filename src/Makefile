@@ -1261,7 +1261,7 @@ endif
 else
 ifneq (,$(filter ${uname_S},SunOS AIX))
 	cpu_arch := ${uname_P}
-ifeq (${cpu_arch},powerpc)
+ifeq (${cpu_arch},powerpc)  
 	PRECOMPILED_ARCH := /powerpc
 else
 ifneq (,$(filter ${cpu_arch},sparc sun4u))

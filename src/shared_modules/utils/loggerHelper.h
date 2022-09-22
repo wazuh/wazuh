@@ -19,17 +19,29 @@
 #include <mutex>
 #include <thread>
 
-using LogFunction = std::function<void(const std::string &)>;
-static std::mutex logMutex;
+using FullLogFunction = auto (*)(const char *log_level, const char *tag, const char * file, int line, const char * func, const char *msg, ...) -> void;
+
+auto constexpr LOGGER_TAG {"loggerHelper"};
 
 namespace Log {
 
+#define endl sourceFile {__FILE__, __LINE__, __func__}
+
+static std::mutex logMutex;
+  struct sourceFile
+  {
+    const char* file;
+    int line;
+    const char * func;
+  };
+
 class Logger {
 private:
-  LogFunction m_logFunction;
+  FullLogFunction m_logFunction;
   std::unordered_map<std::thread::id, std::string> m_threadsBuffers;
 
 protected:
+  std::string m_logType;
   Logger() = default;
 
 public:
@@ -37,7 +49,7 @@ public:
   Logger &operator=(const Logger &other) = delete;
   Logger(const Logger &other) = delete;
 
-  Logger &assignLogFunction(LogFunction &logFunction) {
+  Logger &assignLogFunction(FullLogFunction &logFunction) {
     if (!m_logFunction) {
       m_logFunction = logFunction;
     }
@@ -57,7 +69,18 @@ public:
     if (logObject.m_logFunction) {
       std::lock_guard<std::mutex> lockGuard(logMutex);
       auto threadId = std::this_thread::get_id();
-      logObject.m_logFunction(logObject.m_threadsBuffers[threadId]);
+      logObject.m_logFunction(logObject.m_logType.c_str(), LOGGER_TAG, __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
+      logObject.m_threadsBuffers.erase(threadId);
+    }
+    return logObject;
+  }
+
+  friend Logger &operator<<(Logger &logObject,
+                            sourceFile sourceLocation) {
+    if (logObject.m_logFunction) {
+      std::lock_guard<std::mutex> lockGuard(logMutex);
+      auto threadId = std::this_thread::get_id();
+      logObject.m_logFunction(logObject.m_logType.c_str(), LOGGER_TAG, sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
       logObject.m_threadsBuffers.erase(threadId);
     }
     return logObject;
@@ -66,7 +89,7 @@ public:
 
 class Info : public Logger {
 public:
-  Info() : Logger(){};
+  Info() : Logger(){m_logType = "info";};
 
   static Info &instance() {
     static Info logInstance;
@@ -76,7 +99,7 @@ public:
 
 class Error : public Logger {
 public:
-  Error() : Logger(){};
+  Error() : Logger(){m_logType = "error";};
 
   static Error &instance() {
     static Error logInstance;
@@ -86,7 +109,7 @@ public:
 
 class Debug : public Logger {
 public:
-  Debug() : Logger(){};
+  Debug() : Logger(){m_logType = "debug";};
 
   static Debug &instance() {
     static Debug logInstance;
@@ -96,10 +119,20 @@ public:
 
 class DebugVerbose : public Logger {
 public:
-  DebugVerbose() : Logger(){};
+  DebugVerbose() : Logger(){m_logType = "debug_verbose";};
 
   static DebugVerbose &instance() {
     static DebugVerbose logInstance;
+    return logInstance;
+  }
+};
+
+class Warning : public Logger {
+public:
+  Warning() : Logger(){m_logType = "warning";};
+
+  static Warning &instance() {
+    static Warning logInstance;
     return logInstance;
   }
 };
@@ -108,6 +141,7 @@ static Info &info = Info::instance();
 static Error &error = Error::instance();
 static Debug &debug = Debug::instance();
 static DebugVerbose &debugVerbose = DebugVerbose::instance();
+static Warning &warning = Warning::instance();
 
 } // namespace Log
 #endif // LOGGER_HELPER_H

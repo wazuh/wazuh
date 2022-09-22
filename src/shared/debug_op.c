@@ -666,3 +666,35 @@ char * win_strerror(unsigned long error) {
     return messageBuffer;
 }
 #endif
+
+void mt_log_wrapper(const char* log_type, const char *tag, const char * file, int line, const char * func, const char *msg, ...){
+    if(NULL == log_type){
+        return;
+    }
+
+    va_list args;
+    va_start(args, msg);
+
+    if(0 == strncmp(log_type, "error", strlen(log_type)))
+    {
+        _mterror(tag, file, line, func, msg, args);
+    }
+    else if(0 == strncmp(log_type, "warning", strlen(log_type)))
+    {
+        _mtwarn(tag, file, line, func, msg, args);
+    }
+    else if(0 == strncmp(log_type, "debug", strlen(log_type)))
+    {
+        _mtdebug1(tag, file, line, func, msg, args);
+    }
+    else if(0 == strncmp(log_type, "debug_verbose", strlen(log_type)))
+    {
+        _mtdebug2(tag, file, line, func, msg, args);
+    }
+    else if(0 == strncmp(log_type, "info", strlen(log_type)))
+    {
+        _mtinfo(tag, file, line, func, msg, args);
+    }
+
+    va_end(args);
+}

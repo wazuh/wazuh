@@ -110,11 +110,6 @@ static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
     }
 }
 
-static void wm_log_debug_verbose( const char* log) {
-
-    mtdebug2(":rsync", "%s", log);
-}
-
 static void wm_sys_log_config(wm_sys_t *sys)
 {
     cJSON * config_json = wm_sys_dump(sys);
@@ -161,8 +156,8 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         void* rsync_module = NULL;
         if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
-            void (*rsync_initialize_ptr)(log_fnc_t) = so_get_function_sym(rsync_module, "rsync_initialize");
-            rsync_initialize_ptr(wm_log_debug_verbose);
+            void (*rsync_initialize_ptr)(full_log_fnc_t) = so_get_function_sym(rsync_module, "rsync_initialize_log_function");
+            rsync_initialize_ptr(mt_log_wrapper);
             #ifndef WIN32
             so_free_library(rsync_module);
             #endif

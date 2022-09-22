@@ -84,6 +84,8 @@ void _plain_merror_exit(const char * file, int line, const char * func, const ch
 void _mterror_exit(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void _mlerror_exit(const int level, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
 
+void mt_log_wrapper(const char* log_type, const char *tag, const char * file, int line, const char * func, const char *msg, ...);
+
 /**
  * @brief Logging module initializer
  */

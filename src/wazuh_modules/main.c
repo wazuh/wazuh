@@ -10,8 +10,6 @@
  */
 
 #include "wmodules.h"
-#include "sym_load.h"
-#include "rsync.h"
 #include <sys/types.h>
 
 static void wm_help();                  // Print help.
