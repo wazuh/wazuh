@@ -51,10 +51,12 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
         fmt::format("[{}] -> Failure: [{}] is empty", name, targetField)};
     const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
 
+    // instantiate WDB
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](
+        [=, targetField = std::move(targetField), wdb = std::move(wdb)](
             base::Event event) -> base::result::Result<base::Event>
         {
             std::string completeQuery {};
@@ -82,11 +84,8 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
                 completeQuery = rValue;
             }
 
-            // instantiate WDB
-            auto wdb {wazuhdb::WazuhDB(wazuhdb::WDB_SOCK_PATH)};
-
             // Execute complete query in DB
-            auto returnTuple {wdb.tryQueryAndParseResult(completeQuery)};
+            auto returnTuple {wdb->tryQueryAndParseResult(completeQuery)};
 
             // Handle response
             auto resultCode {std::get<0>(returnTuple)};
