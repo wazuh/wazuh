@@ -106,8 +106,6 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
 
     unsigned int i = 0;
     unsigned int j;
-    OSListNode *node_it;
-    w_expression_t *dir_it;
 
     while ((!gl && list[i].target) || (gl && list[i].file)) {
         cJSON *file = cJSON_CreateObject();
@@ -198,16 +196,46 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
             cJSON_AddItemToObject(file, "multiline_regex", multiline);
         }
-        if (list[i].regex_ignore) {
+        if (list[i].regex_ignore != NULL) {
+            OSListNode *node_it;
+            w_expression_t *exp_it;
+            cJSON * ignore_array = cJSON_CreateArray();
+
             OSList_foreach(node_it, list[i].regex_ignore) {
-                dir_it = node_it->data;
-                cJSON_AddStringToObject(file, "ignore", w_expression_get_regex_pattern(dir_it));
+                exp_it = node_it->data;
+                cJSON * ignore_object = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(ignore_object, "value", w_expression_get_regex_pattern(exp_it));
+                cJSON_AddStringToObject(ignore_object, "type", w_expression_get_regex_type(exp_it));
+
+                cJSON_AddItemToArray(ignore_array, ignore_object);
+            }
+
+            if (cJSON_GetArraySize(ignore_array) > 0) {
+                cJSON_AddItemToObject(file, "ignore", ignore_array);
+            } else {
+                cJSON_free(ignore_array);
             }
         }
-        if (list[i].regex_restrict) {
+        if (list[i].regex_restrict != NULL) {
+            OSListNode *node_it;
+            w_expression_t *exp_it;
+            cJSON * restrict_array = cJSON_CreateArray();
+
             OSList_foreach(node_it, list[i].regex_restrict) {
-                dir_it = node_it->data;
-                cJSON_AddStringToObject(file, "restrict", w_expression_get_regex_pattern(dir_it));
+                exp_it = node_it->data;
+                cJSON * restrict_object = cJSON_CreateObject();
+
+                cJSON_AddStringToObject(restrict_object, "value", w_expression_get_regex_pattern(exp_it));
+                cJSON_AddStringToObject(restrict_object, "type", w_expression_get_regex_type(exp_it));
+
+                cJSON_AddItemToArray(restrict_array, restrict_object);
+            }
+
+            if (cJSON_GetArraySize(restrict_array) > 0) {
+                cJSON_AddItemToObject(file, "restrict", restrict_array);
+            } else {
+                cJSON_free(restrict_array);
             }
         }
 
