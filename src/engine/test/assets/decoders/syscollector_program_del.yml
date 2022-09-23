@@ -4,10 +4,10 @@ parents:
   - syscollector_program
 
 check:
-  - _syscollectorEventOriginal.program: +not_exists
-  - _syscollectorEventOriginal.type: +s_eq/program_end
+  - _json.program: +not_exists
+  - _json.type: +s_eq/program_end
 
 normalize:
   - map:
-      _query: +s_concat/agent /$agent.id/ package del /$_syscollectorEventOriginal.ID
+      _query: +s_concat/agent /$agent.id/ package del /$_json.ID
       _package_del_result: +wdb_update/$_query

@@ -184,3 +184,34 @@ TEST(opBuilderHelperStringEqual, Exec_equal_multilevel_ref_true)
 
     ASSERT_TRUE(result.success());
 }
+
+TEST(opBuilderHelperStringEqual, Check_empty_string_value)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_eq"},
+                                 std::vector<std::string> {""});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": ""})");
+
+    auto op = bld::opBuilderHelperStringEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperStringEqual, Check_empty_string_ref)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check1"},
+                                 std::string {"s_eq"},
+                                 std::vector<std::string> {"$field2check2"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check1": "",
+                                                   "field2check2": ""})");
+
+    auto op = bld::opBuilderHelperStringEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}

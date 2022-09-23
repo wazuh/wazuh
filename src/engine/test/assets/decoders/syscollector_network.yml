@@ -4,89 +4,89 @@ parents:
   - syscollector_netinfo
 
 check:
-  - _syscollectorEventOriginal.iface: +exists
+  - _json.iface: +exists
 
 normalize:
   - check:
-      - _syscollectorEventOriginal.ID: +not_exists
+      - _json.ID: +not_exists
     map:
-      _syscollectorEventOriginal.ID: "NULL"
+      _json.ID: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.timestamp: +not_exists
+      - _json.timestamp: +not_exists
     map:
-      _syscollectorEventOriginal.timestamp: "NULL"
+      _json.timestamp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.name: +not_exists
+      - _json.iface.name: +not_exists
     map:
-      _syscollectorEventOriginal.iface.name: "NULL"
+      _json.iface.name: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.adapter: +not_exists
+      - _json.iface.adapter: +not_exists
     map:
-      _syscollectorEventOriginal.iface.adapter: "NULL"
+      _json.iface.adapter: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.type: +not_exists
+      - _json.iface.type: +not_exists
     map:
-      _syscollectorEventOriginal.iface.type: "NULL"
+      _json.iface.type: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.state: +not_exists
+      - _json.iface.state: +not_exists
     map:
-      _syscollectorEventOriginal.iface.state: "NULL"
+      _json.iface.state: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.MTU: +not_exists
+      - _json.iface.MTU: +not_exists
     map:
-      _syscollectorEventOriginal.iface.MTU: "NULL"
+      _json.iface.MTU: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.MAC: +not_exists
+      - _json.iface.MAC: +not_exists
     map:
-      _syscollectorEventOriginal.iface.MAC: "NULL"
+      _json.iface.MAC: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.tx_packets: +not_exists
+      - _json.iface.tx_packets: +not_exists
     map:
-      _syscollectorEventOriginal.iface.tx_packets: "NULL"
+      _json.iface.tx_packets: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.rx_packets: +not_exists
+      - _json.iface.rx_packets: +not_exists
     map:
-      _syscollectorEventOriginal.iface.rx_packets: "NULL"
+      _json.iface.rx_packets: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.tx_bytes: +not_exists
+      - _json.iface.tx_bytes: +not_exists
     map:
-      _syscollectorEventOriginal.iface.tx_bytes: "NULL"
+      _json.iface.tx_bytes: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.rx_bytes: +not_exists
+      - _json.iface.rx_bytes: +not_exists
     map:
-      _syscollectorEventOriginal.iface.rx_bytes: "NULL"
+      _json.iface.rx_bytes: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.tx_errors: +not_exists
+      - _json.iface.tx_errors: +not_exists
     map:
-      _syscollectorEventOriginal.iface.tx_errors: "NULL"
+      _json.iface.tx_errors: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.rx_errors: +not_exists
+      - _json.iface.rx_errors: +not_exists
     map:
-      _syscollectorEventOriginal.iface.rx_errors: "NULL"
+      _json.iface.rx_errors: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.tx_dropped: +not_exists
+      - _json.iface.tx_dropped: +not_exists
     map:
-      _syscollectorEventOriginal.iface.tx_dropped: "NULL"
+      _json.iface.tx_dropped: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.iface.rx_dropped: +not_exists
+      - _json.iface.rx_dropped: +not_exists
     map:
-      _syscollectorEventOriginal.iface.rx_dropped: "NULL"
+      _json.iface.rx_dropped: "NULL"
 
   - map:
-      _query: +s_concat/agent /$agent.id/ netinfo save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.iface.name/|/$_syscollectorEventOriginal.iface.adapter/|/$_syscollectorEventOriginal.iface.type/|/$_syscollectorEventOriginal.iface.state/|/$_syscollectorEventOriginal.iface.MTU/|/$_syscollectorEventOriginal.iface.MAC/|/$_syscollectorEventOriginal.iface.tx_packets/|/$_syscollectorEventOriginal.iface.rx_packets/|/$_syscollectorEventOriginal.iface.tx_bytes/|/$_syscollectorEventOriginal.iface.rx_bytes/|/$_syscollectorEventOriginal.iface.tx_errors/|/$_syscollectorEventOriginal.iface.rx_errors/|/$_syscollectorEventOriginal.iface.tx_dropped/|/$_syscollectorEventOriginal.iface.rx_dropped
+      _query: +s_concat/agent /$agent.id/ netinfo save /$_json.ID/|/$_json.timestamp/|/$_json.iface.name/|/$_json.iface.adapter/|/$_json.iface.type/|/$_json.iface.state/|/$_json.iface.MTU/|/$_json.iface.MAC/|/$_json.iface.tx_packets/|/$_json.iface.rx_packets/|/$_json.iface.tx_bytes/|/$_json.iface.rx_bytes/|/$_json.iface.tx_errors/|/$_json.iface.rx_errors/|/$_json.iface.tx_dropped/|/$_json.iface.rx_dropped
       _iface_save_response: +wdb_update/$_query
