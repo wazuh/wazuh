@@ -1036,7 +1036,7 @@ void test_error_client_secret_path(void **state) {
     test_structure *test = *state;
     expect_string(__wrap_access, __name, "/path/to/secret");
     will_return(__wrap_access, -1);
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'office365': The path cannot be opened.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'client_secret_path' at module 'office365': The path cannot be opened.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
