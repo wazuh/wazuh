@@ -24,7 +24,7 @@ target_link_libraries(OS_AUTH_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
-
+include_directories(${SRC_FOLDER}/os_auth)
 # Generate Analysisd tests
 list(APPEND os_auth_names "test_auth_parse")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsValidIP")
@@ -48,6 +48,12 @@ list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minf
 list(APPEND os_auth_names "test_auth")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
                            -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time")
+list(APPEND os_auth_names "test_generate_cert")
+list (APPEND os_auth_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
+                            -Wl,--wrap,X509_sign -Wl,--wrap,_merror \
+                            -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
+                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
+                            -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")
