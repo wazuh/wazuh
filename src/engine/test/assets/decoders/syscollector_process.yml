@@ -4,5 +4,5 @@ parents:
   - syscollector_base
 
 check:
-    - _syscollectorEventOriginal.type: +s_starts/process
-    - _syscollectorEventOriginal.ID: +exists
+    - _json.type: +s_starts/process
+    - _json.ID: +exists
