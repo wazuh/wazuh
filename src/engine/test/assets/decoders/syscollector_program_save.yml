@@ -4,90 +4,90 @@ parents:
   - syscollector_program
 
 check:
-  - _syscollectorEventOriginal.program: +exists
+  - _json.program: +exists
 
 normalize:
   - check:
-      - _syscollectorEventOriginal.timestamp: +not_exists
+      - _json.timestamp: +not_exists
     map:
-      _syscollectorEventOriginal.timestamp: "NULL"
+      _json.timestamp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.format: +not_exists
+      - _json.program.format: +not_exists
     map:
-      _syscollectorEventOriginal.program.format: "NULL"
+      _json.program.format: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.name: +not_exists
+      - _json.program.name: +not_exists
     map:
-      _syscollectorEventOriginal.program.name: "NULL"
+      _json.program.name: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.priority: +not_exists
+      - _json.program.priority: +not_exists
     map:
-      _syscollectorEventOriginal.program.priority: "NULL"
+      _json.program.priority: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.group: +not_exists
+      - _json.program.group: +not_exists
     map:
-      _syscollectorEventOriginal.program.group: "NULL"
+      _json.program.group: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.size: +not_exists
+      - _json.program.size: +not_exists
     map:
-      _syscollectorEventOriginal.program.size: "NULL"
+      _json.program.size: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.vendor: +not_exists
+      - _json.program.vendor: +not_exists
     map:
-      _syscollectorEventOriginal.program.vendor: "NULL"
+      _json.program.vendor: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.install_time: +not_exists
+      - _json.program.install_time: +not_exists
     map:
-      _syscollectorEventOriginal.program.install_time: "NULL"
+      _json.program.install_time: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.version: +not_exists
+      - _json.program.version: +not_exists
     map:
-      _syscollectorEventOriginal.program.version: "NULL"
+      _json.program.version: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.architecture: +not_exists
+      - _json.program.architecture: +not_exists
     map:
-      _syscollectorEventOriginal.program.architecture: "NULL"
+      _json.program.architecture: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.multi-arch: +not_exists
+      - _json.program.multi-arch: +not_exists
     map:
-      _syscollectorEventOriginal.program.multi-arch: "NULL"
+      _json.program.multi-arch: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.source: +not_exists
+      - _json.program.source: +not_exists
     map:
-      _syscollectorEventOriginal.program.source: "NULL"
+      _json.program.source: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.description: +not_exists
+      - _json.program.description: +not_exists
     map:
-      _syscollectorEventOriginal.program.description: "NULL"
+      _json.program.description: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.program.location: +not_exists
+      - _json.program.location: +not_exists
     map:
-      _syscollectorEventOriginal.program.location: "NULL"
+      _json.program.location: "NULL"
 
     #Obtain hexDigest with name version and arch
   - check:
-      - _syscollectorEventOriginal.program.name: +exists
-      - _syscollectorEventOriginal.program.version: +exists
-      - _syscollectorEventOriginal.program.architecture: +exists
+      - _json.program.name: +exists
+      - _json.program.version: +exists
+      - _json.program.architecture: +exists
     map:
-      _concat_words: +s_concat/$_syscollectorEventOriginal.program.name/$_syscollectorEventOriginal.program.version/$_syscollectorEventOriginal.program.architecture
+      _concat_words: +s_concat/$_json.program.name/$_json.program.version/$_json.program.architecture
       _hexDigest: +hash_sha1/$_concat_words
 
   - check:
       - _hexDigest: +is_string
     map:
-      _query: +s_concat/agent /$agent.id/ package save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.program.format/|/$_syscollectorEventOriginal.program.name/|/$_syscollectorEventOriginal.program.priority/|/$_syscollectorEventOriginal.program.group/|/$_syscollectorEventOriginal.program.size/|/$_syscollectorEventOriginal.program.vendor/|/$_syscollectorEventOriginal.program.install_time/|/$_syscollectorEventOriginal.program.version/|/$_syscollectorEventOriginal.program.architecture/|/$_syscollectorEventOriginal.program.multi-arch/|/$_syscollectorEventOriginal.program.source/|/$_syscollectorEventOriginal.program.description/|/$_syscollectorEventOriginal.program.location/|/$_hexDigest
+      _query: +s_concat/agent /$agent.id/ package save /$_json.ID/|/$_json.timestamp/|/$_json.program.format/|/$_json.program.name/|/$_json.program.priority/|/$_json.program.group/|/$_json.program.size/|/$_json.program.vendor/|/$_json.program.install_time/|/$_json.program.version/|/$_json.program.architecture/|/$_json.program.multi-arch/|/$_json.program.source/|/$_json.program.description/|/$_json.program.location/|/$_hexDigest
       _package_save_result: +wdb_update/$_query
