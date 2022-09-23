@@ -37,7 +37,7 @@ typedef struct _file_time {
 
 typedef struct group_t {
     char *name;
-    file_time **f_time;
+    OSHash *f_time;
     os_md5 merged_sum;
     bool has_changed;
     bool exists;
@@ -50,22 +50,22 @@ static OSHash *invalid_files;
 /**
  * @brief Process group, update file time structure and create merged.mg file
  * @param group Group name
- * @param _f_time File time structure to update
+ * @param _f_time File time table to update
  * @param _merged_sum Merged sum to update
  * @param sharedcfg_dir Group directory
  * @param create_merged Flag indicating if merged.mg needs to be created
  */
-STATIC void c_group(const char *group, file_time ***_f_time, os_md5 *_merged_sum, char * sharedcfg_dir, bool create_merged);
+STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, char *sharedcfg_dir, bool create_merged);
 
 /**
  * @brief Process multigroup, update file time structure and create merged.mg file
  * @param multi_group Multigroup name
- * @param _f_time File time structure to update
+ * @param _f_time File time table to update
  * @param _merged_sum Merged sum to update
  * @param hash_multigroup Multigroup hash
  * @param create_merged Flag indicating if merged.mg needs to be created
  */
-STATIC void c_multi_group(char *multi_group, file_time ***_f_time, os_md5 *_merged_sum, char *hash_multigroup, bool create_merged);
+STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_sum, char *hash_multigroup, bool create_merged);
 
 /**
  * @brief Process groups and multigroups files
@@ -93,6 +93,14 @@ STATIC void process_deleted_groups();
 STATIC void process_deleted_multi_groups();
 
 /**
+ * @brief Add file time structure to group hash table
+ * @param _f_time File time table to update
+ * @param name File name
+ * @param m_time File last modified time
+ */
+STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time);
+
+/**
  * @brief Find a group structure from a file name and md5
  * @param md5 MD5 of the file
  * @param group_name Array to store the group name if exists
@@ -110,12 +118,12 @@ STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name
 
 /**
  * @brief Compare and check if the file time has changed
- * @param old_time File time of previous scan
- * @param new_time File time of new scan
+ * @param old_time File time table of previous scan
+ * @param new_time File time table of new scan
  * @return true Changed
  * @return false Didn't change
  */
-STATIC bool ftime_changed(file_time **old_time, file_time **new_time);
+STATIC bool ftime_changed(OSHash *old_time, OSHash *new_time);
 
 /**
  * @brief Check if any group of a given multigroup has changed
@@ -133,7 +141,7 @@ STATIC bool group_changed(const char *multi_group);
  * @param wdb_sock Wazuh-DB socket.
  * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
  */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int* wdb_sock);
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int *wdb_sock);
 
 /**
  * @brief Send a shared file to an agent
@@ -151,13 +159,12 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
  * @param src_path Source path of the files to validate
  * @param group Group name
  * @param merged_tmp Name of temporal merged.mg file
- * @param f_time File time structure to update
- * @param f_size File size variable to update
+ * @param _f_time File time table to update
  * @param create_merged Flag indicating if merged.mg needs to be created
  * @param path_offset Variable that indicates the necessary offset for the MergeAppendFile function
  * @return 1 on shared file creation success, 0 on shared file creation failure
  */
-STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_time ***f_time, unsigned int *f_size, bool create_merged, int path_offset);
+STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, OSHash **_f_time, bool create_merged, int path_offset);
 
 /**
  * @brief Copy the contents of one directory to another
@@ -198,12 +205,10 @@ void cleaner(void* data) {
 }
 
 // Frees file time structure
-void free_file_time(file_time **f_time) {
-    if (f_time) {
-        for (unsigned int i = 0; f_time[i]; i++) {
-            os_free(f_time[i]->name);
-            os_free(f_time[i]);
-        }
+void free_file_time(void *data) {
+    if (data) {
+        file_time *f_time = (file_time *)data;
+        os_free(f_time->name);
         os_free(f_time);
     }
 }
@@ -382,8 +387,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
                 w_mutex_lock(&files_mutex);
 
-                if (aux = OSHash_Get_ex(groups, data->group), !aux || !aux->f_time) {
-                    if (aux = OSHash_Get_ex(multi_groups, data->group), !aux || !aux->f_time) {
+                if (aux = OSHash_Get_ex(groups, data->group), !aux) {
+                    if (aux = OSHash_Get_ex(multi_groups, data->group), !aux) {
                         mdebug1("No such group '%s' for agent '%s'", data->group, key->id);
                     }
                 }
@@ -475,24 +480,18 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 }
 
 /* Generate merged file for groups */
-STATIC void c_group(const char *group, file_time ***_f_time, os_md5 *_merged_sum, char * sharedcfg_dir, bool create_merged) {
+STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, char *sharedcfg_dir, bool create_merged) {
     os_md5 md5sum;
     struct stat attrib;
     int merged_ok = 1;
-    unsigned int f_size = 0;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char group_path[PATH_MAX + 1];
     remote_files_group *r_group = NULL;
 
-    *merged_tmp = '\0';
-
-    /* Create merged file */
-    os_calloc(2, sizeof(file_time *), (*_f_time));
-    os_calloc(1, sizeof(file_time), (*_f_time)[f_size]);
-    (*_f_time)[f_size]->m_time = 0;
-    os_strdup(SHAREDCFG_FILENAME, (*_f_time)[f_size]->name);
-    (*_f_time)[++f_size] = NULL;
+    if ((*_f_time) = OSHash_Create(), (*_f_time) == NULL) {
+        merror_exit("OSHash_Create() failed");
+    }
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
@@ -567,23 +566,18 @@ STATIC void c_group(const char *group, file_time ***_f_time, os_md5 *_merged_sum
 
         // Merge ar.conf always
         if (stat(DEFAULTAR, &attrib) == 0) {
-            os_realloc((*_f_time), (f_size + 2) * sizeof(file_time *), (*_f_time));
-            os_calloc(1, sizeof(file_time), (*_f_time)[f_size]);
-            (*_f_time)[f_size]->m_time = attrib.st_mtime;
-            os_strdup(DEFAULTAR_FILE, (*_f_time)[f_size]->name);
-            (*_f_time)[++f_size] = NULL;
-
             if (create_merged) {
                 if (merged_ok = MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1), merged_ok == 0) {
                     unlink(merged_tmp);
                     return;
                 }
             }
+            ftime_add(_f_time, DEFAULTAR_FILE, attrib.st_mtime);
         }
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
-        merged_ok = validate_shared_files(group_path, group, merged_tmp, _f_time, &f_size, create_merged, -1);
+        merged_ok = validate_shared_files(group_path, group, merged_tmp, _f_time, create_merged, -1);
 
         if (create_merged) {
             if (merged_ok == 0) {
@@ -604,13 +598,13 @@ STATIC void c_group(const char *group, file_time ***_f_time, os_md5 *_merged_sum
         if (stat(merged, &attrib) != 0) {
             merror("Unable to get entry attributes '%s'", merged);
         } else {
-            (*_f_time)[0]->m_time = attrib.st_mtime;
+            ftime_add(_f_time, SHAREDCFG_FILENAME, attrib.st_mtime);
         }
     }
 }
 
 /* Generate merged file for multigroups */
-STATIC void c_multi_group(char *multi_group, file_time ***_f_time, os_md5 *_merged_sum, char *hash_multigroup, bool create_merged) {
+STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_sum, char *hash_multigroup, bool create_merged) {
     DIR *dp;
     char *group;
     char *save_ptr = NULL;
@@ -733,13 +727,13 @@ STATIC void process_groups() {
                 group->exists = true;
             }
         } else {
-            file_time **old_time = group->f_time;
+            OSHash *old_time = group->f_time;
             group->f_time = NULL;
             c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, false);
             if (ftime_changed(old_time, group->f_time)) {
                 // Group has changed
                 if (!logr.nocmerged) {
-                    free_file_time(group->f_time);
+                    OSHash_Clean(group->f_time, free_file_time);
                     c_group(entry->d_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true);
                 }
                 group->has_changed = true;
@@ -748,7 +742,7 @@ STATIC void process_groups() {
                 // Group didn't change
                 group->has_changed = false;
             }
-            free_file_time(old_time);
+            OSHash_Clean(old_time, free_file_time);
             group->exists = true;
         }
 
@@ -848,25 +842,25 @@ STATIC void process_multi_groups() {
         } else {
             if (group_changed(key)) {
                 // Multigroup needs to be updated
-                free_file_time(multigroup->f_time);
+                OSHash_Clean(multigroup->f_time, free_file_time);
                 c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, !logr.nocmerged);
                 mdebug2("Multigroup '%s' has changed.", multigroup->name);
 
             } else {
-                file_time **old_time = multigroup->f_time;
+                OSHash *old_time = multigroup->f_time;
                 multigroup->f_time = NULL;
                 c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, false);
                 if (ftime_changed(old_time, multigroup->f_time)) {
                     // Multigroup was modified from outside
                     if (!logr.nocmerged) {
-                        free_file_time(multigroup->f_time);
+                        OSHash_Clean(multigroup->f_time, free_file_time);
                         c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, true);
                         mwarn("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
                     } else {
                         mdebug2("Multigroup '%s' was modified from outside.", multigroup->name);
                     }
                 }
-                free_file_time(old_time);
+                OSHash_Clean(old_time, free_file_time);
             }
             multigroup->exists = true;
         }
@@ -898,7 +892,7 @@ STATIC void process_deleted_groups() {
             group->exists = false;
         } else {
             OSHash_Delete_ex(groups, key);
-            free_file_time(group->f_time);
+            OSHash_Clean(group->f_time, free_file_time);
             os_free(group->name);
             os_free(group);
         }
@@ -914,7 +908,9 @@ STATIC void process_deleted_multi_groups() {
     unsigned int i;
 
     OSHash_Clean(m_hash, cleaner);
-    m_hash = OSHash_Create();
+    if (m_hash = OSHash_Create(), m_hash == NULL) {
+        merror_exit("OSHash_Create() failed");
+    }
 
     my_node = OSHash_Begin(multi_groups, &i);
 
@@ -933,7 +929,7 @@ STATIC void process_deleted_multi_groups() {
             snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
             rmdir_ex(multi_path);
             OSHash_Delete_ex(multi_groups, key);
-            free_file_time(multigroup->f_time);
+            OSHash_Clean(multigroup->f_time, free_file_time);
             os_free(multigroup->name);
             os_free(multigroup);
         }
@@ -942,7 +938,7 @@ STATIC void process_deleted_multi_groups() {
     }
 }
 
-STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_time ***f_time, unsigned int *f_size, bool create_merged, int path_offset) {
+STATIC int validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, OSHash **_f_time, bool create_merged, int path_offset) {
     char ** files;
     char file[MAX_SHARED_PATH + 1];
     int merged_ok = 1;
@@ -997,7 +993,7 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
         }
 
         if (S_ISDIR(attrib.st_mode)) {
-            if (merged_ok = validate_shared_files(file, group, merged_tmp, f_time, f_size, create_merged, path_offset), merged_ok == 0) {
+            if (merged_ok = validate_shared_files(file, group, merged_tmp, _f_time, create_merged, path_offset), merged_ok == 0) {
                 free_strarray(files);
                 return 0;
             }
@@ -1042,18 +1038,13 @@ STATIC int validate_shared_files(const char *src_path, const char *group, const 
             }
 
             if (!ignored) {
-                os_realloc((*f_time), ((*f_size) + 2) * sizeof(file_time *), (*f_time));
-                os_calloc(1, sizeof(file_time), (*f_time)[(*f_size)]);
-                (*f_time)[*f_size]->m_time = attrib.st_mtime;
-                os_strdup(file, (*f_time)[(*f_size)]->name);
-                (*f_time)[++(*f_size)] = NULL;
-
                 if (create_merged) {
                     if (merged_ok = MergeAppendFile(merged_tmp, file, NULL, path_offset), merged_ok == 0) {
                         free_strarray(files);
                         return 0;
                     }
                 }
+                ftime_add(_f_time, file, attrib.st_mtime);
             }
         }
     }
@@ -1151,6 +1142,18 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
     return;
 }
 
+STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time) {
+    file_time *file = NULL;
+    os_calloc(1, sizeof(file_time), file);
+    file->m_time = m_time;
+    os_strdup(name, file->name);
+    if (OSHash_Add_ex((*_f_time), name, file) != 2) {
+        os_free(file->name);
+        os_free(file);
+        merror("Couldn't add file '%s' to group hash table.", name);
+    }
+}
+
 STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]) {
     group_t *group;
     OSHashNode *my_node;
@@ -1193,9 +1196,8 @@ STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name
     return NULL;
 }
 
-STATIC bool ftime_changed(file_time **old_time, file_time **new_time) {
+STATIC bool ftime_changed(OSHash *old_time, OSHash *new_time) {
     unsigned int size_old, size_new = 0;
-    unsigned int i, j;
 
     if (!old_time || !new_time) {
         if (!old_time && !new_time) {
@@ -1205,24 +1207,30 @@ STATIC bool ftime_changed(file_time **old_time, file_time **new_time) {
         }
     }
 
-    for (size_old = 0; old_time[size_old]; size_old++);
-    for (size_new = 0; new_time[size_new]; size_new++);
+    size_old = OSHash_Get_Elem_ex(old_time);
+    size_new = OSHash_Get_Elem_ex(new_time);
 
     if (size_old == size_new) {
-        for (i = 0; old_time[i]; i++) {
-            bool found = false;
-            for (j = 0; new_time[j]; j++) {
-                if (!strcmp(old_time[i]->name, new_time[j]->name)) {
-                    found = true;
-                    if (old_time[i]->m_time != new_time[j]->m_time) {
-                        return true;
-                    }
-                    break;
+        OSHashNode *my_node;
+        unsigned int i;
+
+        my_node = OSHash_Begin(old_time, &i);
+
+        while (my_node) {
+            file_time *file_old = NULL;
+            file_time *file_new = NULL;
+
+            file_old = my_node->data;
+
+            if (file_new = OSHash_Get_ex(new_time, file_old->name), file_new) {
+                if (file_old->m_time != file_new->m_time) {
+                    return true;
                 }
-            }
-            if (!found) {
+            } else {
                 return true;
             }
+
+            my_node = OSHash_Next(old_time, &i, my_node);
         }
     } else {
         return true;
@@ -1251,7 +1259,7 @@ STATIC bool group_changed(const char *multi_group) {
 }
 
 /* look for agent group */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock)
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int *wdb_sock)
 {
     char* group = NULL;
     char *end;
