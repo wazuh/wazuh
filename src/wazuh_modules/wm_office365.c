@@ -178,8 +178,6 @@ void wm_office365_auth_destroy(wm_office365_auth* office365_auth) {
         os_free(current->client_id);
         os_free(current->client_secret_path);
         os_free(current->client_secret);
-        os_free(current->login_fqdn);
-        os_free(current->management_fqdn);
         os_free(current);
         current = next;
     }
