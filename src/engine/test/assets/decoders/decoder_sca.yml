@@ -1,14 +1,14 @@
+---
 name: decoder_sca
+
+parents:
+  - json
 
 check:
   - wazuh.queue: 112
 
-parse:
-  logql:
-      - event.original: <_sca_event_json/json>
-
 normalize:
   - check:
-      - _sca_event_json.type: +exists
+      - _json.type: +exists
     map:
-      decode_result: +sca_decoder/$_sca_event_json/$agent.id
+      decode_result: +sca_decoder/$_json/$agent.id
