@@ -95,24 +95,18 @@ static int teardown_test_read(void **state) {
             os_free(((wm_office365*)test->module->data)->auth->client_id);
             os_free(((wm_office365*)test->module->data)->auth->client_secret_path);
             os_free(((wm_office365*)test->module->data)->auth->client_secret);
-            os_free(((wm_office365*)test->module->data)->auth->login_fqdn);
-            os_free(((wm_office365*)test->module->data)->auth->management_fqdn);
             if (((wm_office365*)test->module->data)->auth->next) {
                 os_free(((wm_office365*)test->module->data)->auth->next->tenant_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret_path);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret);
-                os_free(((wm_office365*)test->module->data)->auth->next->login_fqdn);
-                os_free(((wm_office365*)test->module->data)->auth->next->management_fqdn);
-                os_free(((wm_office365*)test->module->data)->auth->next->next);
-            }
-            if (((wm_office365*)test->module->data)->auth->next->next) {
-                os_free(((wm_office365*)test->module->data)->auth->next->next->tenant_id);
-                os_free(((wm_office365*)test->module->data)->auth->next->next->client_id);
-                os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret_path);
-                os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret);
-                os_free(((wm_office365*)test->module->data)->auth->next->next->login_fqdn);
-                os_free(((wm_office365*)test->module->data)->auth->next->next->management_fqdn);
+                if (((wm_office365*)test->module->data)->auth->next->next) {
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->tenant_id);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->client_id);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret_path);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->next);
+                }
                 os_free(((wm_office365*)test->module->data)->auth->next->next);
             }
             os_free(((wm_office365*)test->module->data)->auth->next);
@@ -176,8 +170,8 @@ void test_read_configuration(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_string_equal(module_data->auth->login_fqdn, "login.microsoftonline.com"); // retrocompatability check
-    assert_string_equal(module_data->auth->management_fqdn, "manage.office.com"); // retrocompatability check
+    assert_string_equal(module_data->auth->login_fqdn, "login.microsoftonline.com"); // retrocompatability test
+    assert_string_equal(module_data->auth->management_fqdn, "manage.office.com"); // retrocompatability test
     assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
     assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
     assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
