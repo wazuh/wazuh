@@ -4,10 +4,10 @@ parents:
   - syscollector_port
 
 check:
-  - _syscollectorEventOriginal.port: +not_exists
-  - _syscollectorEventOriginal.type: +s_eq/port_end
+  - _json.port: +not_exists
+  - _json.type: +s_eq/port_end
 
 normalize:
   - map:
-     _query: +s_concat/agent /$agent.id/ port del /$_syscollectorEventOriginal.ID
+     _query: +s_concat/agent /$agent.id/ port del /$_json.ID
      _port_del_result: +wdb_update/$_query

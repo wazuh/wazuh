@@ -4,10 +4,10 @@ parents:
   - syscollector_netinfo
 
 check:
-  - _syscollectorEventOriginal.iface: +not_exists
-  - _syscollectorEventOriginal.type: +s_eq/network_end
+  - _json.iface: +not_exists
+  - _json.type: +s_eq/network_end
 
 normalize:
   - map:
-      _query: +s_concat/agent /$agent.id/ netinfo del /$_syscollectorEventOriginal.ID
+      _query: +s_concat/agent /$agent.id/ netinfo del /$_json.ID
       _netinfo_del_result: +wdb_update/$_query

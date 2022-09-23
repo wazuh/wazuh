@@ -4,4 +4,4 @@ parents:
   - syscollector_base
 
 check:
-  - _syscollectorEventOriginal.type: +s_starts/network
+  - _json.type: +s_starts/network

@@ -4,159 +4,159 @@ parents:
   - syscollector_process
 
 check:
-  - _syscollectorEventOriginal.process: +exists
+  - _json.process: +exists
 
 normalize:
   - check:
-      - _syscollectorEventOriginal.timestamp: +not_exists
+      - _json.timestamp: +not_exists
     map:
-      _syscollectorEventOriginal.timestamp: "NULL"
+      _json.timestamp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.pid: +not_exists
+      - _json.process.pid: +not_exists
     map:
-      _syscollectorEventOriginal.process.pid: "NULL"
+      _json.process.pid: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.name: +not_exists
+      - _json.process.name: +not_exists
     map:
-      _syscollectorEventOriginal.process.name: "NULL"
+      _json.process.name: "NULL"
 
   - check:
-    - _syscollectorEventOriginal.process.state: +not_exists
+    - _json.process.state: +not_exists
     map:
-      _syscollectorEventOriginal.process.state: "NULL"
+      _json.process.state: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.ppid: +not_exists
+      - _json.process.ppid: +not_exists
     map:
-      _syscollectorEventOriginal.process.ppid: "NULL"
+      _json.process.ppid: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.utime: +not_exists
+      - _json.process.utime: +not_exists
     map:
-      _syscollectorEventOriginal.process.utime: "NULL"
+      _json.process.utime: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.stime: +not_exists
+      - _json.process.stime: +not_exists
     map:
-      _syscollectorEventOriginal.process.stime: "NULL"
+      _json.process.stime: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.cmd: +not_exists
+      - _json.process.cmd: +not_exists
     map:
-      _syscollectorEventOriginal.process.cmd: "NULL"
+      _json.process.cmd: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.argvs: +exists
+      - _json.process.argvs: +exists
     map:
-      _argvs_csv_str: +s_fromArray/$_syscollectorEventOriginal.process.argvs/,
+      _argvs_csv_str: +s_fromArray/$_json.process.argvs/,
 
   - check:
-      - _syscollectorEventOriginal.process.argvs: +not_exists
+      - _json.process.argvs: +not_exists
     map:
       _argvs_csv_str: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.euser: +not_exists
+      - _json.process.euser: +not_exists
     map:
-      _syscollectorEventOriginal.process.euser: "NULL"
+      _json.process.euser: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.ruser: +not_exists
+      - _json.process.ruser: +not_exists
     map:
-      _syscollectorEventOriginal.process.ruser: "NULL"
+      _json.process.ruser: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.suser: +not_exists
+      - _json.process.suser: +not_exists
     map:
-      _syscollectorEventOriginal.process.suser: "NULL"
+      _json.process.suser: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.egroup: +not_exists
+      - _json.process.egroup: +not_exists
     map:
-      _syscollectorEventOriginal.process.egroup: "NULL"
+      _json.process.egroup: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.rgroup: +not_exists
+      - _json.process.rgroup: +not_exists
     map:
-      _syscollectorEventOriginal.process.rgroup: "NULL"
+      _json.process.rgroup: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.sgroup: +not_exists
+      - _json.process.sgroup: +not_exists
     map:
-      _syscollectorEventOriginal.process.sgroup: "NULL"
+      _json.process.sgroup: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.fgroup: +not_exists
+      - _json.process.fgroup: +not_exists
     map:
-      _syscollectorEventOriginal.process.fgroup: "NULL"
+      _json.process.fgroup: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.priority: +not_exists
+      - _json.process.priority: +not_exists
     map:
-      _syscollectorEventOriginal.process.priority: "NULL"
+      _json.process.priority: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.nice: +not_exists
+      - _json.process.nice: +not_exists
     map:
-      _syscollectorEventOriginal.process.nice: "NULL"
+      _json.process.nice: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.size: +not_exists
+      - _json.process.size: +not_exists
     map:
-      _syscollectorEventOriginal.process.size: "NULL"
+      _json.process.size: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.vm_size: +not_exists
+      - _json.process.vm_size: +not_exists
     map:
-      _syscollectorEventOriginal.process.vm_size: "NULL"
+      _json.process.vm_size: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.resident: +not_exists
+      - _json.process.resident: +not_exists
     map:
-      _syscollectorEventOriginal.process.resident: "NULL"
+      _json.process.resident: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.share: +not_exists
+      - _json.process.share: +not_exists
     map:
-      _syscollectorEventOriginal.process.share: "NULL"
+      _json.process.share: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.start_time: +not_exists
+      - _json.process.start_time: +not_exists
     map:
-      _syscollectorEventOriginal.process.start_time: "NULL"
+      _json.process.start_time: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.pgrp: +not_exists
+      - _json.process.pgrp: +not_exists
     map:
-      _syscollectorEventOriginal.process.pgrp: "NULL"
+      _json.process.pgrp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.session: +not_exists
+      - _json.process.session: +not_exists
     map:
-      _syscollectorEventOriginal.process.session: "NULL"
+      _json.process.session: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.nlwp: +not_exists
+      - _json.process.nlwp: +not_exists
     map:
-      _syscollectorEventOriginal.process.nlwp: "NULL"
+      _json.process.nlwp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.tgid: +not_exists
+      - _json.process.tgid: +not_exists
     map:
-      _syscollectorEventOriginal.process.tgid: "NULL"
+      _json.process.tgid: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.tty: +not_exists
+      - _json.process.tty: +not_exists
     map:
-      _syscollectorEventOriginal.process.tty: "NULL"
+      _json.process.tty: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.process.processor: +not_exists
+      - _json.process.processor: +not_exists
     map:
-      _syscollectorEventOriginal.process.processor: "NULL"
+      _json.process.processor: "NULL"
 
   - map:
-      _query: +s_concat/agent /$agent.id/ process save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.process.pid/|/$_syscollectorEventOriginal.process.name/|/$_syscollectorEventOriginal.process.state/|/$_syscollectorEventOriginal.process.ppid/|/$_syscollectorEventOriginal.process.utime/|/$_syscollectorEventOriginal.process.stime/|/$_syscollectorEventOriginal.process.cmd/|/$_argvs_csv_str/|/$_syscollectorEventOriginal.process.euser/|/$_syscollectorEventOriginal.process.ruser/|/$_syscollectorEventOriginal.process.suser/|/$_syscollectorEventOriginal.process.egroup/|/$_syscollectorEventOriginal.process.rgroup/|/$_syscollectorEventOriginal.process.sgroup/|/$_syscollectorEventOriginal.process.fgroup/|/$_syscollectorEventOriginal.process.priority/|/$_syscollectorEventOriginal.process.nice/|/$_syscollectorEventOriginal.process.size/|/$_syscollectorEventOriginal.process.vm_size/|/$_syscollectorEventOriginal.process.resident/|/$_syscollectorEventOriginal.process.share/|/$_syscollectorEventOriginal.process.start_time/|/$_syscollectorEventOriginal.process.pgrp/|/$_syscollectorEventOriginal.process.session/|/$_syscollectorEventOriginal.process.nlwp/|/$_syscollectorEventOriginal.process.tgid/|/$_syscollectorEventOriginal.process.tty/|/$_syscollectorEventOriginal.process.processor
+      _query: +s_concat/agent /$agent.id/ process save /$_json.ID/|/$_json.timestamp/|/$_json.process.pid/|/$_json.process.name/|/$_json.process.state/|/$_json.process.ppid/|/$_json.process.utime/|/$_json.process.stime/|/$_json.process.cmd/|/$_argvs_csv_str/|/$_json.process.euser/|/$_json.process.ruser/|/$_json.process.suser/|/$_json.process.egroup/|/$_json.process.rgroup/|/$_json.process.sgroup/|/$_json.process.fgroup/|/$_json.process.priority/|/$_json.process.nice/|/$_json.process.size/|/$_json.process.vm_size/|/$_json.process.resident/|/$_json.process.share/|/$_json.process.start_time/|/$_json.process.pgrp/|/$_json.process.session/|/$_json.process.nlwp/|/$_json.process.tgid/|/$_json.process.tty/|/$_json.process.processor
       _process_save_result: +wdb_update/$_query
