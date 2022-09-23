@@ -4,19 +4,19 @@ parents:
   - syscollector_base
 
 check:
-  - _syscollectorEventOriginal.ID: +exists
-  - _syscollectorEventOriginal.type: +s_starts/hotfix
+  - _json.ID: +exists
+  - _json.type: +s_starts/hotfix
 
 normalize:
   - check:
-      - _syscollectorEventOriginal.hotfix: +exists
+      - _json.hotfix: +exists
     map:
-      _query: +s_concat/agent /$agent.id/ hotfix save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.hotfix
+      _query: +s_concat/agent /$agent.id/ hotfix save /$_json.ID/|/$_json.timestamp/|/$_json.hotfix
       _hotfix_save_response: +wdb_update/$_query
 
   - check:
-      - _syscollectorEventOriginal.hotfix: +not_exists
-      - _syscollectorEventOriginal.type: +s_eq/hotfix_end
+      - _json.hotfix: +not_exists
+      - _json.type: +s_eq/hotfix_end
     map:
-      _query: +s_concat/agent /$agent.id/ hotfix del /$_syscollectorEventOriginal.ID
+      _query: +s_concat/agent /$agent.id/ hotfix del /$_json.ID
       _hotfix_del_response: +wdb_update/$_query

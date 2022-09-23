@@ -4,50 +4,50 @@ parents:
   - syscollector_base
 
 check:
-  - _syscollectorEventOriginal.type: +s_eq/hardware
-  - _syscollectorEventOriginal.inventory: +exists
+  - _json.type: +s_eq/hardware
+  - _json.inventory: +exists
 
 normalize:
   - check:
-      - _syscollectorEventOriginal.timestamp: +not_exists
+      - _json.timestamp: +not_exists
     map:
-      _syscollectorEventOriginal.timestamp: "NULL"
+      _json.timestamp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.board_serial: +not_exists
+      - _json.inventory.board_serial: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.board_serial: "NULL"
+      _json.inventory.board_serial: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.cpu_name: +not_exists
+      - _json.inventory.cpu_name: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.cpu_name: "NULL"
+      _json.inventory.cpu_name: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.cpu_cores: +not_exists
+      - _json.inventory.cpu_cores: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.cpu_cores: "NULL"
+      _json.inventory.cpu_cores: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.cpu_MHz: +not_exists
+      - _json.inventory.cpu_MHz: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.cpu_MHz: "NULL"
+      _json.inventory.cpu_MHz: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.ram_total: +not_exists
+      - _json.inventory.ram_total: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.ram_total: "NULL"
+      _json.inventory.ram_total: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.ram_free: +not_exists
+      - _json.inventory.ram_free: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.ram_free: "NULL"
+      _json.inventory.ram_free: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.ram_usage: +not_exists
+      - _json.inventory.ram_usage: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.ram_usage: "NULL"
+      _json.inventory.ram_usage: "NULL"
 
   - map:
-      _query: +s_concat/agent /$agent.id/ hardware save /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.board_serial/|/$_syscollectorEventOriginal.inventory.cpu_name/|/$_syscollectorEventOriginal.inventory.cpu_cores/|/$_syscollectorEventOriginal.inventory.cpu_MHz/|/$_syscollectorEventOriginal.inventory.ram_total/|/$_syscollectorEventOriginal.inventory.ram_free/|/$_syscollectorEventOriginal.inventory.ram_usage
+      _query: +s_concat/agent /$agent.id/ hardware save /$_json.ID/|/$_json.timestamp/|/$_json.inventory.board_serial/|/$_json.inventory.cpu_name/|/$_json.inventory.cpu_cores/|/$_json.inventory.cpu_MHz/|/$_json.inventory.ram_total/|/$_json.inventory.ram_free/|/$_json.inventory.ram_usage
       _hardware_save_response: +wdb_update/$_query

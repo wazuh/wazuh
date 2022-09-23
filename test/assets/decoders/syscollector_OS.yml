@@ -4,95 +4,95 @@ parents:
   - syscollector_base
 
 check:
-  - _syscollectorEventOriginal.inventory: +exists
-  - _syscollectorEventOriginal.type: +s_eq/OS
+  - _json.inventory: +exists
+  - _json.type: +s_eq/OS
 
 normalize:
   - check:
-      - _syscollectorEventOriginal.ID: +not_exists
+      - _json.ID: +not_exists
     map:
-      _syscollectorEventOriginal.ID: "NULL"
+      _json.ID: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.timestamp: +not_exists
+      - _json.timestamp: +not_exists
     map:
-      _syscollectorEventOriginal.timestamp: "NULL"
+      _json.timestamp: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.hostname: +not_exists
+      - _json.inventory.hostname: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.hostname: "NULL"
+      _json.inventory.hostname: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.architecture: +not_exists
+      - _json.inventory.architecture: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.architecture: "NULL"
+      _json.inventory.architecture: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_name: +not_exists
+      - _json.inventory.os_name: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_name: "NULL"
+      _json.inventory.os_name: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_version: +not_exists
+      - _json.inventory.os_version: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_version: "NULL"
+      _json.inventory.os_version: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_codename: +not_exists
+      - _json.inventory.os_codename: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_codename: "NULL"
+      _json.inventory.os_codename: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_major: +not_exists
+      - _json.inventory.os_major: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_major: "NULL"
+      _json.inventory.os_major: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_minor: +not_exists
+      - _json.inventory.os_minor: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_minor: "NULL"
+      _json.inventory.os_minor: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_build: +not_exists
+      - _json.inventory.os_build: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_build: "NULL"
+      _json.inventory.os_build: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_platform: +not_exists
+      - _json.inventory.os_platform: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_platform: "NULL"
+      _json.inventory.os_platform: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.sysname: +not_exists
+      - _json.inventory.sysname: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.sysname: "NULL"
+      _json.inventory.sysname: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.release: +not_exists
+      - _json.inventory.release: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.release: "NULL"
+      _json.inventory.release: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.version: +not_exists
+      - _json.inventory.version: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.version: "NULL"
+      _json.inventory.version: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_release: +not_exists
+      - _json.inventory.os_release: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_release: "NULL"
+      _json.inventory.os_release: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_patch: +not_exists
+      - _json.inventory.os_patch: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_patch: "NULL"
+      _json.inventory.os_patch: "NULL"
 
   - check:
-      - _syscollectorEventOriginal.inventory.os_display_version: +not_exists
+      - _json.inventory.os_display_version: +not_exists
     map:
-      _syscollectorEventOriginal.inventory.os_display_version: "NULL"
+      _json.inventory.os_display_version: "NULL"
 
   - map:
-      _query: +s_concat/agent /$agent.id/ osinfo set /$_syscollectorEventOriginal.ID/|/$_syscollectorEventOriginal.timestamp/|/$_syscollectorEventOriginal.inventory.hostname/|/$_syscollectorEventOriginal.inventory.architecture/|/$_syscollectorEventOriginal.inventory.os_name/|/$_syscollectorEventOriginal.inventory.os_version/|/$_syscollectorEventOriginal.inventory.os_codename/|/$_syscollectorEventOriginal.inventory.os_major/|/$_syscollectorEventOriginal.inventory.os_minor/|/$_syscollectorEventOriginal.inventory.os_build/|/$_syscollectorEventOriginal.inventory.os_platform/|/$_syscollectorEventOriginal.inventory.sysname/|/$_syscollectorEventOriginal.inventory.release/|/$_syscollectorEventOriginal.inventory.version/|/$_syscollectorEventOriginal.inventory.os_release/|/$_syscollectorEventOriginal.inventory.os_patch/|/$_syscollectorEventOriginal.inventory.os_display_version
+      _query: +s_concat/agent /$agent.id/ osinfo set /$_json.ID/|/$_json.timestamp/|/$_json.inventory.hostname/|/$_json.inventory.architecture/|/$_json.inventory.os_name/|/$_json.inventory.os_version/|/$_json.inventory.os_codename/|/$_json.inventory.os_major/|/$_json.inventory.os_minor/|/$_json.inventory.os_build/|/$_json.inventory.os_platform/|/$_json.inventory.sysname/|/$_json.inventory.release/|/$_json.inventory.version/|/$_json.inventory.os_release/|/$_json.inventory.os_patch/|/$_json.inventory.os_display_version
       _hardware_save_result: +wdb_update/$_query

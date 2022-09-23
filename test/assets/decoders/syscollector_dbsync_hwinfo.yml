@@ -1,0 +1,100 @@
+name: syscollector_dbsync_hwinfo
+
+parents:
+  - syscollector_dbsync_base
+
+check:
+  - _json.type: +s_eq/dbsync_hwinfo
+  - _json.operation: +s_ne/INSERTED
+
+normalize:
+  - check:
+      - _json.data.scan_time: +not_exists
+    map:
+      _json.data.scan_time: "NULL"
+
+  - check:
+      - _json.data.board_serial: +s_ne//
+    map:
+      _json.data.board_serial: +s_replace/|/$_escaped_pipe_char
+      _json.data.board_serial: +s_replace/NULL/_NULL_  
+  - check:
+      - _json.data.board_serial: +s_eq//
+    map:
+      _json.data.board_serial: "NULL"
+  - check:
+      - _json.data.board_serial: +not_exists
+    map:
+      _json.data.board_serial: "NULL"
+
+  - check:
+      - _json.data.cpu_name: +not_exists
+    map:
+      _json.data.cpu_name: "NULL"
+
+  - check:
+      - _json.data.cpu_name: +s_ne//
+    map:
+      _json.data.cpu_name: +s_replace/|/$_escaped_pipe_char
+      _json.data.cpu_name: +s_replace/NULL/_NULL_
+  
+  - check:
+      - _json.data.cpu_name: +s_eq//
+    map:
+      _json.data.cpu_name: "NULL"
+
+  - check:
+      - _json.data.cpu_cores: +not_exists
+    map:
+      _json.data.cpu_cores: "NULL"
+
+  - check:
+      - _json.data.cpu_mhz: +not_exists
+    map:
+      _json.data.cpu_mhz: "NULL"
+
+  - check:
+      - _json.data.ram_total: +not_exists
+    map:
+      _json.data.ram_total: "NULL"
+
+  - check:
+      - _json.data.ram_free: +not_exists
+    map:
+      _json.data.ram_free: "NULL"
+
+  - check:
+      - _json.data.ram_usage: +not_exists
+    map:
+      _json.data.ram_usage: "NULL"
+
+  - check:
+      - _json.data.checksum: +not_exists
+    map:
+      _json.data.checksum: "NULL"
+
+  - map:
+      _query_header: +s_concat/agent /$agent.id/ dbsync hwinfo /$_json.operation
+      _query: +s_concat/$_query_header/ /$_json.data.scan_time/|/$_json.data.board_serial/|/$_json.data.cpu_name/|/$_json.data.cpu_cores/|/$_json.data.cpu_mhz/|/$_json.data.ram_total/|/$_json.data.ram_free/|/$_json.data.ram_usage/|/$_json.data.checksum/|
+      _query: +s_replace/||/|NULL|
+      _query_response: +wdb_query/$_query
+
+  - check:
+      - _query_response: +s_ne//
+    map:
+      _query_response_values: +r_ext/$_query_response/\|(.*)                    #TODO: This fixes the issue of having a value with spaces inside, but Im losing first value (in this case not needed)
+      _array_of_field: +s_to_array/$_query_response_values/|
+      _array_of_field/0: +s_replace/$_escaped_pipe_char/|
+      _json.data.hardware.serial: $_array_of_field/0
+      _array_of_field/1: +s_replace/$_escaped_pipe_char/|
+      _json.data.hardware.cpu_name: $_array_of_field/1
+      _json.hardware.cpu_cores: $_array_of_field/2
+      _json.hardware.cpu_mhz" : $_array_of_field/3
+      _json.hardware.ram_total: $_array_of_field/4
+      _json.hardware.ram_free": $_array_of_field/5
+      _json.hardware.ram_usage: $_array_of_field/6
+      _query: +delete_field
+      _query_response: +delete_field
+      _query_response_values: +delete_field
+      _array_of_field: +delete_field
+      _escaped_pipe_char: +delete_field

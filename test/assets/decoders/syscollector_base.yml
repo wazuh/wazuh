@@ -4,4 +4,4 @@ parents:
   - syscollector_queue
 
 check:
-  - _syscollectorEventOriginal.type: +is_string
+  - _json.type: +is_string
