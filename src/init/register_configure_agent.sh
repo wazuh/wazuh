@@ -43,7 +43,7 @@ edit_value_tag() {
         file="${TMP_ENROLLMENT}"
     fi
 
-    if [ ! -z "$1" ] && [ ! -z "$2" ]; then
+    if [ -n "$1" ] && [ -n "$2" ]; then
         start_config="$(grep -n "<$1>" ${file} | cut -d':' -f 1)"
         end_config="$(grep -n "</$1>" ${file} | cut -d':' -f 1)"
         if [ ! -n "${start_config}" ] && [ ! -n "${end_config}" ] && [ "${file}" = "${TMP_ENROLLMENT}" ]; then
@@ -116,38 +116,38 @@ add_adress_block() {
 }
 
 add_parameter () {
-    if [ ! -z "$3" ]; then
+    if [ -n "$3" ]; then
         OPTIONS="$1 $2 $3"
     fi
     echo ${OPTIONS}
 }
 
 get_deprecated_vars () {
-    if [ ! -z "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
+    if [ -n "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
         WAZUH_MANAGER=${WAZUH_MANAGER_IP}
     fi
-    if [ ! -z "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
+    if [ -n "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
         WAZUH_REGISTRATION_SERVER=${WAZUH_AUTHD_SERVER}
     fi
-    if [ ! -z "${WAZUH_AUTHD_PORT}" ] && [ -z "${WAZUH_REGISTRATION_PORT}" ]; then
+    if [ -n "${WAZUH_AUTHD_PORT}" ] && [ -z "${WAZUH_REGISTRATION_PORT}" ]; then
         WAZUH_REGISTRATION_PORT=${WAZUH_AUTHD_PORT}
     fi
-    if [ ! -z "${WAZUH_PASSWORD}" ] && [ -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
+    if [ -n "${WAZUH_PASSWORD}" ] && [ -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         WAZUH_REGISTRATION_PASSWORD=${WAZUH_PASSWORD}
     fi
-    if [ ! -z "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERVAL}" ]; then
+    if [ -n "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERVAL}" ]; then
         WAZUH_KEEP_ALIVE_INTERVAL=${WAZUH_NOTIFY_TIME}
     fi
-    if [ ! -z "${WAZUH_CERTIFICATE}" ] && [ -z "${WAZUH_REGISTRATION_CA}" ]; then
+    if [ -n "${WAZUH_CERTIFICATE}" ] && [ -z "${WAZUH_REGISTRATION_CA}" ]; then
         WAZUH_REGISTRATION_CA=${WAZUH_CERTIFICATE}
     fi
-    if [ ! -z "${WAZUH_PEM}" ] && [ -z "${WAZUH_REGISTRATION_CERTIFICATE}" ]; then
+    if [ -n "${WAZUH_PEM}" ] && [ -z "${WAZUH_REGISTRATION_CERTIFICATE}" ]; then
         WAZUH_REGISTRATION_CERTIFICATE=${WAZUH_PEM}
     fi
-    if [ ! -z "${WAZUH_KEY}" ] && [ -z "${WAZUH_REGISTRATION_KEY}" ]; then
+    if [ -n "${WAZUH_KEY}" ] && [ -z "${WAZUH_REGISTRATION_KEY}" ]; then
         WAZUH_REGISTRATION_KEY=${WAZUH_KEY}
     fi
-    if [ ! -z "${WAZUH_GROUP}" ] && [ -z "${WAZUH_AGENT_GROUP}" ]; then
+    if [ -n "${WAZUH_GROUP}" ] && [ -z "${WAZUH_AGENT_GROUP}" ]; then
         WAZUH_AGENT_GROUP=${WAZUH_GROUP}
     fi
 }
@@ -247,7 +247,7 @@ set_auto_enrollment_tag_value () {
     tag="$1"
     value="$2"
 
-    if [ ! -z "${value}" ]; then
+    if [ -n "${value}" ]; then
         edit_value_tag "${tag}" ${value} "auto_enrollment"
     else
         delete_auto_enrollment_tag "${tag}" "auto_enrollment"
@@ -270,7 +270,7 @@ main () {
 
     edit_value_tag "port" ${WAZUH_MANAGER_PORT}
 
-    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ] || [ ! -z ${ENROLLMENT_DELAY} ] || [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
+    if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         add_auto_enrollment
         set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
         set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
@@ -286,11 +286,11 @@ main () {
     fi
 
             
-    if [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
-        echo ${WAZUH_REGISTRATION_PASSWORD} > ${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}
+    if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
+        echo "${WAZUH_REGISTRATION_PASSWORD}" > ${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}
     fi
 
-    if [ ! -z ${WAZUH_MANAGER} ]; then
+    if [ -n "${WAZUH_MANAGER}" ]; then
         if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
             touch -f ${INSTALLDIR}/logs/ossec.log
             chmod 660 ${INSTALLDIR}/logs/ossec.log
