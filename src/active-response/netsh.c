@@ -98,20 +98,35 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
         else {
+            memset(log_msg, '\0', OS_MAXSTR);
+            strcpy(log_msg, "{\"message\":\"Active response may not have an effect\",\"firewall\":{");
             int index = 0;
+            char aux_buf[OS_MAXSTR] = {0};
+            bool globalfirewallStatus = true;
             while (fgets(output_buf, OS_MAXSTR -1, wfd->file_out)) {   
+                memset(aux_buf, '\0', OS_MAXSTR);
                 if ((index = getFirewallStateAllProfiles(output_buf, firewallData)) != -1) {
-                    if (false == firewallData[index].isEnabled) {
-                        memset(log_msg, '\0', OS_MAXSTR);
-                        snprintf(
-                            log_msg, OS_MAXSTR -1, "{\"message\":\"Firewall is disabled\",\"profile\":\"%s\",\"status\":\"%s\"}",
-                            firewallProfileStr[firewallData[index].profile],
-                            firewallData[index].isEnabled == true ? "active" : "inactive"
-                        );
-                        write_debug_file(argv[0], log_msg);
+                    char msg_buf[OS_MAXSTR] = {0};
+                    if (index == 2){
+                        strncpy(msg_buf, "\"profile%d\":\"%s\",\"status%d\":\"%s\"", OS_MAXSTR -1);
                     }
+                    else {
+                        strncpy(msg_buf, "\"profile%d\":\"%s\",\"status%d\":\"%s\",", OS_MAXSTR -1);
+                    }
+                    globalfirewallStatus &= firewallData[index].isEnabled;
+                    snprintf(aux_buf, OS_MAXSTR -1, msg_buf,index + 1,
+                      firewallProfileStr[firewallData[index].profile], index + 1,
+                      firewallData[index].isEnabled == true ? "active" : "inactive");
+                    strcat(log_msg, aux_buf);
                 }
             }
+            if (false == globalfirewallStatus){
+                memset(aux_buf, '\0', OS_MAXSTR);
+                snprintf(aux_buf, OS_MAXSTR -1, "},\"status\":\"%s\",\"script\":\"%s\"}", globalfirewallStatus == 1? "active":"inactive", "netsh");
+                strcat(log_msg, aux_buf);
+                write_debug_file(argv[0], log_msg);
+            }
+                
             wpclose(wfd);
         }
     }
