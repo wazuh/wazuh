@@ -1,4 +1,5 @@
-name: postgresql-csv
+---
+name: postgres-csv
 
 metadata:
   description: Decoder for postgresql in csv log format
@@ -8,86 +9,57 @@ metadata:
     - v13
     - v11
 
-definitions:
-  SECTION_1: <timestamp/POSTGRES_MS>,<?user.name>,<?postgresql.log.database>,<process.pid>
-
-  ADDRESS_W_PORT: <postgresql.log.client_addr>:<postgresql.log.client_port>
-
-  SECTION_2: <?postgresql.log.session_id>,<?postgresql.log.session_line_num>,<?postgresql.log.command_tag>,<postgresql.log.session_start_time/POSTGRES>,<?postgresql.log.virtual_transaction_id>
-  SECTION_3: <?postgresql.log.transaction_id>,<?log.level>,<?postgresql.log.sql_state_code>
-
-  MESSAGE_FORMAT_1: "duration: <_temp_duration/float> ms  <postgresql.log.query_step> <postgresql.log.query_name>:<message/quoted/ /,>"
-  MESSAGE_FORMAT_2: "duration: <_temp_duration/float> ms  <postgresql.log.query_step>: <message/keyword>"
-  MESSAGE_FORMAT_3: "duration: <_temp_duration/float> ms"
-  MESSAGE_FORMAT_4: "<postgresql.log.query_step>:<message/keyword>"
-
-  POSTGRES_OPTIONAL_FIELDS: <?postgresql.log.detail>,<?postgresql.log.hint>,<?postgresql.internal_query>,<?_internal_query_pos>,<?postgresql.log.context>,<?postgresql.log.query>,<?_query_pos>,<_/ignore/,>
-
 check:
   - wazuh.queue: 49
   - event.original: +exists
 
 parse:
   logql:
-      # 1992-07-10 00:51:56.843 UTC,"postgres","postgres",105,"107.64.99.7:20200",b0061e5.69,23,"SELECT",1992-07-10 00:51:29 UTC,3/136,0,LOG,00000,"duration: 0.455 ms  execute py:0x7faa12d6bb80: SELECT * from information_schema.tables WHERE table_name = $1","parameters: $1 = 'tables'",,,,,,,,""
-      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_1"$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>'
-
       # 1992-07-10 01:07:24.374 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"CHECKPOINT",1992-07-10 01:06:20 UTC,3/0,0,LOG,00000,"duration: 15.136 ms  statement: checkpoint;",,,,,,,,,"psql","client backend"
-      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_2",$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
-      # 1992-07-10 00:17:53.742 UTC,"postgres","postgres",54,"107.64.99.7:20200",b0061e5.69,23,"ALTER SYSTEM",1992-07-10 00:17:40 UTC,3/0,0,LOG,00000,"duration: 6.589 ms",,,,,,,,,"psql"
-      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_3",$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
-      # 1992-07-10 00:05:12.999 UTC,"postgres","postgres",34,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 00:05:06 UTC,3/2,0,LOG,00000,"statement: SELECT name FROM  (SELECT pg_catalog.lower(name) AS name FROM pg_catalog.pg_settings   WHERE context != 'internal'   UNION ALL SELECT 'all') ss  WHERE substring(name,1,10)='log_connec' LIMIT 1000",,,,,,,,,"psql"
+      # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,,0,LOG,00000,"disconnection: session time: 0:00:22.123 user=postgres database=postgres host=192.191.190.189 port=45678",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,3/4,0,FATAL,25P03,"terminating connection due to idle-in-transaction timeout",,,,,,,,,"psql","client backend"
       # 1992-07-10 10:45:48.113 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 10:45:14 UTC,3/4,0,LOG,00000,"statement: BEGIN;",,,,,,,,,"psql","client backend"
       # 1992-07-10 10:45:33.257 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 10:45:14 UTC,3/3,0,LOG,00000,"statement: SET idle_in_transaction_session_timeout = 50;",,,,,,,,,"psql","client backend"
-      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,"$MESSAGE_FORMAT_4",$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>'
+      # 1992-07-10 10:45:33.257 UTC,"postgres","postgres",86,"107.64.99.7:20200",5ff26a0c.56,10,"idle",1992-07-10 10:45:14 UTC,3/9,0,LOG,00000,"statement: SELECT name FROM  (SELECT pg_catalog.lower(name) AS name FROM pg_catalog.pg_settings   WHERE context != 'internal'   UNION ALL SELECT 'all') ss  WHERE substring(name,1,6)='log_st' LIMIT 1000",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:33.257 UTC,,,80,,5cc26a05.50,2,,1992-07-10 10:45:14 UTC,,0,LOG,00000,"checkpoint complete: wrote 1 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.014 s; sync files=1, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB",,,,,,,,,"","checkpointer"
+      - event.original: <timestamp/POSTGRES_MS>,<_csv/csv/user_name/postgresql_log_database/process_pid/connection_from/postgresql_log_session_id/session_line_num/postgresql_log_command_tag/postgresql_log_session_start_time/postgresql_log_virtual_transaction_id/postgresql_log_transaction_id/log_level/postgresql_log_sql_state_code/message/postgresql_log_detail/postgresql_log_hint/postgresql_internal_query/internal_query_pos/postgresql_log_context/postgresql_log_query/query_pos/postgresql_log_location/postgresql_log_application_name/postgresql_log_backend_type>
 
-      # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,3/4,0,FATAL,25P03,"terminating connection due to idle-in-transaction timeout",,,,,,,,,"psql","client backend"
-      # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,,0,LOG,00000,"disconnection: session time: 0:00:33.289 user=postgres database=postgres host=189.65.30.22 port=48978",,,,,,,,,"psql","client backend"
-      - event.original: '$SECTION_1,"$ADDRESS_W_PORT",$SECTION_2,$SECTION_3,<message/quoted/">,$POSTGRES_OPTIONAL_FIELDS<postgresql.log.application_name>,<postgresql.log.backend_type>'
-
+      # 1992-07-10 00:05:12.999 UTC,"postgres","postgres",34,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 10:45:14 UTC,3/2,0,LOG,00000,"statement: SELECT name FROM  (SELECT pg_catalog.lower(name) AS name FROM pg_catalog.pg_settings   WHERE context != 'internal'   UNION ALL SELECT 'all') ss  WHERE substring(name,1,10)='log_connec' LIMIT 1000",,,,,,,,,"psql"
+      # 1992-07-10 00:17:53.742 UTC,"postgres","postgres",54,"107.64.99.7:20200",b0061e5.69,23,"ALTER SYSTEM",1992-07-10 10:45:14 UTC,3/0,0,LOG,00000,"duration: 6.589 ms",,,,,,,,,"psql"
+      # 1992-07-10 00:51:56.843 UTC,"postgres","postgres",105,"107.64.99.7:20200",b0061e5.69,23,"SELECT",1992-07-10 10:45:14 UTC,3/136,0,LOG,00000,"duration: 0.455 ms  execute py:0x2fcc12d7ae81: SELECT * from information_schema.tables WHERE table_name = $1","parameters: $1 = 'tables'",,,,,,,,""
+      - event.original: <timestamp/POSTGRES_MS>,<_csv/csv/user_name/postgresql_log_database/process_pid/connection_from/postgresql_log_session_id/session_line_num/postgresql_log_command_tag/postgresql_log_session_start_time/postgresql_log_virtual_transaction_id/postgresql_log_transaction_id/log_level/postgresql_log_sql_state_code/message/postgresql_log_detail/postgresql_log_hint/postgresql_internal_query/internal_query_pos/postgresql_log_context/postgresql_log_query/query_pos/postgresql_log_location/postgresql_log_application_name>
 
 normalize:
   - map:
+      event.category: +s_append/database
+      event.dataset: postgresql.log
       event.kind: event
       event.module: postgresql
-      event.dataset: postgresql.log
-      event.category: +s_append/database
-      service.type: postgresql
-      postgresql.log.timestamp: $timestamp
       fileset.name: log                 #assumed fixed value
       input.type: log                   #assumed fixed value
+      postgresql.log.timestamp: $timestamp
+      service.type: postgresql
+
       #Getting timezone from timestamp (third position after spliting it)
-      _temp_timestamp: "+s_to_array/$timestamp/ "
-      event.timezone: $_temp_timestamp/2
-      #log.offset: XXX                   #TODO: where to get this value?
+      _tmp.timestamp_array: "+s_to_array/$timestamp/ "
+      event.timezone: $_tmp.timestamp_array/2
 
-  - check:
-      - user.name: +exists
-    map:
-      related.user: +s_append/postgres
-
-  - check:
-      - _internal_query_pos: +exists
-    map:
-      postgresql.internal_query: $_internal_query_pos
-
-  #TODO: see Table 20.2. Message Severity Levels (https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG)
-  # we're loosing warning type and double check state_code comparisson
-  # info  if: "ctx?.postgresql?.log?.sql_state_code == null ||  (ctx.postgresql.log.sql_state_code ==~ /^0[012].*/)"
-  # error if: "ctx?.postgresql?.log?.sql_state_code != null && !(ctx.postgresql.log.sql_state_code ==~ /^0[012].*/)"
-  - check:
-      - postgresql.log.sql_state_code: +s_ne/00000
-    map:
-      event.type: +s_append/error
-
-  - check:
-      - postgresql.log.sql_state_code: +not_exists
-    map:
-      event.type: +s_append/info
-
-  - check:
-      - postgresql.log.sql_state_code: +s_eq/00000
-    map:
-      event.type: +s_append/info
+      log.level: +rename_field/$_csv.log_level
+      postgresql.internal_query: +rename_field/$_csv.postgresql_internal_query
+      postgresql.log.application_name: +rename_field/$_csv.postgresql_log_application_name
+      postgresql.log.backend_type: +rename_field/$_csv.postgresql_log_backend_type
+      postgresql.log.command_tag: +rename_field/$_csv.postgresql_log_command_tag
+      postgresql.log.context: +rename_field/$_csv.postgresql_log_context
+      postgresql.log.database: +rename_field/$_csv.postgresql_log_database
+      postgresql.log.detail: +rename_field/$_csv.postgresql_log_detail
+      postgresql.log.hint: +rename_field/$_csv.postgresql_log_hint
+      postgresql.log.location: +rename_field/$_csv.postgresql_log_location
+      postgresql.log.query: +rename_field/$_csv.postgresql_log_query
+      postgresql.log.session_id: +rename_field/$_csv.postgresql_log_session_id
+      postgresql.log.session_line_num: +rename_field/$_csv.session_line_num # TODO: this must be a long
+      postgresql.log.session_start_time: +rename_field/$_csv.postgresql_log_session_start_time
+      postgresql.log.sql_state_code: +rename_field/$_csv.postgresql_log_sql_state_code
+      postgresql.log.transaction_id: +rename_field/$_csv.postgresql_log_transaction_id
+      postgresql.log.virtual_transaction_id: +rename_field/$_csv.postgresql_log_virtual_transaction_id
+      process.pid: +rename_field/$_csv.process_pid
+      user.name: +rename_field/$_csv.user_name
