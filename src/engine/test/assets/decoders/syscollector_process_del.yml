@@ -4,10 +4,10 @@ parents:
   - syscollector_process
 
 check:
-  - _syscollectorEventOriginal.process: +not_exists
-  - _syscollectorEventOriginal.type: +s_eq/process_end
+  - _json.process: +not_exists
+  - _json.type: +s_eq/process_end
 
 normalize:
   - map:
-      _query: +s_concat/agent /$agent.id/ process del /$_syscollectorEventOriginal.ID
+      _query: +s_concat/agent /$agent.id/ process del /$_json.ID
       _process_del_result: +wdb_update/$_query

@@ -6,6 +6,25 @@ decoders:
   - fim
   - fim_event
   - fim_scan
+  - syscollector_dbsync_base
+  - syscollector_dbsync_hotfixes
+  - syscollector_dbsync_packages
+  - syscollector_dbsync_processes
+  - syscollector_dbsync_ports
+  - syscollector_dbsync_network_iface
+  - syscollector_dbsync_network_protocol
+  - syscollector_dbsync_network_address
+  - syscollector_dbsync_hwinfo
+  - syscollector_dbsync_osinfo
+  - syscollector_dbsync_hotfixes_inserted
+  - syscollector_dbsync_packages_inserted
+  - syscollector_dbsync_processes_inserted
+  - syscollector_dbsync_ports_inserted
+  - syscollector_dbsync_network_iface_inserted
+  - syscollector_dbsync_network_protocol_inserted
+  - syscollector_dbsync_network_address_inserted
+  - syscollector_dbsync_hwinfo_inserted
+  - syscollector_dbsync_osinfo_inserted
   - syscollector_process
   - syscollector_process_del
   - syscollector_queue
