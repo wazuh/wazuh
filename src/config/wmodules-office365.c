@@ -48,8 +48,10 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         office365_config->only_future_events = WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS;
         office365_config->interval =           WM_OFFICE365_DEFAULT_INTERVAL;
         office365_config->curl_max_size =      WM_OFFICE365_DEFAULT_CURL_MAX_SIZE;
-        office365_auth->login_fqdn =           WM_OFFICE365_DEFAULT_API_LOGIN_FQDN;
-        office365_auth->management_fqdn =      WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN;
+        os_free(office365_auth->login_fqdn);
+        os_strdup(WM_OFFICE365_DEFAULT_API_LOGIN_FQDN, office365_auth->login_fqdn);
+        os_free(office365_auth->management_fqdn);
+        os_strdup(WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, office365_auth->management_fqdn);
 
         module->data = office365_config;
     } else {
@@ -144,16 +146,22 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                         return OS_INVALID;
                     }
                     else if (!strcmp(children[j]->content, "commercial")) {
-                        office365_auth->login_fqdn = "login.microsoftonline.com";
-                        office365_auth->management_fqdn = "manage.office.com";
+                        os_free(office365_auth->login_fqdn);
+                        os_strdup("login.microsoftonline.com", office365_auth->login_fqdn);
+                        os_free(office365_auth->management_fqdn);
+                        os_strdup("manage.office.com", office365_auth->management_fqdn);
                     }
                     else if (!strcmp(children[j]->content, "gcc")) {
-                        office365_auth->login_fqdn = "login.microsoftonline.com";
-                        office365_auth->management_fqdn = "manage-gcc.office.com";
+                        os_free(office365_auth->login_fqdn);
+                        os_strdup("login.microsoftonline.com", office365_auth->login_fqdn);
+                        os_free(office365_auth->management_fqdn);
+                        os_strdup("manage-gcc.office.com", office365_auth->management_fqdn);
                     }
                     else if (!strcmp(children[j]->content, "gcc-high")) {
-                        office365_auth->login_fqdn = "login.microsoftonline.us";
-                        office365_auth->management_fqdn = "manage.office365.us";
+                        os_free(office365_auth->login_fqdn);
+                        os_strdup("login.microsoftonline.us", office365_auth->login_fqdn);
+                        os_free(office365_auth->management_fqdn);
+                        os_strdup("manage.office365.us", office365_auth->management_fqdn);
                     }
                     else {
                         merror("Invalid content for tag '%s' at module '%s'.", XML_API_TYPE, WM_OFFICE365_CONTEXT.name);
@@ -192,8 +200,10 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
 
             // Keep backwards compatability with configs made prior to GCC(-High) support
             if (!office365_auth->login_fqdn && !office365_auth->management_fqdn) {
-                office365_auth->login_fqdn = "login.microsoftonline.com";
-                office365_auth->management_fqdn = "manage-gcc.office.com";
+                os_free(office365_auth->login_fqdn);
+                os_strdup("login.microsoftonline.com", office365_auth->login_fqdn);
+                os_free(office365_auth->management_fqdn);
+                os_strdup("manage.office.com", office365_auth->management_fqdn);
             }
 
         } else if (!strcmp(nodes[i]->element, XML_SUBSCRIPTIONS)) {

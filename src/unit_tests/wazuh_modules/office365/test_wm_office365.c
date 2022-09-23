@@ -95,16 +95,22 @@ static int teardown_test_read(void **state) {
             os_free(((wm_office365*)test->module->data)->auth->client_id);
             os_free(((wm_office365*)test->module->data)->auth->client_secret_path);
             os_free(((wm_office365*)test->module->data)->auth->client_secret);
+            os_free(((wm_office365*)test->module->data)->auth->login_fqdn);
+            os_free(((wm_office365*)test->module->data)->auth->management_fqdn);
             if (((wm_office365*)test->module->data)->auth->next) {
                 os_free(((wm_office365*)test->module->data)->auth->next->tenant_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret_path);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret);
+                os_free(((wm_office365*)test->module->data)->auth->next->login_fqdn);
+                os_free(((wm_office365*)test->module->data)->auth->next->management_fqdn);
                 if (((wm_office365*)test->module->data)->auth->next->next) {
                     os_free(((wm_office365*)test->module->data)->auth->next->next->tenant_id);
                     os_free(((wm_office365*)test->module->data)->auth->next->next->client_id);
                     os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret_path);
                     os_free(((wm_office365*)test->module->data)->auth->next->next->client_secret);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->login_fqdn);
+                    os_free(((wm_office365*)test->module->data)->auth->next->next->management_fqdn);
                     os_free(((wm_office365*)test->module->data)->auth->next->next->next);
                 }
                 os_free(((wm_office365*)test->module->data)->auth->next->next);
