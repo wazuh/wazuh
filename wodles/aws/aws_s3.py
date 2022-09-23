@@ -3125,21 +3125,23 @@ class AWSCloudWatchLogs(AWSService):
             parameters['nextToken'] = token
 
             # Send events to Analysisd
-            for event in response['events']:
+            if response['events']:
                 debug('+++ Sending events to Analysisd...', 1)
-                debug('The message is "{}"'.format(event['message']), 2)
-                debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
-                self.send_msg(event['message'], dump_json=False)
+                for event in response['events']:
+                    debug('The message is "{}"'.format(event['message']), 3)
+                    debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
+                    self.send_msg(event['message'], dump_json=False)
 
-                if min_start_time is None:
-                    min_start_time = event['timestamp']
-                elif event['timestamp'] < min_start_time:
-                    min_start_time = event['timestamp']
+                    if min_start_time is None:
+                        min_start_time = event['timestamp']
+                    elif event['timestamp'] < min_start_time:
+                        min_start_time = event['timestamp']
 
-                if max_end_time is None:
-                    max_end_time = event['timestamp']
-                elif event['timestamp'] > max_end_time:
-                    max_end_time = event['timestamp']
+                    if max_end_time is None:
+                        max_end_time = event['timestamp']
+                    elif event['timestamp'] > max_end_time:
+                        max_end_time = event['timestamp']
+                debug(f"+++ Sent {len(response['events'])} events to Analysisd", 1)
 
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 
