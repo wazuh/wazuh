@@ -32,6 +32,7 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
+#include "generate_cert.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -93,6 +94,11 @@ static void help_authd(char * home_path)
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
+    print_out("    -C          Specify the certificate validity in days.");
+    print_out("    -B          Specify the certificate key size in bits.");
+    print_out("    -K          Specify the path to store the certificate key.");
+    print_out("    -X          Specify the path to store the certificate.");
+    print_out("    -S          Specify the certificate subject.");
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -120,6 +126,7 @@ static int ssl_error(const SSL *ssl, int ret)
 
 int main(int argc, char **argv)
 {
+
     FILE *fp;
     /* Count of pids we are wait()ing on */
     int debug_level = 0;
@@ -156,9 +163,17 @@ int main(int argc, char **argv)
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
+        const char *cert_val = NULL;
+        const char *cert_key_bits = NULL;
+        const char *cert_key_path = NULL;
+        const char *cert_path = NULL;
+        const char *cert_subj = NULL;
+        bool generate_certifacate = false;
         unsigned short port = 0;
+        unsigned long days_val = 0;
+        unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:L"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfigj:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -261,9 +276,92 @@ int main(int argc, char **argv)
                     mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
+                case 'C':
+                    generate_certifacate = true;
+
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+                    os_strdup(optarg, cert_val);
+                    break;
+
+                case 'B':
+                    generate_certifacate = true;
+
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+                    os_strdup(optarg, cert_key_bits);
+                    break;
+
+                case 'K':
+                    generate_certifacate = true;
+
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+                    os_strdup(optarg, cert_key_path);
+                    break;
+
+                case 'X':
+                    generate_certifacate = true;
+
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+                    os_strdup(optarg, cert_path);
+                    break;
+
+                case 'S':
+                    generate_certifacate = true;
+
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+                    os_strdup(optarg, cert_subj);
+                    break;
                 default:
                     help_authd(home_path);
                     break;
+            }
+        }
+
+        if (generate_certifacate) {
+
+            // Sanitize parameters
+            if (cert_val == NULL) {
+                merror_exit("Certificate expiration time not defined.");
+            }
+
+            if (cert_key_bits == NULL) {
+                merror_exit("Certificate key size not defined.");
+            }
+
+            if (cert_key_path == NULL) {
+                merror_exit("Key path not not defined.");
+            }
+
+            if (cert_path == NULL) {
+                merror_exit("Certificate path not defined.");
+            }
+
+            if (cert_subj == NULL) {
+                merror_exit("Certificate subject not defined.");
+            }
+
+            if (days_val = strtol(cert_val, NULL, 10), days_val == 0) {
+                merror_exit("Unable to set certificate validity to 0 days.");
+            }
+
+            if (key_bits = strtol(cert_key_bits, NULL, 10), key_bits == 0) {
+                merror_exit("Unable to set certificate private key size to 0 bits.");
+            }
+
+            if (generate_cert(days_val, key_bits, cert_key_path, cert_path, cert_subj) == 0) {
+                mdebug2("Certificates generated successfully.");
+                exit(0);
+            } else {
+                merror_exit("Unable to generate auth certificates.");
             }
         }
 
@@ -337,7 +435,7 @@ int main(int argc, char **argv)
 
     /* Exit here if disabled */
     if (config.flags.disabled) {
-        minfo("Daemon is disabled. Closing.");
+        minfo("Daemon is disabled. Closing.");
         exit(0);
     }
 
@@ -490,7 +588,7 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
     } else {
-        minfo("Port %hu was set as disabled.", config.port);
+        minfo("Port %hu was set as disabled.", config.port);
     }
 
     if (!config.worker_node) {
