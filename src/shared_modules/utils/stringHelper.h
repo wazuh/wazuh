@@ -312,6 +312,11 @@ namespace Utils
     }
 }
 
+static bool isNumber(const std::string& str)
+{
+    return !str.empty() && std::string::npos == str.find_first_not_of("0123456789");
+}
+
 #pragma GCC diagnostic pop
 
 #endif // _STRING_HELPER_H
