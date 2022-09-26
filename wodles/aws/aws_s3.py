@@ -76,7 +76,7 @@ THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
 
 INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
 INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
-THROTTLING_EXCEPTION_ERROR_MESSAGE = "The 'check_bucket' request was denied due to request throttling"
+THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling"
 
 ################################################################################
 # Classes
@@ -743,8 +743,8 @@ class AWSBucket(WazuhIntegration):
             return accounts
 
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_account_ids" request was denied due to request throttling. ', 2)
+            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
+                debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -768,8 +768,8 @@ class AWSBucket(WazuhIntegration):
                 return []
 
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_regions" request was denied due to request throttling. ', 2)
+            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
+                debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -1098,7 +1098,7 @@ class AWSBucket(WazuhIntegration):
             error_code = error.response.get("Error", {}).get("Code")
 
             if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
-                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE}: {error}"
+                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
             elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
                 error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
@@ -2586,7 +2586,7 @@ class AWSServerAccess(AWSCustomBucket):
             error_code = error.response.get("Error", {}).get("Code")
 
             if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
-                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE}: {error}"
+                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
             elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
                 error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
