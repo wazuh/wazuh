@@ -123,10 +123,10 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                 id_check_rules_compliance = {id_check: {'compliance': [], 'rules': []} for id_check in id_check_list}
                 for compliance in sca_check_compliance_items:
                     id_check_rules_compliance[compliance['id_check']]['compliance'].append(
-                        {k: v for k, v in compliance.items() if k != 'id_check'})
+                        {k.split('.')[1]: v for k, v in compliance.items() if k != 'id_check'})
                 for rule in sca_check_rules_items:
                     id_check_rules_compliance[rule['id_check']]['rules'].append(
-                        {k: v for k, v in rule.items() if k != 'id_check'})
+                        {k.split('.')[1]: v for k, v in rule.items() if k != 'id_check'})
 
                 for sca_check in sca_check_data['items']:
                     sca_check['compliance'] = id_check_rules_compliance[sca_check['id']]['compliance']
