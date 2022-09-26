@@ -1,5 +1,5 @@
 ---
-name: Release - Post release 
+name: Release - Post release
 about: Perform analysis and tests after the publish release procedure.
 title: 'Release [WAZUH VERSION] - Post release'
 labels: 'type/release tracking'
@@ -14,7 +14,9 @@ The following issue aims to perform required post-release checks to ensure good 
 | :-- | :-- |
 | **Version** | X.Y.Z |
 | **Tag** | https://github.com/wazuh/wazuh/tree/vX.Y.Z |
+| **Release issue** | -- |
 | **Previous post release issue** | -- |
+
 
 
 ## Checks
@@ -55,5 +57,5 @@ Status legend:
 
 The following auditors must give the green light to this release.
 
-- [ ] @alberpilot 
-- [ ] @okynos 
+- [ ] @alberpilot
+- [ ] @okynos
