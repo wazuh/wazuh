@@ -115,7 +115,7 @@ cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
 cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value,
                                    const char **return_parse_end,
                                    __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
-    *return_parse_end = NULL;
+    *return_parse_end = mock_type(char *);
     return mock_type(cJSON *);
 }
 

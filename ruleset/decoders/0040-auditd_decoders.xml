@@ -166,7 +166,7 @@
 <decoder name="auditd-promiscuous">
   <parent>auditd</parent>
   <regex offset="after_regex">^dev=(\S+) prom=(\S+) old_prom=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) ses=(\S+)</regex>
-  <order>audit.auid,audit.dev,audit.gid,audit.old_prom,audit.prom,audit.session,audit.uid</order>
+  <order>audit.dev,audit.prom,audit.old_prom,audit.auid,audit.uid,audit.gid,audit.session</order>
 </decoder>
 
 <!--

@@ -346,7 +346,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
                 if (old_perm = win_perm_to_json(lf->fields[FIM_PERM_BEFORE].value), old_perm) {
                     cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
                 } else {
-                    smerror(list_msg, "The old permissions could not be added to the JSON alert.");
+                    smwarn(list_msg, "The old permissions of the Windows event could not be added to the JSON alert.");
                 }
             } else {
                 cJSON_AddStringToObject(file_diff, "perm_before", lf->fields[FIM_PERM_BEFORE].value);

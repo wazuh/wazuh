@@ -34,7 +34,7 @@ cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump 
 const wm_context WM_AZURE_CONTEXT = {
     AZ_WM_NAME,
     (wm_routine)wm_azure_main,
-    (wm_routine)(void *)wm_azure_destroy,
+    (void(*)(void *))wm_azure_destroy,
     (cJSON * (*)(const void *))wm_azure_dump,
     NULL,
     NULL

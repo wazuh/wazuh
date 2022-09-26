@@ -1177,32 +1177,55 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-ifeq (${uname_S},Darwin)
-        cpu_arch := ${uname_M}
-else
-        cpu_arch := ${uname_P}
-endif
-ifneq (,$(filter ${cpu_arch},unknown Unknown not))
-	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
-endif
-ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
 	cpu_arch := ${uname_M}
-endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-PRECOMPILED_ARCH := /amd64
+	PRECOMPILED_ARCH := /amd64
 else
 ifneq (,$(filter ${cpu_arch},i386 i686))
-PRECOMPILED_ARCH := /i386
+	PRECOMPILED_ARCH := /i386
 else
 ifneq (,$(filter ${cpu_arch},aarch64 arm64))
-PRECOMPILED_ARCH := /aarch64
+	PRECOMPILED_ARCH := /aarch64
 else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
-PRECOMPILED_ARCH := /arm32
+	PRECOMPILED_ARCH := /arm32
 else
-PRECOMPILED_ARCH := /${cpu_arch}
+ifeq (${cpu_arch},ppc64le)
+	PRECOMPILED_ARCH := /ppc64le
+else
+ifneq (,$(filter ${cpu_arch},ia64))
+	PRECOMPILED_ARCH := /ia64
+else
+	PRECOMPILED_ARCH := /${uname_P}
 endif
 endif
+endif
+endif
+endif
+endif
+else
+ifneq (,$(filter ${uname_S},SunOS AIX))
+	cpu_arch := ${uname_P}
+ifeq (${cpu_arch},powerpc)  
+	PRECOMPILED_ARCH := /powerpc
+else
+ifneq (,$(filter ${cpu_arch},sparc sun4u))
+	PRECOMPILED_ARCH := /sparc
+else
+ifneq (,$(filter ${cpu_arch},i386 i86pc))
+	PRECOMPILED_ARCH := /i386
+else
+	PRECOMPILED_ARCH := /${uname_M}
+endif
+endif
+endif
+else
+    cpu_arch := ${uname_M}
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+	cpu_arch := ${uname_P}
+endif
+	PRECOMPILED_ARCH := /${cpu_arch}
 endif
 endif
 endif
@@ -1998,7 +2021,7 @@ os_auth/%.o: os_auth/%.c
 agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o
+wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### integratord #####
@@ -2180,7 +2203,6 @@ install_api: install_python
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
-
 
 ####################
 #### test ##########

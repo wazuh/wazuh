@@ -4,12 +4,14 @@
 
 import os
 import re
+from types import MappingProxyType
 from typing import Dict, List
 
 from defusedxml import ElementTree as ET
 from jsonschema import draft4_format_checker
 
 from wazuh.core import common
+from wazuh.core.exception import WazuhError
 
 _alphanumeric_param = re.compile(r'^[\w,\-.+\s:]+$')
 _symbols_alphanumeric_param = re.compile(r'^[\w,<>!\-.+\s:/()\[\]\'\"|=~#]+$')
@@ -47,6 +49,7 @@ _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
 _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
+_active_response_command = re.compile(f"^!?{_paths.pattern.lstrip('^')}")
 
 security_config_schema = {
     "type": "object",
@@ -163,6 +166,24 @@ api_config_schema = {
     },
 }
 
+WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
+    {
+        'agent': {"client", "buffer", "labels", "internal"},
+        'agentless': {"agentless"},
+        'analysis': {"global", "active_response", "alerts", "command", "rules", "decoders", "internal", "rule_test"},
+        'auth': {"auth"},
+        'com': {"active-response", "logging", "internal", "cluster"},
+        'csyslog': {"csyslog"},
+        'integrator': {"integration"},
+        'logcollector': {"localfile", "socket", "internal"},
+        'mail': {"global", "alerts", "internal"},
+        'monitor': {"global", "internal"},
+        'request': {"global", "remote", "internal"},
+        'syscheck': {"syscheck", "rootcheck", "internal"},
+        'wmodules': {"wmodules"}
+    }
+)
+
 
 def check_exp(exp: str, regex: re.Pattern) -> bool:
     """Function to check if an expression matches a regex.
@@ -241,7 +262,8 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = T
         True if path is correct. False otherwise.
     """
     # Protect path
-    if './' in path or '../' in path:
+    forbidden_paths = ["../", "..\\", "/..", "\\.."]
+    if any([forbidden_path in path for forbidden_path in forbidden_paths]):
         return False
 
     # Resolve symbolic links if present
@@ -249,6 +271,27 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = T
     full_basedir = os.path.abspath(basedir)
 
     return os.path.commonpath([full_path, full_basedir]) == full_basedir
+
+
+def check_component_configuration_pair(component: str, configuration: str) -> WazuhError:
+    """
+
+    Parameters
+    ----------
+    component : str
+        Wazuh component name.
+    configuration : str
+        Component configuration.
+
+    Returns
+    -------
+    WazuhError
+        It can either return a `WazuhError` or `None`, depending on the given component and configuration. The exception
+        is returned and not raised because we use the object to create a problem on API level.
+    """
+    if configuration not in WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]:
+        return WazuhError(1127, extra_message=f"Valid configuration values for '{component}': "
+                                              f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
 
 
 @draft4_format_checker.checks("alphanumeric")
@@ -321,6 +364,13 @@ def format_wazuh_path(value):
     if not is_safe_path(value, relative=False):
         return False
     return check_exp(value, _paths)
+
+
+@draft4_format_checker.checks("active_response_command")
+def format_active_response_command(command):
+    if not is_safe_path(command):
+        return False
+    return check_exp(command, _active_response_command)
 
 
 @draft4_format_checker.checks("query")
