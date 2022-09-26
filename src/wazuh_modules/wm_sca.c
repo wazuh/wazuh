@@ -1857,7 +1857,17 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
 
     *partial_comparison_ref = '\0';
     partial_comparison_ref += 9;
-    w_expression_compile(regex_engine, pattern_copy_ref, OS_RETURN_SUBSTRING);
+    mdebug2("REGEX: '%s'. Partial comparison: '%s'", pattern_copy_ref, partial_comparison_ref);
+
+    if (!w_expression_compile(regex_engine, pattern_copy_ref, OS_RETURN_SUBSTRING)) {
+        mdebug2("Cannot compile regex '%s'", pattern_copy_ref);
+        if (!*reason) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Cannot compile regex '%s'", pattern_copy_ref);
+        }
+        os_free(pattern_copy);
+        return RETURN_INVALID;
+    }
     regex_matching * regex_match = NULL;
     os_calloc(1, sizeof(regex_matching), regex_match);
 
@@ -1911,10 +1921,13 @@ int wm_sca_test_positive_minterm(char * const minterm,
                                  char **reason,
                                  w_expression_t * regex_engine)
 {
-    const char * pattern_ref = minterm;
+    char * pattern_ref = minterm;
     if (strncasecmp(pattern_ref, "r:", 2) == 0) {
         pattern_ref += 2;
-        w_expression_compile(regex_engine, pattern_ref, OS_RETURN_SUBSTRING);
+        if (!w_expression_compile(regex_engine, pattern_ref, OS_RETURN_SUBSTRING)) {
+            mdebug2("Failed to compile regex '%s'", pattern_ref);
+            return RETURN_NOT_FOUND;
+        }
         if (w_expression_match(regex_engine, str, NULL, NULL)) {
             return RETURN_FOUND;
         }
@@ -1924,15 +1937,16 @@ int wm_sca_test_positive_minterm(char * const minterm,
     } else if (strcasecmp(pattern_ref, str) == 0) {
         return RETURN_FOUND;
     }
+
     return RETURN_NOT_FOUND;
 }
 
 int wm_sca_pattern_matches(const char * const str,
                            const char * const pattern,
-                           char **reason,
+                           char ** reason,
                            w_expression_t * regex_engine)
 {
-    if (str == NULL) {
+    if (!str) {
         return 0;
     }
 
