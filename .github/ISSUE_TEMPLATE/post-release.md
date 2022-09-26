@@ -42,6 +42,7 @@ The following issue aims to perform required post-release checks to ensure good 
 - [ ] AMI published
 - [ ] Cache invalidated
 - [ ] Build release containers
+- [ ] Build and push Docker Hub images
 
 ### Documentation
 - [ ] Documentation updated
