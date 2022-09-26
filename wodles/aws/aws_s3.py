@@ -3570,8 +3570,10 @@ def main(argv):
             if not options.regions:
                 aws_config = get_aws_config_params()
 
-                if aws_config.has_option(options.aws_profile, "region"):
-                    options.regions.append(aws_config.get(options.aws_profile, "region"))
+                aws_profile = options.aws_profile or "default"
+
+                if aws_config.has_option(aws_profile, "region"):
+                    options.regions.append(aws_config.get(aws_profile, "region"))
                 else:
                     debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
                     options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
