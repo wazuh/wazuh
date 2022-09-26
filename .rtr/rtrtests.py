@@ -88,7 +88,7 @@ def build(params):
     builddir = params.output + BUILDDIR
     if configure(builddir, params.source):
         command = 'cmake'
-        args = f'--build {builddir} -j'
+        args = f'--build {builddir} -j$(nproc)'
         logging.debug(f'Executing {command} {args}')
         result = subprocess.run(
             f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
