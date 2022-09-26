@@ -94,16 +94,17 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
 
 
 class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
+    FIELDS_PER_TABLE = MappingProxyType({'sca_check_rules': FIELDS_TRANSLATION_SCA_CHECK_RULES,
+                                         'sca_check_compliance': FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE})
 
     def __init__(self, agent_id, table, id_check_list):
         self.sca_check_table = table
         default_query = "SELECT {0} FROM " + self.sca_check_table
         if id_check_list:
             default_query += f" WHERE id_check IN {str(id_check_list).replace('[', '(').replace(']', ')')}"
-        fields = FIELDS_TRANSLATION_SCA_CHECK_RULES if self.sca_check_table == 'sca_check_rules' \
-            else FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE
 
-        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, default_query=default_query, fields=fields,
-                                 offset=0, limit=None, sort=None, select=list(fields.keys()), count=False,
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, default_query=default_query,
+                                 fields=self.FIELDS_PER_TABLE[self.sca_check_table], offset=0, limit=None, sort=None,
+                                 select=list(self.FIELDS_PER_TABLE[self.sca_check_table].keys()), count=False,
                                  get_data=True, default_sort_field='id_check', default_sort_order='ASC', query=None,
                                  search=None)
