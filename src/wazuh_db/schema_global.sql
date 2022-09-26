@@ -78,7 +78,9 @@ CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
-    value TEXT
+    value TEXT,
+    last_vacuum_time INTEGER,
+    last_fragmentation_value INTEGER
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '4');
+INSERT INTO metadata (key, value) VALUES ('db_version', '5');
