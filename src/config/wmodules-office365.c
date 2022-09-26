@@ -196,7 +196,7 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 return OS_INVALID;
             }
 
-            // Keep backwards compatability with configs made prior to GCC(-High) support
+            // Keep retrocompatibility with configs made prior to GCC (High) support
             if (!office365_auth->login_fqdn && !office365_auth->management_fqdn) {
                 os_free(office365_auth->login_fqdn);
                 os_strdup("login.microsoftonline.com", office365_auth->login_fqdn);
