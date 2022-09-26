@@ -1487,231 +1487,157 @@
   <rule id="950040" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4896$</field>
-    <group>object-access,certification-services,</group>
+    <options>no_full_log</options>
     <description>One or more rows have been deleted from the certificate database.</description>
   </rule>
+
   <rule id="950041" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4906$</field>
-    <group>policy-change,audit-policy-change,</group>
+    <options>no_full_log</options>
     <description>The CrashOnAuditFail value has changed.</description>
   </rule>
-  <rule id="950042" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4907$</field>
-    <group>policy-change,audit-policy-change,</group>
-    <description>Auditing settings on object were changed.</description>
-  </rule>
+
   <rule id="950043" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4908$</field>
-    <group>policy-change,audit-policy-change,</group>
+    <options>no_full_log</options>
     <description>Special Groups Logon table modified.</description>
   </rule>
-  <rule id="950044" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4912$</field>
-    <group>policy-change,audit-policy-change,</group>
-    <description>Per User Audit Policy was changed.</description>
-  </rule>
-  <rule id="950045" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4960$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec dropped an inbound packet that failed an integrity check. If this problem persists, it could indicate a network issue or that packets are being modified in transit to this computer. Verify that the packets sent from the remote computer are the same as those received by this computer. This error might also indicate interoperability problems with other IPsec implementations.</description>
-  </rule>
-  <rule id="950046" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4961$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec dropped an inbound packet that failed a replay check. If this problem persists, it could indicate a replay attack against this computer.</description>
-  </rule>
-  <rule id="950047" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4962$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec dropped an inbound packet that failed a replay check. The inbound packet had too low a sequence number to ensure it was not a replay.</description>
-  </rule>
-  <rule id="950048" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4963$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec dropped an inbound clear text packet that should have been secured. This is usually due to the remote computer changing its IPsec policy without informing this computer. This could also be a spoofing attack attempt.</description>
-  </rule>
+
   <rule id="950049" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4965$</field>
-    <group>system,ipsec-driver,</group>
+    <options>no_full_log</options>
     <description>IPsec received a packet from a remote computer with an incorrect Security Parameter Index (SPI). This is usually caused by malfunctioning hardware that is corrupting packets. If these errors persist, verify that the packets sent from the remote computer are the same as those received by this computer. This error may also indicate interoperability problems with other IPsec implementations. In that case, if connectivity is not impeded, then these events can be ignored.</description>
   </rule>
-  <rule id="950050" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4976$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
-    <description>During Main Mode negotiation, IPsec received an invalid negotiation packet. If this problem persists, it could indicate a network issue or an attempt to modify or replay this negotiation.</description>
-  </rule>
-  <rule id="950051" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4977$</field>
-    <group>logon-logoff,ipsec-quick-mode,</group>
-    <description>During Quick Mode negotiation, IPsec received an invalid negotiation packet. If this problem persists, it could indicate a network issue or an attempt to modify or replay this negotiation.</description>
-  </rule>
-  <rule id="950052" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4978$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
-    <description>During Extended Mode negotiation, IPsec received an invalid negotiation packet. If this problem persists, it could indicate a network issue or an attempt to modify or replay this negotiation.</description>
-  </rule>
-  <rule id="950053" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4983$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
-    <description>An IPsec Extended Mode negotiation failed. The corresponding Main Mode security association has been deleted.</description>
-  </rule>
-  <rule id="950054" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4984$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
-    <description>An IPsec Extended Mode negotiation failed. The corresponding Main Mode security association has been deleted.</description>
-  </rule>
+
   <rule id="950055" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5027$</field>
-    <group>system,other-system-events,</group>
+    <options>no_full_log</options>
     <description>The Windows Firewall Service was unable to retrieve the security policy from the local storage. The service will continue enforcing the current policy.</description>
   </rule>
+
   <rule id="950056" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5028$</field>
-    <group>system,other-system-events,</group>
+    <options>no_full_log</options>
     <description>The Windows Firewall Service was unable to parse the new security policy. The service will continue with currently enforced policy.</description>
   </rule>
+
   <rule id="950057" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5029$</field>
-    <group>system,other-system-events,</group>
+    <options>no_full_log</options>
     <description>The Windows Firewall Service failed to initialize the driver. The service will continue to enforce the current policy.</description>
   </rule>
+
   <rule id="950058" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5030$</field>
-    <group>system,other-system-events,</group>
+    <options>no_full_log</options>
     <description>The Windows Firewall Service failed to start.</description>
   </rule>
+
   <rule id="950059" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5035$</field>
-    <group>system,other-system-events,</group>
+    <options>no_full_log</options>
     <description>The Windows Firewall Driver failed to start.</description>
   </rule>
+
   <rule id="950060" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5037$</field>
-    <group>system,other-system-events,</group>
+    <options>no_full_log</options>
     <description>The Windows Firewall Driver detected critical runtime error. Terminating.</description>
   </rule>
+
   <rule id="950061" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5038$</field>
-    <group>system,system-integrity,</group>
+    <options>no_full_log</options>
     <description>Code integrity determined that the image hash of a file is not valid. The file could be corrupt due to unauthorized modification or the invalid hash could indicate a potential disk device error.</description>
   </rule>
+
   <rule id="950062" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5120$</field>
-    <group>object-access,certification-services,</group>
+    <options>no_full_log</options>
     <description>OCSP Responder Service Started</description>
   </rule>
+
   <rule id="950063" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5121$</field>
-    <group>object-access,certification-services,</group>
+    <options>no_full_log</options>
     <description>OCSP Responder Service Stopped</description>
   </rule>
+
   <rule id="950064" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5122$</field>
-    <group>object-access,certification-services,</group>
+    <options>no_full_log</options>
     <description>A configuration entry changed in OCSP Responder Service</description>
   </rule>
+
   <rule id="950065" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5123$</field>
-    <group>object-access,certification-services,</group>
+    <options>no_full_log</options>
     <description>A configuration entry changed in OCSP Responder Service</description>
   </rule>
+
   <rule id="950066" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5376$</field>
-    <group>account-management,user-account-management,</group>
+    <options>no_full_log</options>
     <description>Credential Manager credentials were backed up.</description>
   </rule>
+
   <rule id="950067" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5377$</field>
-    <group>account-management,user-account-management,</group>
+    <options>no_full_log</options>
     <description>Credential Manager credentials were restored from a backup.</description>
   </rule>
-  <rule id="950068" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5453$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
-    <description>An IPsec negotiation with a remote computer failed because the IKE and AuthIP IPsec Keying Modules (IKEEXT) service is not started.</description>
-  </rule>
-  <rule id="950069" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5480$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec Services failed to get the complete list of network interfaces on the computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the IP Security Monitor snap-in to diagnose the problem.</description>
-  </rule>
-  <rule id="950070" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5483$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec Services failed to initialize RPC server. IPsec Services could not be started.</description>
-  </rule>
-  <rule id="950071" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5484$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec Services has experienced a critical failure and has been shut down. The shutdown of IPsec Services can put the computer at greater risk of network attack or expose the computer to potential security risks.</description>
-  </rule>
-  <rule id="950072" level="7">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5485$</field>
-    <group>system,ipsec-driver,</group>
-    <description>IPsec Services failed to process some IPsec filters on a plug-and-play event for network interfaces. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the IP Security Monitor snap-in to diagnose the problem.</description>
-  </rule>
+
   <rule id="950073" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6145$</field>
-    <group>policy-change,other-policy-change-events,</group>
+    <options>no_full_log</options>
     <description>One or more errors occurred while processing security policy in the Group Policy objects.</description>
   </rule>
+
   <rule id="950074" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6273$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server denied access to a user.</description>
   </rule>
+
   <rule id="950075" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6274$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server discarded the request for a user.</description>
   </rule>
+
   <rule id="950076" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6275$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server discarded the accounting request for a user.</description>
   </rule>
+
   <rule id="950077" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6276$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server quarantined a user.</description>
   </rule>
+
   <rule id="950078" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6277$</field>
