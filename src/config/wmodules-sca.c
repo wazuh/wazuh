@@ -311,7 +311,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_calloc(1,sizeof(wm_sca_policy_t), policy);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
+                        #ifdef WIN32
+                        policy->remote = strstr(realpath_buffer, "shared\\") != NULL;
+                        #else
                         policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
+                        #endif
                         os_strdup(realpath_buffer, policy->policy_path);
                         sca->policies[policies_count] = policy;
                         sca->policies[policies_count + 1] = NULL;
