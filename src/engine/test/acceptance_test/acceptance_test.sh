@@ -155,7 +155,7 @@ then
     MONITOR_PID=$!
 
     # go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f -T
-    go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f
+    go run ./utils/benchmark_tool.go -o /tmp/filepath.txt -p tcp -s localhost:$ENGINE_LISTEN_PORT -t $BT_TIME  -r $BT_RATE -b -i $BT_INPUT -f  | tee "engine-bench-${ENGINE_N_THREADS}-threads-${RANDOM}.log"
 
     kill -INT $MONITOR_PID
     kill -INT $ENGINE_PID
