@@ -84,6 +84,7 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
         policy_query_filter = f"policy_id={policy_id}"
         fields = FIELDS_TRANSLATION_SCA_CHECK | FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE | \
                  FIELDS_TRANSLATION_SCA_CHECK_RULES
+        fields.pop('id_check')
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=None, filters=filters,
                                  query=policy_query_filter if not query else f"{policy_query_filter};{query}",
