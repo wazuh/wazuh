@@ -12,7 +12,6 @@ using std::string;
 TEST(parseIgnore, build)
 {
     ASSERT_NO_THROW(getParserOp("<_test/ignore/wazuh>"));
-
 }
 
 TEST(parseIgnore, success_repeat_spaces)
@@ -45,7 +44,7 @@ TEST(parseIgnore, only_underscore)
     ASSERT_FALSE(ret);
 }
 
-TEST(parseIgnore, doubleDelete)
+TEST(parseIgnore, double_ignore)
 {
     const char* logQl = "<_/ignore/wazuh >hi!";
     const char* event = "wazuh wazuh wazuh wazuh wazuh wazuh hi!";
@@ -61,7 +60,7 @@ TEST(parseIgnore, doubleDelete)
                  std::any_cast<std::string>(result.at("_")).c_str());
 }
 
-TEST(parseIgnore, emptyIgnore)
+TEST(parseIgnore, nothing_to_ignore)
 {
     const char* logQl = "<_/ignore/wazuh>hi!";
     const char* event = "hi!";
@@ -73,12 +72,10 @@ TEST(parseIgnore, emptyIgnore)
     bool ret = parseOp(event, result);
 
     ASSERT_TRUE(ret);
-    ASSERT_STREQ(R"()",
-                 std::any_cast<std::string>(result.at("_")).c_str());
+    ASSERT_STREQ(R"()", std::any_cast<std::string>(result.at("_")).c_str());
 }
 
-
-TEST(parseIgnore, ignore_end_EOS)
+TEST(parseIgnore, ignore_end_token)
 {
     const char* logQl = ".<_/ignore/word>";
     const char* event = ".326";
@@ -104,11 +101,10 @@ TEST(parseIgnore, ignore_end_string)
     bool ret = parseOp(event, result);
 
     ASSERT_TRUE(ret);
-    ASSERT_STREQ(R"(326)",
-                 std::any_cast<std::string>(result.at("_")).c_str());
+    ASSERT_STREQ(R"(326)", std::any_cast<std::string>(result.at("_")).c_str());
 }
 
-TEST(parseIgnore, BeforeEmptyIgnore2)
+TEST(parseIgnore, ignore_not_ignore)
 {
     const char* logQl = "<timestamp/SYSLOG>.<_/ignore/number>326";
     const char* event = "Feb 14 09:40:10.326";
@@ -120,13 +116,12 @@ TEST(parseIgnore, BeforeEmptyIgnore2)
     bool ret = parseOp(event, result);
 
     ASSERT_TRUE(ret);
-    ASSERT_STREQ(R"()",
-                 std::any_cast<std::string>(result.at("_")).c_str());
+    ASSERT_STREQ(R"()", std::any_cast<std::string>(result.at("_")).c_str());
 }
 
 TEST(parseIgnore, without_args)
 {
-    const char* logQl = "<_/ignore>.<_empty/ignore/number>326";
+    const char* logQl = "<_/ignore>.<_empty/ignore>";
     const char* event = "Feb 14 09:40:10.326";
 
     ParserFn parseOp = getParserOp(logQl);
@@ -136,8 +131,9 @@ TEST(parseIgnore, without_args)
     bool ret = parseOp(event, result);
 
     ASSERT_TRUE(ret);
-    ASSERT_STREQ(R"()", std::any_cast<std::string>(result["_empty"]).c_str());
-    ASSERT_STREQ(R"(Feb 14 09:40:10)", std::any_cast<std::string>(result.at("_")).c_str());
+    ASSERT_STREQ(R"(326)", std::any_cast<std::string>(result["_empty"]).c_str());
+    ASSERT_STREQ(R"(Feb 14 09:40:10)",
+                 std::any_cast<std::string>(result.at("_")).c_str());
 }
 
 TEST(parseIgnore, without_args_follow_eos)
@@ -156,7 +152,6 @@ TEST(parseIgnore, without_args_follow_eos)
                  std::any_cast<std::string>(result.at("_")).c_str());
 }
 
-
 TEST(parseIgnore, without_args_fail)
 {
     const char* logQl = "<_/ignore>w";
@@ -169,4 +164,19 @@ TEST(parseIgnore, without_args_fail)
     bool ret = parseOp(event, result);
 
     ASSERT_FALSE(ret);
+}
+
+TEST(parseIgnore, ignore_until_next_token)
+{
+    const char* logQl = "<_/ignore>w";
+    const char* event = "nopw";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ASSERT_TRUE(static_cast<bool>(parseOp));
+
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_TRUE(ret);
+    ASSERT_STREQ(R"(nop)", std::any_cast<std::string>(result.at("_")).c_str());
 }
