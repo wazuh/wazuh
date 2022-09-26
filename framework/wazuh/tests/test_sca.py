@@ -18,15 +18,13 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.sca import get_sca_list, fields_translation_sca, \
-            get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
-        from wazuh.core import common, exception
+        from wazuh.sca import get_sca_list, get_sca_checks
+        from wazuh.core import common, exception, sca as core_sca
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.exception import WazuhResourceNotFound
         from wazuh.tests.util import InitWDBSocketMock
 
         del sys.modules['wazuh.rbac.orm']
-
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -52,180 +50,169 @@ def get_fake_sca_data(*args, **kwargs):
 
 
 # Aliases and ` are lost when sqlite db answers...
-cols_returned_from_db_sca = [field.replace('`', '').replace('si.', '') for field in fields_translation_sca.keys()]
+cols_returned_from_db_sca = [field.replace('`', '').replace('si.', '') for field in
+                             core_sca.WazuhDBQuerySCA.FIELDS_TRANSLATION.keys()]
 cols_returned_from_db_sca = [field.split(' as ')[1] if ' as ' in field else
                              field for field in cols_returned_from_db_sca]
 cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '')
-                                   for field in fields_translation_sca_check.keys()]
+                                   for field in core_sca.FIELDS_TRANSLATION_SCA_CHECK.keys()]
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_list(mock_agent, mock_sca_agent, mock_exists):
-    """
-    Checks data are properly loaded from database
-    """
-    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
-        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
-        result = get_sca_list(agent_list=['000'])
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert len(result['affected_items']) > 0
-        sca = result['affected_items'][0]
-        assert isinstance(sca, dict)
-        assert set(sca.keys()) == set(cols_returned_from_db_sca)
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_sca_test.sql'))
+def test_get_sca_list(mock_wdb, mock_agent, mock_sca_agent, mock_exists):
+    """Check data are properly loaded from database."""
+    result = get_sca_list(agent_list=['000'])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert len(result['affected_items']) > 0
+    sca = result['affected_items'][0]
+    assert isinstance(sca, dict)
+    assert set(sca.keys()) == set(cols_returned_from_db_sca)
 
-        result = get_sca_list(agent_list=['999'])
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert result['total_affected_items'] == 0
-        assert len(result['affected_items']) == 0
-        assert result['total_failed_items'] == 1
-        assert len(result['failed_items']) == 1
-        failed = result['failed_items']
-        assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
-        assert list(failed.keys())[0].to_dict()['code'] == 1701
-        assert failed[list(failed.keys())[0]] == {'999'}
+    result = get_sca_list(agent_list=['999'])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert result['total_affected_items'] == 0
+    assert len(result['affected_items']) == 0
+    assert result['total_failed_items'] == 1
+    assert len(result['failed_items']) == 1
+    failed = result['failed_items']
+    assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
+    assert list(failed.keys())[0].to_dict()['code'] == 1701
+    assert failed[list(failed.keys())[0]] == {'999'}
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_list_select_param(mock_agent, mock_sca_agent, mock_exists):
-    """
-    Checks only selected fields are loaded from database
-    """
-    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
-        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
-        fields = ['name', 'policy_id']
-        result = get_sca_list(agent_list=['000'], select=fields)
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert len(result['affected_items']) > 0
-        sca = result['affected_items'][0]
-        assert isinstance(sca, dict)
-        assert set(sca.keys()) == set(fields)
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_sca_test.sql'))
+def test_get_sca_list_select_param(mock_wdb, mock_agent, mock_sca_agent, mock_exists):
+    """Check only selected fields are loaded from database."""
+    fields = ['name', 'policy_id']
+    result = get_sca_list(agent_list=['000'], select=fields)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert len(result['affected_items']) > 0
+    sca = result['affected_items'][0]
+    assert isinstance(sca, dict)
+    assert set(sca.keys()) == set(fields)
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_list_search_param(mock_agent, mock_sca_agent, mock_exists):
-    """
-    Checks only selected fields are loaded from database
-    """
-    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
-        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
-        search = {'value': 'debian', 'negation': False}
-        result = get_sca_list(agent_list=['000'], search=search)
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert len(result['affected_items']) > 0
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_sca_test.sql'))
+def test_get_sca_list_search_param(mock_wdb, mock_agent, mock_sca_agent, mock_exists):
+    """Check only selected fields are loaded from database."""
+    search = {'value': 'debian', 'negation': False}
+    result = get_sca_list(agent_list=['000'], search=search)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert len(result['affected_items']) > 0
 
-        search = {'value': 'foo', 'negation': False}
-        result = get_sca_list(agent_list=['000'], search=search)
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert len(result['affected_items']) == 0
+    search = {'value': 'foo', 'negation': False}
+    result = get_sca_list(agent_list=['000'], search=search)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert len(result['affected_items']) == 0
 
-        search = {'value': 'foo', 'negation': True}
-        result = get_sca_list(agent_list=['000'], search=search)
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert len(result['affected_items']) > 0
+    search = {'value': 'foo', 'negation': True}
+    result = get_sca_list(agent_list=['000'], search=search)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert len(result['affected_items']) > 0
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_checks(mock_agent, mock_sca_agent, mock_exists):
-    """
-    Checks sca checks data are properly loaded from database
-    """
-    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
-        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
-        result = get_sca_checks('cis_debian', agent_list=['000'])
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        sca = result['affected_items']
-        assert isinstance(sca, list)
-        assert len(sca) > 0
-        assert set(sca[0].keys()).issubset(set(fields_translation_sca_check.keys()) | {'compliance', 'rules'})
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_sca_test.sql'))
+def test_get_sca_checks(mock_wdb, mock_agent, mock_sca_agent, mock_exists):
+    """Check sca checks data are properly loaded from database."""
+    result = get_sca_checks('cis_debian', agent_list=['000'])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    sca = result['affected_items']
+    assert isinstance(sca, list)
+    assert len(sca) > 0
+    assert sca[0].keys() == core_sca.FIELDS_TRANSLATION_SCA_CHECK.keys() | {'compliance', 'rules'}
 
-        compliance = sca[0]['compliance']
-        assert isinstance(compliance, list)
-        assert len(compliance) > 0
-        assert set(compliance[0].keys()) == set(fields_translation_sca_check_compliance.values())
+    compliance = sca[0]['compliance']
+    assert isinstance(compliance, list)
+    assert len(compliance) > 0
+    assert compliance[0].keys() == set(core_sca.FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE.values()) - {'id_check'}
 
-        # Check 0 result
-        result = get_sca_checks('not_exists', agent_list=['000'])
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        sca = result['affected_items']
-        assert isinstance(sca, list)
-        assert len(sca) == 0
+    rule = sca[0]['rules']
+    assert isinstance(rule, list)
+    assert len(rule) > 0
+    assert rule[0].keys() == set(core_sca.FIELDS_TRANSLATION_SCA_CHECK_RULES.values()) - {'id_check'}
 
-        result = get_sca_checks('cis_debian', agent_list=['999'])
-        assert isinstance(result, AffectedItemsWazuhResult)
-        result = result.to_dict()
-        assert isinstance(result['total_affected_items'], int)
-        assert result['total_affected_items'] == 0
-        assert len(result['affected_items']) == 0
-        assert result['total_failed_items'] == 1
-        assert len(result['failed_items']) == 1
-        failed = result['failed_items']
-        assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
-        assert list(failed.keys())[0].to_dict()['code'] == 1701
-        assert failed[list(failed.keys())[0]] == {'999'}
+    # Check 0 result
+    result = get_sca_checks('not_exists', agent_list=['000'])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    sca = result['affected_items']
+    assert isinstance(sca, list)
+    assert len(sca) == 0
+
+    result = get_sca_checks('cis_debian', agent_list=['999'])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert isinstance(result['total_affected_items'], int)
+    assert result['total_affected_items'] == 0
+    assert len(result['affected_items']) == 0
+    assert result['total_failed_items'] == 1
+    assert len(result['failed_items']) == 1
+    failed = result['failed_items']
+    assert isinstance(list(failed.keys())[0], WazuhResourceNotFound)
+    assert list(failed.keys())[0].to_dict()['code'] == 1701
+    assert failed[list(failed.keys())[0]] == {'999'}
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_sca_checks_select_and_q(mock_agent, mock_sca_agent, mock_exists):
-    """
-    Tests filtering using q parameter and selecting multiple fields
-    """
-    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
-        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
-        result = get_sca_checks('cis_debian', agent_list=['000'], q="rules.type!=file",
-                                select=['compliance', 'policy_id', 'result', 'rules']).to_dict()
-        assert result['affected_items'][0]['rules'][1]['type'] != 'file'
-        assert set(result['affected_items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_sca_test.sql'))
+def test_sca_checks_q(mock_wdb, mock_agent, mock_sca_agent, mock_exists):
+    """Test filtering using q parameter and selecting multiple fields."""
+    result = get_sca_checks('cis_debian', agent_list=['000'], q="rules.type!=file").to_dict()
+    assert result['affected_items'][0]['rules'][1]['type'] != 'file'
 
 
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_sca_failed_limit(mock_agent, mock_sca_agent):
-    """
-    Test failing using not correct limits
-    """
-    with patch('wazuh.core.sca.WazuhDBBackend') as mock_wdb:
-        mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
-        with pytest.raises(exception.WazuhException, match=".* 1405 .*"):
-            get_sca_list(agent_list=['000'], limit=common.MAXIMUM_DATABASE_LIMIT + 1)
+@patch('wazuh.core.sca.WazuhDBBackend')
+def test_sca_failed_limit(mock_wdb, mock_agent, mock_sca_agent):
+    """Test failing using not correct limits."""
+    mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
+    with pytest.raises(exception.WazuhException, match=".* 1405 .*"):
+        get_sca_list(agent_list=['000'], limit=common.MAXIMUM_DATABASE_LIMIT + 1)
 
-        with pytest.raises(exception.WazuhException, match=".* 1406 .*"):
-            get_sca_list(agent_list=['000'], limit=0)
+    with pytest.raises(exception.WazuhException, match=".* 1406 .*"):
+        get_sca_list(agent_list=['000'], limit=0)
 
 
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_sca_response_without_result(mock_agent, mock_sca_agent):
-    """
-    Test failing when WazuhDB don't return 'items' key into result
-    """
-    with patch('wazuh.core.sca.WazuhDBBackend') as mock_wdb:
-        mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
-        with patch('wazuh.core.sca.WazuhDBQuerySCA.run', return_value={}):
-            with pytest.raises(exception.WazuhException, match=".* 2007 .*"):
-                get_sca_checks('not_exists', agent_list=['000'])
+@patch('wazuh.core.sca.WazuhDBBackend')
+def test_sca_response_without_result(mock_wdb, mock_agent, mock_sca_agent):
+    """Test failing when WazuhDB don't return 'items' key into result."""
+    mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
+    result = get_sca_checks('not_exists', agent_list=['000'])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    result = result.to_dict()
+    assert result['total_affected_items'] == 0
+    assert result['affected_items'] == []
+    assert result['total_failed_items'] == 0
+    assert result['failed_items'] == {}
