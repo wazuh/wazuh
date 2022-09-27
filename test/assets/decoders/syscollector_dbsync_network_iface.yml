@@ -17,7 +17,7 @@ normalize:
       - _json.data.name: +s_ne//
     map:
       _json.data.name: +s_replace/|/$_escaped_pipe_char
-      _json.data.name: +s_replace/NULL/_NULL_  
+      _json.data.name: +s_replace/NULL/_NULL_
   - check:
       - _json.data.name: +s_eq//
     map:
@@ -31,7 +31,7 @@ normalize:
       - _json.data.adapter: +s_ne//
     map:
       _json.data.adapter: +s_replace/|/$_escaped_pipe_char
-      _json.data.adapter: +s_replace/NULL/_NULL_  
+      _json.data.adapter: +s_replace/NULL/_NULL_
   - check:
       - _json.data.adapter: +s_eq//
     map:
@@ -45,7 +45,7 @@ normalize:
       - _json.data.type: +s_ne//
     map:
       _json.data.type: +s_replace/|/$_escaped_pipe_char
-      _json.data.type: +s_replace/NULL/_NULL_  
+      _json.data.type: +s_replace/NULL/_NULL_
   - check:
       - _json.data.type: +s_eq//
     map:
@@ -59,7 +59,7 @@ normalize:
       - _json.data.state: +s_ne//
     map:
       _json.data.state: +s_replace/|/$_escaped_pipe_char
-      _json.data.state: +s_replace/NULL/_NULL_  
+      _json.data.state: +s_replace/NULL/_NULL_
   - check:
       - _json.data.state: +s_eq//
     map:
@@ -140,25 +140,26 @@ normalize:
       _query_response_values: +r_ext/$_query_response/\|(.*)
       _array_of_field: +s_to_array/$_query_response_values/|
       _array_of_field/0: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.iface.name: $_array_of_field/0
+      wazuh.syscollector.netinfo.iface.name: $_array_of_field/0
       _array_of_field/1: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.iface.adapter: $_array_of_field/1
+      wazuh.syscollector.netinfo.iface.adapter: $_array_of_field/1
       _array_of_field/2: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.iface.type: $_array_of_field/2
+      wazuh.syscollector.netinfo.iface.type: $_array_of_field/2
       _array_of_field/3: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.iface.state: $_array_of_field/3
-      _json.netinfo.iface.mtu: $_array_of_field/4
-      _json.netinfo.iface.mac: $_array_of_field/5
-      _json.netinfo.iface.tx_packets: $_array_of_field/6
-      _json.netinfo.iface.rx_packets: $_array_of_field/7
-      _json.netinfo.iface.tx_bytes: $_array_of_field/8
-      _json.netinfo.iface.rx_bytes: $_array_of_field/9
-      _json.netinfo.iface.tx_errors: $_array_of_field/10
-      _json.netinfo.iface.rx_errors: $_array_of_field/11
-      _json.netinfo.iface.tx_dropped: $_array_of_field/12
-      _json.netinfo.iface.rx_dropped: $_array_of_field/13
+      wazuh.syscollector.netinfo.iface.state: $_array_of_field/3
+      wazuh.syscollector.netinfo.iface.mtu: $_array_of_field/4
+      wazuh.syscollector.netinfo.iface.mac: $_array_of_field/5
+      wazuh.syscollector.netinfo.iface.tx_packets: $_array_of_field/6
+      wazuh.syscollector.netinfo.iface.rx_packets: $_array_of_field/7
+      wazuh.syscollector.netinfo.iface.tx_bytes: $_array_of_field/8
+      wazuh.syscollector.netinfo.iface.rx_bytes: $_array_of_field/9
+      wazuh.syscollector.netinfo.iface.tx_errors: $_array_of_field/10
+      wazuh.syscollector.netinfo.iface.rx_errors: $_array_of_field/11
+      wazuh.syscollector.netinfo.iface.tx_dropped: $_array_of_field/12
+      wazuh.syscollector.netinfo.iface.rx_dropped: $_array_of_field/13
       _query: +delete_field
       _query_response: +delete_field
       _query_response_values: +delete_field
       _array_of_field: +delete_field
       _escaped_pipe_char: +delete_field
+      _json.data: +delete_field
