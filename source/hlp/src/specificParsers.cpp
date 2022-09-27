@@ -354,7 +354,7 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
         auto checkIgnore = [&](const char** tmpIt)
         {
             auto start = **tmpIt;
-            for (auto i = 0; **tmpIt != '\0' && i < ignoreLen; ++i, ++*tmpIt)
+            for (auto i = 0; '\0' != **tmpIt && i < ignoreLen; ++i, ++*tmpIt)
             {
                 if (**tmpIt != ignoreStr[i])
                 {
@@ -365,7 +365,7 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
             return true;
         };
 
-        while (*tmpIt != '\0')
+        while ('\0' != *tmpIt)
         {
             if (!checkIgnore(&tmpIt))
             {
@@ -373,7 +373,7 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
             }
         }
 
-        if (parser.endToken == '\0' && *tmpIt != '\0')
+        if ('\0' == parser.endToken && '\0' != *tmpIt)
         {
             retval = false;
         }
@@ -1497,9 +1497,9 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
 
         std::string value {};
         // Search for the end quote
-        while (end = strchr(str, escapeChar), end != nullptr)
+        while (end = strchr(str, escapeChar), nullptr != end)
         {
-            if (*(end + 1) == escapeChar)
+            if (escapeChar == *(end + 1))
             {
                 value.append(str, end + 1 - str);
                 str = end + 2; // Escaped quote, skip it
@@ -1523,12 +1523,12 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
     {
         // Search for the separator or the end of the CSV.
         const char* end = strchr(str, separator);
-        if (end == nullptr)
+        if (nullptr == end)
         {
             end = strchr(str, endToken);
         }
         // If the end is nullptr, the CSV is malformed
-        if (end != nullptr)
+        if (nullptr != end)
         {
             std::string value(str, end - str);
             return {end, std::move(value)};
@@ -1540,11 +1540,11 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
      * Extract the values
      */
 
-    if (*str == separator)
+    if (separator == *str )
     { // First value can be empty
         addValueToJson(output_doc, parser.options[colsParsed], "");
         colsParsed++;
-        isExtractComplete = (colsParsed == colsQty) && *(str + 1) == endToken;
+        isExtractComplete = (colsParsed == colsQty) && endToken == *(str + 1);
     }
     while (!isExtractComplete && colsParsed < colsQty)
     {
@@ -1571,7 +1571,7 @@ bool parseCSV(const char** it, Parser const& parser, ParseResult& result)
          * - The value extracted is invalid
          * - The next character is not a separator or the end of the string
          */
-        bool isInvalid = (str == nullptr) || ((separator != *str) && (endToken != *str));
+        bool isInvalid = (nullptr == str) || ((separator != *str) && (endToken != *str));
 
         if (isInvalid)
         {
