@@ -8,7 +8,7 @@
 # Dependencies
 # ###################################################################################################
 
-# If debug is enabled, Add the RE2_ON_VALGRIND definition for RE2 
+# If debug is enabled, Add the RE2_ON_VALGRIND definition for RE2
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(RE2_ON_VALGRIND)
 endif()
@@ -40,7 +40,6 @@ add_library(builders OBJECT
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperNetInfoAddress.cpp
   builders/opBuilderHelperMap.cpp
-  builders/opBuilderHelperHashSHA1.cpp
   builders/baseHelper.cpp
   builders/opBuilderWdb.cpp
   builders/opBuilderARWrite.cpp

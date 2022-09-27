@@ -161,7 +161,7 @@ Parser createParserFromExpresion(Expression const& exp)
         if (!args.empty())
         {
             auto it = kTempTypeMapper.find(args[0]);
-            if (it != kTempTypeMapper.end())
+            if (kTempTypeMapper.end() != it)
             {
                 parser.type = it->second;
             }
@@ -173,7 +173,7 @@ Parser createParserFromExpresion(Expression const& exp)
     else
     {
         auto it = kECSParserMapper.find(parser.name);
-        if (it != kECSParserMapper.end())
+        if (kECSParserMapper.end() != it)
         {
             parser.type = it->second;
         }
