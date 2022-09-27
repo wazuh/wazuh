@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-The following issue aims to perform required post-release checks to ensure good published release procedure.
+The following issue aims to perform required post-release checks to ensure a well-published release procedure.
 
 ## Main information
 |||
@@ -54,7 +54,7 @@ Status legend:
 🔴 - Rejected
 🟢 - Approved
 
-## Auditors validation
+## Validation
 
 The following auditors must give the green light to this release.
 
