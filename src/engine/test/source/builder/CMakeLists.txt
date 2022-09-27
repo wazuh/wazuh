@@ -163,6 +163,7 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHexToNumber_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperTimeEpoch_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHashSHA1_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMap_test)
 
@@ -210,8 +211,3 @@ add_executable(opBuilderHelperNetInfoAddress_test
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
 gtest_discover_tests(opBuilderHelperNetInfoAddress_test)
-
-add_executable(opBuilderHelperHashSHA1_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHashSHA1_test.cpp
-)
-gtest_discover_tests(opBuilderHelperHashSHA1_test)
