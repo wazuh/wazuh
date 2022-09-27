@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from types import MappingProxyType
 from datetime import datetime, timezone
+from types import MappingProxyType
 from unittest.mock import patch, ANY
 
 import pytest
@@ -16,7 +16,11 @@ with patch('wazuh.core.common.wazuh_uid'):
 @pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
     ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
 ])
-def test_WazuhDBQuerySCA__init__(agent_id, offset, limit, sort, search, select, query, count, get_data):
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None)
+@patch('wazuh.core.utils.WazuhDBQuery.__init__')
+def test_WazuhDBQuerySCA__init__(mock_wdbq, mock_backend, mock_get_basic_info, agent_id, offset, limit, sort, search,
+                                 select, query, count, get_data):
     """Test if method __init__ of WazuhDBQuerySCA works properly.
 
     Parameters
@@ -40,17 +44,15 @@ def test_WazuhDBQuerySCA__init__(agent_id, offset, limit, sort, search, select, 
     get_data: bool
         Whether to return data or not.
     """
-    with patch('wazuh.core.utils.WazuhDBQuery.__init__') as mock_wdbq, \
-            patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None) as mock_backend, \
-            patch('wazuh.core.agent.Agent.get_basic_information') as mock_get_basic_info:
-        core_sca.WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                 query=query, count=count, get_data=get_data)
-        mock_get_basic_info.assert_called_once()
-        mock_wdbq.assert_called_once_with(ANY, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
-                                          select=select, fields=core_sca.WazuhDBQuerySCA.FIELDS_TRANSLATION,
-                                          default_sort_field='policy_id', default_sort_order='DESC', filters={},
-                                          query=query, count=count, get_data=get_data,
-                                          date_fields={'end_scan', 'start_scan'}, backend=mock_backend.return_value)
+    core_sca.WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search, select=select,
+                             query=query, count=count, get_data=get_data)
+    mock_get_basic_info.assert_called_once()
+    mock_wdbq.assert_called_once_with(ANY, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
+                                      select=select, fields=core_sca.WazuhDBQuerySCA.FIELDS_TRANSLATION,
+                                      default_sort_field='policy_id', default_sort_order='DESC', filters={},
+                                      query=query, count=count, get_data=get_data,
+                                      date_fields={'end_scan', 'start_scan'}, backend=ANY)
+    mock_backend.assert_called_once_with(agent_id)
 
 
 @pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
