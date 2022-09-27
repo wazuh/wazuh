@@ -28,92 +28,92 @@ parse:
     # %ASA-2-105001: Inbound TCP connection denied from 192.168.120.60/22 to 192.100.200.5/60600 flags SYN ACK  on interface inside
     # %ASA-2-105001: Inbound TCP connection denied from 192.168.120.60/80 to 192.100.200.5/60600 flags RST ACK  on interface inside
     # %ASA-2-105001: Inbound TCP connection denied from IP_address/port to IP_address/port flagstcp_flags on interface interface_name
-    - message:  >-
+    - message: >-
         $NET_BASE connection <_outcome> from $SRC_ALL to $DST_ALL flags<_tmp/quoted/ /  on interface> <interface.name>
 
     # %ASA-2-105002: UDP Connection denied by outbound list myacl src 192.168.120.60 dest 192.100.200.5
     # %ASA-2-105002: protocol Connection denied by outbound list acl_ID src inside_address dest outside_address
-    - message:  >-
+    - message: >-
         <network.transport> Connection <_outcome> by <network.direction> list <_cisco.list>
         src <source.address> dest <destination.address>
 
     # %ASA-2-105006: Deny inbound UDP from 192.168.120.60/60500 to 192.100.200.5/65001 on interface fw111
     # %ASA-2-105006: Deny inbound UDP from 192.168.120.60/60500 to 192.100.200.5/65001 on interface inside
     # %ASA-2-105006: Deny inbound UDP from outside_address/outside_port to inside_address/inside_port on interface interface_name.
-    - message:  >-
+    - message: >-
         <_outcome> $NET_BASE from $SRC_ALL to $DST_ALL on interface <interface.name>
 
     # %ASA-2-105007: Deny inbound UDP from 192.168.120.60/80 to 192.100.200.5/82 due to DNS Response.
     # %ASA-2-105007: Deny inbound UDP from 192.168.120.60/12345 to 192.100.200.5/53 due to DNS Query
     # %ASA-2-105007: Deny inbound UDP from outside_address/outside_port to inside_address/inside_port due to DNS {Response|Query}.
-    - message:  >-
+    - message: >-
         <_outcome> $NET_BASE from $SRC_ALL to $DST_ALL due to <network.protocol> <_>
 
     # %ASA-3-105010: Deny inbound sctp src fw111:192.168.120.60/5115 dst fw111:192.168.120.60/2
     # %ASA-3-105010: Deny inbound tcp src DMZ:10.10.10.50/666 dst inside:192.100.200.55/404
-    - message:  >-
+    - message: >-
         <_outcome> $NET_BASE src <cisco.asa.source_interface>:$SRC_ALL dst <cisco.asa.destination_interface>:$DST_ALL
 
     # %ASA-2-105013: Dropping echo request from Myhost to PAT address
     # %ASA-6-105013: Dropping echo request from 172.10.10.10 to PAT address
-    - message:  >-
+    - message: >-
         Dropping echo request from <source.address> to PAT address <destination.address>
 
     # %ASA-3-105014: Deny inbound icmp src inside:192.168.120.60 dst inside:192.100.200.5 (type 0, code 0)
     # %ASA-3-105014: Deny inbound icmp src fw111:10.11.10.10 dst fw111:10.11.10.10(type 8, code 0)
-    - message:  >-
+    - message: >-
         <_outcome> $NET_BASE src <cisco.asa.source_interface>:<source.address> dst
         <cisco.asa.destination_interface>:<destination_interface.address> (type <_icmp_type>, code <_icmp.code>)
 
     # %ASA-6-105015: Deny TCP (no connection) from ABCDMCRSM2_hy/38383 to GSP-AUHT-HT01/666 flags RST  on interface hydro
     # %ASA-6-105015: Deny TCP (no connection) from 192.168.120.60/53535 to 10.11.10.10/443 flags FIN PSH ACK  on interface out111
-    - message:  >-
+    - message: >-
         <_outcome> <network.transport> (no connection) from $SRC_ALL to $DST_ALL
         flags<_tmp/quoted/ /  on interface> <interface.name>
 
     # %ASA-2-105016: Deny IP spoof from (127.0.0.1) to 192.168.120.60 on interface Inside
     # %ASA-2-105016: Deny IP spoof from (0.0.0.0) to 192.168.120.60 on interface Mobile_Traffic
     # %ASA-2-105016: Deny IP spoof from (127.0.0.1) to 192.168.120.60 on interface Mobile_Traffic
-    - message:  >-
+    - message: >-
         <_outcome> IP spoof from (<source.address>) to <destination.address> on interface <interface.name>
 
     # %ASA-2-105017: Deny IP due to Land Attack from 192.168.120.60 to 192.100.200.5
     # %ASA-2-105017: Deny IP due to Land Attack from 192.168.120.60 to 192.100.200.5
-    - message:  >-
+    - message: >-
         <_outcome> IP due to Land Attack from <source.address> to <destination.address>
 
     # %ASA-2-105018: ICMP packet type ICMP_type denied by outbound list Myacl_ID src 192.168.120.60 dest 192.100.200.5
-    - message:  >-
+    - message: >-
         <network.transport> packet type <_cisco.icmp_type> <_outcome> by <network.direction>
         list <cisco.ios.access_list> src <source.address> dest <destination.address>
 
     # %ASA-2-105020: Deny IP teardrop fragment (size = 34, offset = 345) from 192.168.120.60 to 192.100.200.5
-    - message:  >-
+    - message: >-
         <_outcome> IP teardrop fragment (size = <_size>, offset = <_offset>)
         from <source.address> to <destination.address>
 
     # %ASA-1-105021: Deny TCP reverse path check from 192.168.120.60 to 192.100.200.5 on interface inside
     # %ASA-4-105021: Deny TCP reverse path check from 192.168.120.60 to 192.100.200.5 on interface fw111
-    - message:  >-
+    - message: >-
         <_outcome> <network.transport> reverse path check from <source.address> to
         <destination.address> on interface <interface.name>
 
     # %ASA-1-105022: Deny protocol connection spoof from source_address to dest_address on interface interface_name.
-    - message:  >-
+    - message: >-
         <_outcome> <network.transport> connection spoof from <source.address> to
         <destination.address> on interface <interface.name>
 
     # %ASA-4-105023: Deny icmp src DMZ:192.168.120.60 dst INTERNA:192.100.200.5 (type 11, code 0)
     # %ASA-4-105023: Deny tcp src outside:192.168.120.60/56565 dst srv:192.100.200.5/51515 (testhostname.domain) by access-group "global_access_1"
-    - message:  >-
+    - message: >-
         <_outcome> <network.transport> src <cisco.asa.source_interface>:$SRC_ALL
         dst <cisco.asa.destination_interface>:$DST_ALL <_tmp/quoted/(/)> by access_group <cisco.ios.access_list>
-    - message:  >-
+    - message: >-
         <_outcome> <network.transport> src <cisco.asa.source_interface>:$SRC_ALL
         dst <cisco.asa.destination_interface>:$DST_ALL <_tmp/quoted/(/)>
 
     # %ASA-4-105027: Deny src [source address] dst [destination address] by access-group “access-list name"
-    - message:  >-
+    - message: >-
         <_outcome> src <source.address> dst <destination.address> by access-group "<cisco.ios.access_list>"
 
     # %ASA-6-105100: access-list fw111_out permitted tcp ptaaac/192.168.120.60(40506) -> fw111/192.100.200.5(6000) hit-cnt 1 first hit [0xa8bf523b, 0x00000000]
@@ -121,29 +121,29 @@ parse:
     # %ASA-4-105100: access-list outside_access_in denied icmp outside/192.168.120.60(3) -> inside/192.100.200.5(30) hit-cnt 1 first hit [0xa8bf523b, 0x0]
     # %ASA-4-105100: access-list InterfaceA_access_in permitted tcp InterfaceA/Server6S009(4423) - InterfaceB-Intl/192.100.200.5(443) hit-cnt 1 first hit [0xa8bf523b, 0xa0ac32b0]
     # %ASA-4-105100: access-list InterfaceA_access_in permitted tcp InterfaceA/Server6S009(4423) - InterfaceB-Intl/192.100.200.5(443) hit-cnt 1 300-second interval [0xa8bf523b, 0x0]
-    - message:  >-
+    - message: >-
         access-list <cisco.ios.access_list> <_outcome> <network.transport> <cisco.asa.source_interface>/<source.address>(<source.port>) -
         <cisco.asa.destination_interface>/<destination.address>(<destination.port>) <_sub_message>
-    - message:  >-
+    - message: >-
         access-list <cisco.ios.access_list> <_outcome> <network.transport> <cisco.asa.source_interface>/<source.address>(<source.port>) ->
         <cisco.asa.destination_interface>/<destination.address>(<destination.port>) <_sub_message>
     # %ASA-1-105103: access-list filter denied icmp for user joe inside/192.168.120.60(45454) -> outside/192.100.200.5(8080) hit-cnt 1 first hit [0xa8bf523b, 0xa0ac32b0]
 
     # %ASA-5-115004: console end configuration: OK
     # %ASA-5-115004: IP_address end configuration: FAILED
-    - message:  >-
+    - message: >-
         <source.address> end configuration: <_cisco.cli_outcome>
 
     # %ASA-5-115010: User 'enable_15', running 'CLI' from IP 192.100.200.5, executed 'clear'
     # %ASA-5-115010: User 'enable_15', running 'CLI' from IP 192.100.200.5, executed 'clear logging buffer'
     # %ASA-5-115010: User 'enable_15', running 'CLI' from IP 192.100.200.5, executed 'ping 8.8.8.8'
-    - message:  >-
+    - message: >-
         User '<host.user.name>', running '<process.name>' from IP <source.address>, executed <process.command_line>
 
     # %ASA-4-115019: Group = TheRollingStones, Username = Keith, IP = 192.100.200.5, Session disconnected. Session Type: LAN-to-LAN, Duration: 1h:32m:16s, Bytes xmt: 62452, Bytes rcv: 222444, Reason: User Requested
     # %ASA-4-115019: Group = TheRollingStones, Username = Mick, IP = 192.100.200.5, Session disconnected. Session Type: AnyConnect-Parent, Duration: 1h:01m:52s, Bytes xmt: 62452, Bytes rcv: 0, Reason: User Requested
     # %ASA-4-115019: Group = TheRollingStones, Username = Ronnie, IP = 192.100.200.5, Session disconnected. Session Type: SSL, Duration: 1h:27m:34s, Bytes xmt: 62452, Bytes rcv: 222444, Reason: Idle Timeout
-    - message:  >-
+    - message: >-
         Group = <source.user.group.name>, Username = <source.user.name>, IP = <destination.address>,
         Session disconnected. Session Type: <_cisco.session_type>, Duration: <_duration_hms>, Bytes xmt: <source.bytes>,
         Bytes rcv: <destination.bytes>, Reason: <event.reason>
@@ -155,11 +155,11 @@ parse:
     # %ASA-6-305015: Built inbound UDP connection 2835024 for inside:192.168.120.60/20330 (192.168.120.60/20330) to identity:192.100.200.5/4500 (192.100.200.5/4500)
     # %ASA-6-305015: Built inbound UDP connection 2835024 for inside:192.168.120.60/20330 (192.168.120.60/20330) to identity:192.100.200.5/4500 (192.100.200.5/4500)
     # %ASA-6-305015: Built inbound UDP connection 2835024 for inside:192.168.120.60/20330 (192.168.120.60/20330) to identity:192.100.200.5/4500 (192.100.200.5/4500)
-    - message:  >-
+    - message: >-
         Built <network.direction> <network.protocol> connection <_cisco.conn.id> for
         <observer.egress.interface.name>:<source.ip>/<source.port> (<source.nat.ip>/<source.nat.port>) to
         <observer.egress.interface.name>:<source.ip>/<source.port> (<source.nat.ip>/<source.nat.port>) <destination.user.name>
-    - message:  >-
+    - message: >-
         Built <network.direction> <network.protocol> connection <_cisco.conn.id> for
         <observer.egress.interface.name>:<source.ip>/<source.port> (<source.nat.ip>/<source.nat.port>) to
         <observer.egress.interface.name>:<source.ip>/<source.port> (<source.nat.ip>/<source.nat.port>)

@@ -1,0 +1,7 @@
+name: syscollector-base
+
+parents:
+  - syscollector-queue
+
+check:
+  - _json.type: +is_string
