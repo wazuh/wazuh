@@ -1,0 +1,13 @@
+name: syscollector-dbsync-base
+
+parents:
+  - syscollector-base
+
+check:
+  - _json.type: +s_starts/dbsync_
+  - _json.operation: +is_string
+  - _json.data: +is_object
+
+normalize:
+  - map:
+      _escaped_pipe_char: "\uffff"

@@ -1,8 +1,0 @@
-name: syscollector_port
-
-parents:
-  - syscollector_base
-
-check:
-  - _json.type: +s_starts/port
-  - _json.ID: +exists

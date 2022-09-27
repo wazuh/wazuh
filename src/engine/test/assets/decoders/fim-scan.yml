@@ -1,0 +1,23 @@
+---
+name: fim-scan
+
+parents:
+  - fim
+
+check:
+  - _json.type: +s_starts/scan
+  - _json.data.timestamp: +is_number
+
+normalize:
+  - check:
+      - _json.type: +s_eq/scan_start
+    map:
+      # TODO: adapt concat to first try to convert value from double if possible, otherwise convert it to int
+      _query: +s_concat/agent /$agent.id/ syscheck scan_info_update start_scan /$_json.data.timestamp
+      _query_result: +wdb_query/$_query
+
+  - check:
+      - _json.type: +s_eq/scan_end
+    map:
+      _query: +s_concat/agent /$agent.id/ syscheck scan_info_update end_scan /$_json.data.timestamp
+      _query_result: +wdb_query/$_query
