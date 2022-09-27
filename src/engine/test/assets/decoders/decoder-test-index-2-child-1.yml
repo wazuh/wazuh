@@ -1,0 +1,10 @@
+name: decoder-test-index-2-child-1
+parents:
+  - decoder-test-index_2
+
+check:
+  - logLine: +s_eq/user
+
+normalize:
+  - map:
+      decoded.user_logline: true

@@ -102,7 +102,7 @@ normalize:
       aws.cloudtrail.resources.account_id: $_json.aws.resources.accountId
       aws.cloudtrail.resources.arn: $_json.aws.resources.ARN
       aws.cloudtrail.resources.type: $_json.aws.resources.type
-      aws.cloudtrail.response_elements:  $_json.aws.responseElements
+      aws.cloudtrail.response_elements: $_json.aws.responseElements
       aws.cloudtrail.service_event_details: $_json.aws.serviceEventDetails
       aws.cloudtrail.shared_event_id: $_json.aws.sharedEventId
       aws.cloudtrail.user_identity.access_key_id: $_json.aws.userIdentity.accessKeyId

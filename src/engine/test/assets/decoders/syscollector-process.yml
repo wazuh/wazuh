@@ -1,0 +1,8 @@
+name: syscollector-process
+
+parents:
+  - syscollector-base
+
+check:
+    - _json.type: +s_starts/process
+    - _json.ID: +exists

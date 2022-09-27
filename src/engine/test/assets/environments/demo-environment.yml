@@ -1,41 +1,78 @@
 decoders:
-  # Root queue decoder
-  - decoder-rootcheck
-  #
-  - syslog
-  - auth
-  - nginx-access
-  - nginx-error
-  - suricata
-  - suricata-alert
-  - suricata-flow
-  - suricata-http
-  - suricata-stats
-  - json
-  - windows-base
-  - windows-security
-  - apache-error
   - apache-access
+  - apache-error
   - auditd
   - auditd-decode-kv
+  - auth
   - aws
   - aws-cloudtrail
   - aws-elb
   - aws-s3
   - aws-s3-parse-region
   - aws-s3-parse-tls
-  # Exclusive Syslog decoders
-  - default_syslog_queue
+  - ciscat
   - cisco
-  - cisco-ios-sec-login
-  - cisco-ios-sec
-  - cisco-ios-grandchild
   - cisco-asa
+  - cisco-ios-grandchild
+  - cisco-ios-sec
+  - cisco-ios-sec-login
+  - dbsync
+  - fim
+  - fim-event
+  - fim-scan
+  - json
+  - nginx-access
+  - nginx-error
   - postgresql-csv
-
-# rules:
-  # - source-malicious-ip
-  # - destination-malicious-ip
+  - postgresql-csv-msg-parse
+  - rootcheck
+  - sca
+  - suricata
+  - suricata-alert
+  - suricata-flow
+  - suricata-http
+  - suricata-stats
+  - syscollector-base
+  - syscollector-dbsync-network-protocol
+  - syscollector-dbsync-osinfo
+  - syscollector-dbsync-osinfo-inserted
+  - syscollector-dbsync-ports
+  - syscollector-dbsync-ports-inserted
+  - syscollector-dbsync-processes
+  - syscollector-dbsync-processes-inserted
+  - syscollector-dbsync-base
+  - syscollector-dbsync-hotfixes
+  - syscollector-dbsync-hotfixes-inserted
+  - syscollector-dbsync-hwinfo
+  - syscollector-dbsync-hwinfo-inserted
+  - syscollector-dbsync-network-address
+  - syscollector-dbsync-network-address-inserted
+  - syscollector-dbsync-network-iface
+  - syscollector-dbsync-network-iface-inserted
+  - syscollector-dbsync-network-protocol-inserted
+  - syscollector-dbsync-packages
+  - syscollector-dbsync-packages-inserted
+  - syscollector-hardware
+  - syscollector-hotfix
+  - syscollector-netinfo
+  - syscollector-network
+  - syscollector-network-end
+  - syscollector-network-ip
+  - syscollector-OS
+  - syscollector-port
+  - syscollector-port-del
+  - syscollector-port-save
+  - syscollector-process
+  - syscollector-process-del
+  - syscollector-process-save
+  - syscollector-program
+  - syscollector-program-del
+  - syscollector-program-save
+  - syscollector-queue
+  - syslog
+  - syslog-queue
+  - windows-base
+  - windows-security
 
 outputs:
   - file-output

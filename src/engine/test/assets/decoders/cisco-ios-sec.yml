@@ -50,7 +50,7 @@ normalize:
   - check:
       - network.transport: igmp
     map:
-      igmp.type: _igmp_type
+      igmp.type: $_igmp_type
 
 
   - check: >-
