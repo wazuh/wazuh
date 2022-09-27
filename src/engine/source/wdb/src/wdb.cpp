@@ -121,10 +121,25 @@ std::string WazuhDB::tryQuery(const std::string& query,
                 continue;
             }
         }
+        catch (const std::runtime_error& e)
+        {
+            WAZUH_LOG_WARN(
+                "wdb: tryQuery irrecuperable failed (attempt {}): {}", i, e.what());
+            this->m_socket.socketDisconnect();
+            break;
+        }
         catch (const std::exception& e)
         {
             WAZUH_LOG_WARN(
                 "wdb: tryQuery irrecuperable failed (attempt {}): {}", i, e.what());
+            this->m_socket.socketDisconnect();
+            break;
+        }
+        catch (...)
+        {
+            WAZUH_LOG_WARN(
+                "wdb: tryQuery irrecuperable failed (attempt {}): unknown error", i);
+            this->m_socket.socketDisconnect();
             break;
         }
     }
