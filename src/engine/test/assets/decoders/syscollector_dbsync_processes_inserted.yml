@@ -22,7 +22,7 @@ normalize:
       - _json.data.name: +s_ne//
     map:
       _json.data.name: +s_replace/|/$_escaped_pipe_char
-      _json.data.name: +s_replace/NULL/_NULL_  
+      _json.data.name: +s_replace/NULL/_NULL_
   - check:
       - _json.data.name: +s_eq//
     map:
@@ -36,7 +36,7 @@ normalize:
       - _json.data.state: +s_ne//
     map:
       _json.data.state: +s_replace/|/$_escaped_pipe_char
-      _json.data.state: +s_replace/NULL/_NULL_  
+      _json.data.state: +s_replace/NULL/_NULL_
   - check:
       - _json.data.state: +s_eq//
     map:
@@ -65,7 +65,7 @@ normalize:
       - _json.data.cmd: +s_ne//
     map:
       _json.data.cmd: +s_replace/|/$_escaped_pipe_char
-      _json.data.cmd: +s_replace/NULL/_NULL_  
+      _json.data.cmd: +s_replace/NULL/_NULL_
   - check:
       - _json.data.cmd: +s_eq//
     map:
@@ -79,7 +79,7 @@ normalize:
       - _json.data.argvs: +s_ne//
     map:
       _json.data.argvs: +s_replace/|/$_escaped_pipe_char
-      _json.data.argvs: +s_replace/NULL/_NULL_  
+      _json.data.argvs: +s_replace/NULL/_NULL_
   - check:
       - _json.data.argvs: +s_eq//
     map:
@@ -93,7 +93,7 @@ normalize:
       - _json.data.euser: +s_ne//
     map:
       _json.data.euser: +s_replace/|/$_escaped_pipe_char
-      _json.data.euser: +s_replace/NULL/_NULL_  
+      _json.data.euser: +s_replace/NULL/_NULL_
   - check:
       - _json.data.euser: +s_eq//
     map:
@@ -107,7 +107,7 @@ normalize:
       - _json.data.ruser: +s_ne//
     map:
       _json.data.ruser: +s_replace/|/$_escaped_pipe_char
-      _json.data.ruser: +s_replace/NULL/_NULL_  
+      _json.data.ruser: +s_replace/NULL/_NULL_
   - check:
       - _json.data.ruser: +s_eq//
     map:
@@ -121,7 +121,7 @@ normalize:
       - _json.data.suser: +s_ne//
     map:
       _json.data.suser: +s_replace/|/$_escaped_pipe_char
-      _json.data.suser: +s_replace/NULL/_NULL_  
+      _json.data.suser: +s_replace/NULL/_NULL_
   - check:
       - _json.data.suser: +s_eq//
     map:
@@ -135,7 +135,7 @@ normalize:
       - _json.data.egroup: +s_ne//
     map:
       _json.data.egroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.egroup: +s_replace/NULL/_NULL_  
+      _json.data.egroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.egroup: +s_eq//
     map:
@@ -149,7 +149,7 @@ normalize:
       - _json.data.rgroup: +s_ne//
     map:
       _json.data.rgroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.rgroup: +s_replace/NULL/_NULL_  
+      _json.data.rgroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.rgroup: +s_eq//
     map:
@@ -163,7 +163,7 @@ normalize:
       - _json.data.sgroup: +s_ne//
     map:
       _json.data.sgroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.sgroup: +s_replace/NULL/_NULL_  
+      _json.data.sgroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.sgroup: +s_eq//
     map:
@@ -177,7 +177,7 @@ normalize:
       - _json.data.fgroup: +s_ne//
     map:
       _json.data.fgroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.fgroup: +s_replace/NULL/_NULL_  
+      _json.data.fgroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.fgroup: +s_eq//
     map:
@@ -264,47 +264,46 @@ normalize:
   - check:
       - _query_response: +is_true
     map:
-      #TODO: need to find where to map resultant neccesary fields
       _json.data.board_serial: +s_replace/$_escaped_pipe_char/|
-      _json.process.pid: $_json.data.pid
+      wazuh.syscollector.process.pid: $_json.data.pid
       _json.data.name: +s_replace/$_escaped_pipe_char/|
-      _json.process.name: $_json.data.name
+      wazuh.syscollector.process.name: $_json.data.name
       _json.data.state: +s_replace/$_escaped_pipe_char/|
-      _json.process.state: $_json.data.state
+      wazuh.syscollector.process.state: $_json.data.state
       _json.data.ppid: +s_replace/$_escaped_pipe_char/|
-      _json.process.ppid: $_json.data.ppid
-      _json.process.utime: $_json.data.utime
-      _json.process.stime: $_json.data.stime
-      _json.process.cmd: $_json.data.cmd
+      wazuh.syscollector.process.ppid: $_json.data.ppid
+      wazuh.syscollector.process.utime: $_json.data.utime
+      wazuh.syscollector.process.stime: $_json.data.stime
+      wazuh.syscollector.process.cmd: $_json.data.cmd
       _json.data.argvs: +s_replace/$_escaped_pipe_char/|
-      _json.process.args: $_json.data.argvs
+      wazuh.syscollector.process.args: $_json.data.argvs
       _json.data.euser: +s_replace/$_escaped_pipe_char/|
-      _json.process.euser: $_json.data.euser
+      wazuh.syscollector.process.euser: $_json.data.euser
       _json.data.ruser: +s_replace/$_escaped_pipe_char/|
-      _json.process.ruser: $_json.data.ruser
+      wazuh.syscollector.process.ruser: $_json.data.ruser
       _json.data.suser: +s_replace/$_escaped_pipe_char/|
-      _json.process.suser: $_json.data.suser
+      wazuh.syscollector.process.suser: $_json.data.suser
       _json.data.egroup: +s_replace/$_escaped_pipe_char/|
-      _json.process.egroup: $_json.data.egroup
+      wazuh.syscollector.process.egroup: $_json.data.egroup
       _json.data.rgroup: +s_replace/$_escaped_pipe_char/|
-      _json.process.rgroup: $_json.data.rgroup
+      wazuh.syscollector.process.rgroup: $_json.data.rgroup
       _json.data.sgroup: +s_replace/$_escaped_pipe_char/|
-      _json.process.sgroup: $_json.data.sgroup
+      wazuh.syscollector.process.sgroup: $_json.data.sgroup
       _json.data.fgroup: +s_replace/$_escaped_pipe_char/|
-      _json.process.fgroup: $_json.data.fgroup
-      _json.process.priority: $_json.data.priority
-      _json.process.nice: $_json.data.nice
-      _json.process.size: $_json.data.size
-      _json.process.vm_size: $_json.data.vm_size
-      _json.process.resident: $_json.data.resident
-      _json.process.share: $_json.data.share
-      _json.process.start_time: $_json.data.start_time
-      _json.process.pgrp: $_json.data.pgrp
-      _json.process.session: $_json.data.session
-      _json.process.nlwp: $_json.data.nlwp
-      _json.process.tgid: $_json.data.tgid
-      _json.process.tty: $_json.data.tty
-      _json.process.processor: $_json.data.processor
+      wazuh.syscollector.process.fgroup: $_json.data.fgroup
+      wazuh.syscollector.process.priority: $_json.data.priority
+      wazuh.syscollector.process.nice: $_json.data.nice
+      wazuh.syscollector.process.size: $_json.data.size
+      wazuh.syscollector.process.vm_size: $_json.data.vm_size
+      wazuh.syscollector.process.resident: $_json.data.resident
+      wazuh.syscollector.process.share: $_json.data.share
+      wazuh.syscollector.process.start_time: $_json.data.start_time
+      wazuh.syscollector.process.pgrp: $_json.data.pgrp
+      wazuh.syscollector.process.session: $_json.data.session
+      wazuh.syscollector.process.nlwp: $_json.data.nlwp
+      wazuh.syscollector.process.tgid: $_json.data.tgid
+      wazuh.syscollector.process.tty: $_json.data.tty
+      wazuh.syscollector.process.processor: $_json.data.processor
       _query: +delete_field
       _query_response: +delete_field
       _json.data: +delete_field

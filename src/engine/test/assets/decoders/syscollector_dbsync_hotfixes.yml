@@ -45,8 +45,10 @@ normalize:
       _json.data.hotfix: $_array_of_field/1
       #replace spcaped values
       _json.data.hotfix: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.hotfix: _json.data.hotfix
       _query: +delete_field
       _query_response: +delete_field
       _query_response_values: +delete_field
       _array_of_field: +delete_field
       _escaped_pipe_char: +delete_field
+      _json.data: +delete_field

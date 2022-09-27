@@ -57,7 +57,7 @@ normalize:
       - _json.data.state: +s_ne//
     map:
       _json.data.state: +s_replace/|/$_escaped_pipe_char
-      _json.data.state: +s_replace/NULL/_NULL_  
+      _json.data.state: +s_replace/NULL/_NULL_
   - check:
       - _json.data.state: +s_eq//
     map:
@@ -76,7 +76,7 @@ normalize:
       - _json.data.process: +s_ne//
     map:
       _json.data.process: +s_replace/|/$_escaped_pipe_char
-      _json.data.process: +s_replace/NULL/_NULL_  
+      _json.data.process: +s_replace/NULL/_NULL_
   - check:
       - _json.data.process: +s_eq//
     map:
@@ -103,20 +103,19 @@ normalize:
   - check:
       - _query_response: +is_true
     map:
-      #TODO: need to find where to map resultant neccesary fields
-      _json.port.protocol: $_json.data.protocol
-      _json.port.local_ip: $_json.data.local_ip
-      _json.port.local_port: $_json.data.local_port
-      _json.port.remote_ip: $_json.data.remote_ip
-      _json.port.remote_port: $_json.data.remote_port
-      _json.port.tx_queue: $_json.data.tx_queue
-      _json.port.rx_queue: $_json.data.rx_queue
-      _json.port.inode: $_json.data.inode
+      wazuh.syscollector.port.protocol: $_json.data.protocol
+      wazuh.syscollector.port.local_ip: $_json.data.local_ip
+      wazuh.syscollector.port.local_port: $_json.data.local_port
+      wazuh.syscollector.port.remote_ip: $_json.data.remote_ip
+      wazuh.syscollector.port.remote_port: $_json.data.remote_port
+      wazuh.syscollector.port.tx_queue: $_json.data.tx_queue
+      wazuh.syscollector.port.rx_queue: $_json.data.rx_queue
+      wazuh.syscollector.port.inode: $_json.data.inode
       _json.data.state: +s_replace/$_escaped_pipe_char/|
-      _json.port.state: $_json.data.state
-      _json.port.pid: $_json.data.pid
+      wazuh.syscollector.port.state: $_json.data.state
+      wazuh.syscollector.port.pid: $_json.data.pid
       _json.data.process: +s_replace/$_escaped_pipe_char/|
-      _json.port.process: $_json.data.process
+      wazuh.syscollector.port.process: $_json.data.process
       _query: +delete_field
       _query_response: +delete_field
       _json.data: +delete_field

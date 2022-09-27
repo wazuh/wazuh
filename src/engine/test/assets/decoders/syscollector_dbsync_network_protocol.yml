@@ -12,7 +12,7 @@ normalize:
       - _json.data.iface: +s_ne//
     map:
       _json.data.iface: +s_replace/|/$_escaped_pipe_char
-      _json.data.iface: +s_replace/NULL/_NULL_  
+      _json.data.iface: +s_replace/NULL/_NULL_
   - check:
       - _json.data.iface: +s_eq//
     map:
@@ -36,7 +36,7 @@ normalize:
       - _json.data.dhcp: +s_ne//
     map:
       _json.data.dhcp: +s_replace/|/$_escaped_pipe_char
-      _json.data.dhcp: +s_replace/NULL/_NULL_  
+      _json.data.dhcp: +s_replace/NULL/_NULL_
   - check:
       - _json.data.dhcp: +s_eq//
     map:
@@ -50,7 +50,7 @@ normalize:
       - _json.data.metric: +s_ne//
     map:
       _json.data.metric: +s_replace/|/$_escaped_pipe_char
-      _json.data.metric: +s_replace/NULL/_NULL_  
+      _json.data.metric: +s_replace/NULL/_NULL_
   - check:
       - _json.data.metric: +s_eq//
     map:
@@ -82,15 +82,16 @@ normalize:
       _query_response_values: $_query_response_space_splited/1
       _array_of_field: +s_to_array/$_query_response_values/|
       _array_of_field/0: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.proto.iface: $_array_of_field/0
-      _json.netinfo.proto.type: $_array_of_field/1
-      _json.netinfo.proto.gateway: $_array_of_field/2
+      wazuh.syscollector.netinfo.proto.iface: $_array_of_field/0
+      wazuh.syscollector.netinfo.proto.type: $_array_of_field/1
+      wazuh.syscollector.netinfo.proto.gateway: $_array_of_field/2
       _array_of_field/3: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.proto.dhcp: $_array_of_field/3
+      wazuh.syscollector.netinfo.proto.dhcp: $_array_of_field/3
       _array_of_field/4: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.proto.metric: $_array_of_field/4
+      wazuh.syscollector.netinfo.proto.metric: $_array_of_field/4
       _query: +delete_field
       _query_response: +delete_field
       _query_response_values: +delete_field
       _array_of_field: +delete_field
       _escaped_pipe_char: +delete_field
+      _json.data: +delete_field
