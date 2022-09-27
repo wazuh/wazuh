@@ -409,25 +409,31 @@ nlohmann::json SysInfo::getNetworks() const
     return networks;
 }
 
-std::pair<std::string, std::string> parseProcessInfo(char path[])
+std::pair<int32_t, std::string> parseProcessInfo(char path[])
 {
     // Open stat file
-    std::pair<std::string, std::string> processInfo;
+    std::pair<int32_t, std::string> processInfo{0, UNKNOWN_VALUE};
     std::ifstream file(path, std::ios::in | std::ios::binary);
-    std::string statContent;
 
     // Get stat file content
-    std::getline(file, statContent);
+    if (file.is_open())
+    {
+        std::string statContent{};
+        std::getline(file, statContent);
 
-    // Parse PID and process name
-    int openParentesysPos = std::string(statContent).find("(");
-    int closeParentesysPos = std::string(statContent).find(")");
-    int spacePos = std::string(statContent).find(" ");
+        // Parse PID and process name. The expected format is: PID+space+(process_name)
+        const auto openParenthesisPos = statContent.find("(");
+        const auto closeParenthesisPos = statContent.find(")");
+        const auto spacePos = statContent.find(" ");
 
-    processInfo.first = std::string(statContent).substr(0, spacePos);
-    processInfo.second = std::string(statContent).substr(openParentesysPos + 1, closeParentesysPos - openParentesysPos - 1);
-
-    file.close();
+        if (openParenthesisPos != std::string::npos &&
+                closeParenthesisPos != std::string::npos &&
+                spacePos != std::string::npos)
+        {
+            processInfo.first = std::stoi(statContent.substr(0, spacePos));
+            processInfo.second = statContent.substr(openParenthesisPos + 1, closeParenthesisPos - openParenthesisPos - 1);
+        }
+    }
 
     return processInfo;
 }
@@ -439,26 +445,16 @@ void findInodeMatch(char path[], std::vector<int64_t>& inodes, bool& matchInode,
 
     if (readlink(path, fdFileContent, sizeof(fdFileContent)) > 0)
     {
-        // Parse inode from symbolic link.
-        int openBracketPos = std::string(fdFileContent).find("[");
-        int closeBracketPos = std::string(fdFileContent).find("]");
-        std::string match = std::string(fdFileContent).substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1);
-        bool exists{false};
-        int64_t matchN{0};
+        // Parse inode from symbolic link. The expected format is: socket[<inode_number>]
+        const int openBracketPos = std::string(fdFileContent).find("[");
+        const int closeBracketPos = std::string(fdFileContent).find("]");
+        const std::string match = std::string(fdFileContent).substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1);
+        const int64_t matchN = std::stoi(match);
 
-        for (const auto& i : JSONInput)
-        {
-            std::stringstream ss;
-            ss << match;
-            ss >> matchN;
-
-            if (i.at("inode") == matchN)
-            {
-                exists = true;
-            }
-        }
-
-        if (exists)
+        if (std::any_of(JSONInput.cbegin(), JSONInput.cend(), [&](const auto it)
+    {
+        return it.at("inode") == matchN;
+        }))
         {
             matchInode = true;
             inodes.push_back(matchN);
@@ -485,7 +481,7 @@ void parseProcFS(const char path[], bool contRecursion, nlohmann::json& JSONInpu
 
                 if (S_ISDIR(attr.st_mode) && contRecursion)
                 {
-                    if (isNumber(dirent->d_name))
+                    if (Utils::isNumber(dirent->d_name))
                     {
                         inodes.clear();
                         matchInode = false;
@@ -501,13 +497,13 @@ void parseProcFS(const char path[], bool contRecursion, nlohmann::json& JSONInpu
                 {
                     if (matchInode)
                     {
-                        for (size_t i = 0; i < JSONInput.size(); ++i)
+                        for (auto& it : JSONInput)
                         {
-                            if (std::find(inodes.begin(), inodes.end(), JSONInput[i].at("inode")) != inodes.end())
+                            if (std::find(inodes.begin(), inodes.end(), it.at("inode")) != inodes.end())
                             {
-                                std::pair<std::string, std::string> processInfo = parseProcessInfo(subPath);
-                                JSONInput[i].at("pid") = processInfo.first;
-                                JSONInput[i].at("process") = processInfo.second;
+                                const auto processInfo{parseProcessInfo(subPath)};
+                                it.at("pid") = processInfo.first;
+                                it.at("process") = processInfo.second;
                             }
                         }
                     }
