@@ -983,3 +983,23 @@ stages:
           total_affected_items: !anyint
           failed_items: [ ]
           total_failed_items: 0
+
+  - name: Get SCA checks filtering by remediation
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        remediation: "{expected_remediation_file:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *sca_check_result_001_file
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
