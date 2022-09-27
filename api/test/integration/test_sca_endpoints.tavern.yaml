@@ -502,12 +502,9 @@ stages:
           expected_policy_id_command: data.affected_items[0].policy_id
           expected_description_command: data.affected_items[0].description
           expected_check_id_command: data.affected_items[0].id
-          expected_result_command: data.affected_items[0].result
           expected_compliance_command: data.affected_items[0].compliance
           expected_rules_command: data.affected_items[0].rules
           expected_condition_command: data.affected_items[0].condition
-          expected_status_command: data.affected_items[0].status
-          expected_reason_command: data.affected_items[0].reason
           expected_command_command: data.affected_items[0].command
 
   - name: Get item with the file field (q="rules.type=file")
@@ -549,12 +546,9 @@ stages:
           expected_policy_id_file: data.affected_items[0].policy_id
           expected_description_file: data.affected_items[0].description
           expected_check_id_file: data.affected_items[0].id
-          expected_result_file: data.affected_items[0].result
           expected_compliance_file: data.affected_items[0].compliance
           expected_rules_file: data.affected_items[0].rules
           expected_condition_file: data.affected_items[0].condition
-          expected_status_file: data.affected_items[0].status
-          expected_reason_file: data.affected_items[0].reason
           expected_file_file: data.affected_items[0].file
 
   # limit and offset tests
@@ -758,12 +752,9 @@ stages:
               policy_id: "{expected_policy_id_command}"
               description: "{expected_description_command}"
               id: !int "{expected_check_id_command}"
-              result: "{expected_result_command}"
               compliance: !force_format_include "{expected_compliance_command}"
               rules: !force_format_include "{expected_rules_command}"
               condition: "{expected_condition_command}"
-              status: "{expected_status_command}"
-              reason: "{expected_reason_command}"
               command: "{expected_command_command}"
           failed_items: []
           total_affected_items: 1
@@ -791,38 +782,15 @@ stages:
               policy_id: "{expected_policy_id_file}"
               description: "{expected_description_file}"
               id: !int "{expected_check_id_file}"
-              result: "{expected_result_file}"
               compliance: !force_format_include "{expected_compliance_file}"
               rules: !force_format_include "{expected_rules_file}"
               condition: "{expected_condition_file}"
-              status: "{expected_status_file}"
-              reason: "{expected_reason_file}"
               file: "{expected_file_file}"
           failed_items: [ ]
           total_affected_items: 1
           total_failed_items: 0
 
   # filters tests
-
-  - name: Get SCA checks filtering by reason
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        reason: "{expected_reason_command:s}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001_command
-          total_affected_items: !anyint
-          failed_items: []
-          total_failed_items: 0
 
   - name: Get SCA checks filtering by rationale
     request:
@@ -833,46 +801,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         rationale: "{expected_rationale_command:s}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001_command
-          total_affected_items: !anyint
-          failed_items: [ ]
-          total_failed_items: 0
-
-  - name: Get SCA checks filtering by status
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        status: "{expected_status_command:s}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001_command
-          total_affected_items: !anyint
-          failed_items: [ ]
-          total_failed_items: 0
-
-  - name: Get SCA checks filtering by result
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        result: "{expected_result_command:s}"
     response:
       status_code: 200
       json:
