@@ -1641,159 +1641,136 @@
   <rule id="950078" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6277$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server granted access to a user but put it on probation because the host did not meet the defined health policy.</description>
   </rule>
+
   <rule id="950079" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6278$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server granted full access to a user because the host met the defined health policy.</description>
   </rule>
+
   <rule id="950080" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6279$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server locked the user account due to repeated failed authentication attempts.</description>
   </rule>
+
   <rule id="950081" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6280$</field>
-    <group>logon-logoff,network-policy-server,</group>
+    <options>no_full_log</options>
     <description>Network Policy Server unlocked the user account.</description>
   </rule>
+
   <rule id="950082" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^640$</field>
     <description>General account database changed</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950083" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^619$</field>
     <description>Quality of Service Policy changed</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950084" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^24586$</field>
     <description>An error was encountered converting volume</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950085" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^24592$</field>
-    <description>An attempt to automatically restart conversion on volume %2 failed.</description>
+    <description>An attempt to automatically restart conversion on volume failed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950086" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^24593$</field>
-    <description>Metadata write: Volume %2 returning errors while trying to modify metadata. If failures continue, decrypt volume</description>
+    <description>Metadata write: Volume returning errors while trying to modify metadata. If failures continue, decrypt volume</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950087" level="7">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^24594$</field>
     <description>Metadata rebuild: An attempt to write a copy of metadata on volume %2 failed and may appear as disk corruption. If failures continue, decrypt volume.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950088" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4608$</field>
-    <group>system,security-state-change,</group>
-    <description>Windows is starting up.</description>
-  </rule>
-  <rule id="950089" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4609$</field>
-    <group>system,security-state-change,</group>
-    <description>Windows is shutting down.</description>
-  </rule>
+
   <rule id="950090" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4610$</field>
-    <group>system,security-system-extension,</group>
+    <options>no_full_log</options>
     <description>An authentication package has been loaded by the Local Security Authority.</description>
   </rule>
+
   <rule id="950091" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4611$</field>
-    <group>system,security-system-extension,</group>
     <description>A trusted logon process has been registered with the Local Security Authority.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950092" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4612$</field>
-    <group>system,system-integrity,</group>
     <description>Internal resources allocated for the queuing of audit messages have been exhausted, leading to the loss of some audits.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950093" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4614$</field>
-    <group>system,security-system-extension,</group>
     <description>A notification package has been loaded by the Security Account Manager.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950094" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4615$</field>
-    <group>system,system-integrity,</group>
     <description>Invalid use of LPC port.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950095" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4616$</field>
-    <group>system,security-state-change,</group>
-    <description>The system time was changed.</description>
-  </rule>
+
   <rule id="950096" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4622$</field>
-    <group>system,security-system-extension,</group>
     <description>A security package has been loaded by the Local Security Authority.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950097" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4624$</field>
-    <group>logon-logoff,logon,</group>
-    <description>An account was successfully logged on.</description>
-  </rule>
-  <rule id="950098" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4625$</field>
-    <group>logon-logoff,logon,</group>
-    <description>An account failed to log on.</description>
-  </rule>
-  <rule id="950099" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4634$</field>
-    <group>logon-logoff,logoff,</group>
-    <description>An account was logged off.</description>
-  </rule>
-  <rule id="950100" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4646$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
-    <description>IKE DoS-prevention mode started.</description>
-  </rule>
-  <rule id="950101" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4647$</field>
-    <group>logon-logoff,logoff,</group>
-    <description>User initiated logoff.</description>
-  </rule>
+
   <rule id="950102" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4648$</field>
-    <group>logon-logoff,logon,</group>
     <description>A logon was attempted using explicit credentials.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950103" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4650$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
     <description>An IPsec Main Mode security association was established. Extended Mode was not enabled. Certificate authentication was not used.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950104" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4651$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
     <description>An IPsec Main Mode security association was established. Extended Mode was not enabled. A certificate was used for authentication.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950105" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4652$</field>
