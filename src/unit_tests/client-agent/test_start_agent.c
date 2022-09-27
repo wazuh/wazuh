@@ -39,16 +39,6 @@ int __wrap_close(int fd) {
 }
 #endif
 
-void __wrap_resolve_hostname(char **hostname, int attempts) {
-    if (strcmp(*hostname, "VALID_HOSTNAME/") == 0) {
-        free(*hostname);
-        os_strdup("VALID_HOSTNAME/127.0.0.3", *hostname);
-    } else {
-        free(*hostname);
-        os_strdup("INVALID_HOSTNAME/", *hostname);
-    }
-}
-
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
     return 0;
@@ -135,12 +125,16 @@ static int setup_test(void **state) {
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
     /* Connected sock */
-    agt->sock=-1;
+    agt->sock = -1;
     /* Server */
     add_server_config("127.0.0.1", IPPROTO_UDP);
     add_server_config("127.0.0.2", IPPROTO_TCP);
-    add_server_config("VALID_HOSTNAME/", IPPROTO_UDP);
+    add_server_config("VALID_HOSTNAME/127.0.0.3", IPPROTO_UDP);
     add_server_config("INVALID_HOSTNAME/", IPPROTO_UDP);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 0);
 
     /* Keys */
     keys_init(&keys);
@@ -169,6 +163,8 @@ static void test_connect_server(void **state) {
     expect_any(__wrap__minfo, formatted_msg);
     /* Connect to first server (UDP)*/
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 11);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
@@ -180,6 +176,8 @@ static void test_connect_server(void **state) {
 
     /* Connect to second server (TCP), previous connection must be closed*/
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[1].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.2"));
 
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
@@ -230,6 +228,8 @@ static void test_connect_server(void **state) {
 
     /* Connect to first server (UDP), simulate connection error*/
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, -1);
     connected = connect_server(0, true);
     assert_false(connected);
@@ -243,6 +243,8 @@ static void test_agent_handshake_to_server(void **state) {
 
     /* Handshake with first server (UDP) */
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 21);
     #ifndef TEST_WINAGENT
     will_return(__wrap_recv, SERVER_ENC_ACK);
@@ -262,6 +264,8 @@ static void test_agent_handshake_to_server(void **state) {
 
     /* Handshake with second server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[1].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.2"));
 
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
@@ -289,6 +293,8 @@ static void test_agent_handshake_to_server(void **state) {
 
     /* Handshake sending the startup message */
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[1].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.2"));
 
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
@@ -317,6 +323,8 @@ static void test_agent_handshake_to_server(void **state) {
 
     /* Handshake with connection error */
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, -1);
 #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 23);
@@ -332,6 +340,8 @@ static void test_agent_handshake_to_server(void **state) {
 
     /* Handshake with reception error */
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 23);
     will_return(__wrap_wnet_select, 0);
     expect_string(__wrap_send_msg, msg, "#!-agent startup ");
@@ -343,6 +353,8 @@ static void test_agent_handshake_to_server(void **state) {
 
     /* Handshake with decode error */
     will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 24);
 #ifndef TEST_WINAGENT
     expect_value(__wrap_close, fd, 23);
@@ -379,30 +391,12 @@ static void test_send_agent_stopped_message(void **state) {
     send_agent_stopped_message();
 }
 
-/* agent_setup_hostnames */
-static void test_agent_setup_hostnames(void **state) {
-    expect_string(__wrap__minfo, formatted_msg, "Server IP Address: 127.0.0.1");
-    expect_string(__wrap__minfo, formatted_msg, "Server IP Address: 127.0.0.2");
-    expect_string(__wrap__mdebug2, formatted_msg, "Resolving server hostname: VALID_HOSTNAME/");
-    expect_string(__wrap__minfo, formatted_msg, "Server hostname resolved: VALID_HOSTNAME/127.0.0.3");
-    expect_string(__wrap__mdebug2, formatted_msg, "Resolving server hostname: INVALID_HOSTNAME/");
-    expect_string(__wrap__mwarn, formatted_msg, "Could not resolve server hostname: INVALID_HOSTNAME");
-
-    agent_setup_hostnames();
-
-    assert_string_equal(agt->server[0].rip, "127.0.0.1");
-    assert_string_equal(agt->server[1].rip, "127.0.0.2");
-    assert_string_equal(agt->server[2].rip, "VALID_HOSTNAME/127.0.0.3");
-    assert_string_equal(agt->server[3].rip, "INVALID_HOSTNAME/");
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_setup_hostnames, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -25,11 +25,11 @@ class WazuhDBConnection:
         """
         Constructor
         """
-        self.socket_path = common.wdb_socket_path
+        self.socket_path = common.WDB_SOCKET
         self.request_slice = request_slice
         self.max_size = max_size
-        self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
+            self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.__conn.connect(self.socket_path)
         except OSError as e:
             raise WazuhInternalError(2005, e)
@@ -60,7 +60,7 @@ class WazuhDBConnection:
             ]
         elif query_elements[sql_first_index] == 'rootcheck':
             input_val_errors = [
-                (query_elements[sql_first_index+1] == 'delete' or query_elements[sql_first_index+1] == 'save',
+                (query_elements[sql_first_index + 1] == 'delete' or query_elements[sql_first_index + 1] == 'save',
                  'Only "save" or "delete" requests can be sent to WDB')
             ]
         else:
@@ -104,7 +104,7 @@ class WazuhDBConnection:
         elif raw:
             return data
         else:
-            return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+            return WazuhDBConnection.loads(data[1])
 
     def _recvall(self, data_size, buffer_size=4096):
         data = bytearray()
@@ -122,11 +122,33 @@ class WazuhDBConnection:
             if v == "(null)":
                 continue
             if isinstance(v, str) and DATE_FORMAT.match(v):
-                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S')
+                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S').replace(tzinfo=datetime.timezone.utc)
             else:
                 result[k] = v
 
         return result
+
+    @staticmethod
+    def loads(string):
+        """Custom implementation for the JSON loads method with the class decoder.
+        This method takes care of the possible emtpy objects that may be load.
+
+        Parameters
+        ----------
+        string : str
+            String response from `wazuh-db`. It must be a dumped JSON.
+
+        Returns
+        -------
+        JSON
+            JSON object.
+        """
+        data = json.loads(string, object_hook=WazuhDBConnection.json_decoder)
+        if '"(null)"' in string:
+            # To prevent empty dictionaries, clean data if there was any `"(null)"` within the string
+            data = [item for item in data if item]
+
+        return data
 
     def __query_lower(self, query):
         """
@@ -167,7 +189,7 @@ class WazuhDBConnection:
     def run_wdb_command(self, command):
         """Run command in wdb and return list of retrieved information.
 
-        The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
+        The response of wdb socket can contain 2 elements, a STATUS and a PAYLOAD.
         State value can be:
             ok {payload}    -> Successful query with no pending data
             due {payload}   -> Successful query with pending data
@@ -183,19 +205,19 @@ class WazuhDBConnection:
         response : list
             List with JSON results
         """
-        response = []
+        result = self._send(command, raw=True)
 
-        while True:
-            status, payload = self._send(command, raw=True)
-            if status == 'err':
-                raise WazuhInternalError(2007, extra_message=payload)
-            if payload != '[]':
-                response.append(payload)
-            # Exit if there are no items left to return
-            if status == 'ok':
-                break
+        # result[0] -> status
+        # result[1] -> payload
+        if len(result) > 1:
+            if result[0] == 'err':
+                raise WazuhInternalError(2007, extra_message=result[1])
 
-        return response
+        else:
+            if result[0] != 'ok':
+                raise WazuhInternalError(2007)
+
+        return result
 
     def send(self, query, raw=True):
         """Send a message to the wdb socket.
@@ -218,11 +240,13 @@ class WazuhDBConnection:
         """
         Sends a sql query to wdb socket
         """
+
         def send_request_to_wdb(query_lower, step, off, response):
             try:
-                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset', 'offset {}'.format(off))
+                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset',
+                                                                                         'offset {}'.format(off))
                 request_response = self._send(request, raw=True)[1]
-                response.extend(json.loads(request_response, object_hook=WazuhDBConnection.json_decoder))
+                response.extend(WazuhDBConnection.loads(request_response))
                 if len(request_response)*2 < MAX_SOCKET_BUFFER_SIZE:
                     return step*2
                 else:
@@ -301,7 +325,8 @@ class WazuhDBConnection:
                 while off < limit + offset:
                     step = limit if self.request_slice > limit > 0 else self.request_slice
                     # Min() used to avoid fetching more items than the maximum specified in `limit`.
-                    self.request_slice = send_request_to_wdb(query_lower, min(limit + offset - off, step), off, response)
+                    self.request_slice = send_request_to_wdb(query_lower, min(limit + offset - off, step), off,
+                                                             response)
                     off += step
             except ValueError as e:
                 raise WazuhError(2006, str(e))

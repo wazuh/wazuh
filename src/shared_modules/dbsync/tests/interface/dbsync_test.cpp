@@ -1543,7 +1543,7 @@ TEST_F(DBSyncTest, createTxnCPP)
     CallbackMock wrapper;
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"System","pid":4}])"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"Guake","pid":7}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"name":"System","pid":4})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"pid":4})"))).Times(1);
 
     ResultCallbackData callbackData
     {
@@ -1644,6 +1644,48 @@ TEST_F(DBSyncTest, createTxnCPP1)
     EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
 }
 
+
+TEST_F(DBSyncTest, createTxnCPP2)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `time` BIGINT, PRIMARY KEY (`pid`, `time`)) WITHOUT ROWID;"};
+    const auto tables { R"({"table": "processes"})" };
+    const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
+    std::unique_ptr<DBSync> dbSync;
+
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"System","pid":4, "time":100100}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"name":"Guake","pid":7,"time":100101}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(DELETED, nlohmann::json::parse(R"({"pid":4,"time":100100})"))).Times(1);
+
+    ResultCallbackData callbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    const auto insertionSqlStmt1{ R"(
+        {
+            "table":"processes",
+            "data":
+                [
+                    {"pid":4,"name":"System", "time":100100}
+                ]
+        })"}; // Insert
+
+    EXPECT_NO_THROW(dbSync->syncRow(nlohmann::json::parse(insertionSqlStmt1), callbackData));  // Expect an insert event
+
+    std::unique_ptr<DBSyncTxn> dbSyncTxn;
+    EXPECT_NO_THROW(dbSyncTxn = std::make_unique<DBSyncTxn>(dbSync->handle(), nlohmann::json::parse(tables), 0, 100, callbackData));
+
+    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake","time":100101}]})" }; // Insert
+    EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(nlohmann::json::parse(insertionSqlStmt2)));
+
+    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
+}
 
 TEST_F(DBSyncTest, teardownCPP)
 {
@@ -1815,6 +1857,40 @@ TEST_F(DBSyncTest, constructorWithHandle)
     EXPECT_EQ(dbSync->handle(), dbSyncHandled->handle());
 
 }
+
+TEST_F(DBSyncTest, txnDestructorOwnsHandle)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto tables { R"({"table": "processes"})" };
+    auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ResultCallbackData callback { [](ReturnTypeCallback, const nlohmann::json&) {}};
+    TXN_HANDLE txHandle = nullptr;
+    {
+        // Use the overload that creates TXN_HANDLE from within and as such, has ownership of it.
+        DBSyncTxn tx(handle, nlohmann::json::parse(tables), 1, 100, callback);
+        tx = tx.handle();
+    }
+    EXPECT_NE(dbsync_close_txn(txHandle), 0);
+}
+
+TEST_F(DBSyncTest, txnDestructorDoesNotOwnHandle)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto tables { R"({"table": "processes"})" };
+    const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
+    auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(tables) };
+    callback_data_t callbackData { callback, dummyCtx.get() };
+    TXN_HANDLE txHandle = dbsync_create_txn(handle, jsonTables.get(), 1, 100, callbackData);
+    {
+        // Use the overload that only takes a TXN_HANDLE and sets up the destructor to NOT release the handle.
+        DBSyncTxn tx(txHandle);
+        tx = tx.handle();
+    }
+    EXPECT_EQ(dbsync_close_txn(txHandle), 0);
+
+}
+
 
 TEST_F(DBSyncTest, teardown)
 {

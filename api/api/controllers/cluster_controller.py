@@ -9,12 +9,14 @@ from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
+import wazuh.core.cluster.cluster as core_cluster
 import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -109,6 +111,56 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, nodes_
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           local_client_arg='lc',
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_nodes_ruleset_sync_status(request, pretty=False, wait_for_complete=False, nodes_list="*"):
+    """Get cluster ruleset synchronization status.
+
+    Returns cluster ruleset synchronization status for all nodes or a list of them.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param nodes_list: List of node ids
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    nodes_list : list
+        Node IDs.
+
+    Returns
+    -------
+    ApiResponse
+        Nodes ruleset synchronization statuses.
+    """
+    nodes = raise_if_exc(await get_system_nodes())
+
+    master_dapi = DistributedAPI(f=core_cluster.get_node_ruleset_integrity,
+                                 request_type='local_master',
+                                 is_async=True,
+                                 wait_for_complete=wait_for_complete,
+                                 logger=logger,
+                                 local_client_arg='lc',
+                                 )
+    master_md5 = raise_if_exc(await master_dapi.distribute_function()).dikt
+
+    f_kwargs = {'node_list': nodes_list, 'master_md5': master_md5}
+    dapi = DistributedAPI(f=cluster.get_ruleset_sync_status,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type="distributed_master",
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=nodes_list == "*",
                           rbac_permissions=request['token_info']['rbac_policies'],
                           nodes=nodes
                           )
@@ -355,7 +407,7 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
     :param wait_for_complete: Disable timeout response
     """
     f_kwargs = {'node_id': node_id,
-                'filename': common.analysisd_stats}
+                'filename': common.ANALYSISD_STATS}
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=stats.get_daemons_stats,
@@ -380,7 +432,7 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
     :param wait_for_complete: Disable timeout response
     """
     f_kwargs = {'node_id': node_id,
-                'filename': common.remoted_stats}
+                'filename': common.REMOTED_STATS}
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=stats.get_daemons_stats,
@@ -555,6 +607,8 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                 }
 
     nodes = raise_if_exc(await get_system_nodes())
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
+
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',

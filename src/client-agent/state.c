@@ -33,11 +33,18 @@ void w_agentd_state_init() {
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
 }
 
+#ifdef WIN32
+DWORD WINAPI state_main(__attribute__((unused)) LPVOID arg) {
+#else
 void * state_main(__attribute__((unused)) void * args) {
-
+#endif
     if (!interval) {
         minfo("State file is disabled.");
+#ifdef WIN32
+        return 0;
+#else
         return NULL;
+#endif
     }
 
     mdebug1("State file updating thread started.");
@@ -47,7 +54,11 @@ void * state_main(__attribute__((unused)) void * args) {
         sleep(interval);
     }
 
-    return NULL;
+#ifdef WIN32
+        return 0;
+#else
+        return NULL;
+#endif
 }
 
 int write_state() {

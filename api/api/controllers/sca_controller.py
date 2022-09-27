@@ -11,13 +11,13 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 
 import wazuh.sca as sca
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import database_limit
+from wazuh.core.common import DATABASE_LIMIT
 
 logger = logging.getLogger('wazuh-api')
 
 
 async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=False, name=None, description=None,
-                        references=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
+                        references=None, offset=0, limit=DATABASE_LIMIT, sort=None, search=None, q=None):
     """Get security configuration assessment (SCA) database of an agent
 
     Parameters
@@ -76,7 +76,7 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
 async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None,
                          description=None, rationale=None, remediation=None, command=None, status=None, reason=None,
                          file=None, process=None, directory=None, registry=None, references=None, result=None,
-                         condition=None, offset=0, limit=database_limit, sort=None, search=None, q=None):
+                         condition=None, offset=0, limit=DATABASE_LIMIT, sort=None, search=None, q=None):
     """Get policy monitoring alerts for a given policy
 
     Parameters

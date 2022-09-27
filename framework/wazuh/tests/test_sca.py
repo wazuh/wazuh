@@ -59,9 +59,10 @@ cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '')
                                    for field in fields_translation_sca_check.keys()]
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_list(mock_agent, mock_sca_agent):
+def test_get_sca_list(mock_agent, mock_sca_agent, mock_exists):
     """
     Checks data are properly loaded from database
     """
@@ -90,9 +91,10 @@ def test_get_sca_list(mock_agent, mock_sca_agent):
         assert failed[list(failed.keys())[0]] == {'999'}
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_list_select_param(mock_agent, mock_sca_agent):
+def test_get_sca_list_select_param(mock_agent, mock_sca_agent, mock_exists):
     """
     Checks only selected fields are loaded from database
     """
@@ -109,9 +111,10 @@ def test_get_sca_list_select_param(mock_agent, mock_sca_agent):
         assert set(sca.keys()) == set(fields)
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_list_search_param(mock_agent, mock_sca_agent):
+def test_get_sca_list_search_param(mock_agent, mock_sca_agent, mock_exists):
     """
     Checks only selected fields are loaded from database
     """
@@ -139,9 +142,10 @@ def test_get_sca_list_search_param(mock_agent, mock_sca_agent):
         assert len(result['affected_items']) > 0
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_get_sca_checks(mock_agent, mock_sca_agent):
+def test_get_sca_checks(mock_agent, mock_sca_agent, mock_exists):
     """
     Checks sca checks data are properly loaded from database
     """
@@ -184,9 +188,10 @@ def test_get_sca_checks(mock_agent, mock_sca_agent):
         assert failed[list(failed.keys())[0]] == {'999'}
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch("wazuh.core.sca.Agent.get_basic_information")
 @patch("wazuh.sca.get_agents_info", return_value={'000'})
-def test_sca_checks_select_and_q(mock_agent, mock_sca_agent):
+def test_sca_checks_select_and_q(mock_agent, mock_sca_agent, mock_exists):
     """
     Tests filtering using q parameter and selecting multiple fields
     """
@@ -207,7 +212,7 @@ def test_sca_failed_limit(mock_agent, mock_sca_agent):
     with patch('wazuh.core.sca.WazuhDBBackend') as mock_wdb:
         mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
         with pytest.raises(exception.WazuhException, match=".* 1405 .*"):
-            get_sca_list(agent_list=['000'], limit=common.maximum_database_limit + 1)
+            get_sca_list(agent_list=['000'], limit=common.MAXIMUM_DATABASE_LIMIT + 1)
 
         with pytest.raises(exception.WazuhException, match=".* 1406 .*"):
             get_sca_list(agent_list=['000'], limit=0)

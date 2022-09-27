@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "4.3.4"
-!define REVISION "40316"
+!define VERSION "4.4.0"
+!define REVISION "40400"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -209,7 +209,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\restart-wazuh.exe restart-wazuh.exe
     File /oname=active-response\bin\netsh.exe netsh.exe
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
-    File /oname=libgcc_s_sjlj-1.dll libgcc_s_sjlj-1.dll
+    File /oname=libgcc_s_dw2-1.dll libgcc_s_dw2-1.dll
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll

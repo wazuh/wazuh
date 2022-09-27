@@ -1,11 +1,6 @@
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-marks:
-  - base_tests
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get the OS of an agent
@@ -57,12 +52,22 @@ stages:
       json:
         error: 1724
 
+  - name: Try to get 012 agent's syscollector OS data (never connected)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/012/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 2007
+
 ---
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -98,10 +103,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -151,8 +152,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -183,10 +182,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/packages
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -544,8 +539,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/packages?{select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -580,10 +573,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/processes
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Processes of an agent with limit = 1
@@ -601,8 +590,7 @@ stages:
         error: !anyint
         data:
           affected_items: &processes_response_004
-            - cmd: !anystr
-              egroup: !anystr
+            - egroup: !anystr
               euser: !anystr
               fgroup: !anystr
               name: !anystr
@@ -925,7 +913,6 @@ stages:
             - <<: *processes_response_004
       save:
         json:
-          offset_test_cmd: data.affected_items[1].cmd
           offset_test_egroup: data.affected_items[1].egroup
           offset_test_euser: data.affected_items[1].euser
           offset_test_fgroup: data.affected_items[1].fgroup
@@ -969,8 +956,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - cmd: "{offset_test_cmd}"
-              egroup: "{offset_test_egroup}"
+            - egroup: "{offset_test_egroup}"
               euser: "{offset_test_euser}"
               fgroup: "{offset_test_fgroup}"
               name: "{offset_test_name}"
@@ -1013,8 +999,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/processes?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -1080,10 +1064,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/ports
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -1291,8 +1271,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/port?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -1344,10 +1322,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -1690,8 +1664,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -1739,10 +1711,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -2025,8 +1993,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -2073,10 +2039,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -2687,8 +2649,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -2745,10 +2705,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get the OS of an agent
@@ -2798,8 +2754,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -2837,10 +2791,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -2886,8 +2836,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -2918,10 +2866,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -3222,8 +3166,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -3257,10 +3199,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -3558,8 +3496,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:
@@ -3605,10 +3541,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -4204,8 +4136,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
   - parametrize:
       key: field
       vals:

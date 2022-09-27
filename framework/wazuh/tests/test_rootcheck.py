@@ -56,7 +56,7 @@ test_result = [
                                         {'id': '003', 'status': ['disconnected']}]}],
      ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
-@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.rootcheck.WazuhDBQueryAgents.__exit__')
 @patch('wazuh.rootcheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')
@@ -140,10 +140,11 @@ def test_get_last_scan(mock_connect, mock_send, mock_info):
 @pytest.mark.parametrize('limit', [
     1, 3, None
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent(mock_connect, mock_send, mock_info, limit):
+def test_get_rootcheck_agent(mock_connect, mock_send, mock_info, mock_exists, limit):
     """Check if limit is correctly applied to get_rootcheck_agent() function
 
     Parameters
@@ -165,10 +166,11 @@ def test_get_rootcheck_agent(mock_connect, mock_send, mock_info, limit):
 @pytest.mark.parametrize('select', [
     ['log'], ['log', 'pci_dss'], ['status'], None
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent_select(mock_connect, mock_send, mock_info, select):
+def test_get_rootcheck_agent_select(mock_connect, mock_send, mock_info, mock_exists, select):
     """Check that only selected elements are returned
 
     Parameters
@@ -195,10 +197,11 @@ def test_get_rootcheck_agent_select(mock_connect, mock_send, mock_info, select):
     ('outstanding', 5),
     ('solved', 1)
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent_search(mock_connect, mock_send, mock_info, search, total_expected_items):
+def test_get_rootcheck_agent_search(mock_connect, mock_send, mock_info, mock_exists, search, total_expected_items):
     """Checks if the number of items returned is as expected when using the search parameter.
 
     Parameters
@@ -224,10 +227,11 @@ def test_get_rootcheck_agent_search(mock_connect, mock_send, mock_info, search, 
     ('pci_dss>3', 2),
     ('(pci_dss>3,pci_dss<2);log~System', 5),
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent_query(mock_connect, mock_send, mock_info, query, total_expected_items):
+def test_get_rootcheck_agent_query(mock_connect, mock_send, mock_info, mock_exists, query, total_expected_items):
     """Checks if the number of items returned is as expected when using query parameter.
 
     Parameters
@@ -249,10 +253,12 @@ def test_get_rootcheck_agent_query(mock_connect, mock_send, mock_info, query, to
     (['cis', 'pci_dss'], True, 3),
     (['log'], True, 6),
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent_distinct(mock_connect, mock_send, mock_info, select, distinct, total_expected_items):
+def test_get_rootcheck_agent_distinct(mock_connect, mock_send, mock_info, mock_exists, select, distinct,
+                                      total_expected_items):
     """Checks if the number of items returned is as expected when using distinct and select parameters.
 
     Parameters
@@ -275,10 +281,11 @@ def test_get_rootcheck_agent_distinct(mock_connect, mock_send, mock_info, select
     ('-cis', 'Benchmark v1.0'),
     ('+cis', '/var'),
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent_sort(mock_connect, mock_send, mock_info, sort, first_item):
+def test_get_rootcheck_agent_sort(mock_connect, mock_send, mock_info, mock_exists, sort, first_item):
     """Checks if the the first item returned is expected when using sort parameter
 
     Parameters
@@ -307,10 +314,11 @@ def test_get_rootcheck_agent_sort(mock_connect, mock_send, mock_info, sort, firs
     ({'status': 'all', 'cis': '3.4 Debian Linux', 'pci_dss': '1.5'}, 1),
     ({'status': 'all', 'cis': '3.4 Debian Linux', 'pci_dss': '4.1'}, 0)
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_get_rootcheck_agent_filters(mock_connect, mock_send, mock_info, filters, total_expected_items):
+def test_get_rootcheck_agent_filters(mock_connect, mock_send, mock_info, mock_exists, filters, total_expected_items):
     """Checks if the number of items returned is as expected when using different filters.
 
     Parameters

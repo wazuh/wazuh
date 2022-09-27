@@ -12,7 +12,7 @@ with patch('wazuh.common.wazuh_uid'):
         from api.controllers.sca_controller import (get_sca_agent,
                                                     get_sca_checks)
         from wazuh import sca
-        from wazuh.core.common import database_limit
+        from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
@@ -32,7 +32,7 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                }
     f_kwargs = {'agent_list': [None],
                 'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
                 'q': None,
@@ -77,7 +77,7 @@ async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     f_kwargs = {'policy_id': None,
                 'agent_list': [None],
                 'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
                 'q': None,

@@ -533,7 +533,7 @@ def runScanBuild(targetName):
                             --force-analyze-debug-code make TARGET=winagent DEBUG=1 -j4'
     else:
         makeDeps(targetName, False)
-        scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code make TARGET=' + targetName + ' DEBUG=1 -j4'
+        scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code --exclude external/ make TARGET=' + targetName + ' DEBUG=1 -j4'
 
     out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 

@@ -11,26 +11,8 @@
 #ifndef VALIDATE_H
 #define VALIDATE_H
 
-#define w_free_os_ip(x) if (x) {os_free(x->ip);os_free(x)}
 
-/* IP structure */
-typedef struct _os_ip {
-    char *ip;
-    unsigned int ip_address;
-    unsigned int netmask;
-} os_ip;
-
-
-/**
- * @brief Get the netmask based on the integer value.
- *
- * @param[in] mask Integer value of the netmask.
- * @param[out] strmask Pointer to array where the value will be stored.
- * @param[in] size Size of the array.
- * @return Returns 1.
- */
-int getNetmask(unsigned int mask, char *strmask, size_t size) __attribute__((nonnull));
-
+#define w_free_os_ip(x) if(x){if(x->is_ipv6){os_free(x->ipv6)}else{os_free(x->ipv4)};os_free(x->ip);os_free(x)}
 
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
@@ -64,6 +46,26 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips);// __attribute__
  * @return Returns 0 if doesn't match or 1 if it does (or 2 if it has a CIDR).
  */
 int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
+
+
+/**
+ * @brief Check if an IPv4 address is embedded in an IPv6 address and resolve it.
+ *
+ * @param ip_address IPv6 address to be analized, if it contains an IPv4, it will be modified with it.
+ * @param size Size of the address buffer.
+ * @return Returns 0 if doesn't match or 1 if it does.
+ */
+int OS_GetIPv4FromIPv6(char *ip_address, size_t size);
+
+
+/**
+ * @brief Expand IPv6 to its full representation.
+ *
+ * @param ip_address IPv6 address to be expanded, it will be modified with its full representation.
+ * @param size Size of the address buffer.
+ * @return Returns 0 on success or -1 on failure.
+ */
+int OS_ExpandIPv6(char *ip_address, size_t size);
 
 
 /**
@@ -185,6 +187,7 @@ long long w_validate_bytes(const char *content);
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
-#define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
+#define isSingleHost(x) ((x->is_ipv6) ? false : (x->ipv4->netmask == 0xFFFFFFFF))
+
 
 #endif /* VALIDATE_H */

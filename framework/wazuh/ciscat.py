@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["ciscat:read"], resources=["agent:id:{agent_list}"])
-def get_ciscat_results(agent_list=None, offset=0, limit=common.database_limit, select=None, search=None, sort=None,
+def get_ciscat_results(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, select=None, search=None, sort=None,
                        filters=None, nested=True, array=True, q=''):
     """ Get CIS-CAT results for a list of agents
 

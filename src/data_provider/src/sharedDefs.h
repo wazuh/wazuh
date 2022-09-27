@@ -14,6 +14,7 @@
 
 constexpr auto WM_SYS_HW_DIR {"/sys/class/dmi/id/board_serial"};
 constexpr auto WM_SYS_CPU_DIR {"/proc/cpuinfo"};
+constexpr auto WM_SYS_CPU_FREC_DIR { "/sys/devices/system/cpu/" };
 constexpr auto WM_SYS_MEM_DIR {"/proc/meminfo"};
 constexpr auto WM_SYS_IFDATA_DIR {"/sys/class/net/"};
 constexpr auto WM_SYS_IF_FILE {"/etc/network/interfaces"};
@@ -41,7 +42,8 @@ enum OSType
 {
     LINUX,
     BSDBASED,
-    WINDOWS
+    WINDOWS,
+    SOLARIS
 };
 
 enum LinuxType

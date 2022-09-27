@@ -6,19 +6,21 @@ import logging
 import re
 
 from aiohttp import web
-
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
-from api.models.security_model import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
+from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
+                                       RuleModel, UpdateUserModel)
 from api.models.security_token_response_model import TokenResponseModel
-from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
+from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
+                      remove_nones_to_dict)
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException
+from wazuh.core.common import WAZUH_VERSION
+from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
@@ -27,9 +29,47 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
+@deprecate_endpoint(link=f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#'
+                         f'operation/api.controllers.security_controller.login_user')
+async def deprecated_login_user(user: str, raw: bool = False) -> web.Response:
+    """User/password authentication to get an access token.
+    This method should be called to get an API token. This token will expire at some time.
+
+    Parameters
+    ----------
+    user : str
+        Name of the user who wants to be authenticated.
+    raw : bool, optional
+        Respond in raw format. Default `False`
+
+    Returns
+    -------
+    web.Response
+        Raw or JSON response with the generated access token.
+    """
+    f_kwargs = {'user_id': user}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    token = None
+    try:
+        token = generate_token(user_id=user, data=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+
+
 async def login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
-    This method should be called to get an API token. This token will expire at some time. # noqa: E501
+    This method should be called to get an API token. This token will expire at some time.
 
     Parameters
     ----------

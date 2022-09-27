@@ -17,8 +17,8 @@ certifi==2020.4.5.1
 cffi==1.14.4
 chardet==3.0.4
 charset-normalizer==2.0.4
-Click==7.0
-clickclick==1.2.2
+click==8.1.3
+clickclick==20.10.2
 connexion==2.6.0
 cryptography==3.3.2
 Cython==0.29.21
@@ -58,13 +58,14 @@ packaging==20.9
 pathlib==1.0.1
 protobuf==3.17.3
 proto-plus==1.19.0
-psutil==5.7.0
+psutil==5.8.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.20
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-jose==3.1.0
+python-json-logger==2.0.2
 pytz==2020.1
 PyYAML==5.4.1
 requests==2.25.1

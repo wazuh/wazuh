@@ -69,6 +69,9 @@ class WazuhQueue:
         except Exception:
             raise WazuhInternalError(1010, self.path)
 
+    def __enter__(self):
+        return self
+
     def _send(self, msg):
         try:
             sent = self.socket.send(msg)
@@ -160,3 +163,6 @@ class WazuhQueue:
             raise WazuhError(1014, extra_message=f": WazuhQueue socket with path {self.path}")
 
         return ret_msg
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

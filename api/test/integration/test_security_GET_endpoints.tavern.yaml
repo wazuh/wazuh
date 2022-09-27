@@ -1,9 +1,6 @@
 ---
 test_name: GET /security/roles
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /security/roles
@@ -990,6 +987,19 @@ stages:
       status_code: 200
       verify_response_with:
         - function: tavern_utils:test_token_raw_format
+      save:
+        $ext:
+          function: tavern_utils:test_save_token_raw_format
+
+  - name: Test generated token
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      headers:
+        Authorization: "Bearer {login_token}"
+      method: GET
+    response:
+      status_code: 200
 
 ---
 test_name: GET /security/users
