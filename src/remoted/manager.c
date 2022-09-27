@@ -45,6 +45,8 @@ typedef struct group_t {
 
 static OSHash *invalid_files;
 
+static const char *IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
+
 /* Internal functions prototypes */
 
 /**
@@ -482,11 +484,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 /* Generate merged file for groups */
 STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, char *sharedcfg_dir, bool create_merged) {
     os_md5 md5sum;
+    os_md5 md5sum_tmp;
     struct stat attrib;
-    int merged_ok = 1;
-    char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
+    char merged_tmp[PATH_MAX + 1];
     char group_path[PATH_MAX + 1];
+    int merged_ok = 1;
     remote_files_group *r_group = NULL;
 
     if ((*_f_time) = OSHash_Create(), (*_f_time) == NULL) {
@@ -584,15 +587,26 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                 unlink(merged_tmp);
                 return;
             }
-            OS_MoveFile(merged_tmp, merged);
         }
     }
 
-    if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
+    if (OS_MD5_File(merged_tmp, md5sum_tmp, OS_TEXT) != 0) {
         if (create_merged) {
-            merror("Accessing file '%s'", merged);
+            merror("Accessing file '%s'", merged_tmp);
         }
     } else {
+        if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
+            OS_MoveFile(merged_tmp, merged);
+        } else {
+            if (strcmp(md5sum_tmp, md5sum) != 0) {
+                OS_MoveFile(merged_tmp, merged);
+            } else {
+                unlink(merged_tmp);
+            }
+        }
+    }
+
+    if (OS_MD5_File(merged, md5sum, OS_TEXT) == 0) {
         snprintf((*_merged_sum), sizeof((*_merged_sum)), "%s", md5sum);
 
         if (stat(merged, &attrib) != 0) {
@@ -621,7 +635,7 @@ STATIC void c_multi_group(char *multi_group, OSHash **_f_time, os_md5 *_merged_s
 
         /* Delete agent.conf from multi group before appending to it */
         snprintf(multi_path, PATH_MAX, "%s/%s", MULTIGROUPS_DIR, hash_multigroup);
-        cldir_ex(multi_path);
+        cldir_ex_ignore(multi_path, IGNORE_LIST);
 
         while (group != NULL) {
             /* Now for each group copy the files to the multi-group folder */
@@ -1546,11 +1560,6 @@ void manager_init()
 
     groups = OSHash_Create();
     multi_groups = OSHash_Create();
-
-    /* Clean multigroups directory */
-    if (!logr.nocmerged) {
-        cldir_ex(MULTIGROUPS_DIR);
-    }
 
     /* Run initial groups and multigroups scan */
     c_files();
