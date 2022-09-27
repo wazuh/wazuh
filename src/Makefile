@@ -2388,6 +2388,9 @@ win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/route-null.o 
 win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -s -o $@
 
+win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/utilities.o active-response/active_responses.o
+	${OSSEC_CCBIN} -DARGV0=\"utilities\" ${AR_LDFLAGS} $^ -s -o $@
+
 ####################
 #### Clean #########
 ####################
