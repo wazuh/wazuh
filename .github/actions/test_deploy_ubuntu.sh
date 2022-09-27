@@ -33,7 +33,7 @@ ENROLLMENT_DELAY="10"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
     
 function install_wazuh(){
-  echo "Tessting the following variables $@"
+  echo "Testing the following variables $@"
   eval "${@} apt install -y ./wazuh-agent_${VERSION}-commit${SHA}_amd64.deb > /dev/null 2>&1"
 }
 
@@ -239,7 +239,4 @@ remove_wazuh
 install_wazuh "ENROLLMENT_DELAY=10"
 test "ENROLLMENT_DELAY"
 remove_wazuh
-
-
-
 

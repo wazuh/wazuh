@@ -2,6 +2,7 @@ name: Deployment variable tests
 pull_request:
     paths:
       - 'src/init/register_configure_agent.sh'
+      - '/home/dfolch/wazuh/src/win32/InstallerScripts.vbs'
 
 jobs:
     test_ubuntu:
