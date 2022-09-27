@@ -1,8 +1,0 @@
----
-name: default_syslog_queue
-
-metadata:
-  description: Exclusive parent decoder por Wazuh-Syslog server (SYSLOG_MQ)
-
-check:
-  - wazuh.queue: 50 # SYSLOG_MQ -> '2' = 50

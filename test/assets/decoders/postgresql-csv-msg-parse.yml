@@ -1,0 +1,30 @@
+---
+name: postgresql-csv-msg-parse
+
+metadata:
+  description: Decoder for postgresql in csv log format
+  references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
+  product.name: postgresql
+  product.versions:
+    - v13
+    - v11
+
+parents:
+  - postgresql-csv
+
+check:
+  - _csv.message: +exists
+
+parse:
+  logql:
+    - _csv.message: 'duration: <_tmp.duration/float> ms <_tmp.query_step/quoted/ /: ><message/keyword>'
+    - _csv.message: 'duration: <_tmp.duration/float> ms'
+    - _csv.message: '<_tmp.query_step/keyword>: <message/keyword>'
+
+normalize:
+  - map:
+      postgresql.log.query_step: '+r_ext/$_tmp.query_step/^(parse|bind|statement|fastpath function call|execute|execute fetch from)'
+      postgresql.log.query_name: '+r_ext/$_tmp.query_step/^(?:parse|bind|statement|fastpath function call|execute|execute fetch from) (.*)'
+
+      postgresql.log.client_addr: '+r_ext/$_csv.connection_from/^([^:]*):'
+      postgresql.log.client_port: '+r_ext/$_csv.connection_from/^(?:[^:]*):(\d+)'

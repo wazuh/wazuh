@@ -1,8 +1,0 @@
-name: syscollector_program
-
-parents:
-  - syscollector_base
-
-check:
-  - _json.type: +s_starts/program
-  - _json.ID: +exists

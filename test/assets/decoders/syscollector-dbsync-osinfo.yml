@@ -1,0 +1,224 @@
+name: syscollector-dbsync-osinfo
+
+parents:
+  - syscollector-dbsync-base
+
+check:
+  - _json.type: +s_eq/dbsync_osinfo
+  - _json.operation: +s_ne/INSERTED
+
+normalize:
+  - check:
+      - _json.data.scan_time: +not_exists
+    map:
+      _json.data.scan_time: "NULL"
+
+  - check:
+      - _json.data.hostname: +s_ne//
+    map:
+      _json.data.hostname: +s_replace/|/$_escaped_pipe_char
+      _json.data.hostname: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.hostname: +s_eq//
+    map:
+      _json.data.hostname: "NULL"
+  - check:
+      - _json.data.hostname: +not_exists
+    map:
+      _json.data.hostname: "NULL"
+
+  - check:
+      - _json.data.architecture: +s_ne//
+    map:
+      _json.data.architecture: +s_replace/|/$_escaped_pipe_char
+      _json.data.architecture: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.architecture: +s_eq//
+    map:
+      _json.data.architecture: "NULL"
+  - check:
+      - _json.data.architecture: +not_exists
+    map:
+      _json.data.architecture: "NULL"
+
+  - check:
+      - _json.data.os_name: +s_ne//
+    map:
+      _json.data.os_name: +s_replace/|/$_escaped_pipe_char
+      _json.data.os_name: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.os_name: +s_eq//
+    map:
+      _json.data.os_name: "NULL"
+  - check:
+      - _json.data.os_name: +not_exists
+    map:
+      _json.data.os_name: "NULL"
+
+  - check:
+      - _json.data.os_version: +not_exists
+    map:
+      _json.data.os_version: "NULL"
+
+  - check:
+      - _json.data.os_codename: +s_ne//
+    map:
+      _json.data.os_codename: +s_replace/|/$_escaped_pipe_char
+      _json.data.os_codename: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.os_codename: +s_eq//
+    map:
+      _json.data.os_codename: "NULL"
+  - check:
+      - _json.data.os_codename: +not_exists
+    map:
+      _json.data.os_codename: "NULL"
+
+  - check:
+      - _json.data.os_major: +not_exists
+    map:
+      _json.data.os_major: "NULL"
+
+  - check:
+      - _json.data.os_minor: +not_exists
+    map:
+      _json.data.os_minor: "NULL"
+
+  - check:
+      - _json.data.os_patch: +s_ne//
+    map:
+      _json.data.os_patch: +s_replace/|/$_escaped_pipe_char
+      _json.data.os_patch: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.os_patch: +s_eq//
+    map:
+      _json.data.os_patch: "NULL"
+  - check:
+      - _json.data.os_patch: +not_exists
+    map:
+      _json.data.os_patch: "NULL"
+
+  - check:
+      - _json.data.os_build: +not_exists
+    map:
+      _json.data.os_build: "NULL"
+
+  - check:
+      - _json.data.os_platform: +s_ne//
+    map:
+      _json.data.os_platform: +s_replace/|/$_escaped_pipe_char
+      _json.data.os_platform: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.os_platform: +s_eq//
+    map:
+      _json.data.os_platform: "NULL"
+  - check:
+      - _json.data.os_platform: +not_exists
+    map:
+      _json.data.os_platform: "NULL"
+
+  - check:
+      - _json.data.sysname: +s_ne//
+    map:
+      _json.data.sysname: +s_replace/|/$_escaped_pipe_char
+      _json.data.sysname: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.sysname: +s_eq//
+    map:
+      _json.data.sysname: "NULL"
+  - check:
+      - _json.data.sysname: +not_exists
+    map:
+      _json.data.sysname: "NULL"
+
+  - check:
+      - _json.data.release: +not_exists
+    map:
+      _json.data.release: "NULL"
+
+  - check:
+      - _json.data.version: +not_exists
+    map:
+      _json.data.version: "NULL"
+
+  - check:
+      - _json.data.os_release: +not_exists
+    map:
+      _json.data.os_release: "NULL"
+
+  - check:
+      - _json.data.checksum: +not_exists
+    map:
+      _json.data.checksum: "NULL"
+
+  - check:
+      - _json.data.os_display_version: +not_exists
+    map:
+      _json.data.os_display_version: "NULL"
+
+  - check:
+      - _json.data.triaged: +s_ne//
+    map:
+      _json.data.triaged: +s_replace/|/$_escaped_pipe_char
+      _json.data.triaged: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.triaged: +s_eq//
+    map:
+      _json.data.triaged: "NULL"
+  - check:
+      - _json.data.triaged: +not_exists
+    map:
+      _json.data.triaged: "NULL"
+
+  - check:
+      - _json.data.reference: +s_ne//
+    map:
+      _json.data.reference: +s_replace/|/$_escaped_pipe_char
+      _json.data.reference: +s_replace/NULL/_NULL_
+  - check:
+      - _json.data.reference: +s_eq//
+    map:
+      _json.data.reference: "NULL"
+  - check:
+      - _json.data.reference: +not_exists
+    map:
+      _json.data.reference: "NULL"
+
+  - map:
+      _query: +s_concat/agent /$agent.id/ dbsync osinfo /$_json.operation/ /$_json.data.scan_time/|/$_json.data.hostname/|/$_json.data.architecture/|/$_json.data.os_name/|/$_json.data.os_version/|/$_json.data.os_codename/|/$_json.data.os_major/|/$_json.data.os_minor/|/$_json.data.os_patch/|/$_json.data.os_build/|/$_json.data.os_platform/|/$_json.data.sysname/|/$_json.data.release/|/$_json.data.version/|/$_json.data.os_release/|/$_json.data.checksum/|/$_json.data.os_display_version/|/$_json.data.triaged/|/$_json.data.reference/|
+      _query: +s_replace/||/|NULL|
+      _query_response: +wdb_query/$_query
+
+  - check:
+      - _query_response: +s_ne//
+    map:
+      _query_response_values: +r_ext/$_query_response/\|(.*)
+      _array_of_field: +s_to_array/$_query_response_values/|
+      _array_of_field/0: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.hostname: $_array_of_field/0
+      _array_of_field/1: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.architecture: $_array_of_field/1
+      _array_of_field/2: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.name: $_array_of_field/2
+      wazuh.syscollector.os.version: $_array_of_field/3
+      _array_of_field/4: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.codename: $_array_of_field/4
+      wazuh.syscollector.os.major: $_array_of_field/5
+      wazuh.syscollector.os.minor: $_array_of_field/6
+      _array_of_field/7: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.patch: $_array_of_field/7
+      wazuh.syscollector.os.build: $_array_of_field/8
+      _array_of_field/9: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.platform: $_array_of_field/9
+      _array_of_field/10: +s_replace/$_escaped_pipe_char/|
+      wazuh.syscollector.os.sysname: $_array_of_field/10
+      wazuh.syscollector.os.release: $_array_of_field/11
+      wazuh.syscollector.os.os_release: $_array_of_field/12
+      #wazuh.syscollector.os.version: $_array_of_field/13  -> TODO: duplicated value on the original
+      wazuh.syscollector.os.display_version: $_array_of_field/15
+      _query: +delete_field
+      _query_response: +delete_field
+      _query_response_values: +delete_field
+      _array_of_field: +delete_field
+      _escaped_pipe_char: +delete_field
+      _json.data: +delete_field
