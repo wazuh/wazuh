@@ -151,7 +151,7 @@ def test_WazuhDBQuerySCACheck__init__(mock_wdbqsca, sca_checks_test_list, expect
     core_sca.WazuhDBQuerySCACheck(agent_id='000', sort='test', sca_checks_ids=sca_checks_test_list)
 
     mock_wdbqsca.assert_called_once_with(ANY, agent_id='000', offset=0, limit=None, sort='test', filters={},
-                                         search=None, count=True, get_data=True,
+                                         search=None, count=False, get_data=True,
                                          select=list(core_sca.FIELDS_TRANSLATION_SCA_CHECK.keys()),
                                          default_query=expected_default_query,
                                          fields=core_sca.FIELDS_TRANSLATION_SCA_CHECK, count_field='id',
@@ -178,7 +178,7 @@ def test_WazuhDBQuerySCACheckIDs__init__(mock_wdbqsca, query):
                                      query=query, policy_id='test_policy_id')
 
     mock_wdbqsca.assert_called_once_with(ANY, agent_id='000', offset=10, limit=20, sort=None, filters={'test': 'value'},
-                                         search='test', count=False, get_data=True, select=[],
+                                         search='test', count=True, get_data=True, select=[],
                                          default_query="SELECT DISTINCT(id) FROM sca_check a "
                                                        "LEFT JOIN sca_check_compliance b ON a.id=b.id_check "
                                                        "LEFT JOIN sca_check_rules c ON a.id=c.id_check",

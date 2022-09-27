@@ -15,8 +15,8 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
 def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                 sort: str = None, search: str = None, select: str = None,
-                 filters: str = None) -> AffectedItemsWazuhResult:
+                 sort: dict = None, search: dict = None, select: list = None,
+                 filters: dict = None) -> AffectedItemsWazuhResult:
     """Get a list of policies analyzed in the configuration assessment for a given agent.
 
     Parameters
@@ -29,13 +29,13 @@ def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: i
         First item to return.
     limit : int
         Maximum number of items to return.
-    sort : str
+    sort : dict
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    search : str
+    search : dict
         Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    select : str
-        Select fields to return. Format: {"fields":["field1","field2"]}.
-    filters : str
+    select : list
+        Select fields to return. Format: ["field1","field2"].
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
 
     Returns
