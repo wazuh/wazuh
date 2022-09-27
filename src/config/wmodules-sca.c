@@ -265,26 +265,16 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     snprintf(relative_path, PATH_MAX, "%s", children[j]->content);
 
                     #ifdef WIN32
-                    if (relative_path[1] && relative_path[2]) {
-                        if ((relative_path[1] == ':') || (relative_path[0] == '\\' && relative_path[1] == '\\')) {
-                            sprintf(realpath_buffer,"%s", relative_path);
-                        } else {
-                            const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
-                            if (!path_length) {
-                                mwarn("File '%s' not found.", relative_path);
-                                continue;
-                            }
-                        }
+                    const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
+                    if (!path_length) {
+                        mwarn("File '%s' not found.", relative_path);
+                        continue;
                     }
                     #else
-                    if(relative_path[0] == '/') {
-                        sprintf(realpath_buffer,"%s", relative_path);
-                    } else {
-                        const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
-                        if (!realpath_buffer_ref) {
-                            mwarn("File '%s' not found.", relative_path);
-                            continue;
-                        }
+                    const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+                    if (!realpath_buffer_ref) {
+                        mwarn("File '%s' not found.", relative_path);
+                        continue;
                     }
                     #endif
 
