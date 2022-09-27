@@ -101,6 +101,7 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
             with WazuhDBQuerySCACheckIDs(agent_id=agent_list[0], offset=offset, limit=limit, filters=filters,
                                          search=search, query=q, policy_id=policy_id) as sca_check_query:
                 sca_check_data = sca_check_query.run()
+                result.total_affected_items = sca_check_data['totalItems']
 
             # Create SCA checks IDs list from the query response
             id_check_list = [check['id'] for check in sca_check_data['items']]
@@ -136,7 +137,6 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                     sca_check['rules'] = id_check_rules_compliance[sca_check['id']]['rules']
 
             result.affected_items.extend(sca_check_data['items'])
-            result.total_affected_items = sca_check_data['totalItems']
 
         else:
             result.add_failed_item(id_=agent_list[0], error=WazuhResourceNotFound(1701))

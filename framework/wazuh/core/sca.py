@@ -70,7 +70,7 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
             default_query += f" WHERE id IN {str(sca_checks_ids).replace('[', '(').replace(']', ')')}"
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={},
-                                 search=None, count=True, get_data=True,
+                                 search=None, count=False, get_data=True,
                                  select=list(FIELDS_TRANSLATION_SCA_CHECK.keys()), default_query=default_query,
                                  fields=FIELDS_TRANSLATION_SCA_CHECK, count_field='id', default_sort_field='id',
                                  default_sort_order='ASC', query='')
@@ -88,9 +88,12 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=None, filters=filters,
                                  query=policy_query_filter if not query else f"{policy_query_filter};{query}",
-                                 search=search, count=False, get_data=True, select=[],
+                                 search=search, count=True, get_data=True, select=[],
                                  default_query=self.DEFAULT_QUERY, fields=fields, count_field='id',
                                  default_sort_field='id', default_sort_order='ASC')
+
+    def _default_count_query(self):
+        return "SELECT COUNT(*) FROM ({0})"
 
 
 class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
