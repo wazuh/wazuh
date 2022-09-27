@@ -1,0 +1,23 @@
+name: decoder-test-index-1
+parents:
+  - decoder-test
+
+check:
+  - index: +s_eq/one
+
+# [Fri Jul 10 10:11:12 1992] host test_decoder_example[1234]: user#one
+normalize:
+  - check:
+      - index: +s_eq/one
+    map:
+      decoded.by: 1
+  - map:
+      decoded.ShouldMapI: true
+  - check:
+      - decoded.by: +i_eq/1
+    map:
+      decoded.ShouldMapII: 1
+  - check:
+      - decoded.wrongField: +s_eq/22
+    map:
+      decoded.ShouldNotMap: true
