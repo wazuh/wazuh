@@ -2,7 +2,7 @@
 name: cisco
 
 parents:
-  - default_syslog_queue
+  - syslog-queue
 
 metadata:
   description: Generic Cisco Syslog decoder
