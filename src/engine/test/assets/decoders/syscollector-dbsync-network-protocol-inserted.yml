@@ -77,7 +77,6 @@ normalize:
   - check:
       - _query_response: +is_true
     map:
-      #TODO: need to find where to map resultant neccesary fields
       _json.data.iface: +s_replace/$_escaped_pipe_char/|
       wazuh.syscollector.netinfo.proto.iface: $_json.data.iface
       wazuh.syscollector.netinfo.proto.type: $_json.data.type

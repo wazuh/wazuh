@@ -5,6 +5,7 @@ metadata:
   description: Parses Apache HTTPD errors logs in its Common Log Format
 
 check:
+  - wazuh.queue: 49
   - event.original: +exists
 
 parse:

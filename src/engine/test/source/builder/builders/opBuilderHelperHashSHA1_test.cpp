@@ -13,7 +13,7 @@
 
 #include <baseTypes.hpp>
 
-#include "opBuilderHelperHashSHA1.hpp"
+#include "opBuilderHelperMap.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
