@@ -17,7 +17,7 @@ normalize:
       - _json.data.hostname: +s_ne//
     map:
       _json.data.hostname: +s_replace/|/$_escaped_pipe_char
-      _json.data.hostname: +s_replace/NULL/_NULL_  
+      _json.data.hostname: +s_replace/NULL/_NULL_
   - check:
       - _json.data.hostname: +s_eq//
     map:
@@ -31,7 +31,7 @@ normalize:
       - _json.data.architecture: +s_ne//
     map:
       _json.data.architecture: +s_replace/|/$_escaped_pipe_char
-      _json.data.architecture: +s_replace/NULL/_NULL_  
+      _json.data.architecture: +s_replace/NULL/_NULL_
   - check:
       - _json.data.architecture: +s_eq//
     map:
@@ -45,7 +45,7 @@ normalize:
       - _json.data.os_name: +s_ne//
     map:
       _json.data.os_name: +s_replace/|/$_escaped_pipe_char
-      _json.data.os_name: +s_replace/NULL/_NULL_  
+      _json.data.os_name: +s_replace/NULL/_NULL_
   - check:
       - _json.data.os_name: +s_eq//
     map:
@@ -64,7 +64,7 @@ normalize:
       - _json.data.os_codename: +s_ne//
     map:
       _json.data.os_codename: +s_replace/|/$_escaped_pipe_char
-      _json.data.os_codename: +s_replace/NULL/_NULL_  
+      _json.data.os_codename: +s_replace/NULL/_NULL_
   - check:
       - _json.data.os_codename: +s_eq//
     map:
@@ -88,7 +88,7 @@ normalize:
       - _json.data.os_patch: +s_ne//
     map:
       _json.data.os_patch: +s_replace/|/$_escaped_pipe_char
-      _json.data.os_patch: +s_replace/NULL/_NULL_  
+      _json.data.os_patch: +s_replace/NULL/_NULL_
   - check:
       - _json.data.os_patch: +s_eq//
     map:
@@ -107,7 +107,7 @@ normalize:
       - _json.data.os_platform: +s_ne//
     map:
       _json.data.os_platform: +s_replace/|/$_escaped_pipe_char
-      _json.data.os_platform: +s_replace/NULL/_NULL_  
+      _json.data.os_platform: +s_replace/NULL/_NULL_
   - check:
       - _json.data.os_platform: +s_eq//
     map:
@@ -121,7 +121,7 @@ normalize:
       - _json.data.sysname: +s_ne//
     map:
       _json.data.sysname: +s_replace/|/$_escaped_pipe_char
-      _json.data.sysname: +s_replace/NULL/_NULL_  
+      _json.data.sysname: +s_replace/NULL/_NULL_
   - check:
       - _json.data.sysname: +s_eq//
     map:
@@ -160,7 +160,7 @@ normalize:
       - _json.data.triaged: +s_ne//
     map:
       _json.data.triaged: +s_replace/|/$_escaped_pipe_char
-      _json.data.triaged: +s_replace/NULL/_NULL_  
+      _json.data.triaged: +s_replace/NULL/_NULL_
   - check:
       - _json.data.triaged: +s_eq//
     map:
@@ -174,7 +174,7 @@ normalize:
       - _json.data.reference: +s_ne//
     map:
       _json.data.reference: +s_replace/|/$_escaped_pipe_char
-      _json.data.reference: +s_replace/NULL/_NULL_  
+      _json.data.reference: +s_replace/NULL/_NULL_
   - check:
       - _json.data.reference: +s_eq//
     map:
@@ -191,29 +191,28 @@ normalize:
   - check:
       - _query_response: +is_true
     map:
-      #TODO: need to find where to map resultant neccesary fields
       _json.data.hostname: +s_replace/$_escaped_pipe_char/|
-      _json.os.hostname: $_json.data.hostname
+      wazuh.syscollector.os.hostname: $_json.data.hostname
       _json.data.architecture: +s_replace/$_escaped_pipe_char/|
-      _json.os.architecture: $_json.data.architecture
+      wazuh.syscollector.os.architecture: $_json.data.architecture
       _json.data.os_name: +s_replace/$_escaped_pipe_char/|
-      _json.os.name: $_json.data.os_name
-      _json.os.version: $_json.data.os_version
+      wazuh.syscollector.os.name: $_json.data.os_name
+      wazuh.syscollector.os.version: $_json.data.os_version
       _json.data.os_codename: +s_replace/$_escaped_pipe_char/|
-      _json.os.codename: $_json.data.os_codename
-      _json.os.major: $_json.data.os_major
-      _json.os.minor: $_json.data.os_minor
+      wazuh.syscollector.os.codename: $_json.data.os_codename
+      wazuh.syscollector.os.major: $_json.data.os_major
+      wazuh.syscollector.os.minor: $_json.data.os_minor
       _json.data.os_patch: +s_replace/$_escaped_pipe_char/|
-      _json.os.patch: $_json.data.os_patch
-      _json.os.build: $_json.data.os_build
+      wazuh.syscollector.os.patch: $_json.data.os_patch
+      wazuh.syscollector.os.build: $_json.data.os_build
       _json.data.os_platform: +s_replace/$_escaped_pipe_char/|
-      _json.os.platform: $_json.data.os_platform
+      wazuh.syscollector.os.platform: $_json.data.os_platform
       _json.data.sysname: +s_replace/$_escaped_pipe_char/|
-      _json.os.sysname: $_json.data.sysname
-      _json.os.release: $_json.data.release
-      #_json.os.version: $_json.data.version -> TODO: duplicated value on the original
-      _json.os.os_release: $_json.data.os_release
-      _json.os.display_version: $_json.data.os_display_version
+      wazuh.syscollector.os.sysname: $_json.data.sysname
+      wazuh.syscollector.os.release: $_json.data.release
+      #wazuh.syscollector.os.version: $_json.data.version -> TODO: duplicated value on the original
+      wazuh.syscollector.os.os_release: $_json.data.os_release
+      wazuh.syscollector.os.display_version: $_json.data.os_display_version
       _query: +delete_field
       _query_response: +delete_field
       _json.data: +delete_field

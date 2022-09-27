@@ -22,7 +22,7 @@ normalize:
       - _json.data.name: +s_ne//
     map:
       _json.data.name: +s_replace/|/$_escaped_pipe_char
-      _json.data.name: +s_replace/NULL/_NULL_  
+      _json.data.name: +s_replace/NULL/_NULL_
   - check:
       - _json.data.name: +s_eq//
     map:
@@ -36,7 +36,7 @@ normalize:
       - _json.data.state: +s_ne//
     map:
       _json.data.state: +s_replace/|/$_escaped_pipe_char
-      _json.data.state: +s_replace/NULL/_NULL_  
+      _json.data.state: +s_replace/NULL/_NULL_
   - check:
       - _json.data.state: +s_eq//
     map:
@@ -65,7 +65,7 @@ normalize:
       - _json.data.cmd: +s_ne//
     map:
       _json.data.cmd: +s_replace/|/$_escaped_pipe_char
-      _json.data.cmd: +s_replace/NULL/_NULL_  
+      _json.data.cmd: +s_replace/NULL/_NULL_
   - check:
       - _json.data.cmd: +s_eq//
     map:
@@ -79,7 +79,7 @@ normalize:
       - _json.data.argvs: +s_ne//
     map:
       _json.data.argvs: +s_replace/|/$_escaped_pipe_char
-      _json.data.argvs: +s_replace/NULL/_NULL_  
+      _json.data.argvs: +s_replace/NULL/_NULL_
   - check:
       - _json.data.argvs: +s_eq//
     map:
@@ -93,7 +93,7 @@ normalize:
       - _json.data.euser: +s_ne//
     map:
       _json.data.euser: +s_replace/|/$_escaped_pipe_char
-      _json.data.euser: +s_replace/NULL/_NULL_  
+      _json.data.euser: +s_replace/NULL/_NULL_
   - check:
       - _json.data.euser: +s_eq//
     map:
@@ -107,7 +107,7 @@ normalize:
       - _json.data.ruser: +s_ne//
     map:
       _json.data.ruser: +s_replace/|/$_escaped_pipe_char
-      _json.data.ruser: +s_replace/NULL/_NULL_  
+      _json.data.ruser: +s_replace/NULL/_NULL_
   - check:
       - _json.data.ruser: +s_eq//
     map:
@@ -121,7 +121,7 @@ normalize:
       - _json.data.suser: +s_ne//
     map:
       _json.data.suser: +s_replace/|/$_escaped_pipe_char
-      _json.data.suser: +s_replace/NULL/_NULL_  
+      _json.data.suser: +s_replace/NULL/_NULL_
   - check:
       - _json.data.suser: +s_eq//
     map:
@@ -135,7 +135,7 @@ normalize:
       - _json.data.egroup: +s_ne//
     map:
       _json.data.egroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.egroup: +s_replace/NULL/_NULL_  
+      _json.data.egroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.egroup: +s_eq//
     map:
@@ -149,7 +149,7 @@ normalize:
       - _json.data.rgroup: +s_ne//
     map:
       _json.data.rgroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.rgroup: +s_replace/NULL/_NULL_  
+      _json.data.rgroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.rgroup: +s_eq//
     map:
@@ -163,7 +163,7 @@ normalize:
       - _json.data.sgroup: +s_ne//
     map:
       _json.data.sgroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.sgroup: +s_replace/NULL/_NULL_  
+      _json.data.sgroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.sgroup: +s_eq//
     map:
@@ -177,7 +177,7 @@ normalize:
       - _json.data.fgroup: +s_ne//
     map:
       _json.data.fgroup: +s_replace/|/$_escaped_pipe_char
-      _json.data.fgroup: +s_replace/NULL/_NULL_  
+      _json.data.fgroup: +s_replace/NULL/_NULL_
   - check:
       - _json.data.fgroup: +s_eq//
     map:
@@ -267,47 +267,48 @@ normalize:
     map:
       _query_response_values: +r_ext/$_query_response/\|(.*)
       _array_of_field: +s_to_array/$_query_response_values/|
-      _json.process.pid: $_array_of_field/0
+      wazuh.syscollector.process.pid: $_array_of_field/0
       _array_of_field/1: +s_replace/$_escaped_pipe_char/|
-      _json.process.name: $_array_of_field/1
+      wazuh.syscollector.process.name: $_array_of_field/1
       _array_of_field/2: +s_replace/$_escaped_pipe_char/|
-      _json.process.state: $_array_of_field/2
-      _json.process.ppid: $_array_of_field/3
-      _json.process.utime: $_array_of_field/4
-      _json.process.stime: $_array_of_field/5
+      wazuh.syscollector.process.state: $_array_of_field/2
+      wazuh.syscollector.process.ppid: $_array_of_field/3
+      wazuh.syscollector.process.utime: $_array_of_field/4
+      wazuh.syscollector.process.stime: $_array_of_field/5
       _array_of_field/6: +s_replace/$_escaped_pipe_char/|
-      _json.process.cmd: $_array_of_field/6
+      wazuh.syscollector.process.cmd: $_array_of_field/6
       _array_of_field/7: +s_replace/$_escaped_pipe_char/|
-      _json.process.args: $_array_of_field/7
+      wazuh.syscollector.process.args: $_array_of_field/7
       _array_of_field/8: +s_replace/$_escaped_pipe_char/|
-      _json.process.euser: $_array_of_field/8
+      wazuh.syscollector.process.euser: $_array_of_field/8
       _array_of_field/9: +s_replace/$_escaped_pipe_char/|
-      _json.process.ruser: $_array_of_field/9
+      wazuh.syscollector.process.ruser: $_array_of_field/9
       _array_of_field/10: +s_replace/$_escaped_pipe_char/|
-      _json.process.suser: $_array_of_field/10
+      wazuh.syscollector.process.suser: $_array_of_field/10
       _array_of_field/11: +s_replace/$_escaped_pipe_char/|
-      _json.process.egroup: $_array_of_field/11
+      wazuh.syscollector.process.egroup: $_array_of_field/11
       _array_of_field/12: +s_replace/$_escaped_pipe_char/|
-      _json.process.rgroup: $_array_of_field/12
+      wazuh.syscollector.process.rgroup: $_array_of_field/12
       _array_of_field/13: +s_replace/$_escaped_pipe_char/|
-      _json.process.sgroup: $_array_of_field/13
+      wazuh.syscollector.process.sgroup: $_array_of_field/13
       _array_of_field/14: +s_replace/$_escaped_pipe_char/|
-      _json.process.fgroup: $_array_of_field/14
-      _json.process.priority: $_array_of_field/15
-      _json.process.nice: $_array_of_field/16
-      _json.process.size: $_array_of_field/17
-      _json.process.vm_size: $_array_of_field/18
-      _json.process.resident: $_array_of_field/19
-      _json.process.share: $_array_of_field/20
-      _json.process.start_time: $_array_of_field/21
-      _json.process.pgrp: $_array_of_field/22
-      _json.process.session: $_array_of_field/23
-      _json.process.nlwp: $_array_of_field/24
-      _json.process.tgid: $_array_of_field/25
-      _json.process.tty: $_array_of_field/26
-      _json.process.processor: $_array_of_field/27
+      wazuh.syscollector.process.fgroup: $_array_of_field/14
+      wazuh.syscollector.process.priority: $_array_of_field/15
+      wazuh.syscollector.process.nice: $_array_of_field/16
+      wazuh.syscollector.process.size: $_array_of_field/17
+      wazuh.syscollector.process.vm_size: $_array_of_field/18
+      wazuh.syscollector.process.resident: $_array_of_field/19
+      wazuh.syscollector.process.share: $_array_of_field/20
+      wazuh.syscollector.process.start_time: $_array_of_field/21
+      wazuh.syscollector.process.pgrp: $_array_of_field/22
+      wazuh.syscollector.process.session: $_array_of_field/23
+      wazuh.syscollector.process.nlwp: $_array_of_field/24
+      wazuh.syscollector.process.tgid: $_array_of_field/25
+      wazuh.syscollector.process.tty: $_array_of_field/26
+      wazuh.syscollector.process.processor: $_array_of_field/27
       _query: +delete_field
       _query_response: +delete_field
       _query_response_values: +delete_field
       _array_of_field: +delete_field
       _escaped_pipe_char: +delete_field
+      _json.data: +delete_field

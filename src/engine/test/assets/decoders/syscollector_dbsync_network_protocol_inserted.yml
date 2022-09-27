@@ -12,7 +12,7 @@ normalize:
       - _json.data.iface: +s_ne//
     map:
       _json.data.iface: +s_replace/|/$_escaped_pipe_char
-      _json.data.iface: +s_replace/NULL/_NULL_  
+      _json.data.iface: +s_replace/NULL/_NULL_
   - check:
       - _json.data.iface: +s_eq//
     map:
@@ -36,7 +36,7 @@ normalize:
       - _json.data.dhcp: +s_ne//
     map:
       _json.data.dhcp: +s_replace/|/$_escaped_pipe_char
-      _json.data.dhcp: +s_replace/NULL/_NULL_  
+      _json.data.dhcp: +s_replace/NULL/_NULL_
   - check:
       - _json.data.dhcp: +s_eq//
     map:
@@ -50,7 +50,7 @@ normalize:
       - _json.data.metric: +s_ne//
     map:
       _json.data.metric: +s_replace/|/$_escaped_pipe_char
-      _json.data.metric: +s_replace/NULL/_NULL_  
+      _json.data.metric: +s_replace/NULL/_NULL_
   - check:
       - _json.data.metric: +s_eq//
     map:
@@ -79,11 +79,11 @@ normalize:
     map:
       #TODO: need to find where to map resultant neccesary fields
       _json.data.iface: +s_replace/$_escaped_pipe_char/|
-      _json.netinfo.proto.iface: $_json.data.iface
-      _json.netinfo.proto.type: $_json.data.type
-      _json.netinfo.proto.gateway: $_json.data.gateway
-      _json.netinfo.proto.dhcp: $_json.data.dhcp
-      _json.netinfo.proto.metric: $_json.data.metric
+      wazuh.syscollector.netinfo.proto.iface: $_json.data.iface
+      wazuh.syscollector.netinfo.proto.type: $_json.data.type
+      wazuh.syscollector.netinfo.proto.gateway: $_json.data.gateway
+      wazuh.syscollector.netinfo.proto.dhcp: $_json.data.dhcp
+      wazuh.syscollector.netinfo.proto.metric: $_json.data.metric
       _query: +delete_field
       _query_response: +delete_field
       _json.data: +delete_field

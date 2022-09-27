@@ -7,5 +7,7 @@ check:
   - _json.type: +s_starts/dbsync_
   - _json.operation: +is_string
   - _json.data: +is_object
-map:
-  _escaped_pipe_char: "\uffff" #TODO: check if this value is escaped on Wdb
+
+normalize:
+  - map:
+      _escaped_pipe_char: "\uffff"
