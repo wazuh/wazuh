@@ -5,7 +5,7 @@ metadata:
   description: Parses Apache HTTPD access logs in its Common Log Format
 
 check:
-  #- wazuh.queue: 49 #- queue: 1
+  - wazuh.queue: 49
   - event.original: +exists
 
 parse:

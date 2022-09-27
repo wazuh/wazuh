@@ -4,7 +4,6 @@
 #include "builders/opBuilderARWrite.hpp"
 #include "builders/opBuilderFileOutput.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
-#include "builders/opBuilderHelperHashSHA1.hpp"
 #include "builders/opBuilderHelperMap.hpp"
 #include "builders/opBuilderHelperNetInfoAddress.hpp"
 #include "builders/opBuilderKVDB.hpp"
