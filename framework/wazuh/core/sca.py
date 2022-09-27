@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 from types import MappingProxyType
+from typing import Union
 
 from wazuh.core.agent import Agent
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
@@ -22,6 +23,8 @@ FIELDS_TRANSLATION_SCA_CHECK_RULES = MappingProxyType(
 
 
 class WazuhDBQuerySCA(WazuhDBQuery):
+    """Class used to query SCA items."""
+
     DEFAULT_QUERY = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
     # API-DB fields mapping
     FIELDS_TRANSLATION = MappingProxyType(
@@ -29,9 +32,45 @@ class WazuhDBQuerySCA(WazuhDBQuery):
          'pass': 'pass', 'fail': 'fail', 'score': 'score', 'invalid': 'invalid', 'total_checks': 'total_checks',
          'hash_file': 'hash_file', 'end_scan': 'end_scan', 'start_scan': 'start_scan'})
 
-    def __init__(self, agent_id, offset, limit, sort, search, query, count, get_data, select=None,
-                 default_sort_field='policy_id', default_sort_order='DESC', filters=None, fields=None,
-                 default_query=DEFAULT_QUERY, count_field='policy_id'):
+    def __init__(self, agent_id: str, offset: int, limit: Union[int, None], sort: Union[dict, None],
+                 search: Union[dict, None], query: Union[str, None], count: bool, get_data: bool, select: list = None,
+                 default_sort_field: str = 'policy_id', default_sort_order: str = 'DESC', filters: dict = None,
+                 fields: dict = None, default_query: str = DEFAULT_QUERY, count_field: str = 'policy_id'):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        offset : int
+            First item to return.
+        limit : int or None
+            Maximum number of items to return.
+        sort : dict or None
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+        search : dict or None
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str or None
+            Query to filter in database. Format: field operator value.
+        default_sort_field : str
+            By default, return elements sorted by this field. Default: 'policy_id'
+        default_sort_order : str
+            Default order when sorting. Default: 'DESC'
+        count : bool
+            Whether to compute totalItems or not.
+        get_data : bool
+            Whether to return data or not.
+        fields : dict
+            SCA fields.
+        default_query : str
+            Default query. Default: DEFAULT_QUERY
+        count_field : str
+            Field to apply count. Default: 'policy_id'
+        """
         self.agent_id = agent_id
         self.default_query = default_query
         self.count_field = count_field
@@ -64,7 +103,20 @@ class WazuhDBQuerySCA(WazuhDBQuery):
 
 
 class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
-    def __init__(self, agent_id, sort, sca_checks_ids):
+    """Class used to get SCA checks items."""
+
+    def __init__(self, agent_id: str, sort: dict, sca_checks_ids: list):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        sca_checks_ids : list
+            List used to filter SCA checks by ID.
+        """
         default_query = "SELECT {0} FROM sca_check"
         if sca_checks_ids:
             default_query += f" WHERE id IN {str(sca_checks_ids).replace('[', '(').replace(']', ')')}"
@@ -77,10 +129,32 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
 
 
 class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
+    """Class used to get SCA checks IDs from the main SCA checks table joining compliance and rules items."""
+
     DEFAULT_QUERY = "SELECT DISTINCT(id) FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check " \
                     "LEFT JOIN sca_check_rules c ON a.id=c.id_check"
 
-    def __init__(self, agent_id, offset, limit, filters, search, query, policy_id):
+    def __init__(self, agent_id: str, offset: int, limit: int, filters: dict, search: Union[dict, None], query: str,
+                 policy_id: str):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        offset : int
+            First item to return.
+        limit : int or None
+            Maximum number of items to return.
+        search : dict or None
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str
+            Query to filter in database. Format: field operator value.
+        policy_id : str
+            Filter by SCA policy ID.
+        """
         policy_query_filter = f"policy_id={policy_id}"
         fields = FIELDS_TRANSLATION_SCA_CHECK | FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE | \
                  FIELDS_TRANSLATION_SCA_CHECK_RULES
@@ -97,10 +171,24 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
 
 
 class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
+    """Class used to get SCA rules or compliance items related to a given SCA checks IDs list."""
+
     FIELDS_PER_TABLE = MappingProxyType({'sca_check_rules': FIELDS_TRANSLATION_SCA_CHECK_RULES,
                                          'sca_check_compliance': FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE})
 
-    def __init__(self, agent_id, table, id_check_list):
+    def __init__(self, agent_id: str, table: str, id_check_list: list):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        table : str
+            SCA check rules or compliance table. The value for this parameter must be 'sca_check_rules' or
+            'sca_check_compliance'.
+        id_check_list : list
+            List used to filter rules or compliance by ID.
+        """
         self.sca_check_table = table
         default_query = "SELECT {0} FROM " + self.sca_check_table
         if id_check_list:
