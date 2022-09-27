@@ -1745,7 +1745,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
 
     mdebug2("Partial comparison '%s'", partial_comparison);
 
-    w_expression_t * regex;
+    w_expression_t * regex = NULL;
     if (strcmp(w_expression_get_regex_type(regex_engine), OSREGEX_STR) == 0) {
             w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
     }
