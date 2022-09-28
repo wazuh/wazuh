@@ -22,7 +22,7 @@ except Exception as e:
 
 # ADD THIS TO ossec.conf configuration:
 #  <integration>
-#      <name>custom-shuffle</name>
+#      <name>custom-shuffle.py</name>
 #      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
 #      <level>3</level>
 #      <alert_format>json</alert_format>
