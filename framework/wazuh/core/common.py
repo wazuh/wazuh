@@ -16,8 +16,7 @@ from typing import Any, Dict
 # ===================================================== Functions ======================================================
 @lru_cache(maxsize=None)
 def find_wazuh_path() -> str:
-    """
-    Get the Wazuh installation path.
+    """Get the Wazuh installation path.
 
     Returns
     -------
@@ -48,7 +47,7 @@ def find_wazuh_path() -> str:
     return wazuh_path
 
 
-def wazuh_uid():
+def wazuh_uid() -> int:
     """Retrieve the numerical user ID for the wazuh user.
 
     Returns
@@ -59,7 +58,7 @@ def wazuh_uid():
     return getpwnam(USER_NAME).pw_uid if globals()['_WAZUH_UID'] is None else globals()['_WAZUH_UID']
 
 
-def wazuh_gid():
+def wazuh_gid() -> int:
     """Retrieve the numerical group ID for the wazuh group.
 
     Returns

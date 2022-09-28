@@ -4,29 +4,47 @@
 
 from wazuh.core import common
 from wazuh.core.agent import get_agents_info
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, merge
 from wazuh.core.syscollector import WazuhDBQuerySyscollector, get_valid_fields, Type
 from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_list}'])
-def get_item_agent(agent_list, offset=0, limit=common.DATABASE_LIMIT, select=None, search=None, sort=None, filters=None,
-                   q='', array=True, nested=True, element_type='os'):
-    """ Get syscollector information about a list of agents.
+def get_item_agent(agent_list: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: dict = None,
+                   search: dict = None, sort: dict = None, filters: dict = None, q: str = '', array: bool = True,
+                   nested: bool = True, element_type: str = 'os') -> AffectedItemsWazuhResult:
+    """Get syscollector information about a list of agents.
 
-    :param agent_list: List of agents ID's.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param q: Defines query to filter in DB.
-    :param filters: Fields to filter by
-    :param nested: Nested fields
-    :param array: Array
-    :param element_type: Type of element to get syscollector information from
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        List containing the agent ID.
+    filters : dict
+        Fields to filter by.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : dict
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : dict
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    select : dict
+        Select fields to return. Format: {"fields":["field1","field2"]}.
+    q : str
+        Query to filter by.
+    nested : bool
+        Specify whether there are nested fields or not.
+    element_type : str
+        Type of element to get syscollector information from. Default: 'os'
+    array : bool
+        Array.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Syscollector information.
     """
     result = AffectedItemsWazuhResult(
         none_msg='No syscollector information was returned',

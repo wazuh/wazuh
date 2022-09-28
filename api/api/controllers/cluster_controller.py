@@ -118,7 +118,8 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, nodes_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_nodes_ruleset_sync_status(request, pretty=False, wait_for_complete=False, nodes_list="*"):
+async def get_nodes_ruleset_sync_status(request, pretty: bool = False, wait_for_complete: bool = False,
+                                        nodes_list: str = "*") -> web.Response:
     """Get cluster ruleset synchronization status.
 
     Returns cluster ruleset synchronization status for all nodes or a list of them.
@@ -129,16 +130,17 @@ async def get_nodes_ruleset_sync_status(request, pretty=False, wait_for_complete
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
     nodes_list : list
-        Node IDs.
+        Node IDs. Default: '*'
 
     Returns
     -------
-    ApiResponse
+    web.Response
         Nodes ruleset synchronization statuses.
     """
     nodes = raise_if_exc(await get_system_nodes())

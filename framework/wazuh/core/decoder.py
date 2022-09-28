@@ -21,13 +21,17 @@ class Status(Enum):
     S_ALL = 'all'
 
 
-def add_detail(detail, value, details):
-    """
-    Add a decoder detail (i.e. regex, order, prematch, etc.).
+def add_detail(detail: str, value: str, details: dict):
+    """Add a decoder detail (i.e. regex, order, prematch, etc.).
 
-    :param detail: Detail name.
-    :param value: Detail value.
-    :param details: Details dict.
+    Parameters
+    ----------
+    detail : str
+        Detail name.
+    value : str
+        Detail value.
+    details : dict
+        Details dict.
     """
     # We return regex detail in an array
     if detail == 'regex':
@@ -39,7 +43,19 @@ def add_detail(detail, value, details):
         details[detail] = value
 
 
-def check_status(status):
+def check_status(status: str) -> str:
+    """Validate status with the Status class.
+
+    Parameter
+    ---------
+    status : str
+        Status to be validated.
+
+    Raises
+    ------
+    WazuhError(1202)
+        Argument \'status\' must be: enabled, disabled or all.
+    """
     if status is None:
         return Status.S_ALL.value
     elif status in [Status.S_ALL.value, Status.S_ENABLED.value, Status.S_DISABLED.value]:
@@ -48,7 +64,30 @@ def check_status(status):
         raise WazuhError(1202)
 
 
-def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
+def load_decoders_from_file(decoder_file: str, decoder_path: str, decoder_status: str) -> list:
+    """Load decoders from file.
+
+    Parameters
+    ----------
+    decoder_file : str
+        Name of the decoder file.
+    decoder_path : str
+        Path to the decoder file.
+    decoder_status : str
+        Decoder status.
+
+    Raises
+    ------
+    WazuhError(1502)
+        Error reading decoders file (permissions).
+    WazuhInternalError(1501)
+        Generic error reading decoders file.
+
+    Returns
+    -------
+    list
+        List containing the decoders.
+    """
     try:
         decoders = list()
         position = 0

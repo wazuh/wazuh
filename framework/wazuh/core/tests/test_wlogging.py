@@ -145,7 +145,7 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
         Mock of CustomFileRotatingHandler function.
     attribute: str
         Attribute to search for with __getattr__.
-    expected_exception: Union[None, Exception]
+    expected_exception: None or Exception
         Exception expected to be raised.
     """
     tmp_dir = tempfile.TemporaryDirectory
