@@ -63,28 +63,33 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFile.Close
 
     If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-        If WAZUH_PROTOCOL <> "" Then
+		If WAZUH_PROTOCOL <> "" and InStr(WAZUH_PROTOCOL,",") Then
             protocol_list=Split(WAZUH_PROTOCOL,",")
+		Else
+			protocol_list=Array(WAZUH_PROTOCOL)
         End If
-
-        If WAZUH_MANAGER <> "" Then 'list of address
-            re.Pattern = "<server>.*</server>"
-            ip_list=Split(WAZUH_MANAGER,",")
-            formatted_list ="    </server>" & vbCrLf
+        If WAZUH_MANAGER <> "" Then 
+			Set re = new regexp
+            re.Pattern = "\s+<server>(.|\n)+?</server>"
+			If InStr(WAZUH_MANAGER,",") Then
+				ip_list=Split(WAZUH_MANAGER,",")
+			Else
+				ip_list=Array(WAZUH_MANAGER)
+			End If
             not_replaced = True
+			formatted_list = vbCrLf
             for i=0 to UBound(ip_list)
                     formatted_list = formatted_list & "    <server>" & vbCrLf
-                    formatted_list = formatted_list & "      <address>" & ip_list.Item(i) & "</address>" & vbCrLf
+                    formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                     formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                    if protocol_list.Item(i) <> "" then
-                        formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list.Item(i)) & "</protocol>" & vbCrLf
+                    if protocol_list(i) <> "" then
+                        formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list(i)) & "</protocol>" & vbCrLf
                     Else
                         formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     End If
                     formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     formatted_list = formatted_list & "    </server>" & vbCrLf
             next
-
             strText = re.Replace(strText, formatted_list)
 
         End If
@@ -129,7 +134,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         End If  
         
         If WAZUH_REGISTRATION_PORT <> "" Then
-            strText = Replace(strText, "    </enrollment>", "  <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
+            strText = Replace(strText, "    </enrollment>", "        <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
         End If
         
         If WAZUH_REGISTRATION_PASSWORD <> "" Then
