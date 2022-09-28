@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 # Created by Shuffle, AS. <frikky@shuffler.io>.
 # Based on the Slack integration using Webhooks
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
 
+import contextlib
 import json
 import sys
 import time
@@ -31,11 +37,9 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
 
-try:
+with contextlib.suppress(Exception):
     with open("/tmp/shuffle_start.txt", "w+") as tmp:
         tmp.write("Script started")
-except:
-    pass
 
 
 def main(args):
