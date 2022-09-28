@@ -18,12 +18,18 @@ from wazuh.core.utils import get_utc_now
 logger = logging.getLogger('wazuh-api')
 
 
-async def default_info(pretty=False):
-    """Get basicinfo
+async def default_info(pretty: bool = False) -> web.Response:
+    """Return basic information about the Wazuh API.
 
-    :param pretty: Show results in human-readable format
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
 
-    Returns various basic information about the API
+    Returns
+    -------
+    web.Response
+        API response.
     """
     info_data = load_spec()
     data = {
