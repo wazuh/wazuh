@@ -22,7 +22,7 @@ except Exception as e:
 
 # ADD THIS TO ossec.conf configuration:
 #  <integration>
-#      <name>custom-shuffle.py</name>
+#      <name>custom-shuffle</name>
 #      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
 #      <level>3</level>
 #      <alert_format>json</alert_format>
@@ -78,12 +78,9 @@ def main(args):
 
     debug("# Sending message")
 
-    try:
+    with contextlib.suppress(Exception):
         with open("/tmp/shuffle_end.txt", "w+") as tmp:
             tmp.write("Script done pre-msg sending")
-    except:
-        pass
-
 
     send_msg(msg, webhook)
 
