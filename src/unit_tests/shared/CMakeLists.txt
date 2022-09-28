@@ -130,6 +130,15 @@ else()
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_json_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,w_get_file_content -Wl,--wrap,cJSON_ParseWithOpts \
+                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,fopen \
+                                -Wl,--wrap,fwrite -Wl,--wrap,fclose \
+                                -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc \
+                                -Wl,--wrap,fread -Wl,--wrap,remove \
+                                -Wl,--wrap,fseek ${DEBUG_OP_WRAPPERS}")
+                                
 list(APPEND shared_tests_names "test_audit_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,audit_send \
                                 -Wl,--wrap,select -Wl,--wrap,audit_get_reply -Wl,--wrap,wpopenv -Wl,--wrap,fgets \

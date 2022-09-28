@@ -17,3 +17,9 @@ cJSON * __wrap_json_fread(const char * path, __attribute__((unused)) char retry)
     if (path) check_expected(path);
     return mock_type(cJSON *);
 }
+
+int __wrap_json_fwrite(const char * path, const cJSON * item) {
+    check_expected(path);
+    check_expected(item);
+    return mock_type(int);
+}
