@@ -362,7 +362,7 @@ class DistributedAPI:
             Dict where keys are nodes and values are error information.
         """
         try:
-                common.rbac.set(self.rbac_permissions)
+            common.rbac.set(self.rbac_permissions)
             node_wrapper = get_node_wrapper()
             node = node_wrapper.affected_items[0]['node']
         except exception.WazuhException as rbac_exception:
