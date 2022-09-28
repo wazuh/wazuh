@@ -339,6 +339,11 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
             wm_strcat(&command, curr_container->time_offset, ' ');
         }
 
+        if (curr_container->path) {
+            wm_strcat(&command, "--prefix", ' ');
+            wm_strcat(&command, curr_container->path, ' ');
+        }
+
         if (isDebug()) {
             char *int_to_string;
             os_malloc(OS_SIZE_1024, int_to_string);
@@ -493,6 +498,7 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
             free(curr_container->blobs);
             free(curr_container->content_type);
             free(curr_container->time_offset);
+            free(curr_container->path);
             free(curr_container);
 
         }
@@ -557,6 +563,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
                     cJSON_AddStringToObject(container, "blobs", container_conf->blobs);
                     cJSON_AddStringToObject(container, "content_type", container_conf->content_type);
                     cJSON_AddStringToObject(container, "time_offset", container_conf->time_offset);
+                    cJSON_AddStringToObject(container, "prefix", container_conf->path);
                     if (container_conf->timeout) cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
                     cJSON_AddItemToArray(containers, container);
                 }
