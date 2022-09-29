@@ -19,6 +19,8 @@ jobs:
               token: ${{ secrets.GITHUB_TOKEN }}
               checkName: 'Build Linux amd64 agent deb package'
               ref: ${{ github.event.pull_request.head.sha || github.sha }}
+              timeoutSeconds: 3600
+              intervalSeconds: 60
 
           - name: Execute test
             if: steps.wait-for-build-deb.outputs.conclusion == 'success'
@@ -41,9 +43,11 @@ jobs:
           - name: Execute test
             if: steps.wait-for-build-macos.outputs.conclusion == 'success'
             run: sudo bash .github/actions/test_deploy_macos.sh
+              timeoutSeconds: 3600
+              intervalSeconds: 60
 
     test_windows:
-        name: Test Deployment variables on MacOS
+        name: Test Deployment variables on Windows
         runs-on: windows-latest
         steps:
           - uses: actions/checkout@v2
@@ -58,4 +62,6 @@ jobs:
 
           - name: Execute test
             if: steps.wait-for-build-win.outputs.conclusion == 'success'
-            run: sudo bash .github/actions/test_deploy_win.psi
+            run: sudo bash .github/actions/test_deploy_win.ps1
+              timeoutSeconds: 3600
+              intervalSeconds: 60
