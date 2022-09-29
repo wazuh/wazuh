@@ -92,7 +92,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             next
             strText = re.Replace(strText, formatted_list)
         Else
-            If If WAZUH_PROTOCOL <> "" Then
+            If WAZUH_PROTOCOL <> "" Then
                 Set re = new regexp
                 re.Pattern = "<protocol>.*</protocol>"
                 strText = re.Replace(strText, "      <protocol>" & LCase(protocol_list(0)) & "</protocol>")

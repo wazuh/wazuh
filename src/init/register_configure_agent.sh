@@ -268,6 +268,28 @@ main () {
 
     get_deprecated_vars
 
+    if [ -z "${WAZUH_MANAGER}" ] && [ -n WAZUH_PROTOCOL ]; then
+        edit_value_tag "protocol" ${WAZUH_PROTOCOL}
+    fi
+
+    if [ -n "${WAZUH_MANAGER}" ]; then
+        if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
+            touch -f ${INSTALLDIR}/logs/ossec.log
+            chmod 660 ${INSTALLDIR}/logs/ossec.log
+            chown root:wazuh ${INSTALLDIR}/logs/ossec.log
+        fi
+
+        # Check if multiples IPs are defined in variable WAZUH_MANAGER
+        ADDRESSES=( $(echo ${WAZUH_MANAGER} | sed "s#,# #g") )
+        # Get uniques values
+        ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
+        PROTOCOLS=( $(echo $(tolower ${WAZUH_PROTOCOL}) | sed "s#,# #g") )
+        add_adress_block "${ADDRESSES}"
+        if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
+            WAZUH_REGISTRATION_SERVER="${ADDRESSES[0]}"
+        fi
+    fi
+
     edit_value_tag "port" ${WAZUH_MANAGER_PORT}
 
     if [ -n "${WAZUH_REGISTRATION_SERVER}" ] || [ -n "${WAZUH_REGISTRATION_PORT}" ] || [ -n "${WAZUH_REGISTRATION_CA}" ] || [ -n "${WAZUH_REGISTRATION_CERTIFICATE}" ] || [ -n "${WAZUH_REGISTRATION_KEY}" ] || [ -n "${WAZUH_AGENT_NAME}" ] || [ -n "${WAZUH_AGENT_GROUP}" ] || [ -n "${ENROLLMENT_DELAY}" ] || [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
@@ -288,28 +310,6 @@ main () {
             
     if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         echo "${WAZUH_REGISTRATION_PASSWORD}" > ${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}
-    fi
-
-    if [ -z "${WAZUH_MANAGER}" ] && [ -n WAZUH_PROTOCOL]; then
-        edit_value_tag "protocol" ${WAZUH_PROTOCOL}
-    fi
-
-    if [ -n "${WAZUH_MANAGER}" ]; then
-        if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
-            touch -f ${INSTALLDIR}/logs/ossec.log
-            chmod 660 ${INSTALLDIR}/logs/ossec.log
-            chown root:wazuh ${INSTALLDIR}/logs/ossec.log
-        fi
-
-        # Check if multiples IPs are defined in variable WAZUH_MANAGER
-        ADDRESSES=( $(echo ${WAZUH_MANAGER} | sed "s#,# #g") )
-        # Get uniques values
-        ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
-        PROTOCOLS=( $(echo $(tolower ${WAZUH_PROTOCOL}) | sed "s#,# #g") )
-        add_adress_block "${ADDRESSES}"
-        if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
-            WAZUH_REGISTRATION_SERVER="${ADDRESSES[0]}"
-        fi
     fi
 
     # Options to be modified in ossec.conf

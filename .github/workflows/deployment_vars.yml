@@ -11,6 +11,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v2
+          
+          - name: print sha
+            run: echo $GITHUB_SHA
 
           - name: Wait for build to succeed
             uses: fountainhead/action-wait-for-check@v1.0.0
@@ -28,7 +31,7 @@ jobs:
 
           - name: Execute test
             if: steps.wait-for-build-deb.outputs.conclusion == 'success'
-            run: sudo bash .github/actions/test_deploy_ubuntu.sh
+            run: sudo bash .github/actions/test_deploy_ubuntu.sh ${{ github.event.pull_request.head.sha || github.sha }}
 
     test_macos:
         name: Test Deployment variables on MacOS
@@ -41,7 +44,7 @@ jobs:
             id: wait-for-build-macos
             with:
               token: ${{ secrets.GITHUB_TOKEN }}
-              checkName: 'Build macOS agent package'
+              checkName: 'Build macOS agent package signed MacOS'
               ref: ${{ github.event.pull_request.head.sha || github.sha }}
               timeoutSeconds: 3600
               intervalSeconds: 60
@@ -52,7 +55,7 @@ jobs:
 
           - name: Execute test
             if: steps.wait-for-build-macos.outputs.conclusion == 'success'
-            run: sudo bash .github/actions/test_deploy_macos.sh
+            run: sudo bash .github/actions/test_deploy_macos.sh ${{ github.event.pull_request.head.sha || github.sha }}
 
     test_windows:
         name: Test Deployment variables on Windows
@@ -76,4 +79,4 @@ jobs:
 
           - name: Execute test
             if: steps.wait-for-build-win.outputs.conclusion == 'success'
-            run: sudo bash .github/actions/test_deploy_win.ps1
+            run: .github/actions/test_deploy_win.ps1 ${{ github.event.pull_request.head.sha || github.sha }}
