@@ -31,12 +31,14 @@ target_link_libraries(engine_test_main
     base
     kvdb
     wdb
+    api
     )
 
 include(GoogleTest)
 
 #TODO: Fix server tests
 #add_subdirectory(${TEST_SOURCE_DIR}/server)
+add_subdirectory(${TEST_SOURCE_DIR}/API)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
 add_subdirectory(${TEST_SOURCE_DIR}/catalog)

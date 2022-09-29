@@ -172,6 +172,7 @@ bool Json::equals(std::string_view basePointerPath,
     }
 }
 
+// TODO Invert parameters to be consistent with other methods.
 void Json::set(std::string_view pointerPath, const Json& value)
 {
     auto fieldPtr = rapidjson::Pointer(pointerPath.data());
@@ -1060,4 +1061,29 @@ void Json::merge(std::string_view source, std::string_view path)
                                              source));
     }
 }
+
+std::optional<Json> Json::getJson(std::string_view path) const
+{
+    auto pp = rapidjson::Pointer(path.data());
+
+    if (pp.IsValid())
+    {
+        auto* val = pp.Get(m_document);
+        if (val)
+        {
+            return Json(*val);
+        }
+        else
+        {
+            return std::nullopt;
+        }
+    }
+    else
+    {
+        throw std::runtime_error(fmt::format("[Json::getJson(basePointerPath)] "
+                                             "Invalid json path: [{}]",
+                                             path));
+    }
+}
+
 } // namespace json

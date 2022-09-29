@@ -331,6 +331,15 @@ public:
      */
     std::optional<std::string> str(std::string_view path) const;
 
+     /**
+     * @brief Get a copy of the Json object or nothing if the path not found.c++ diagram
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return std::optional<Json> The Json object if it exists, std::nullopt otherwise.
+     * @throw std::runtime_error If path is invalid.
+     */
+    std::optional<Json> getJson(std::string_view path = "") const;
+
     friend std::ostream& operator<<(std::ostream& os, const Json& json);
 
     /************************************************************************************/
