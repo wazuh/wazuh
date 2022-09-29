@@ -77,8 +77,8 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         Agent(agent_id).get_basic_information()  # check if the agent exists
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
-                              select=list(self.FIELDS_TRANSLATION.keys()) if select is None else select,
-                              fields=fields or self.FIELDS_TRANSLATION, default_sort_field=default_sort_field,
+                              select=list(self.DB_FIELDS.keys()) if select is None else select,
+                              fields=fields or self.DB_FIELDS, default_sort_field=default_sort_field,
                               default_sort_order=default_sort_order, filters=filters or {}, query=query, count=count,
                               get_data=get_data, date_fields={'end_scan', 'start_scan'},
                               backend=WazuhDBBackend(agent_id))
@@ -123,8 +123,8 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={},
                                  search=None, count=False, get_data=True,
-                                 select=list(FIELDS_TRANSLATION_SCA_CHECK.keys()), default_query=default_query,
-                                 fields=FIELDS_TRANSLATION_SCA_CHECK, count_field='id', default_sort_field='id',
+                                 select=list(SCA_CHECK_DB_FIELDS.keys()), default_query=default_query,
+                                 fields=SCA_CHECK_DB_FIELDS, count_field='id', default_sort_field='id',
                                  default_sort_order='ASC', query='')
 
 
@@ -156,8 +156,7 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
             Filter by SCA policy ID.
         """
         policy_query_filter = f"policy_id={policy_id}"
-        fields = FIELDS_TRANSLATION_SCA_CHECK | FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE | \
-                 FIELDS_TRANSLATION_SCA_CHECK_RULES
+        fields = SCA_CHECK_DB_FIELDS | SCA_CHECK_COMPLIANCE_DB_FIELDS | SCA_CHECK_RULES_DB_FIELDS
         fields.pop('id_check')
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=None, filters=filters,
@@ -173,8 +172,8 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
 class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
     """Class used to get SCA rules or compliance items related to a given SCA checks IDs list."""
 
-    FIELDS_PER_TABLE = MappingProxyType({'sca_check_rules': FIELDS_TRANSLATION_SCA_CHECK_RULES,
-                                         'sca_check_compliance': FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE})
+    FIELDS_PER_TABLE = MappingProxyType({'sca_check_rules': SCA_CHECK_RULES_DB_FIELDS,
+                                         'sca_check_compliance': SCA_CHECK_COMPLIANCE_DB_FIELDS})
 
     def __init__(self, agent_id: str, table: str, id_check_list: list):
         """Class constructor.

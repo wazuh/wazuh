@@ -48,7 +48,7 @@ def test_WazuhDBQuerySCA__init__(mock_wdbq, mock_backend, mock_get_basic_info, a
                              query=query, count=count, get_data=get_data)
     mock_get_basic_info.assert_called_once()
     mock_wdbq.assert_called_once_with(ANY, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
-                                      select=select, fields=core_sca.WazuhDBQuerySCA.FIELDS_TRANSLATION,
+                                      select=select, fields=core_sca.WazuhDBQuerySCA.DB_FIELDS,
                                       default_sort_field='policy_id', default_sort_order='DESC', filters={},
                                       query=query, count=count, get_data=get_data,
                                       date_fields={'end_scan', 'start_scan'}, backend=ANY)
@@ -158,9 +158,9 @@ def test_WazuhDBQuerySCACheck__init__(mock_wdbqsca, sca_checks_test_list, expect
 
     mock_wdbqsca.assert_called_once_with(ANY, agent_id='000', offset=0, limit=None, sort='test', filters={},
                                          search=None, count=False, get_data=True,
-                                         select=list(core_sca.FIELDS_TRANSLATION_SCA_CHECK.keys()),
+                                         select=list(core_sca.SCA_CHECK_DB_FIELDS.keys()),
                                          default_query=expected_default_query,
-                                         fields=core_sca.FIELDS_TRANSLATION_SCA_CHECK, count_field='id',
+                                         fields=core_sca.SCA_CHECK_DB_FIELDS, count_field='id',
                                          default_sort_field='id', default_sort_order='ASC', query='')
 
 
@@ -176,8 +176,8 @@ def test_WazuhDBQuerySCACheckIDs__init__(mock_wdbqsca, query):
     query : str
         Query used to initialize the WazuhDBQuerySCACheckIDs object.
     """
-    expected_fields = core_sca.FIELDS_TRANSLATION_SCA_CHECK | core_sca.FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE | \
-                      core_sca.FIELDS_TRANSLATION_SCA_CHECK_RULES
+    expected_fields = core_sca.SCA_CHECK_DB_FIELDS | core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS | \
+                      core_sca.SCA_CHECK_RULES_DB_FIELDS
     expected_fields.pop('id_check')
 
     core_sca.WazuhDBQuerySCACheckIDs(agent_id='000', offset=10, limit=20, filters={'test': 'value'}, search='test',
@@ -213,8 +213,8 @@ def test_WazuhDBQuerySCACheckRelational__init__(mock_wdbqsca, table, sca_checks_
     """
     query_sca_check_relational = core_sca.WazuhDBQuerySCACheckRelational(agent_id='000', table=table,
                                                                          id_check_list=sca_checks_test_list)
-    expected_fields = MappingProxyType({'sca_check_rules': core_sca.FIELDS_TRANSLATION_SCA_CHECK_RULES,
-                                        'sca_check_compliance': core_sca.FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE})
+    expected_fields = MappingProxyType({'sca_check_rules': core_sca.SCA_CHECK_RULES_DB_FIELDS,
+                                        'sca_check_compliance': core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS})
     expected_default_query = "SELECT {0} FROM " + table
     if sca_checks_test_list:
         expected_default_query += f" WHERE id_check IN {str(sca_checks_test_list).replace('[', '(').replace(']', ')')}"
