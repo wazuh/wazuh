@@ -2058,199 +2058,91 @@
     <description>An attempt was made to change an account's password.</description>
     <options>no_full_log</options>
   </rule>
-  
-  <rule id="950168" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4746$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A member was added to a security-disabled local group.</description>
-  </rule>
-  <rule id="950169" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4747$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A member was removed from a security-disabled local group.</description>
-  </rule>
-  <rule id="950170" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4748$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled local group was deleted.</description>
-  </rule>
-  <rule id="950171" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4749$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled global group was created.</description>
-  </rule>
-  <rule id="950172" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4750$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled global group was changed.</description>
-  </rule>
-  <rule id="950173" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4751$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A member was added to a security-disabled global group.</description>
-  </rule>
-  <rule id="950174" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4752$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A member was removed from a security-disabled global group.</description>
-  </rule>
-  <rule id="950175" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4753$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled global group was deleted.</description>
-  </rule>
-  <rule id="950176" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4756$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A member was added to a security-enabled universal group.</description>
-  </rule>
-  <rule id="950177" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4757$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A member was removed from a security-enabled universal group.</description>
-  </rule>
-  <rule id="950178" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4758$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A security-enabled universal group was deleted.</description>
-  </rule>
-  <rule id="950179" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4759$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled universal group was created.</description>
-  </rule>
-  <rule id="950180" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4760$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled universal group was changed.</description>
-  </rule>
-  <rule id="950181" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4761$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A member was added to a security-disabled universal group.</description>
-  </rule>
-  <rule id="950182" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4762$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A member was removed from a security-disabled universal group.</description>
-  </rule>
-  <rule id="950183" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4767$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was unlocked.</description>
-  </rule>
+
   <rule id="950184" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4768$</field>
-    <group>account-logon,kerberos-authentication-service,</group>
     <description>A Kerberos authentication ticket (TGT) was requested.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950185" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4769$</field>
-    <group>account-logon,kerberos-service-ticket-operations,</group>
-    <description>A Kerberos service ticket was requested.</description>
-  </rule>
+
   <rule id="950186" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4770$</field>
-    <group>account-logon,kerberos-service-ticket-operations,</group>
     <description>A Kerberos service ticket was renewed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950187" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4771$</field>
-    <group>account-logon,kerberos-authentication-service,</group>
     <description>Kerberos pre-authentication failed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950188" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4772$</field>
-    <group>account-logon,kerberos-authentication-service,</group>
     <description>A Kerberos authentication ticket request failed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950189" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4774$</field>
-    <group>account-logon,credential-validation,</group>
     <description>An account was mapped for logon.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950190" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4775$</field>
-    <group>account-logon,credential-validation,</group>
     <description>An account could not be mapped for logon.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950191" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4776$</field>
-    <group>account-logon,credential-validation,</group>
     <description>The domain controller attempted to validate the credentials for an account.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950192" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4777$</field>
-    <group>account-logon,credential-validation,</group>
     <description>The domain controller failed to validate the credentials for an account.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950193" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4778$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
-    <description>A session was reconnected to a Window Station.</description>
-  </rule>
-  <rule id="950194" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4779$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
-    <description>A session was disconnected from a Window Station.</description>
-  </rule>
-  <rule id="950195" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4781$</field>
-    <group>account-management,user-account-management,</group>
-    <description>The name of an account was changed:</description>
-  </rule>
+
   <rule id="950196" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4782$</field>
-    <group>account-management,other-account-management-events,</group>
     <description>The password hash an account was accessed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950197" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4783$</field>
-    <group>account-management,application-group-management,</group>
     <description>A basic application group was created.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950198" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4784$</field>
-    <group>account-management,application-group-management,</group>
     <description>A basic application group was changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950199" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4785$</field>
     <group>account-management,application-group-management,</group>
     <description>A member was added to a basic application group.</description>
   </rule>
+
   <rule id="950200" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4786$</field>
