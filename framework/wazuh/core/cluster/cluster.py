@@ -21,8 +21,11 @@ from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents
+from wazuh.core.cluster.common import as_wazuh_object
+from wazuh.core.cluster.local_client import LocalClient
 from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.core.utils import md5, mkdir_with_mode
+from wazuh.core.exception import WazuhClusterError
+from wazuh.core.utils import md5, mkdir_with_mode, to_relative_path
 
 logger = logging.getLogger('wazuh')
 agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
@@ -267,6 +270,38 @@ def get_files_status(previous_status=None, get_md5=True):
             logger.warning(f"Error getting file status: {e}.")
 
     return final_items
+
+
+def get_ruleset_status(previous_status):
+    """Get hash of custom ruleset files.
+
+    Parameters
+    ----------
+    previous_status : dict
+        Integrity information of local files.
+
+    Returns
+    -------
+    Dict
+        Relative path and hash of local ruleset files.
+    """
+    final_items = {}
+    cluster_items = get_cluster_items()
+    user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.user_decoders_path,
+                                                                                    common.user_rules_path,
+                                                                                    common.user_lists_path]]
+
+    for file_path, item in cluster_items['files'].items():
+        if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:
+            continue
+        try:
+            final_items.update(
+                walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                         cluster_items['files']['excluded_extensions'], file_path, previous_status, True))
+        except Exception as e:
+            logger.warning(f"Error getting file status: {e}.")
+
+    return {file_path: file_data['md5'] for file_path, file_data in final_items.items()}
 
 
 def update_cluster_control_with_failed(failed_files, ko_files):
@@ -674,3 +709,29 @@ async def run_in_pool(loop, pool, f, *args, **kwargs):
         return await wait_for(task, timeout=None)
     else:
         return f(*args, **kwargs)
+
+
+async def get_node_ruleset_integrity(lc: LocalClient) -> dict:
+    """Retrieve custom ruleset integrity.
+
+    Parameters
+    ----------
+    lc : LocalClient
+        LocalClient instance.
+
+    Returns
+    -------
+    dict
+        Dictionary with results
+    """
+    response = await lc.execute(command=b"get_hash", data=b"", wait_for_complete=False)
+
+    try:
+        result = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if "timeout" in response else e
+
+    if isinstance(result, Exception):
+        raise result
+
+    return result

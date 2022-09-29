@@ -11,7 +11,6 @@ from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from functools import partial
 from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4

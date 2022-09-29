@@ -1,29 +1,82 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.7]
+## [v4.3.8] - 2022-09-19
 
 ### Manager
 
 #### Fixed
 
-- Fixed a bug in Analysisd that may make it crash when decoding regexes with more than 14 or-ed subpatterns. ([#13956](https://github.com/wazuh/wazuh/pull/113956))
-- Fixed a crash hazard in Vulnerability Detector when parsing OVAL feeds. ([#14366](https://github.com/wazuh/wazuh/pull/114366))
-- Fixed busy-looping in wazuh-maild when monitoring alerts.json. ([#14436](https://github.com/wazuh/wazuh/pull/114436))
-- Fixed a segmentation fault in wazuh-maild when parsing alerts exceeding the nesting limit. ([#14417](https://github.com/wazuh/wazuh/pull/114417))
+- Fixed wrong field assignation in Audit decoders (thanks to @pyama86). ([#14752](https://github.com/wazuh/wazuh/pull/14752))
+- Prevented wazuh-remoted from cleaning the multigroup folder in worker nodes. ([#14825](https://github.com/wazuh/wazuh/pull/14825))
+- Fixed rule skipping in wazuh-analysisd when the option if_sid is invalid. ([#14772](https://github.com/wazuh/wazuh/pull/14772))
 
 ### Agent
 
 #### Changed
 
-- Improved Office365 integration module logs. ([#13958](https://github.com/wazuh/wazuh/pull/113958))
+- Updated root CA certificate in agents to validate WPK upgrades. ([#14842](https://github.com/wazuh/wazuh/pull/14842))
 
 #### Fixed
 
-- Fixed a code defect in the GitHub integration module reported by Coverity. ([#14368](https://github.com/wazuh/wazuh/pull/114368))
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 to v4.3.7 (reported by @guragainroshan0). ([#14801](https://github.com/wazuh/wazuh/pull/14801))
 
 
-## [v4.3.6] 2022-07-20
+## [v4.3.7] - 2022-08-24
+
+### Manager
+
+#### Added
+
+- Added cluster command to obtain custom ruleset files and their hash. ([#14540](https://github.com/wazuh/wazuh/pull/14540))
+
+#### Fixed
+
+- Fixed a bug in Analysisd that may make it crash when decoding regexes with more than 14 or-ed subpatterns. ([#13956](https://github.com/wazuh/wazuh/pull/13956))
+- Fixed a crash hazard in Vulnerability Detector when parsing OVAL feeds. ([#14366](https://github.com/wazuh/wazuh/pull/14366))
+- Fixed busy-looping in wazuh-maild when monitoring alerts.json. ([#14436](https://github.com/wazuh/wazuh/pull/14436))
+- Fixed a segmentation fault in wazuh-maild when parsing alerts exceeding the nesting limit. ([#14417](https://github.com/wazuh/wazuh/pull/14417))
+
+### Agent
+
+#### Changed
+
+- Improved Office365 integration module logs. ([#13958](https://github.com/wazuh/wazuh/pull/13958))
+
+#### Fixed
+
+- Fixed a code defect in the GitHub integration module reported by Coverity. ([#14368](https://github.com/wazuh/wazuh/pull/14368))
+- Fixed an undefined behavior in the agent unit tests. ([#14518](https://github.com/wazuh/wazuh/pull/14518))
+
+### RESTful API
+
+#### Added
+
+- Added endpoint GET /cluster/ruleset/synchronization to check ruleset synchronization status in a cluster. ([#14551](https://github.com/wazuh/wazuh/pull/14551))
+
+#### Changed
+
+- Improved performance for MITRE API endpoints. ([#14208](https://github.com/wazuh/wazuh/pull/14208))
+
+### Ruleset
+
+#### Added
+
+- Added SCA Policy for CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0. ([#13806](https://github.com/wazuh/wazuh/pull/13806))
+- Added SCA Policy for CIS Microsoft Windows 10 Enterprise Release 21H2 Benchmark v1.12.0. ([#13879](https://github.com/wazuh/wazuh/pull/13879))
+- Added SCA policy for Red Hat Enterprise Linux 9 (RHEL9). ([#13843](https://github.com/wazuh/wazuh/pull/13843))
+- Added SCA policy for CIS Microsoft Windows Server 2022 Benchmark 1.0.0. ([#13899](https://github.com/wazuh/wazuh/pull/13899))
+
+#### Fixed
+
+- Fixed rule regular expression bug on Ubuntu 20.04 Linux SCA policy control ID 19137. ([#14513](https://github.com/wazuh/wazuh/pull/14513))
+- Fixed AWS Amazon Linux SCA policy. Fixed bug when wazuh-agent tries to run the policy. ([#14483](https://github.com/wazuh/wazuh/pull/14483))
+- Fixed AWS Amazon Linux 2 SCA policy. Limit journalctl to kernel events and only since boot. ([#13950](https://github.com/wazuh/wazuh/pull/13950))
+- Added missing SCA files during Wazuh-manager installation. ([#14482](https://github.com/wazuh/wazuh/pull/14482))
+- Fixed OS detection in Ubuntu 20.04 LTS SCA policy. ([#14678](https://github.com/wazuh/wazuh/pull/14678))
+
+
+## [v4.3.6] - 2022-07-20
 
 ### Manager
 
@@ -77,7 +130,7 @@ All notable changes to this project will be documented in this file.
 - Disabled filebeat logging metrics. ([#14121](https://github.com/wazuh/wazuh/pull/14121))
 
 
-## [v4.3.5] 2022-06-29
+## [v4.3.5] - 2022-06-29
 
 ### Manager
 
@@ -1288,7 +1341,14 @@ All notable changes to this project will be documented in this file.
 - Removed compatibility with deprecated configuration at Vulnerability Detector. ([#5879](https://github.com/wazuh/wazuh/pull/5879))
 
 
-## [v3.13.4]
+## [v3.13.6] - 2022-09-19
+
+### Fixed
+
+- Fixed a path traversal flaw in Active Response affecting agents from v3.6.1 (reported by @guragainroshan0). ([#14823](https://github.com/wazuh/wazuh/pull/14823))
+
+
+## [v3.13.4] - 2022-05-30
 
 ### Fixed
 
