@@ -23,7 +23,7 @@ except Exception as e:
 
 # ADD THIS TO ossec.conf configuration:
 #  <integration>
-#      <name>shuffle</name>
+#      <name>shuffle.py</name>
 #      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
 #      <level>3</level>
 #      <alert_format>json</alert_format>
@@ -37,9 +37,9 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 log_file = f'{pwd}/logs/integrations.log'
-log_shuffle = "/tmp/shuffle"
+log_shuffle = "/tmp/shuffle.py"
 
-logging_msg_format = '%(asctime)s shuffle: %(levelname)s: %(message)s'
+logging_msg_format = '%(asctime)s shuffle.py: %(levelname)s: %(message)s'
 logging_date_format = '%Y/%m/%d %I:%M:%S'
 
 
