@@ -22,6 +22,10 @@ jobs:
               timeoutSeconds: 3600
               intervalSeconds: 60
 
+          - name: Fail after timeout
+            if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+            run: exit 1
+
           - name: Execute test
             if: steps.wait-for-build-deb.outputs.conclusion == 'success'
             run: sudo bash .github/actions/test_deploy_ubuntu.sh
@@ -41,6 +45,10 @@ jobs:
               ref: ${{ github.event.pull_request.head.sha || github.sha }}
               timeoutSeconds: 3600
               intervalSeconds: 60
+          
+          - name: Fail after timeout
+            if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+            run: exit 1
 
           - name: Execute test
             if: steps.wait-for-build-macos.outputs.conclusion == 'success'
@@ -62,7 +70,7 @@ jobs:
               timeoutSeconds: 3600
               intervalSeconds: 60
 
-          - name: Do something with a passing build
+          - name: Fail after timeout
             if: steps.wait-for-build.outputs.conclusion == 'timed_out'
             run: exit 1
 
