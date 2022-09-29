@@ -235,7 +235,8 @@ async def test_restart_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.agent_controller.check_component_configuration_pair')
-async def test_get_agent_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+async def test_get_agent_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
+                                mock_request=MagicMock()):
     """Verify 'get_agent_config' endpoint is working as expected."""
     kwargs_param = {'configuration': 'configuration_value'
                     }
@@ -526,26 +527,23 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
 async def test_get_daemon_stats(mock_exc, mock_dapi, mock_remove, mock_dfunc):
     """Verify 'get_daemon_stats' function is working as expected."""
     mock_request = MagicMock()
-    with patch('api.controllers.agent_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
-        result = await get_daemon_stats(request=mock_request,
-                                        agent_id='001',
-                                        daemons_list=['daemon_1', 'daemon_2'])
+    result = await get_daemon_stats(request=mock_request,
+                                    agent_id='001',
+                                    daemons_list=['daemon_1', 'daemon_2'])
 
-        f_kwargs = {'agent_list': ['001'],
-                    'daemons_list': ['daemon_1', 'daemon_2']}
-        mock_dapi.assert_called_once_with(f=stats.get_daemons_stats_agents,
-                                          f_kwargs=mock_remove.return_value,
-                                          request_type='distributed_master',
-                                          is_async=False,
-                                          wait_for_complete=False,
-                                          logger=ANY,
-                                          rbac_permissions=mock_request['token_info']['rbac_policies'],
-                                          nodes=mock_exc.return_value)
-        mock_remove.assert_called_once_with(f_kwargs)
-        mock_exc.assert_has_calls([call(mock_snodes.return_value), call(mock_dfunc.return_value)])
-        assert mock_exc.call_count == 2
+    f_kwargs = {'agent_list': ['001'],
+                'daemons_list': ['daemon_1', 'daemon_2']}
+    mock_dapi.assert_called_once_with(f=stats.get_daemons_stats_agents,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'])
+    mock_remove.assert_called_once_with(f_kwargs)
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
 
-        assert isinstance(result, web_response.Response)
+    assert isinstance(result, web_response.Response)
 
 
 @pytest.mark.asyncio

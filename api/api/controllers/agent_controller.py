@@ -759,15 +759,13 @@ async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_fo
     f_kwargs = {'agent_list': [agent_id],
                 'daemons_list': daemons_list}
 
-    nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes)
+                          rbac_permissions=request['token_info']['rbac_policies'])
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
