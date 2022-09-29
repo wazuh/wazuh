@@ -13,7 +13,6 @@ import sys
 import time
 import os
 import logging
-from datetime import datetime, timezone
 
 try:
     import requests
@@ -37,7 +36,7 @@ json_alert = {}
 now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
-log_file = '{0}/logs/integrations.log'.format(pwd)
+log_file = f'{pwd}/logs/integrations.log'
 log_shuffle = "/tmp/shuffle"
 
 logging_msg_format = '%(asctime)s shuffle: %(levelname)s: %(message)s'
@@ -58,7 +57,7 @@ def main(args):
 
     # Read args
     alert_file_location = args[1]
-    webhook = args[3]
+    webhook: str = args[3]
 
     debug("# Webhook")
     debug(webhook)
@@ -81,7 +80,7 @@ def main(args):
         sys.exit(1)
 
     debug("# Generating message")
-    msg = generate_msg(json_alert)
+    msg: str = generate_msg(json_alert)
     if isinstance(msg, str):
         if len(msg) == 0:
             return
@@ -104,7 +103,7 @@ def debug(msg):
 
 
 # Skips container kills to stop self-recursion
-def filter_msg(alert):
+def filter_msg(alert) -> bool:
     # These are things that recursively happen because Shuffle starts Docker containers
     skip = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932", "80710", "87929",
             "87928", "5710"]
@@ -121,7 +120,7 @@ def filter_msg(alert):
     return True
 
 
-def generate_msg(alert):
+def generate_msg(alert) -> str:
     if not filter_msg(alert):
         print("Skipping rule %s" % alert["rule"]["id"])
         return ""
@@ -145,7 +144,7 @@ def generate_msg(alert):
     return json.dumps(msg)
 
 
-def send_msg(msg, url):
+def send_msg(msg: str, url: str):
     debug("# In send msg")
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     res = requests.post(url, data=msg, headers=headers, verify=False)
@@ -172,13 +171,6 @@ if __name__ == "__main__":
             bad_arguments = True
 
         # Logging the call
-        try:
-            f = open(log_file, 'a')
-        except:
-            f = open(log_file, 'w+')
-            f.write("")
-            f.close()
-
         f = open(log_file, 'a')
         f.write(msg + '\n')
         f.close()
