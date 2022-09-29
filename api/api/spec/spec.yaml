@@ -1359,6 +1359,7 @@ components:
           description: "Command running in the agent. If this value starts by `!`, then it refers to a script name
           instead of a command name"
           type: string
+          format: active_response_command
         custom:
           description: "Whether the specified command is a custom command or not"
           type: boolean

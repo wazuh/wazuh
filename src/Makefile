@@ -1151,7 +1151,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 17
+DEPS_VERSION = 18
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
@@ -1187,7 +1187,7 @@ endif
 else
 ifneq (,$(filter ${uname_S},SunOS AIX))
 	cpu_arch := ${uname_P}
-ifeq (${cpu_arch},powerpc)  
+ifeq (${cpu_arch},powerpc)
 	PRECOMPILED_ARCH := /powerpc
 else
 ifneq (,$(filter ${cpu_arch},sparc sun4u))
