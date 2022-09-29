@@ -56,7 +56,7 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char ** sorted_variables);
+static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char ** sorted_variables, char * policy_engine);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
 static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list);
 static int wm_sca_check_requirements(const cJSON * const requirements);
@@ -398,6 +398,14 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 goto next;
             }
 
+            const cJSON * const policy_regex_type = cJSON_GetObjectItem(policy, "regex_type");
+
+            if (!policy_regex_type) {
+                data->policies[i]->policy_regex_type = OSREGEX_STR;
+            } else {
+                data->policies[i]->policy_regex_type = cJSON_GetStringValue(policy_regex_type);
+            }
+
             if (requirements && wm_sca_check_requirements(requirements)) {
                 mwarn("Error found while reading 'requirements' section of file: '%s'. Skipping it.", data->policies[i]->policy_path);
                 goto next;
@@ -473,7 +481,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(requirements) {
                 w_rwlock_rdlock(&dump_rwlock);
-                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->policies[i]->remote,first_scan,&checks_number,sorted_variables) == 0) {
+                if (wm_sca_do_scan(requirements_array, vars, data, id, policy, 1, cis_db_index, data->policies[i]->remote,first_scan, &checks_number, sorted_variables, data->policies[i]->policy_regex_type) == 0) {
                     requirements_satisfied = 1;
                 }
                 w_rwlock_unlock(&dump_rwlock);
@@ -488,7 +496,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->policies[i]->policy_path);
 
-                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number, sorted_variables) != 0) {
+                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number, sorted_variables, data->policies[i]->policy_regex_type) != 0) {
                     merror("Error while evaluating the policy '%s'", data->policies[i]->policy_path);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -589,6 +597,11 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const c
     if(!description) {
         mwarn("Field 'description' not found in policy header.");
         return 1;
+    }
+
+    const cJSON * const regex_type = cJSON_GetObjectItem(policy, "regex_type");
+    if(!regex_type) {
+        mdebug1("Field 'regex_type' not found in policy header. The OS_REGEX engine shall be used.");
     }
 
     if(!description->valuestring) {
@@ -930,8 +943,18 @@ ANY and NONE aggregators are complementary.
 
 */
 
-static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
-    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char **sorted_variables)
+static int wm_sca_do_scan(cJSON * checks,
+                          OSStore * vars,
+                          wm_sca_t * data,
+                          int id,
+                          cJSON * policy,
+                          int requirements_scan,
+                          int cis_db_index,
+                          unsigned int remote_policy,
+                          int first_scan,
+                          int * checks_number,
+                          char ** sorted_variables,
+                          char * policy_engine)
 {
     int type = 0;
     char buf[OS_SIZE_1024 + 2];
@@ -1007,15 +1030,23 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
         mdebug2("Initial rule-aggregator value por this type of rule is '%d'",  g_found);
         mdebug1("Beginning rules evaluation.");
 
-        const cJSON * const engine = cJSON_GetObjectItem(check, "regex_type");
-        w_expression_t * regex_engine;
-        if (!engine) {
-            w_calloc_expression_t(&regex_engine, EXP_TYPE_OSREGEX);
-        }
-        else {
-            w_calloc_expression_t(&regex_engine, EXP_TYPE_PCRE2);
+        w_expression_t * regex_engine = NULL;
+        cJSON * engine = cJSON_GetObjectItem(check, "regex_type");
+        if (engine) {
+            if (strcmp(PCRE2_STR, cJSON_GetStringValue(engine)) == 0) {
+                w_calloc_expression_t(&regex_engine, EXP_TYPE_PCRE2);
+            } else {
+                w_calloc_expression_t(&regex_engine, EXP_TYPE_OSREGEX);
+            }
+        } else {
+            if(strcmp(PCRE2_STR, policy_engine) == 0) {
+                w_calloc_expression_t(&regex_engine, EXP_TYPE_PCRE2);
+            } else {
+                w_calloc_expression_t(&regex_engine, EXP_TYPE_OSREGEX);
+            }
         }
         mdebug1("SCA will use '%s' engine to check the rules.", w_expression_get_regex_type(regex_engine));
+
         const cJSON *const rules = cJSON_GetObjectItem(check, "rules");
         if (!rules) {
             merror("Skipping check %s '%s': No rules found.", _check_id_str, c_title->valuestring);
