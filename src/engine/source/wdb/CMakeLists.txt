@@ -14,7 +14,6 @@ target_link_libraries(wdb PRIVATE base)
 target_include_directories(wdb
     PRIVATE
     ${ENGINE_WDB_SOURCE_DIR}
-    # TODO Fix this (json/json)
     ${ENGINE_SOURCE_DIR}/json
     # TODO Remove this whens isolate rxcpp from base types
     ${RxCpp_SOURCE_DIR}/Rx/v2/src
