@@ -9,16 +9,16 @@ from wazuh.core.agent import Agent
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 
 # API-DB fields mapping
-FIELDS_TRANSLATION_SCA_CHECK = MappingProxyType(
+SCA_CHECK_DB_FIELDS = MappingProxyType(
     {'policy_id': 'policy_id', 'id': 'id', 'title': 'title', 'description': 'description', 'rationale': 'rationale',
      'remediation': 'remediation', 'file': 'file', 'process': 'process', 'directory': 'directory',
      'registry': 'registry', 'command': 'command', 'references': '`references`', 'result': 'result',
      'status': '`status`', 'reason': 'reason', 'condition': 'condition'})
 
-FIELDS_TRANSLATION_SCA_CHECK_COMPLIANCE = MappingProxyType(
+SCA_CHECK_COMPLIANCE_DB_FIELDS = MappingProxyType(
     {'compliance.key': 'key', 'compliance.value': 'value', 'id_check': 'id_check'})
 
-FIELDS_TRANSLATION_SCA_CHECK_RULES = MappingProxyType(
+SCA_CHECK_RULES_DB_FIELDS = MappingProxyType(
     {'rules.type': 'type', 'rules.rule': 'rule', 'id_check': 'id_check'})
 
 
@@ -27,7 +27,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
 
     DEFAULT_QUERY = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
     # API-DB fields mapping
-    FIELDS_TRANSLATION = MappingProxyType(
+    DB_FIELDS = MappingProxyType(
         {'policy_id': 'policy_id', 'name': 'name', 'description': 'description', 'references': '`references`',
          'pass': 'pass', 'fail': 'fail', 'score': 'score', 'invalid': 'invalid', 'total_checks': 'total_checks',
          'hash_file': 'hash_file', 'end_scan': 'end_scan', 'start_scan': 'start_scan'})
