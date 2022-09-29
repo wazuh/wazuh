@@ -49,6 +49,7 @@ _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
 _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
+_active_response_command = re.compile(f"^!?{_paths.pattern.lstrip('^')}")
 
 security_config_schema = {
     "type": "object",
@@ -276,7 +277,8 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = T
         True if path is correct. False otherwise.
     """
     # Protect path
-    if './' in path or '../' in path:
+    forbidden_paths = ["../", "..\\", "/..", "\\.."]
+    if any([forbidden_path in path for forbidden_path in forbidden_paths]):
         return False
 
     # Resolve symbolic links if present
@@ -377,6 +379,13 @@ def format_wazuh_path(value):
     if not is_safe_path(value, relative=False):
         return False
     return check_exp(value, _paths)
+
+
+@draft4_format_checker.checks("active_response_command")
+def format_active_response_command(command):
+    if not is_safe_path(command):
+        return False
+    return check_exp(command, _active_response_command)
 
 
 @draft4_format_checker.checks("query")

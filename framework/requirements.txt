@@ -56,7 +56,7 @@ mypy-extensions==0.4.3
 openapi-spec-validator==0.2.6
 packaging==20.9
 pathlib==1.0.1
-protobuf==3.17.3
+protobuf==4.21.6
 proto-plus==1.19.0
 psutil==5.8.0
 pyasn1==0.4.8
