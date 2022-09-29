@@ -1771,377 +1771,294 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="950105" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4652$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
-    <description>An IPsec Main Mode negotiation failed.</description>
-  </rule>
-  <rule id="950106" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4653$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
-    <description>An IPsec Main Mode negotiation failed.</description>
-  </rule>
-  <rule id="950107" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4654$</field>
-    <group>logon-logoff,ipsec-quick-mode,</group>
-    <description>An IPsec Quick Mode negotiation failed.</description>
-  </rule>
   <rule id="950108" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4655$</field>
-    <group>logon-logoff,ipsec-main-mode,</group>
     <description>An IPsec Main Mode security association ended.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950109" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4656$</field>
-    <group>object-access,handle-manipulation,</group>
     <description>A handle to an object was requested.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950110" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4657$</field>
-    <group>object-access,registry,</group>
     <description>A registry value was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950111" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4658$</field>
-    <group>object-access,handle-manipulation,</group>
     <description>The handle to an object was closed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950112" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4659$</field>
-    <group>object-access,kernel,</group>
     <description>A handle to an object was requested with intent to delete.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950113" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4660$</field>
-    <group>object-access,kernel,</group>
     <description>An object was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950114" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4661$</field>
-    <group>object-access,kernel,</group>
     <description>A handle to an object was requested.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950115" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4662$</field>
-    <group>ds-access,directory-service-access,</group>
     <description>An operation was performed on an object.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950116" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4663$</field>
-    <group>object-access,kernel,</group>
     <description>An attempt was made to access an object.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950117" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4664$</field>
-    <group>object-access,file-system,</group>
     <description>An attempt was made to create a hard link.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950118" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4665$</field>
-    <group>object-access,application-generated,</group>
     <description>An attempt was made to create an application client context.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950119" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4666$</field>
-    <group>object-access,application-generated,</group>
     <description>An application attempted an operation:</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950120" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4667$</field>
-    <group>object-access,application-generated,</group>
     <description>An application client context was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950121" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4668$</field>
-    <group>object-access,application-generated,</group>
     <description>An application was initialized.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950122" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4670$</field>
-    <group>policy-change,subcategory-(special),</group>
     <description>Permissions on an object were changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950123" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4671$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>An application attempted to access a blocked ordinal through the TBS.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950124" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4672$</field>
-    <group>privilege-use,sensitive-privilege-use---non-sensitive-privilege-use,</group>
     <description>Special privileges assigned to new logon.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950125" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4673$</field>
-    <group>privilege-use,sensitive-privilege-use---non-sensitive-privilege-use,</group>
-    <description>A privileged service was called.</description>
-  </rule>
+
   <rule id="950126" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4674$</field>
-    <group>privilege-use,sensitive-privilege-use---non-sensitive-privilege-use,</group>
     <description>An operation was attempted on a privileged object.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950127" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4688$</field>
-    <group>detailed-tracking,process-creation,</group>
-    <description>A new process has been created.</description>
-  </rule>
+
   <rule id="950128" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4689$</field>
-    <group>detailed-tracking,process-termination,</group>
     <description>A process has exited.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950129" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4690$</field>
-    <group>object-access,handle-manipulation,</group>
     <description>An attempt was made to duplicate a handle to an object.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950130" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4691$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>Indirect access to an object was requested.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950131" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4694$</field>
-    <group>detailed-tracking,dpapi-activity,</group>
     <description>Protection of auditable protected data was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950132" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4695$</field>
-    <group>detailed-tracking,dpapi-activity,</group>
     <description>Unprotection of auditable protected data was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950133" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4696$</field>
-    <group>detailed-tracking,process-creation,</group>
     <description>A primary token was assigned to process.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950134" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4697$</field>
-    <group>system,security-system-extension,</group>
     <description>Attempt to install a service</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950135" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4698$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>A scheduled task was created.</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
   </rule>
+
   <rule id="950136" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4699$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>A scheduled task was deleted.</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
   </rule>
+
   <rule id="950137" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4700$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>A scheduled task was enabled.</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
   </rule>
+
   <rule id="950138" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4701$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>A scheduled task was disabled.</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
   </rule>
+
   <rule id="950139" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4702$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>A scheduled task was updated.</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
   </rule>
+
   <rule id="950140" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4704$</field>
-    <group>policy-change,authorization-policy-change,</group>
     <description>A user right was assigned.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950141" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4705$</field>
-    <group>policy-change,authorization-policy-change,</group>
     <description>A user right was removed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950142" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4707$</field>
-    <group>policy-change,authorization-policy-change,</group>
     <description>A trust to a domain was removed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950143" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4709$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>IPsec Services was started.</description>
+
   </rule>
-  <rule id="950144" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4710$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
-    <description>IPsec Services was disabled.</description>
-  </rule>
+
   <rule id="950145" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4711$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>May contain any one of the following: PAStore Engine applied locally cached copy of Active Directory storage IPsec policy on the computer. PAStore Engine applied Active Directory storage IPsec policy on the computer. PAStore Engine applied local registry storage IPsec policy on the computer. PAStore Engine failed to apply locally cached copy of Active Directory storage IPsec policy on the computer. PAStore Engine failed to apply Active Directory storage IPsec policy on the computer. PAStore Engine failed to apply local registry storage IPsec policy on the computer. PAStore Engine failed to apply some rules of the active IPsec policy on the computer. PAStore Engine failed to load directory storage IPsec policy on the computer. PAStore Engine loaded directory storage IPsec policy on the computer. PAStore Engine failed to load local storage IPsec policy on the computer. PAStore Engine loaded local storage IPsec policy on the computer.PAStore Engine polled for changes to the active IPsec policy and detected no changes.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950146" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4712$</field>
     <group>policy-change,filtering-platform-policy-change,</group>
     <description>IPsec Services encountered a potentially serious failure.</description>
   </rule>
+
   <rule id="950147" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4717$</field>
-    <group>policy-change,authentication-policy-change,</group>
     <description>System security access was granted to an account.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950148" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4718$</field>
-    <group>policy-change,authentication-policy-change,</group>
     <description>System security access was removed from an account.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950149" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4720$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was created.</description>
-  </rule>
-  <rule id="950150" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4722$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was enabled.</description>
-  </rule>
+
   <rule id="950151" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4723$</field>
-    <group>account-management,user-account-management,</group>
     <description>An attempt was made to change an account's password.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950152" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4725$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was disabled.</description>
-  </rule>
-  <rule id="950153" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4726$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was deleted.</description>
-  </rule>
-  <rule id="950155" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4729$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A member was removed from a security-enabled global group.</description>
-  </rule>
-  <rule id="950156" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4730$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A security-enabled global group was deleted.</description>
-  </rule>
-  <rule id="950157" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4731$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A security-enabled local group was created.</description>
-  </rule>
-  <rule id="950158" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4732$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A member was added to a security-enabled local group.</description>
-  </rule>
-  <rule id="950159" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4733$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A member was removed from a security-enabled local group.</description>
-  </rule>
-  <rule id="950160" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4734$</field>
-    <group>account-management,security-group-management,</group>
-    <description>A security-enabled local group was deleted.</description>
-  </rule>
-  <rule id="950161" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4738$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was changed.</description>
-  </rule>
-  <rule id="950162" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4740$</field>
-    <group>account-management,user-account-management,</group>
-    <description>A user account was locked out.</description>
-  </rule>
-  <rule id="950163" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4741$</field>
-    <description>A computer account was changed.</description>
-  </rule>
-  <rule id="950164" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4742$</field>
-    <group>account-management,computer-account-management,</group>
-    <description>A computer account was changed.</description>
-  </rule>
-  <rule id="950165" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4743$</field>
-    <group>account-management,computer-account-management,</group>
-    <description>A computer account was deleted.</description>
-  </rule>
-  <rule id="950166" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4744$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled local group was created.</description>
-  </rule>
-  <rule id="950167" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4745$</field>
-    <group>account-management,distribution-group-management,</group>
-    <description>A security-disabled local group was changed.</description>
-  </rule>
+  
   <rule id="950168" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4746$</field>
