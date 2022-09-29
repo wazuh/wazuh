@@ -43,9 +43,11 @@ add_library(server STATIC
 #TODO do this better
 target_link_libraries(server base uv_a)
 
-target_include_directories(server PUBLIC
-    ${CameronQueue_SOURCE_DIR}
+target_include_directories(server
+    PUBLIC
     ${ENGINE_SERVER_SOURCE_DIR}
+    PRIVATE
+    ${CameronQueue_SOURCE_DIR}
     ${ENGINE_SOURCE_DIR}/json
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
