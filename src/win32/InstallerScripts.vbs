@@ -91,7 +91,12 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                     formatted_list = formatted_list & "    </server>" & vbCrLf
             next
             strText = re.Replace(strText, formatted_list)
-
+        Else
+            If If WAZUH_PROTOCOL <> "" Then
+                Set re = new regexp
+                re.Pattern = "<protocol>.*</protocol>"
+                strText = re.Replace(strText, "      <protocol>" & LCase(protocol_list(0)) & "</protocol>")
+            End If
         End If
 
         If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
@@ -118,7 +123,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                 strText = re.Replace(strText, "<time-reconnect>" & WAZUH_TIME_RECONNECT & "</time-reconnect>")
             End If
         End If
-
     End If
     
     If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
