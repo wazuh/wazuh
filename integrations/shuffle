@@ -12,6 +12,8 @@ import json
 import sys
 import time
 import os
+import logging
+from datetime import datetime, timezone
 
 try:
     import requests
@@ -22,7 +24,7 @@ except Exception as e:
 
 # ADD THIS TO ossec.conf configuration:
 #  <integration>
-#      <name>custom-shuffle</name>
+#      <name>shuffle</name>
 #      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
 #      <level>3</level>
 #      <alert_format>json</alert_format>
@@ -36,13 +38,22 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
+log_shuffle = "/tmp/shuffle"
 
-with contextlib.suppress(Exception):
-    with open("/tmp/shuffle_start.txt", "w+") as tmp:
-        tmp.write("Script started")
+logging_msg_format = '%(asctime)s shuffle: %(levelname)s: %(message)s'
+logging_date_format = '%Y/%m/%d %I:%M:%S'
+
+
+def set_logger():
+    """Set the logger configuration."""
+    logging.basicConfig(level=logging.INFO, format=logging_msg_format,
+                        datefmt=logging_date_format, filename=log_shuffle,filemode='a')
 
 
 def main(args):
+    set_logger()
+    logging.info("Script started")
+
     debug("# Starting")
 
     # Read args
@@ -78,9 +89,7 @@ def main(args):
 
     debug("# Sending message")
 
-    with contextlib.suppress(Exception):
-        with open("/tmp/shuffle_end.txt", "w+") as tmp:
-            tmp.write("Script done pre-msg sending")
+    logging.info("Script done pre-msg sending")
 
     send_msg(msg, webhook)
 
@@ -93,21 +102,24 @@ def debug(msg):
         f.write(msg)
         f.close()
 
+
 # Skips container kills to stop self-recursion
 def filter_msg(alert):
     # These are things that recursively happen because Shuffle starts Docker containers
-    skip = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932", "80710", "87929", "87928", "5710"]
+    skip = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932", "80710", "87929",
+            "87928", "5710"]
     if alert["rule"]["id"] in skip:
         return False
 
-    #try:
+    # try:
     #    if "docker" in alert["rule"]["description"].lower() and "
-    #msg['text'] = alert.get('full_log')
-    #except:
+    # msg['text'] = alert.get('full_log')
+    # except:
     #    pass
-    #msg['title'] = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
+    # msg['title'] = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
 
     return True
+
 
 def generate_msg(alert):
     if not filter_msg(alert):
@@ -123,37 +135,12 @@ def generate_msg(alert):
     else:
         severity = 3
 
-    msg = {}
-    msg['severity'] = severity
-    msg['pretext'] = "WAZUH Alert"
-    msg['title'] = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
-    msg['text'] = alert.get('full_log')
-    msg['rule_id'] = alert["rule"]["id"]
-    msg['timestamp'] = alert["timestamp"]
-    msg['id'] = alert['id']
-    msg["all_fields"] = alert
-
-    #msg['fields'] = []
-    #    msg['fields'].append({
-    #        "title": "Agent",
-    #        "value": "({0}) - {1}".format(
-    #            alert['agent']['id'],
-    #            alert['agent']['name']
-    #        ),
-    #    })
-    #if 'agentless' in alert:
-    #    msg['fields'].append({
-    #        "title": "Agentless Host",
-    #        "value": alert['agentless']['host'],
-    #    })
-
-    #msg['fields'].append({"title": "Location", "value": alert['location']})
-    #msg['fields'].append({
-    #    "title": "Rule ID",
-    #    "value": "{0} _(Level {1})_".format(alert['rule']['id'], level),
-    #})
-
-    #attach = {'attachments': [msg]}
+    msg = {'severity': severity, 'pretext': "WAZUH Alert",
+           'title': alert['rule']['description'] if 'description' in alert['rule'] else "N/A",
+           'text': alert.get('full_log'),
+           'rule_id': alert["rule"]["id"],
+           'timestamp': alert["timestamp"],
+           'id': alert['id'], "all_fields": alert}
 
     return json.dumps(msg)
 
@@ -166,6 +153,7 @@ def send_msg(msg, url):
 
 
 if __name__ == "__main__":
+
     try:
         # Read arguments
         bad_arguments = False
@@ -177,7 +165,7 @@ if __name__ == "__main__":
                 sys.argv[3],
                 sys.argv[4] if len(sys.argv) > 4 else '',
             )
-            #debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
+            # debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
             debug_enabled = True
         else:
             msg = '{0} Wrong arguments'.format(now)
