@@ -63,18 +63,6 @@ static void callbackRSyncWrapper(const void* payload, size_t size, void* userDat
     }
 }
 
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
-
 static void logFunction(const char* msg)
 {
     if (msg)
