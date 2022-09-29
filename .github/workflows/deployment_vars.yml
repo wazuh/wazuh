@@ -61,7 +61,11 @@ jobs:
               ref: ${{ github.event.pull_request.head.sha || github.sha }}
               timeoutSeconds: 3600
               intervalSeconds: 60
-              
+
+          - name: Do something with a passing build
+            if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+            run: exit 1
+
           - name: Execute test
             if: steps.wait-for-build-win.outputs.conclusion == 'success'
             run: sudo bash .github/actions/test_deploy_win.ps1
