@@ -1,4 +1,5 @@
 add_executable(API_test
+    registry_test.cpp
     wazuhRequest_test.cpp
 )
 

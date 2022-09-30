@@ -1,11 +1,15 @@
 #include "API/registry.hpp"
 
-
 namespace api
 {
 
 bool Registry::registerCommand(const std::string& command, const CommandFn callback)
 {
+    if (command.empty() || callback == nullptr)
+    {
+        return false;
+    }
+
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     if (m_commands.find(command) != m_commands.end())
     {
