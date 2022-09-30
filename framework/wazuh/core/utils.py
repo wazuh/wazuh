@@ -794,12 +794,14 @@ def check_disabled_limits_in_conf(data):
     blocked_configurations = configuration.api_conf['upload_configuration']
 
     xml_file = fromstring(data)
-    limits_section = xml_file.find("global").find("limits")
-    if limits_section is None:
+    found_limits = []
+    for global_section in xml_file.findall("global"):
+        found_limits += [limit_section for limit_section in global_section.findall("limits") or []]
+    if len(found_limits) == 0:
         return
 
     for disabled_limit in [conf for conf, allowed in blocked_configurations['limits'].items() if not allowed['allow']]:
-        if limits_section.find(disabled_limit):
+        if any([conf_limit.find(disabled_limit) for conf_limit in found_limits]):
             raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
