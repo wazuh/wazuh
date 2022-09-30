@@ -34,7 +34,8 @@ class Registry
 {
 
     std::map<std::string, CommandFn> m_commands; ///< Map of commands and callbacks
-    std::shared_mutex m_mutex; ///< A mutex for thread safety (read/write, protect m_commands)
+    std::shared_mutex
+        m_mutex; ///< A mutex for thread safety (read/write, protect m_commands)
 
 public:
     // Constructors
@@ -44,7 +45,7 @@ public:
     ~Registry()
     {
         // Lock mutex for write access and unlock on destruction
-        std::unique_lock<std::shared_mutex> lock { m_mutex };
+        std::unique_lock<std::shared_mutex> lock {m_mutex};
         m_commands.clear();
     };
 
@@ -57,10 +58,11 @@ public:
     /**
      * @brief Register a command in the registry
      *
-     * @param command The command name
+     * @param command The command name, can't be empty
      * @param callback The callback function
      * @return true If the command was registered
-     * @return false If the command was not registered (already exists)
+     * @return false If the command was not registered (already exists, the command is
+     * empty or the callback is null)
      */
     bool registerCommand(const std::string& command, const CommandFn callback);
 
