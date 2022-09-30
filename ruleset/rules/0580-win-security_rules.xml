@@ -2139,46 +2139,52 @@
   <rule id="950199" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4785$</field>
-    <group>account-management,application-group-management,</group>
     <description>A member was added to a basic application group.</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="950200" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4786$</field>
-    <group>account-management,application-group-management,</group>
     <description>A member was removed from a basic application group.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950201" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4787$</field>
-    <group>account-management,application-group-management,</group>
     <description>A nonmember was added to a basic application group.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950202" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4788$</field>
-    <group>account-management,application-group-management,</group>
     <description>A nonmember was removed from a basic application group.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950203" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4789$</field>
-    <group>account-management,application-group-management,</group>
     <description>A basic application group was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950204" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4790$</field>
-    <group>account-management,application-group-management,</group>
     <description>An LDAP query group was created.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950205" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4793$</field>
-    <group>account-management,other-account-management-events,</group>
     <description>The Password Policy Checking API was called.</description>
+    <options>no_full_log</options>
   </rule>
+  
   <rule id="950206" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4800$</field>
