@@ -14,6 +14,7 @@ add_library(json STATIC
 
 target_link_libraries(json PRIVATE base )
 
+# FIXME: Rapidjson dependency should be here and exposed through the json target
 target_include_directories(json PUBLIC
     ${ENGINE_JSON_INCLUDE_DIR}
 )
