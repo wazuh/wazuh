@@ -144,7 +144,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getg
 
 list(APPEND shared_tests_names "test_mq_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
-                                -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")

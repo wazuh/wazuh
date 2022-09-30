@@ -12,6 +12,12 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 static log_builder_t * mq_log_builder;
 int sock_fail_time;
 
@@ -72,12 +78,18 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
 }
 
 /* Send message primitive. */
-static int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
+STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
-    char tmpstr[OS_MAXSTR + 1];
+    char tmpstr[OS_MAXSTR + 1] = {0};
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
     static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
+
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return (0);
+    }
 
     if (loc == SECURE_MQ) {
         loc = message[0];
@@ -93,9 +105,9 @@ static int SendMSGAction(int queue, const char *message, const char *locmsg, cha
             return (0);
         }
 
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, locmsg, message);
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, loc_buff, message);
     } else {
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, locmsg, message);
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
     }
 
     /* Queue not available */
