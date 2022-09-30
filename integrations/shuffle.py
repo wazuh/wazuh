@@ -81,9 +81,12 @@ def main(args):
 
     debug("# Generating message")
     msg: str = generate_msg(json_alert)
+
+    # Check if alert is skipped
     if isinstance(msg, str):
-        if len(msg) == 0:
+        if not msg:
             return
+
     debug(msg)
 
     debug("# Sending message")
