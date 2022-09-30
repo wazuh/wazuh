@@ -398,7 +398,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 goto next;
             }
 
-            const cJSON * const policy_regex_type = cJSON_GetObjectItem(policy, "regex_type");
+            cJSON * policy_regex_type = cJSON_GetObjectItem(policy, "regex_type");
 
             if (!policy_regex_type) {
                 data->policies[i]->policy_regex_type = OSREGEX_STR;

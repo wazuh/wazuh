@@ -38,6 +38,9 @@ static OS_XML *lxml;
 extern int test_mode;
 
 extern void wm_sca_send_policies_scanned(wm_sca_t * data);
+extern int wm_sca_test_positive_minterm(const char * const pattern, const char * const str, char ** reason, w_expression_t * regex_engine);
+extern int wm_sca_regex_numeric_comparison(const char * const pattern, const char * const str, char ** reason, w_expression_t * regex_engine);
+extern int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number, char ** reason, w_expression_t * regex_engine);
 
 extern w_queue_t * request_queue;
 extern char **last_sha256;
@@ -366,6 +369,411 @@ void test_wm_sort_variables(void **state)
     cJSON_Delete(variables_list);
 }
 
+void test_wm_sca_test_positive_minterm_pcre2(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, true);
+    assert_int_equal(wm_sca_test_positive_minterm("r: test", "Status: test ok tested", NULL, regex), 1);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_pcre2_fail(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    assert_int_equal(wm_sca_test_positive_minterm("r: test", "Status: test ok tested", NULL, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_pcre2_fail_no_compile(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, false);
+
+    assert_int_equal(wm_sca_test_positive_minterm("r: ???", "Status: test ok tested", NULL, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_pcre2_fail_no_match(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    assert_int_equal(wm_sca_test_positive_minterm("r: test", "Status: test ok tested", NULL, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_os_regex(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, true);
+    assert_int_equal(wm_sca_test_positive_minterm("r: test", "Status: test ok tested", NULL, regex), 1);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_os_regex_fail_no_match(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    assert_int_equal(wm_sca_test_positive_minterm("r: \\w\\w\\w\\d", "Status: test ok tested", NULL, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_exact_match(void **state)
+{
+    assert_int_equal(wm_sca_test_positive_minterm("test", "test", NULL, NULL), 1);
+}
+
+void test_wm_sca_test_positive_minterm_no_exact_match(void **state)
+{
+    assert_int_equal(wm_sca_test_positive_minterm("test", "other thing", NULL, NULL), 0);
+}
+
+void test_wm_sca_test_positive_minterm_numeric_expression(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "20");
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_test_positive_minterm("n:^\\s*\t*test\\s*\t*(\\d+) compare <= 30", "test 20", NULL, regex), 1);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_test_positive_minterm_numeric_expression_fail(void **state)
+{
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    assert_int_equal(wm_sca_test_positive_minterm("n:^\\s*\t*test\\s*\t*(\\d+) compare <= 30", "test 20", NULL, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_regex_numeric_comparison_PCRE2(void **state)
+{
+   w_expression_t * regex;
+   w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+   will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "20");
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+   assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+) compare < 30", "test 20", NULL, regex), 1);
+   w_free_expression_t(&regex);
+}
+
+void test_wm_sca_regex_numeric_comparison_OS_REGEX(void **state)
+{
+   w_expression_t * regex;
+   w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+   will_return(__wrap_w_expression_compile, true);
+   will_return(__wrap_w_expression_match, -1);
+   will_return(__wrap_w_expression_match, "50");
+   will_return(__wrap_w_expression_compile, true);
+   will_return(__wrap_w_expression_match, -1);
+   will_return(__wrap_w_expression_match, "30");
+
+   assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+) compare > 30", "test 50", NULL, regex), 1);
+   w_free_expression_t(&regex);
+}
+
+void test_wm_sca_regex_numeric_comparison_without_compare_word_nor_reason(void **state)
+{
+    char *reason = NULL;
+    assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+)", "test 50", &reason, NULL), 2);
+    os_free(reason);
+}
+
+void test_wm_sca_regex_numeric_comparison_without_compare_word_with_reason(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+
+    assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+)", "test 50", &reason, NULL), 2);
+    os_free(reason);
+}
+
+void test_wm_sca_regex_numeric_comparison_without_compile_regex(void **state)
+{
+    char * reason = NULL;
+
+    will_return(__wrap_w_expression_compile, false);
+
+    assert_int_equal(wm_sca_regex_numeric_comparison("n:???", "test 50", &reason, NULL), 2);
+    os_free(reason);
+}
+
+void test_wm_sca_regex_numeric_comparison_no_match(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+) compare > 30", "test 50", &reason, regex), 0);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_regex_numeric_comparison_no_detect_number_with_reason_null(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, true);
+
+    assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+) compare ", "test 50", &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_regex_numeric_comparison_no_detect_number_with_reason_not_null(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, true);
+
+    assert_int_equal(wm_sca_regex_numeric_comparison("n:^\\s*\t*test\\s*\t*(\\d+) compare ", "test 50", &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_OS_REGEX(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("== 30", 30, &reason, regex), 1);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_PCRE2(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("< 30", 20, &reason, regex), 1);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_PCRE2_fail(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("< 30", 40, &reason, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_OS_REGEX_fail(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("== 30", 50, &reason, regex), 0);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_without_string_to_compare_with_reason_null(void **state)
+{
+    char * reason = NULL;
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "No comparison provided.");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison(NULL, 30, &reason, NULL), 2);
+    os_free(reason);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_without_string_to_compare_with_reason_not_null(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "No comparison provided.");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison(NULL, 30, &reason, NULL), 2);
+    os_free(reason);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_not_compile_with_reason_not_null(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, false);
+
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "Cannot compile regex");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("???", 30, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_not_compile_with_reason_null(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, false);
+
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "Cannot compile regex");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("???", 30, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_not_match_regex_with_reason_null(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "No integer was found within the comparison '< 30' ");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("< 30", 50, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_not_match_regex_with_reason_not_null(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "No integer was found within the comparison '< 30' ");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("< 30", 50, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_no_capture_number_with_reason_null(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, true);
+
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "No number was captured.");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("< 30", 50, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_no_capture_number_with_reason_not_null(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, true);
+
+    expect_string(__wrap__mtwarn, tag, "sca");
+    expect_string(__wrap__mtwarn, formatted_msg, "No number was captured.");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("< 30", 50, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_null(void **state)
+{
+    char * reason = NULL;
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("! 30", 50, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
+void test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_not_null(void **state)
+{
+    char * reason = NULL;
+    os_malloc(OS_MAXSTR, reason);
+    sprintf(reason, "This is a test");
+    w_expression_t * regex;
+    w_calloc_expression_t(&regex, EXP_TYPE_OSREGEX);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "30");
+
+    assert_int_equal(wm_sca_apply_numeric_partial_comparison("! 30", 50, &reason, regex), 2);
+    os_free(reason);
+    w_free_expression_t(&regex);
+}
+
 /* main */
 
 int main(void) {
@@ -380,7 +788,38 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test(test_wm_sort_variables_null),
         cmocka_unit_test(test_wm_sort_variables_duplicated),
-        cmocka_unit_test(test_wm_sort_variables)
+        cmocka_unit_test(test_wm_sort_variables),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_pcre2),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_pcre2_fail),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_pcre2_fail_no_match),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_pcre2_fail_no_compile),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_os_regex),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_os_regex_fail_no_match),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_exact_match),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_no_exact_match),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_numeric_expression),
+        cmocka_unit_test(test_wm_sca_test_positive_minterm_numeric_expression_fail),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_PCRE2),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_OS_REGEX),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_without_compare_word_nor_reason),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_without_compare_word_with_reason),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_no_match),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_no_detect_number_with_reason_null),
+        cmocka_unit_test(test_wm_sca_regex_numeric_comparison_no_detect_number_with_reason_not_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_OS_REGEX),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_OS_REGEX_fail),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_PCRE2),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_PCRE2_fail),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_without_string_to_compare_with_reason_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_without_string_to_compare_with_reason_not_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_not_compile_with_reason_not_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_not_compile_with_reason_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_not_match_regex_with_reason_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_not_match_regex_with_reason_not_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_capture_number_with_reason_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_capture_number_with_reason_not_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_null),
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_not_null)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
