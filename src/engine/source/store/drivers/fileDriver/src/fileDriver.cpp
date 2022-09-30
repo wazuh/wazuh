@@ -1,0 +1,139 @@
+#include "store/drivers/fileDriver.hpp"
+
+#include <fmt/format.h>
+
+namespace store::fileDriver
+{
+FileDriver::FileDriver(const std::filesystem::path& path, bool create)
+{
+    if (create)
+    {
+        if (!std::filesystem::create_directories(path))
+        {
+            throw std::runtime_error(
+                fmt::format("[FileDriver] Cannot create [{}]", path.string()));
+        }
+    }
+    else
+    {
+        // Check path validity
+        if (!std::filesystem::exists(path))
+        {
+            throw std::runtime_error(
+                fmt::format("[FileDriver] Path [{}] does not exist", path.string()));
+        }
+        if (!std::filesystem::is_directory(path))
+        {
+            throw std::runtime_error(
+                fmt::format("[FileDriver] Path [{}] is not a directory", path.string()));
+        }
+    }
+
+    m_path = path;
+}
+
+std::filesystem::path FileDriver::nameToPath(const Name& name) const
+{
+    auto path = m_path / name.m_type / name.m_name / std::string{name.m_version + ".json"};
+    return path;
+}
+
+std::optional<Error> FileDriver::del(const Name& name)
+{
+    std::optional<Error> error = std::nullopt;
+    auto path = nameToPath(name);
+
+    if (!std::filesystem::exists(path))
+    {
+        error = Error {
+            fmt::format("[FileDriver::erase] File [{}] does not exist", path.string())};
+    }
+    else
+    {
+
+        std::error_code ec;
+        if (!std::filesystem::remove(path, ec))
+        {
+            error = Error {fmt::format(
+                "[FileDriver::erase] Could not remove file [{}] due to [{}:{}]",
+                path.string(),
+                ec.value(),
+                ec.message())};
+        }
+    }
+    return error;
+}
+
+std::optional<Error> FileDriver::add(const Name& name, const json::Json& content)
+{
+    std::optional<Error> error = std::nullopt;
+    auto path = nameToPath(name);
+
+    if (std::filesystem::exists(path))
+    {
+        error = Error {
+            fmt::format("[FileDriver::add] File [{}] already exists", path.string())};
+    }
+    else
+    {
+        std::error_code ec;
+        if (!std::filesystem::create_directories(path.parent_path(), ec)
+            && ec.value() != 0)
+        {
+            error = Error {fmt::format(
+                "[FileDriver::add] Could not create directories [{}] due to [{}:{}]",
+                path.parent_path().string(),
+                ec.value(),
+                ec.message())};
+        }
+        else
+        {
+            std::ofstream file(path);
+            if (!file.is_open())
+            {
+                error = Error {
+                    fmt::format("[FileDriver::add] Could not open file [{}] for writing",
+                                path.string())};
+            }
+            else
+            {
+                file << content.str();
+            }
+        }
+    }
+    return error;
+}
+
+std::variant<json::Json, Error> FileDriver::get(const Name& name) const
+{
+    std::variant<json::Json, Error> result;
+    auto path = nameToPath(name);
+
+    if (std::filesystem::exists(path))
+    {
+        std::ifstream file(path);
+        std::string content;
+        file >> content;
+        file.close();
+        try
+        {
+            result = json::Json {content.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            result =
+                Error {fmt::format("[FileDriver] Could not parse file [{}] due to [{}]",
+                                   path.string(),
+                                   e.what())};
+        }
+    }
+    else
+    {
+        result =
+            Error {fmt::format("[FileDriver] File [{}] does not exist", path.string())};
+    }
+
+    return result;
+}
+
+} // namespace store::fileDriver
