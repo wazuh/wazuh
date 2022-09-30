@@ -23,7 +23,7 @@ except Exception as e:
 
 # ADD THIS TO ossec.conf configuration:
 #  <integration>
-#      <name>shuffle.py</name>
+#      <name>shuffle</name>
 #      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
 #      <level>3</level>
 #      <alert_format>json</alert_format>
@@ -105,10 +105,9 @@ def debug(msg):
 # Skips container kills to stop self-recursion
 def filter_msg(alert) -> bool:
     # These are things that recursively happen because Shuffle starts Docker containers
-    skip = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932", "80710", "87929",
+    skip_rule_ids = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932", "80710", "87929",
             "87928", "5710"]
-    if alert["rule"]["id"] in skip:
-        return False
+    return not alert["rule"]["id"] in skip_rule_ids
 
     # try:
     #    if "docker" in alert["rule"]["description"].lower() and "
@@ -117,7 +116,6 @@ def filter_msg(alert) -> bool:
     #    pass
     # msg['title'] = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
 
-    return True
 
 
 def generate_msg(alert) -> str:
