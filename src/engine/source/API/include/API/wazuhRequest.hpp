@@ -29,6 +29,7 @@ public:
     explicit WazuhRequest(const json::Json& json)
         : m_jrequest(json)
     {
+        m_version = -1;
         m_error = validate();
     }
 
@@ -37,26 +38,6 @@ public:
      */
     ~WazuhRequest() = default;
 
-    // Rule of five
-    WazuhRequest(const WazuhRequest& other)
-        : m_jrequest(other.m_jrequest)
-    {
-    }
-    WazuhRequest(WazuhRequest&& other)
-        : m_jrequest(std::move(other.m_jrequest))
-    {
-    }
-    WazuhRequest& operator=(const WazuhRequest& other)
-    {
-        m_jrequest = other.m_jrequest;
-        return *this;
-    }
-    WazuhRequest& operator=(WazuhRequest&& other)
-    {
-        m_jrequest = std::move(other.m_jrequest);
-        return *this;
-    }
-
     /**
      * @brief Get command from the request
      *
@@ -64,7 +45,7 @@ public:
      * @return empty if the request is not valid
      */
     std::optional<std::string> getCommand() const {
-        return m_jrequest.getString("/command");
+        return  isValid() ? m_jrequest.getString("/command") : std::nullopt;
     };
 
     /**
@@ -75,7 +56,7 @@ public:
      */
     std::optional<json::Json> getParameters() const
     {
-        return m_jrequest.getJson("/parameters");
+        return  isValid() ? m_jrequest.getJson("/parameters") : std::nullopt;
     }
 
     /**
@@ -100,6 +81,9 @@ public:
      * @param command Command name
      * @param parameters Parameters
      * @return WazuhRequest
+     *
+     * @throw std::runtime_error if the command is empty or the parameters are not a JSON
+     * object
      */
     static WazuhRequest create(std::string_view command, const json::Json& parameters);
 

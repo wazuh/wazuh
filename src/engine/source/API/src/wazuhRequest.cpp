@@ -31,15 +31,15 @@ std::optional<std::string> WazuhRequest::validate() const
     }
     if (!m_jrequest.exists("/origin") || !m_jrequest.isObject("/origin"))
     {
-        return "The request must have a origin field with a JSON object value";
+        return "The request must have an origin field with a JSON object value";
     }
     if (!m_jrequest.exists("/origin/name") || !m_jrequest.isString("/origin/name"))
     {
-        return "The request must have a origin/name field with a string value";
+        return "The request must have an origin/name field with a string value";
     }
     if (!m_jrequest.exists("/origin/module") || !m_jrequest.isString("/origin/module"))
     {
-        return "The request must have a origin/module field with a string value";
+        return "The request must have an origin/module field with a string value";
     }
 
     return std::nullopt;
@@ -47,6 +47,16 @@ std::optional<std::string> WazuhRequest::validate() const
 
 WazuhRequest WazuhRequest::create(std::string_view command, const json::Json& parameters)
 {
+
+    if (command.empty())
+    {
+        throw std::runtime_error("The command cannot be empty");
+    }
+    if (!parameters.isObject())
+    {
+        throw std::runtime_error("The parameters must be a JSON type object");
+    }
+
     json::Json jrequest;
     jrequest.setInt(VERSION_SUPPORTED, "/version");
     jrequest.setString(command, "/command");
