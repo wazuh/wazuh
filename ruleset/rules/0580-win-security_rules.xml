@@ -2188,351 +2188,387 @@
   <rule id="950206" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4800$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
     <description>The workstation was locked.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950207" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4801$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
     <description>The workstation was unlocked.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950208" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4802$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
     <description>The screen saver was invoked.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950209" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4803$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
-    <description>The screen saver was dismissed.</description>
-  </rule>
+
   <rule id="950210" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4864$</field>
-    <group>policy-change,authentication-policy-change,</group>
     <description>A namespace collision was detected.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950211" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4869$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services received a resubmitted certificate request.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950212" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4871$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services received a request to publish the certificate revocation list (CRL).</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950213" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4872$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services published the certificate revocation list (CRL).</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950214" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4873$</field>
-    <group>object-access,certification-services,</group>
     <description>A certificate request extension changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950215" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4874$</field>
-    <group>object-access,certification-services,</group>
     <description>One or more certificate request attributes changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950216" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4875$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services received a request to shut down.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950217" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4876$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services backup started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950218" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4877$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services backup completed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950219" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4878$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services restore started.</description>
+    <options>no_full_log</options>
   </rule>
   <rule id="950220" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4879$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services restore completed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950221" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4880$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950222" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4881$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services stopped.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950223" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4883$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services retrieved an archived key.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950224" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4884$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services imported a certificate into its database.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950225" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4886$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services received a certificate request.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950226" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4887$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services approved a certificate request and issued a certificate.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950227" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4888$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services denied a certificate request.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950228" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4889$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services set the status of a certificate request to pending.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950229" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4891$</field>
-    <group>object-access,certification-services,</group>
     <description>A configuration entry changed in Certificate Services.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950230" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4893$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services archived a key.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950231" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4894$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services imported and archived a key.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950232" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4895$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services published the CA certificate to Active Directory Domain Services.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950233" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4898$</field>
-    <group>object-access,certification-services,</group>
     <description>Certificate Services loaded a template.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950234" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4902$</field>
-    <group>policy-change,audit-policy-change,</group>
     <description>The Per-user audit policy table was created.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950235" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4904$</field>
-    <group>policy-change,audit-policy-change,</group>
     <description>An attempt was made to register a security event source.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950236" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4905$</field>
-    <group>policy-change,audit-policy-change,</group>
     <description>An attempt was made to unregister a security event source.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950237" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4909$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>The local policy settings for the TBS were changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950238" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4910$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>The Group Policy settings for the TBS were changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950239" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4928$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>An Active Directory replica source naming context was established.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950240" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4929$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>An Active Directory replica source naming context was removed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950241" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4930$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>An Active Directory replica source naming context was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950242" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4931$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>An Active Directory replica destination naming context was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950243" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4932$</field>
-    <group>ds-access,directory-service-replication,</group>
     <description>Synchronization of a replica of an Active Directory naming context has begun.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950244" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4933$</field>
-    <group>ds-access,directory-service-replication,</group>
     <description>Synchronization of a replica of an Active Directory naming context has ended.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950245" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4934$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>Attributes of an Active Directory object were replicated.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950246" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4935$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>Replication failure begins.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950247" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4936$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>Replication failure ends.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950248" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4937$</field>
-    <group>ds-access,detailed-directory-service-replication,</group>
     <description>A lingering object was removed from a replica.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950249" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4944$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>The following policy was active when the Windows Firewall started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950250" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4945$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A rule was listed when the Windows Firewall started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950251" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4946$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A change has been made to Windows Firewall exception list. A rule was added.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950252" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4947$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A change has been made to Windows Firewall exception list. A rule was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950253" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4948$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A change has been made to Windows Firewall exception list. A rule was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950254" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4949$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>Windows Firewall settings were restored to the default values.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950255" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4950$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A Windows Firewall setting has changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950256" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4951$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A rule has been ignored because its major version number was not recognized by Windows Firewall.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950257" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4952$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>Parts of a rule have been ignored because its minor version number was not recognized by Windows Firewall. The other parts of the rule will be enforced.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950258" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4953$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>A rule has been ignored by Windows Firewall because it could not parse the rule.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950259" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4954$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>Windows Firewall Group Policy settings have changed. The new settings have been applied.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950260" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4956$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
     <description>Windows Firewall has changed the active profile.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950261" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4957$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
-    <description>Windows Firewall did not apply the following rule:</description>
-  </rule>
-  <rule id="950262" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4958$</field>
-    <group>policy-change,mpssvc-rule-level-policy-change,</group>
-    <description>Windows Firewall did not apply the following rule because the rule referred to items not configured on this computer:</description>
-  </rule>
+
   <rule id="950263" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4979$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
     <description>IPsec Main Mode and Extended Mode security associations were established.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950264" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4980$</field>
