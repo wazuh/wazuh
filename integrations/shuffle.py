@@ -37,7 +37,7 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 log_file = f'{pwd}/logs/integrations.log'
-log_shuffle = "/tmp/shuffle.py"
+log_shuffle = "/tmp/shuffle.log"
 
 logging_msg_format = '%(asctime)s shuffle.py: %(levelname)s: %(message)s'
 logging_date_format = '%Y/%m/%d %I:%M:%S'
