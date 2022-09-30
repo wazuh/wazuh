@@ -12,7 +12,6 @@ import json
 import sys
 import time
 import os
-import logging
 
 try:
     import requests
@@ -37,21 +36,9 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 log_file = f'{pwd}/logs/integrations.log'
-log_shuffle = "/tmp/shuffle.log"
-
-logging_msg_format = '%(asctime)s shuffle.py: %(levelname)s: %(message)s'
-logging_date_format = '%Y/%m/%d %I:%M:%S'
-
-
-def set_logger():
-    """Set the logger configuration."""
-    logging.basicConfig(level=logging.INFO, format=logging_msg_format,
-                        datefmt=logging_date_format, filename=log_shuffle,filemode='a')
 
 
 def main(args):
-    set_logger()
-    logging.info("Script started")
 
     debug("# Starting")
 
@@ -90,8 +77,6 @@ def main(args):
     debug(msg)
 
     debug("# Sending message")
-
-    logging.info("Script done pre-msg sending")
 
     send_msg(msg, webhook)
 
