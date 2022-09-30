@@ -1544,9 +1544,15 @@ async def test_master_handler_sync_integrity_ko(send_request_mock, wait_for_mock
             await master_handler.sync_integrity("task_id", EventMock())
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
 
-    with pytest.raises(Exception):
+    wait_for_mock.side_effect = asyncio.TimeoutError
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
         await master_handler.sync_integrity("task_id", EventMock())
-        wait_for_mock.assert_called_once()
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
+
+    wait_for_mock.side_effect = Exception
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
+        await master_handler.sync_integrity("task_id", EventMock())
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
 
 
 @freeze_time("1970-01-01")

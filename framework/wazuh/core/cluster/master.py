@@ -757,13 +757,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             await asyncio.wait_for(received_file.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
+        except Exception as e:
+            if isinstance(e, asyncio.TimeoutError):
+                exc = exception.WazuhClusterError(3039)
+            else:
+                exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
-                                                          cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+            await self.send_request(command=b"cancel_task",
+                                    data=f"{task_id} {json.dumps(exc, cls=c_common.WazuhJSONEncoder)}".encode())
+            raise exc
 
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
@@ -927,13 +929,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             await asyncio.wait_for(received_file.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
+        except Exception as e:
+            if isinstance(e, asyncio.TimeoutError):
+                exc = exception.WazuhClusterError(3039)
+            else:
+                exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
-                                                          cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+            await self.send_request(command=b"cancel_task",
+                                    data=f"{task_id} {json.dumps(exc, cls=c_common.WazuhJSONEncoder)}".encode())
+            raise exc
 
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
