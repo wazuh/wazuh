@@ -1,3 +1,4 @@
+# FIXME: Base should be refactored to be an OBJECT library so other modules can simply include what they need.
 ####################################################################################################
 # Profiler
 ####################################################################################################

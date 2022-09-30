@@ -149,6 +149,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/rxbk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmds)
+add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 
 #TODO isolate rxcpp
 target_link_libraries(main base cmds api)
