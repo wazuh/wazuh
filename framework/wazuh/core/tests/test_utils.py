@@ -1878,23 +1878,17 @@ def test_get_utc_now():
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
 
+@pytest.mark.parametrize("configuration", [
+    "<root><global><limits><eps><whatever>yes</whatever></eps></limits></global></root>",
+    "<root><global><logall>no</logall></global><global><limits><eps><whatever>yes</whatever></eps></limits>"
+    "</global></root>"
+])
 @pytest.mark.parametrize("limits_conf, expect_exc", [
     ({'eps': {'allow': True}}, False),
     ({'eps': {'allow': False}}, True)
 ])
-def test_check_disabled_limits_in_conf(limits_conf, expect_exc):
+def test_check_disabled_limits_in_conf(configuration, limits_conf, expect_exc):
     """Test if forbidden limits in the API settings are blocked."""
-    configuration = """
-    <root>
-      <global>
-        <limits>
-          <eps>
-            <whatever>yes</whatever>
-          </eps>
-        </limits>
-      </global>
-    </root>"""
-
     new_conf = utils.configuration.api_conf
     new_conf['upload_configuration']['limits'].update(limits_conf)
 
