@@ -219,7 +219,6 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
     File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
-    File /oname=ruleset\sca\sca_win_audit.yml ..\..\ruleset\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
 
