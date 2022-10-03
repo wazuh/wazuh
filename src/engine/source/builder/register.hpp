@@ -3,6 +3,7 @@
 
 #include "builders/opBuilderARWrite.hpp"
 #include "builders/opBuilderFileOutput.hpp"
+#include "builders/opBuilderHelperActiveResponse.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
 #include "builders/opBuilderHelperMap.hpp"
 #include "builders/opBuilderHelperNetInfoAddress.hpp"
@@ -131,6 +132,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6,
                               "helper.saveNetInfoIPv6");
 
+    // Active Response
+    Registry::registerBuilder(builders::opBuilderHelperActiveResponse, "helper.ar");
 }
 } // namespace builder::internals
 
