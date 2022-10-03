@@ -94,30 +94,42 @@ int main (int argc, char **argv) {
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
             // Checking if wazuh table is configured in pf.conf
-            if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
-                if (action == ADD_COMMAND) {
-                    const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL };
-                    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+            if (action == ADD_COMMAND) {
+                const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL };
+                memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
 
-                    const char *arg2[4] = { PFCTL, "-k", srcip, NULL };
-                    memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
-                } else {
-                    const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL };
-                    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
-                }
+                const char *arg2[4] = { PFCTL, "-k", srcip, NULL };
+                memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
             } else {
+                const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL };
+                memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+            }
+            if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) != 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
 
-                (void)write_cmd_to_file(RCCONF, "pf_enable=\"YES\"" "\n" "pf_rules=\"/etc/pf.conf\"" "\n" "pflog_enable=\"YES\"" "\n" "pflog_logfile=\"/var/log/pflog\"");
+                int retVal  = write_cmd_to_file(RCCONF, "pf_enable=\"YES\"\npf_rules=\"/etc/pf.conf\"\npflog_enable=\"YES\"\npflog_logfile=\"/var/log/pflog\"");
+                if (0 == retVal) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", RCCONF, strerror(errno));
+                    write_debug_file(argv[0], log_msg);
+                    cJSON_Delete(input_json);
+                    return OS_INVALID;
+                }
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1, "table <%s> persist #%s\nblock in quick from <%s> to any\nblock out quick from any to <%s>", PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE);
-                (void)write_cmd_to_file(PFCTL_RULES, log_msg);
-
+                retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
+                if (0 == retVal) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", PFCTL_RULES, strerror(errno));
+                    write_debug_file(argv[0], log_msg);
+                    cJSON_Delete(input_json);
+                    return OS_INVALID;
+                }
                 if (exec_cmd4[0] != NULL ) {
-                    wfd = wpopenv(PFCTL, exec_cmd4, W_BIND_STDOUT);
+                    wfd = wpopenv(LAUNCHCTL, exec_cmd4, W_BIND_STDOUT);
                     if (!wfd) {
                         memset(log_msg, '\0', OS_MAXSTR);
                         snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
@@ -139,7 +151,7 @@ int main (int argc, char **argv) {
                     }
                     wpclose(wfd);
                 }
-                return OS_SUCCESS;
+
             }
         } else {
             memset(log_msg, '\0', OS_MAXSTR);
@@ -165,7 +177,7 @@ int main (int argc, char **argv) {
                     isEnabledFirewall = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
                 }
 
-                if (( 0 == isEnabledFirewall)) {
+                if (0 == isEnabledFirewall) {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR -1, "{\"message\":\"Active response may not have an effect\",\"profile\":\"%s\",\"status\":\"%s\",\"script\":\"pf\"}",
                         "default", 1 == isEnabledFirewall ? "active" : "inactive"
@@ -230,13 +242,16 @@ static int checking_if_its_configured(const char *path, const char *table) {
 }
 
 /**
- * @brief search a pair pattern1 and after pattern2
+ * @brief It looks for a string that matches pattern 1, if it finds it, it looks again for pattern 2, there should be spaces in the middle between the patterns.
  * @param output_buf buffer where search
- * @param str_pattern_1 pattern search to match
- * @param str_pattern_2 pattern search to match
+ * @param str_pattern_1 pattern to match
+ * @param str_pattern_2 pattern to match
  * @return 1 or 0 
- * @example retVal = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
- * @example if for example with patter1:"Status :" find "Enabled", its return 1
+ * @example output_buf -> "... Status:    Disabled ..."
+ *          retVal = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
+ *          if it matches pattern 1 look for pattern 2 and if found, it returns 1
+ * 
+ *          retVal = isEnabledFromPattern(output_buf, "Status: ", NULL)  find only by "Status"
 */
 static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2){
     int retVal = 0;
@@ -249,14 +264,16 @@ static int isEnabledFromPattern(const char * output_buf, const char * str_patter
         char state[OS_MAXSTR];
         char buffer[OS_MAXSTR];
         if (str_pattern_2 != NULL) {
-            snprintf(buffer, OS_MAXSTR -1 , "%%*s %%%lds",strlen(str_pattern_2));
-            if (pos && sscanf(pos, buffer /*"%*s %7s"*/, state) == 1) {
+            snprintf(buffer, OS_MAXSTR -1 , "%%*s %%%lds", strlen(str_pattern_2));
+            if (sscanf(pos, buffer /*"%*s %7s"*/, state) == 1) {
                 if (strcmp(state, str_pattern_2) == 0) {
                     retVal = 1;
                 } else {
                     retVal = 0;
                 }
             }
+        } else {
+            retVal = 1;
         }
     }
     return  retVal;
