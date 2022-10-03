@@ -1719,3 +1719,111 @@ TEST(JsonSettersTest, MergeRefFailCases)
     // Merging into a non-object non-array
     ASSERT_THROW(jObjDst.merge("/to_merge_obj", "/key1"), std::runtime_error);
 }
+
+// json getJson test
+TEST(getJsonTest, getObjectOk) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": {
+            "key4": "value4"
+        }
+    })"};
+
+    Json jExpected {R"({
+        "key4": "value4"
+    })"};
+
+    ASSERT_EQ(j.getJson("/key3"), jExpected);
+}
+
+TEST(getJsonTest, getArrayOk) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": [1, 2, 3]
+    })"};
+
+    Json jExpected {R"(
+        [1, 2, 3]
+    )"};
+
+    ASSERT_EQ(j.getJson("/key3"), jExpected);
+}
+
+TEST(getJsonTest, getIntOk) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": 100
+    })"};
+
+    Json jExpected {R"(
+        100
+    )"};
+
+    ASSERT_EQ(j.getJson("/key3"), jExpected);
+}
+
+TEST(getJsonTest, getStringOk) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": "test value 3"
+    })"};
+
+    Json jExpected {R"(
+        "test value 3"
+    )"};
+
+    ASSERT_EQ(j.getJson("/key3"), jExpected);
+}
+
+TEST(getJsonTest, getBoolOk) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": true
+    })"};
+
+    Json jExpected {R"(
+        true
+    )"};
+
+    ASSERT_EQ(j.getJson("/key3"), jExpected);
+}
+
+TEST(getJsonTest, getNullOk) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": null
+    })"};
+
+    Json jExpected {R"(
+        null
+    )"};
+
+    ASSERT_EQ(j.getJson("/key3"), jExpected);
+}
+
+TEST(getJsonTest, pathNotFound) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": null
+    })"};
+
+    ASSERT_EQ(j.getJson("/key4"), std::optional<Json>());
+}
+
+TEST(getJsonTest, invalidPath) {
+    Json j {R"({
+        "key1": "value1",
+        "key2": "value2",
+        "key3": null
+    })"};
+
+    ASSERT_THROW(j.getJson("key3~"), std::runtime_error);
+}
+
