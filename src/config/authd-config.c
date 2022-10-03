@@ -246,6 +246,10 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             mdebug1("Setting <force><disconnected_time> tag to '%d' to comply with the legacy <%s> option found.",
                 legacy_force_time, xml_force_time);
         }
+        mdebug1("The tag <force><after_registration_time> is not defined. Apply default value: '%d'.",
+                config->force_options.after_registration_time);
+        mdebug1("The tag <force><key_mismatch> is not defined. Apply default value: '%d'.",
+                config->force_options.key_mismatch ? "'true'" : "'false'");
     }
     
 
