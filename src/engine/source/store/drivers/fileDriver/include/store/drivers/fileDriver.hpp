@@ -1,8 +1,8 @@
 #ifndef _FILE_DRIVER_H
 #define _FILE_DRIVER_H
 
-#include "store/shared.hpp"
-#include "store/store.hpp"
+#include "name.hpp"
+#include "store/istore.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -20,8 +20,8 @@ namespace store::fileDriver
  * @brief File driver.
  *
  * This driver stores the jsons in the filesystem. Starting from the base path,
- * it organizes the jsons based on the store::Name, creating a directory hierarchy following
- * basePath/Name::m_type/Name::m_name/Name::m_version.json
+ * it organizes the jsons based on the store::base::Name, creating a directory hierarchy
+ * following basePath/base::Name::m_type/base::Name::m_name/base::Name::m_version.json
  *
  */
 class FileDriver : public IStore
@@ -29,7 +29,7 @@ class FileDriver : public IStore
 private:
     std::filesystem::path m_path;
 
-    std::filesystem::path nameToPath(const Name& name) const;
+    std::filesystem::path nameToPath(const base::Name& name) const;
 
 public:
     /**
@@ -44,9 +44,10 @@ public:
     FileDriver(const FileDriver&) = delete;
     FileDriver& operator=(const FileDriver&) = delete;
 
-    std::optional<Error> del(const Name& name) override;
-    std::optional<Error> add(const Name& name, const json::Json& content) override;
-    std::variant<json::Json, Error> get(const Name& name) const override;
+    std::optional<base::Error> del(const base::Name& name) override;
+    std::optional<base::Error> add(const base::Name& name,
+                                   const json::Json& content) override;
+    std::variant<json::Json, base::Error> get(const base::Name& name) const override;
 };
 } // namespace store::fileDriver
 
