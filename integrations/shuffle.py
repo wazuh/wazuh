@@ -16,7 +16,7 @@ import os
 try:
     import requests
     from requests.auth import HTTPBasicAuth
-except Exception as e:
+except ModuleNotFoundError as e:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(1)
 
