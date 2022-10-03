@@ -63,16 +63,15 @@ def main(args):
     try:
         with open(alert_file_location) as alert_file:
             json_alert = json.load(alert_file)
-    except:
+    except FileNotFoundError:
         debug("# Alert file %s doesn't exist" % alert_file_location)
         sys.exit(3)
-
-    debug("# Processing alert")
-    try:
-        debug(json_alert)
-    except Exception as e:
+    except json.decoder.JSONDecodeError as e:
         debug("Failed getting json_alert %s" % e)
         sys.exit(4)
+
+    debug("# Processing alert")
+    debug(json_alert)
 
     debug("# Generating message")
     msg: str = generate_msg(json_alert)
