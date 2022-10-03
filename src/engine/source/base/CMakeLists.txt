@@ -85,6 +85,8 @@ add_library(base STATIC
     result.hpp
     baseTypes.hpp
     expression.cpp
+    error.hpp
+    name.hpp
     )
 
 if(PROFILE_BUILD)

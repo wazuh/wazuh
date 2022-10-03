@@ -1,20 +1,27 @@
-set(ENGINE_JSON_SOURCE_DIR ${ENGINE_SOURCE_DIR}/json/src)
-set(ENGINE_JSON_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/json/include)
-
-####################################################################################################
+# ###################################################################################################
 # Dependencies
-####################################################################################################
-
-####################################################################################################
-# Sources - Includes
-####################################################################################################
-add_library(json STATIC
-    ${ENGINE_JSON_SOURCE_DIR}/json.cpp
+# ###################################################################################################
+CPMAddPackage(
+    NAME rapidjson
+    GITHUB_REPOSITORY Tencent/rapidjson
+    GIT_TAG 8261c1ddf43f10de00fd8c9a67811d1486b2c784 # Latest master commit from 21/03/2022
+    OPTIONS
+    "RAPIDJSON_BUILD_DOC OFF"
+    "RAPIDJSON_BUILD_EXAMPLES OFF"
+    "RAPIDJSON_BUILD_TESTS OFF"
+    DOWNLOAD_ONLY YES
 )
 
-target_link_libraries(json PRIVATE base )
+# ###################################################################################################
+# Sources - Includes
+# ###################################################################################################
+add_library(json STATIC
+    ${CMAKE_CURRENT_LIST_DIR}/src/json.cpp
+)
 
-# FIXME: Rapidjson dependency should be here and exposed through the json target
+target_link_libraries(json fmt)
+
 target_include_directories(json PUBLIC
-    ${ENGINE_JSON_INCLUDE_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${rapidjson_SOURCE_DIR}/include
 )
