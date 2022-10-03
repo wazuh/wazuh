@@ -37,7 +37,7 @@ SKIP_RULE_IDS = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", 
                             "80710", "87929", "87928", "5710"]
 
 # Set paths
-log_file = f'{pwd}/logs/integrations.log'
+LOG_FILE = f'{pwd}/logs/integrations.log'
 
 
 def main(args):
@@ -87,7 +87,7 @@ def debug(msg):
     if debug_enabled:
         msg = "{0}: {1}\n".format(now, msg)
         print(msg)
-        f = open(log_file, "a")
+        f = open(LOG_FILE, "a")
         f.write(msg)
         f.close()
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
             bad_arguments = True
 
         # Logging the call
-        f = open(log_file, 'a')
+        f = open(LOG_FILE, 'a')
         f.write(msg + '\n')
         f.close()
 
