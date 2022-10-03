@@ -108,7 +108,6 @@ int main (int argc, char **argv) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
                 write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
 
                 int retVal  = write_cmd_to_file(RCCONF, "pf_enable=\"YES\"\npf_rules=\"/etc/pf.conf\"\npflog_enable=\"YES\"\npflog_logfile=\"/var/log/pflog\"");
                 if (0 == retVal) {
