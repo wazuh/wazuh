@@ -1194,6 +1194,8 @@ TEST(JsonSettersTest, SetString)
     ASSERT_EQ("newValue", jEmpty.getString().value());
     ASSERT_NO_THROW(jObjEmpty.setString("newValue", "/nested"));
     ASSERT_EQ("newValue", jObjEmpty.getString("/nested").value());
+    ASSERT_NO_THROW(jObjString.setString("newValue", ""));
+    ASSERT_EQ("newValue", jObjString.getString().value());
 
     // Invalid pointer
     ASSERT_THROW(jObjString.setString("newValue", "object/key"), std::runtime_error);
