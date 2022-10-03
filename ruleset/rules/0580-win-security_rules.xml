@@ -2782,51 +2782,59 @@
   <rule id="950294" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5064$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic context operation was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950295" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5065$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic context modification was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950296" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5066$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic function operation was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950297" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5067$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic function modification was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950298" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5068$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic function provider operation was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950299" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5069$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic function property operation was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950300" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5070$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic function property modification was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950301" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5125$</field>
-    <group>object-access,certification-services,</group>
     <description>A request was submitted to the OCSP Responder Service</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950302" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5126$</field>
