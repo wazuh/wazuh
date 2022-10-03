@@ -33,6 +33,8 @@ debug_enabled = False
 pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert = {}
 now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
+SKIP_RULE_IDS = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932",
+                            "80710", "87929", "87928", "5710"]
 
 # Set paths
 log_file = f'{pwd}/logs/integrations.log'
@@ -92,18 +94,9 @@ def debug(msg):
 
 # Skips container kills to stop self-recursion
 def filter_msg(alert) -> bool:
-    # These are things that recursively happen because Shuffle starts Docker containers
-    skip_rule_ids = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932", "80710", "87929",
-            "87928", "5710"]
-    return not alert["rule"]["id"] in skip_rule_ids
+    # SKIP_RULE_IDS need to be filtered because Shuffle starts Docker containers, therefore those alerts are triggered
 
-    # try:
-    #    if "docker" in alert["rule"]["description"].lower() and "
-    # msg['text'] = alert.get('full_log')
-    # except:
-    #    pass
-    # msg['title'] = alert['rule']['description'] if 'description' in alert['rule'] else "N/A"
-
+    return not alert["rule"]["id"] in SKIP_RULE_IDS
 
 
 def generate_msg(alert) -> str:
@@ -150,8 +143,8 @@ if __name__ == "__main__":
                 sys.argv[3],
                 sys.argv[4] if len(sys.argv) > 4 else '',
             )
-            # debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
-            debug_enabled = True
+
+            debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
         else:
             msg = '{0} Wrong arguments'.format(now)
             bad_arguments = True
