@@ -5,9 +5,9 @@
 #include <optional>
 #include <variant>
 
+#include <error.hpp>
+#include <name.hpp>
 #include <json/json.hpp>
-
-#include "shared.hpp"
 
 /**
  * @brief Store functionallity.
@@ -30,10 +30,10 @@ public:
     /**
      * @brief Get a json from the store.
      *
-     * @param name Name of the json to get.
-     * @return std::variant<json::Json, Error> The json or an error.
+     * @param name base::Name of the json to get.
+     * @return std::variant<json::Json, base::Error> The json or an error.
      */
-    virtual std::variant<json::Json, Error> get(const Name& name) const = 0;
+    virtual std::variant<json::Json, base::Error> get(const base::Name& name) const = 0;
 };
 
 /**
@@ -50,19 +50,20 @@ public:
     /**
      * @brief Add a json to the store.
      *
-     * @param name Name of the json to add.
+     * @param name base::Name of the json to add.
      * @param content Json to add.
-     * @return std::optional<Error> An error if the operation failed.
+     * @return std::optional<base::Error> An error if the operation failed.
      */
-    virtual std::optional<Error> add(const Name& name, const json::Json& content) = 0;
+    virtual std::optional<base::Error> add(const base::Name& name,
+                                           const json::Json& content) = 0;
 
     /**
      * @brief Delete a json from the store.
      *
-     * @param name Name of the json to delete.
-     * @return std::optional<Error> An error if the operation failed.
+     * @param name base::Name of the json to delete.
+     * @return std::optional<base::Error> An error if the operation failed.
      */
-    virtual std::optional<Error> del(const Name& name) = 0;
+    virtual std::optional<base::Error> del(const base::Name& name) = 0;
 };
 
 } // namespace store
