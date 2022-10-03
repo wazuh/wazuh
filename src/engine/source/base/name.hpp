@@ -1,30 +1,14 @@
-#ifndef _CATALOG_SHARED_H
-#define _CATALOG_SHARED_H
+#ifndef _BASE_NAME_HPP
+#define _BASE_NAME_HPP
 
 #include <string>
-#include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 
 #include <fmt/format.h>
 
 #include "utils/stringUtils.hpp"
 
-namespace store
+namespace base
 {
-
-/**
- * @brief The Error struct
- *
- * The Error struct is used to represent an error in the catalog.
- * !note This struct is needed to desambiguate between a content string and an Error
- * string on variants.
- *
- */
-struct Error
-{
-    std::string message;
-};
 
 /**
  * @brief Name of a store resource.
@@ -176,6 +160,6 @@ public:
     }
 };
 
-} // namespace store
+} // namespace base
 
-#endif // _CATALOG_SHARED_H
+#endif // _BASE_NAME_HPP
