@@ -30,6 +30,14 @@ int total_files;
  */
 STATIC int w_logcollector_get_macos_log_type(const char * content);
 
+/**
+ * @brief Check the regex type configured in localfile, the allowed types are osmatch, osregex and pcre2
+ * @param node Current configuration node being edited
+ * @param element Configuration element tag name
+ * @return Returns the variable associated with the specified regex type
+ */
+w_exp_type_t w_check_regex_type(xml_node * node, const char * element);
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
