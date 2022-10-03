@@ -7,7 +7,13 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-import contextlib
+# Error Codes:
+#   1 - Module requests not found
+#   2 - Incorrect input arguments
+#   3 - Alert File does not exist
+#   4 - Error getting json_alert
+
+
 import json
 import sys
 import time
@@ -34,14 +40,13 @@ pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert = {}
 now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 SKIP_RULE_IDS = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932",
-                            "80710", "87929", "87928", "5710"]
+                 "80710", "87929", "87928", "5710"]
 
 # Set paths
 LOG_FILE = f'{pwd}/logs/integrations.log'
 
 
 def main(args):
-
     debug("# Starting")
 
     # Read args
@@ -60,13 +65,14 @@ def main(args):
             json_alert = json.load(alert_file)
     except:
         debug("# Alert file %s doesn't exist" % alert_file_location)
+        sys.exit(3)
 
     debug("# Processing alert")
     try:
         debug(json_alert)
     except Exception as e:
         debug("Failed getting json_alert %s" % e)
-        sys.exit(1)
+        sys.exit(4)
 
     debug("# Generating message")
     msg: str = generate_msg(json_alert)
@@ -87,9 +93,8 @@ def debug(msg):
     if debug_enabled:
         msg = "{0}: {1}\n".format(now, msg)
         print(msg)
-        f = open(LOG_FILE, "a")
-        f.write(msg)
-        f.close()
+        with open(LOG_FILE, "a") as f:
+            f.write(msg)
 
 
 # Skips container kills to stop self-recursion
@@ -150,13 +155,12 @@ if __name__ == "__main__":
             bad_arguments = True
 
         # Logging the call
-        f = open(LOG_FILE, 'a')
-        f.write(msg + '\n')
-        f.close()
+        with open(LOG_FILE, "a") as f:
+            f.write(msg + '\n')
 
         if bad_arguments:
             debug("# Exiting: Bad arguments. Inputted: %s" % sys.argv)
-            sys.exit(1)
+            sys.exit(2)
 
         # Main function
         main(sys.argv)
