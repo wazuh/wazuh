@@ -35,7 +35,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def __init__(self, agent_id: str, offset: int, limit: Union[int, None], sort: Union[dict, None],
                  search: Union[dict, None], query: Union[str, None], count: bool, get_data: bool, select: list = None,
                  default_sort_field: str = 'policy_id', default_sort_order: str = 'DESC', filters: dict = None,
-                 fields: dict = None, default_query: str = DEFAULT_QUERY, count_field: str = 'policy_id'):
+                 fields: dict = None, default_query: str = DEFAULT_QUERY, min_select_fields: set = None):
         """Class constructor.
 
         Parameters
@@ -68,12 +68,11 @@ class WazuhDBQuerySCA(WazuhDBQuery):
             SCA fields.
         default_query : str
             Default query. Default: DEFAULT_QUERY
-        count_field : str
-            Field to apply count. Default: 'policy_id'
+        min_select_fields : set
+            Fields that will always be selected.
         """
         self.agent_id = agent_id
         self.default_query = default_query
-        self.count_field = count_field
         Agent(agent_id).get_basic_information()  # check if the agent exists
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
@@ -81,13 +80,10 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                               fields=fields or self.DB_FIELDS, default_sort_field=default_sort_field,
                               default_sort_order=default_sort_order, filters=filters or {}, query=query, count=count,
                               get_data=get_data, date_fields={'end_scan', 'start_scan'},
-                              backend=WazuhDBBackend(agent_id))
+                              min_select_fields=min_select_fields or {'policy_id'}, backend=WazuhDBBackend(agent_id))
 
     def _default_query(self):
         return self.default_query
-
-    def _default_count_query(self):
-        return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
 
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
@@ -96,8 +92,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
             else:
                 return value
 
-        self._data = [{key: format_fields(key, value)
-                       for key, value in item.items() if key in self.select} for item in self._data]
+        self._data = [{key: format_fields(key, value) for key, value in item.items()} for item in self._data]
 
         return super()._format_data_into_dictionary()
 
@@ -124,8 +119,8 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={},
                                  search=None, count=False, get_data=True,
                                  select=list(SCA_CHECK_DB_FIELDS.keys()), default_query=default_query,
-                                 fields=SCA_CHECK_DB_FIELDS, count_field='id', default_sort_field='id',
-                                 default_sort_order='ASC', query='')
+                                 fields=SCA_CHECK_DB_FIELDS, default_sort_field='id', default_sort_order='ASC',
+                                 query='')
 
 
 class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
@@ -161,12 +156,8 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=None, filters=filters,
                                  query=policy_query_filter if not query else f"{policy_query_filter};{query}",
-                                 search=search, count=True, get_data=True, select=[],
-                                 default_query=self.DEFAULT_QUERY, fields=fields, count_field='id',
-                                 default_sort_field='id', default_sort_order='ASC')
-
-    def _default_count_query(self):
-        return "SELECT COUNT(*) FROM ({0})"
+                                 search=search, count=True, get_data=True, select=[], default_query=self.DEFAULT_QUERY,
+                                 fields=fields, default_sort_field='id', default_sort_order='ASC')
 
 
 class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
