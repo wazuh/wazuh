@@ -44,6 +44,7 @@ add_library(builders OBJECT
   builders/opBuilderWdb.cpp
   builders/opBuilderARWrite.cpp
   builders/opBuilderSCAdecoder.cpp
+  builders/opBuilderHelperActiveResponse.cpp
   definitions.cpp
   asset.cpp
   environment.cpp

@@ -211,3 +211,9 @@ add_executable(opBuilderHelperNetInfoAddress_test
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
 gtest_discover_tests(opBuilderHelperNetInfoAddress_test)
+
+add_executable(opBuilderHelperActiveResponse_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperActiveResponse_test.cpp
+  ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
+)
+gtest_discover_tests(opBuilderHelperActiveResponse_test)

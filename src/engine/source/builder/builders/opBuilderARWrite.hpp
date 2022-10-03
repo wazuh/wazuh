@@ -15,6 +15,7 @@
 
 namespace builder::internals::builders
 {
+// TODO: move all the sockets to a shared utils directory
 constexpr const char* AR_QUEUE_PATH {"/var/ossec/queue/alerts/ar"};
 
 /**
