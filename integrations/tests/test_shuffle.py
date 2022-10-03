@@ -69,6 +69,32 @@ def test_main(args, alert):
             patch('requests.post', return_value=requests.Response):
         shuffle.main(args)
 
+@pytest.mark.parametrize('debug_enabled,args', [(True, sys_args_template)])
+def test_main_json_exit(tmpdir, debug_enabled, args):
+    """
+    Test the correct execution of the main function
+
+    Parameters
+    ----------
+    tmpdir: py.path.local
+        Path to a temporary directory generated for the tests logs
+
+    debug_enabled: bool
+        determines if debug mode is enabled or not
+
+    args: list[str]
+       list of the arguments passed to the main function
+
+
+    """
+    log_file = tmpdir.join('test.log')
+    with patch('shuffle.debug_enabled', return_value=debug_enabled), \
+            patch('shuffle.LOG_FILE', str(log_file)), \
+            patch("builtins.open", mock_open()), \
+            pytest.raises(SystemExit) as pytest_wrapped_e:
+        shuffle.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 4
 
 @pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
 def test_main_not_sending_message(args, alert):
@@ -99,7 +125,7 @@ def test_debug(tmpdir, debug_enabled, msg, expected_result):
     Parameters
     ----------
     tmpdir: py.path.local
-        Path to a temporary directory generated for the test
+        Path to a temporary directory generated for the tests logs
 
     debug_enabled: bool
         determines if debug mode is enabled or not
