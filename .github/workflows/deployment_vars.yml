@@ -11,9 +11,6 @@ jobs:
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v2
-          
-          - name: print sha
-            run: echo $GITHUB_SHA
 
           - name: Wait for build to succeed
             uses: fountainhead/action-wait-for-check@v1.0.0
@@ -29,12 +26,12 @@ jobs:
             if: steps.wait-for-build.outputs.conclusion == 'timed_out'
             run: exit 1
 
-          - name: Execute test
+          - name: Run test
             if: steps.wait-for-build-deb.outputs.conclusion == 'success'
             run: sudo bash .github/actions/test_deploy_ubuntu.sh ${{ github.event.pull_request.head.sha || github.sha }}
 
     test_macos:
-        name: Test Deployment variables on MacOS
+        name: Test Deployment variables on macOS
         runs-on: macOS-latest
         steps:
           - uses: actions/checkout@v2
@@ -53,7 +50,7 @@ jobs:
             if: steps.wait-for-build.outputs.conclusion == 'timed_out'
             run: exit 1
 
-          - name: Execute test
+          - name: Run test
             if: steps.wait-for-build-macos.outputs.conclusion == 'success'
             run: sudo bash .github/actions/test_deploy_macos.sh ${{ github.event.pull_request.head.sha || github.sha }}
 
@@ -77,6 +74,6 @@ jobs:
             if: steps.wait-for-build.outputs.conclusion == 'timed_out'
             run: exit 1
 
-          - name: Execute test
+          - name: Run test
             if: steps.wait-for-build-win.outputs.conclusion == 'success'
             run: .github/actions/test_deploy_win.ps1 ${{ github.event.pull_request.head.sha || github.sha }}

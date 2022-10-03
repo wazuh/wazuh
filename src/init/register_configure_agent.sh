@@ -92,7 +92,7 @@ add_adress_block() {
     fi
 
     # Write the client configuration block
-    for i in ${!ADDRESSES[@]};
+    for i in "${!ADDRESSES[@]}";
     do
         echo "    <server>" >> ${TMP_SERVER}
         echo "      <address>${ADDRESSES[i]}</address>" >> ${TMP_SERVER}
@@ -268,7 +268,7 @@ main () {
 
     get_deprecated_vars
 
-    if [ -z "${WAZUH_MANAGER}" ] && [ -n WAZUH_PROTOCOL ]; then
+    if [ -z "${WAZUH_MANAGER}" ] && [ -n "${WAZUH_PROTOCOL}" ]; then
         edit_value_tag "protocol" ${WAZUH_PROTOCOL}
     fi
 

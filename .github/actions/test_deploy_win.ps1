@@ -4,21 +4,22 @@ $MAJOR=$VERSION.Major
 $MINOR=$VERSION.Minor
 $SHA= git rev-parse --short $args[0]
 
-
-$WAZUH_MANAGER="1.1.1.1"
-$WAZUH_MANAGER_PORT="7777"
-$WAZUH_PROTOCOL="udp"
-$WAZUH_REGISTRATION_SERVER="2.2.2.2"
-$WAZUH_REGISTRATION_PORT="8888"
-$WAZUH_REGISTRATION_PASSWORD="password"
-$WAZUH_KEEP_ALIVE_INTERVAL="10"
-$WAZUH_TIME_RECONNECT="10"
-$WAZUH_REGISTRATION_CA="/var/ossec/etc/testsslmanager.cert"
-$WAZUH_REGISTRATION_CERTIFICATE="/var/ossec/etc/testsslmanager.cert"
-$WAZUH_REGISTRATION_KEY="/var/ossec/etc/testsslmanager.key"
-$WAZUH_AGENT_NAME="test-agent"
-$WAZUH_AGENT_GROUP="test-group"
-$ENROLLMENT_DELAY="10"
+$TEST_ARRAY=@( 
+              @("WAZUH_MANAGER ", "1.1.1.1", "<address>", "</address>"), 
+              @("WAZUH_MANAGER_PORT ", "7777", "<port>", "</port>"),
+              @("WAZUH_PROTOCOL ", "udp", "<protocol>", "</protocol>"),
+              @("WAZUH_REGISTRATION_SERVER ", "2.2.2.2", "<manager_address>", "</manager_address>"),
+              @("WAZUH_REGISTRATION_PORT ", "8888", "<port>", "</port>"),
+              @("WAZUH_REGISTRATION_PASSWORD ", "password", "<password>", "</password>"),
+              @("WAZUH_KEEP_ALIVE_INTERVAL ", "10", "<notify_time>", "</notify_time>"),
+              @("WAZUH_TIME_RECONNECT ", "10", "<time-reconnect>", "</time-reconnect>"),
+              @("WAZUH_REGISTRATION_CA ", "/var/ossec/etc/testsslmanager.cert", "<server_ca_path>", "</server_ca_path>"),
+              @("WAZUH_REGISTRATION_CERTIFICATE ", "/var/ossec/etc/testsslmanager.cert", "<agent_certificate_path>", "</agent_certificate_path>"),
+              @("WAZUH_REGISTRATION_KEY ", "/var/ossec/etc/testsslmanager.key", "<agent_key_path>", "</agent_key_path>"),
+              @("WAZUH_AGENT_NAME ", "test-agent", "<agent_name>", "</agent_name>"),
+              @("WAZUH_AGENT_GROUP ", "test-group", "<groups>", "</groups>"),
+              @("ENROLLMENT_DELAY ", "10", "<delay_after_enrollment>", "</delay_after_enrollment>")
+)
 
 function install_wazuh($vars)
 {
@@ -33,157 +34,52 @@ function remove_wazuh
 
 function test($vars)
 {
-  if($vars.Contains("WAZUH_MANAGER ")) {
-    $ADDRESSES = $WAZUH_MANAGER.split(",")
-    For ($i=0; $i -lt $ADDRESSES.Length; $i++) {
-      $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<address>$($ADDRESSES[$i])</address>"
-      if($SEL -ne $null) {
-        Write-Output "WAZUH_MANAGER is correct"
+
+  For ($i=0; $i -lt $TEST_ARRAY.Length; $i++) {
+    Write-Output $i
+    Write-Output $TEST_ARRAY[$i][0]
+    Write-Output $TEST_ARRAY.Length
+    if($vars.Contains($TEST_ARRAY[$i][0])) {
+      if ( ($TEST_ARRAY[$i][0] -eq "WAZUH_MANAGER ") -OR ($TEST_ARRAY[$i][0] -eq "WAZUH_PROTOCOL ") ) {
+        $LIST = $TEST_ARRAY[$i][1].split(",")
+        For ($j=0; $j -lt $LIST.Length; $j++) {
+          $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "$($TEST_ARRAY[$i][2])$($LIST[$j])$($TEST_ARRAY[$i][3])"
+          if($SEL -ne $null) {
+            Write-Output "The variable $($TEST_ARRAY[$i][0]) is set correctly"
+          }
+          if($SEL -eq $null) {
+            Write-Output "The variable $($TEST_ARRAY[$i][0]) is not set correctly"
+            exit 1
+          }
+        }
       }
-      if($SEL -eq $null) {
-        Write-Output "WAZUH_MANAGER is not correct"
-        exit 1
+      ElseIf ( ($TEST_ARRAY[$i][0] -eq "WAZUH_REGISTRATION_PASSWORD ") ) {
+        if (Test-Path 'C:\Program Files (x86)\ossec-agent\authd.pass'){
+          $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\authd.pass' -Pattern "$($TEST_ARRAY[$i][1])"
+          if($SEL -ne $null) {
+            Write-Output "The variable $($TEST_ARRAY[$i][0]) is set correctly"
+          }
+          if($SEL -eq $null) {
+            Write-Output "The variable $($TEST_ARRAY[$i][0]) is not set correctly"
+            exit 1
+          }
+        }
+        else
+        {
+          Write-Output "WAZUH_REGISTRATION_PASSWORD is not correct"
+          exit 1
+        }
       }
-    }
-  }
-  if($vars.Contains("WAZUH_MANAGER_PORT ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<port>$WAZUH_MANAGER_PORT</port>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_MANAGER_PORT is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_MANAGER_PORT is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_PROTOCOL ")) {
-    $PROTOCOLS = $WAZUH_PROTOCOL.split(",")
-    For ($i=0; $i -lt $PROTOCOLS.Length; $i++) {
-      $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<protocol>$($PROTOCOLS[$i])</protocol>"
-      if($SEL -ne $null) {
-        Write-Output "WAZUH_PROTOCOL is correct"
+      Else {
+        $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "$($TEST_ARRAY[$i][2])$($TEST_ARRAY[$i][1])$($TEST_ARRAY[$i][3])"
+        if($SEL -ne $null) {
+          Write-Output "The variable $($TEST_ARRAY[$i][0]) is set correctly"
+        }
+        if($SEL -eq $null) {
+          Write-Output "The variable $($TEST_ARRAY[$i][0]) is not set correctly"
+          exit 1
+        }
       }
-      if($SEL -eq $null) {
-        Write-Output "WAZUH_PROTOCOL is not correct"
-        exit 1
-      }
-    }
-  }
-  if($vars.Contains("WAZUH_REGISTRATION_SERVER ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<manager_address>$WAZUH_REGISTRATION_SERVER</manager_address>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_REGISTRATION_SERVER is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_REGISTRATION_SERVER is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_REGISTRATION_PORT ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<port>$WAZUH_REGISTRATION_PORT</port>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_REGISTRATION_PORT is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_REGISTRATION_PORT is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_REGISTRATION_PASSWORD ")) {
-    if (Test-Path 'C:\Program Files (x86)\ossec-agent\authd.pass'){
-      $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\authd.pass' -Pattern "$WAZUH_REGISTRATION_PASSWORD"
-	    if($SEL -ne $null) {
-        Write-Output "WAZUH_REGISTRATION_PASSWORD is correct"
-      }
-      if($SEL -eq $null) {
-        Write-Output "WAZUH_REGISTRATION_PASSWORD is not correct"
-        exit 1
-      }
-    }
-    else
-    {
-      Write-Output "WAZUH_REGISTRATION_PASSWORD is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_KEEP_ALIVE_INTERVAL ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<notify_time>$WAZUH_KEEP_ALIVE_INTERVAL</notify_time>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_KEEP_ALIVE_INTERVAL is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_KEEP_ALIVE_INTERVAL is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_TIME_RECONNECT ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<time-reconnect>$WAZUH_TIME_RECONNECT</time-reconnect>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_TIME_RECONNECT is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_TIME_RECONNECT is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_REGISTRATION_CA ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<server_ca_path>$WAZUH_REGISTRATION_CA</server_ca_path>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_REGISTRATION_CA is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_REGISTRATION_CA is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_REGISTRATION_CERTIFICATE ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<agent_certificate_path>$WAZUH_REGISTRATION_CERTIFICATE</agent_certificate_path>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_REGISTRATION_CERTIFICATE is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_REGISTRATION_CERTIFICATE is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_REGISTRATION_KEY ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<agent_key_path>$WAZUH_REGISTRATION_KEY</agent_key_path>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_REGISTRATION_KEY is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_REGISTRATION_KEY is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_AGENT_NAME ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<agent_name>$WAZUH_AGENT_NAME</agent_name>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_AGENT_NAME is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_AGENT_NAME is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("WAZUH_AGENT_GROUP ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<groups>$WAZUH_AGENT_GROUP</groups>"
-    if($SEL -ne $null) {
-      Write-Output "WAZUH_AGENT_GROUP is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "WAZUH_AGENT_GROUP is not correct"
-      exit 1
-    }
-  }
-  if($vars.Contains("ENROLLMENT_DELAY ")) {
-    $SEL = Select-String -Path 'C:\Program Files (x86)\ossec-agent\ossec.conf' -Pattern "<delay_after_enrollment>$ENROLLMENT_DELAY</delay_after_enrollment>"
-    if($SEL -ne $null) {
-      Write-Output "ENROLLMENT_DELAY is correct"
-    }
-    if($SEL -eq $null) {
-      Write-Output "ENROLLMENT_DELAY is not correct"
-      exit 1
     }
   }
 }

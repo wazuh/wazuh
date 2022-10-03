@@ -14,24 +14,14 @@ MAJOR=$(echo ${VERSION} | cut -dv -f2 | cut -d. -f1)
 MINOR=$(echo ${VERSION} | cut -d. -f2)
 SHA="$(git rev-parse --short $1)"
 
+conf_path="/var/ossec/etc/ossec.conf"
 
-WAZUH_MANAGER="1.1.1.1"
-WAZUH_MANAGER_PORT="7777"
-WAZUH_PROTOCOL="udp"
-WAZUH_REGISTRATION_SERVER="2.2.2.2"
-WAZUH_REGISTRATION_PORT="8888"
-WAZUH_REGISTRATION_PASSWORD="password"
-WAZUH_KEEP_ALIVE_INTERVAL="10"
-WAZUH_TIME_RECONNECT="10"
-WAZUH_REGISTRATION_CA="/var/ossec/etc/testsslmanager.cert"
-WAZUH_REGISTRATION_CERTIFICATE="/var/ossec/etc/testsslmanager.cert"
-WAZUH_REGISTRATION_KEY="/var/ossec/etc/testsslmanager.key"
-WAZUH_AGENT_NAME="test-agent"
-WAZUH_AGENT_GROUP="test-group"
-ENROLLMENT_DELAY="10"
+VARS=( "WAZUH_MANAGER" "WAZUH_MANAGER_PORT" "WAZUH_PROTOCOL" "WAZUH_REGISTRATION_SERVER" "WAZUH_REGISTRATION_PORT" "WAZUH_REGISTRATION_PASSWORD" "WAZUH_KEEP_ALIVE_INTERVAL" "WAZUH_TIME_RECONNECT" "WAZUH_REGISTRATION_CA" "WAZUH_REGISTRATION_CERTIFICATE" "WAZUH_REGISTRATION_KEY" "WAZUH_AGENT_NAME" "WAZUH_AGENT_GROUP" "ENROLLMENT_DELAY" )
+VALUES=( "1.1.1.1" "7777" "udp" "2.2.2.2" "8888" "password" "10" "10" "/var/ossec/etc/testsslmanager.cert" "/var/ossec/etc/testsslmanager.cert" "/var/ossec/etc/testsslmanager.key" "test-agent" "test-group" "10" )
+TAGS1=( "<address>" "<port>" "<protocol>" "<manager_address>" "<port>" "<password>" "<notify_time>" "<time-reconnect>" "<server_ca_path>" "<agent_certificate_path>" "<agent_key_path>" "<agent_name>" "<groups>" "<delay_after_enrollment>" )
+TAGS2=( "</address>" "</port>" "</protocol>" "</manager_address>" "</port>" "</password>" "</notify_time>" "</time-reconnect>" "</server_ca_path>" "</agent_certificate_path>" "</agent_key_path>" "</agent_name>" "</groups>" "</delay_after_enrollment>" )
+WAZUH_REGISTRATION_PASSWORD_PATH="/var/ossec/etc/authd.pass"
 
-WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
-    
 function install_wazuh(){
   echo "Testing the following variables $@"
   eval "${@} apt install -y ./wazuh-agent_${VERSION}-0.commit${SHA}_amd64.deb > /dev/null 2>&1"
@@ -43,137 +33,35 @@ function remove_wazuh () {
 
 function test() {
 
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_MANAGER" )" ]; then
-    ADDRESSES=( $(echo ${WAZUH_MANAGER} | sed "s#,# #g") )
-    for i in ${!ADDRESSES[@]}; do
-      if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<address>${ADDRESSES[i]}</address>")" ]; then
-        echo "WAZUH_MANAGER is correct"
+  for i in "${!VARS[@]}"; do
+    if [ -n "$(echo "${@}" | grep -w "${VARS[i]}")" ]; then
+      if [ "${VARS[i]}" == "WAZUH_MANAGER" ] || [ "${VARS[i]}" == "WAZUH_PROTOCOL" ]; then
+        LIST=( $(echo "${VALUES[i]}" | sed "s#,# #g") )
+        for j in "${!LIST[@]}"; do
+          if [ -n "$(cat "${conf_path}" | grep "${TAGS1[i]}${LIST[j]}${TAGS2[i]}")" ]; then
+            echo "The variable ${VARS[i]} is set correctly"
+          else
+            echo "The variable ${VARS[i]} is not set correctly"
+            exit 1
+          fi
+        done
+      elif [ "${VARS[i]}" == "WAZUH_REGISTRATION_PASSWORD" ]; then
+        if [ -n "$(cat "${WAZUH_REGISTRATION_PASSWORD_PATH}" | grep "${VALUES[i]}")" ]; then
+          echo "The variable ${VARS[i]} is set correctly"
+        else
+          echo "The variable ${VARS[i]} is not set correctly"
+          exit 1
+        fi
       else
-        echo "WAZUH_MANAGER is not correct"
-        exit 1
+        if [ -n "$(cat ${conf_path} | grep ${TAGS1[i]}${VALUES[i]}${TAGS2[i]})" ]; then
+          echo "The variable ${VARS[i]} is set correctly"
+        else
+          echo "The variable ${VARS[i]} is not set correctly"
+          exit 1
+        fi
       fi
-    done
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_MANAGER_PORT")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<port>${WAZUH_MANAGER_PORT}</port>")" ]; then
-      echo "WAZUH_MANAGER_PORT is correct"
-    else
-      echo "WAZUH_MANAGER_PORT is not correct"
-      exit 1
     fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_PROTOCOL")" ]; then
-    PROTOCOLS=( $(echo ${WAZUH_PROTOCOL} | sed "s#,# #g") )
-    for i in ${!PROTOCOLS[@]}; do
-      if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<protocol>${PROTOCOLS[i]}</protocol>")" ]; then
-        echo "WAZUH_PROTOCOL is correct"
-      else
-        echo "WAZUH_PROTOCOL is not correct"
-        exit 1
-      fi
-    done
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_REGISTRATION_SERVER")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<manager_address>${WAZUH_REGISTRATION_SERVER}</manager_address>")" ]; then
-      echo "WAZUH_REGISTRATION_SERVER is correct"
-    else
-      echo "WAZUH_REGISTRATION_SERVER is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_REGISTRATION_PORT")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<port>${WAZUH_REGISTRATION_PORT}</port>")" ]; then
-      echo "WAZUH_REGISTRATION_PORT is correct"
-    else
-      echo "WAZUH_REGISTRATION_PORT is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_REGISTRATION_PASSWORD")" ]; then
-    if [ -n "cat /var/ossec/${WAZUH_REGISTRATION_PASSWORD_PATH} | grep ${WAZUH_REGISTRATION_PASSWORD})" ]; then
-      echo "WAZUH_REGISTRATION_PASSWORD is correct"
-    else
-      echo "WAZUH_REGISTRATION_PASSWORD is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_KEEP_ALIVE_INTERVAL")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<notify_time>${WAZUH_KEEP_ALIVE_INTERVAL}</notify_time>")" ]; then
-      echo "WAZUH_KEEP_ALIVE_INTERVAL is correct"
-    else
-      echo "WAZUH_KEEP_ALIVE_INTERVAL is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_TIME_RECONNECT")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<time-reconnect>${WAZUH_TIME_RECONNECT}</time-reconnect>")" ]; then
-      echo "WAZUH_TIME_RECONNECT is correct"
-    else
-      echo "WAZUH_TIME_RECONNECT is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_REGISTRATION_CA")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<server_ca_path>${WAZUH_REGISTRATION_CA}</server_ca_path>")" ]; then
-      echo "WAZUH_REGISTRATION_CA is correct"
-    else
-      echo "WAZUH_REGISTRATION_CA is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_REGISTRATION_CERTIFICATE")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<agent_certificate_path>${WAZUH_REGISTRATION_CERTIFICATE}</agent_certificate_path>")" ]; then
-      echo "WAZUH_REGISTRATION_CERTIFICATE is correct"
-    else
-      echo "WAZUH_REGISTRATION_CERTIFICATE is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_REGISTRATION_KEY")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<agent_key_path>${WAZUH_REGISTRATION_KEY}</agent_key_path>")" ]; then
-      echo "WAZUH_REGISTRATION_KEY is correct"
-    else
-      echo "WAZUH_REGISTRATION_KEY is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_AGENT_NAME")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<agent_name>${WAZUH_AGENT_NAME}</agent_name>")" ]; then
-      echo "WAZUH_AGENT_NAME is correct"
-    else
-      echo "WAZUH_AGENT_NAME is not correct"
-      exit 1
-    fi
-  fi
-
-  if [ -n "$(echo "${@}"| grep -w "WAZUH_AGENT_GROUP")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<groups>${WAZUH_AGENT_GROUP}</groups>")" ]; then
-      echo "WAZUH_AGENT_GROUP is correct"
-    else
-      echo "WAZUH_AGENT_GROUP is not correct"
-      exit 1
-    fi
-  fi
-  
-  if [ -n "$(echo "${@}"| grep -w "ENROLLMENT_DELAY")" ]; then
-    if [ -n "$(cat /var/ossec/etc/ossec.conf | grep "<delay_after_enrollment>${ENROLLMENT_DELAY}</delay_after_enrollment>")" ]; then
-      echo "ENROLLMENT_DELAY is correct"
-    else
-      echo "ENROLLMENT_DELAY is not correct"
-      exit 1
-    fi
-  fi
+  done
 
 }
 
