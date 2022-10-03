@@ -35,37 +35,8 @@ public:
         : m_data(data)
         , m_error(error)
     {
-        m_message = message.empty() ? std::nullopt : std::make_optional(message);
+        m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
-
-    // Rule of five
-    WazuhResponse(const WazuhResponse& other)
-        : m_data(other.m_data)
-        , m_error(other.m_error)
-        , m_message(other.m_message)
-    {
-    }
-    WazuhResponse(WazuhResponse&& other)
-        : m_data(std::move(other.m_data))
-        , m_error(std::move(other.m_error))
-        , m_message(std::move(other.m_message))
-    {
-    }
-    WazuhResponse& operator=(const WazuhResponse& other)
-    {
-        m_data = other.m_data;
-        m_error = other.m_error;
-        m_message = other.m_message;
-        return *this;
-    }
-    WazuhResponse& operator=(WazuhResponse&& other)
-    {
-        m_data = std::move(other.m_data);
-        m_error = std::move(other.m_error);
-        m_message = std::move(other.m_message);
-        return *this;
-    }
-    ~WazuhResponse() = default;
 
     // Getters
     const json::Json& data() const { return m_data; }
