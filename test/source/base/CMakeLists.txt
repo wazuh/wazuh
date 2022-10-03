@@ -50,3 +50,9 @@ target_include_directories(socketInterface_test
 
 target_link_libraries(socketInterface_test gtest_main base)
 gtest_discover_tests(socketInterface_test)
+
+add_executable(name_test
+  name_test.cpp
+)
+target_link_libraries(name_test gtest_main base)
+gtest_discover_tests(name_test)

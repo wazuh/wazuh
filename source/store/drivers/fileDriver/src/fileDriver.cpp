@@ -32,20 +32,21 @@ FileDriver::FileDriver(const std::filesystem::path& path, bool create)
     m_path = path;
 }
 
-std::filesystem::path FileDriver::nameToPath(const Name& name) const
+std::filesystem::path FileDriver::nameToPath(const base::Name& name) const
 {
-    auto path = m_path / name.m_type / name.m_name / std::string{name.m_version + ".json"};
+    auto path =
+        m_path / name.m_type / name.m_name / std::string {name.m_version + ".json"};
     return path;
 }
 
-std::optional<Error> FileDriver::del(const Name& name)
+std::optional<base::Error> FileDriver::del(const base::Name& name)
 {
-    std::optional<Error> error = std::nullopt;
+    std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
 
     if (!std::filesystem::exists(path))
     {
-        error = Error {
+        error = base::Error {
             fmt::format("[FileDriver::erase] File [{}] does not exist", path.string())};
     }
     else
@@ -54,7 +55,7 @@ std::optional<Error> FileDriver::del(const Name& name)
         std::error_code ec;
         if (!std::filesystem::remove(path, ec))
         {
-            error = Error {fmt::format(
+            error = base::Error {fmt::format(
                 "[FileDriver::erase] Could not remove file [{}] due to [{}:{}]",
                 path.string(),
                 ec.value(),
@@ -64,14 +65,15 @@ std::optional<Error> FileDriver::del(const Name& name)
     return error;
 }
 
-std::optional<Error> FileDriver::add(const Name& name, const json::Json& content)
+std::optional<base::Error> FileDriver::add(const base::Name& name,
+                                           const json::Json& content)
 {
-    std::optional<Error> error = std::nullopt;
+    std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
 
     if (std::filesystem::exists(path))
     {
-        error = Error {
+        error = base::Error {
             fmt::format("[FileDriver::add] File [{}] already exists", path.string())};
     }
     else
@@ -80,7 +82,7 @@ std::optional<Error> FileDriver::add(const Name& name, const json::Json& content
         if (!std::filesystem::create_directories(path.parent_path(), ec)
             && ec.value() != 0)
         {
-            error = Error {fmt::format(
+            error = base::Error {fmt::format(
                 "[FileDriver::add] Could not create directories [{}] due to [{}:{}]",
                 path.parent_path().string(),
                 ec.value(),
@@ -91,7 +93,7 @@ std::optional<Error> FileDriver::add(const Name& name, const json::Json& content
             std::ofstream file(path);
             if (!file.is_open())
             {
-                error = Error {
+                error = base::Error {
                     fmt::format("[FileDriver::add] Could not open file [{}] for writing",
                                 path.string())};
             }
@@ -104,9 +106,9 @@ std::optional<Error> FileDriver::add(const Name& name, const json::Json& content
     return error;
 }
 
-std::variant<json::Json, Error> FileDriver::get(const Name& name) const
+std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) const
 {
-    std::variant<json::Json, Error> result;
+    std::variant<json::Json, base::Error> result;
     auto path = nameToPath(name);
 
     if (std::filesystem::exists(path))
@@ -121,16 +123,16 @@ std::variant<json::Json, Error> FileDriver::get(const Name& name) const
         }
         catch (const std::exception& e)
         {
-            result =
-                Error {fmt::format("[FileDriver] Could not parse file [{}] due to [{}]",
-                                   path.string(),
-                                   e.what())};
+            result = base::Error {
+                fmt::format("[FileDriver] Could not parse file [{}] due to [{}]",
+                            path.string(),
+                            e.what())};
         }
     }
     else
     {
-        result =
-            Error {fmt::format("[FileDriver] File [{}] does not exist", path.string())};
+        result = base::Error {
+            fmt::format("[FileDriver] File [{}] does not exist", path.string())};
     }
 
     return result;
