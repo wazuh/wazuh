@@ -71,6 +71,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         min_select_fields : set
             Fields that will always be selected.
         """
+        min_select_fields = min_select_fields if min_select_fields is not None else {'policy_id'}
         self.agent_id = agent_id
         self.default_query = default_query
         Agent(agent_id).get_basic_information()  # check if the agent exists
@@ -80,7 +81,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                               fields=fields or self.DB_FIELDS, default_sort_field=default_sort_field,
                               default_sort_order=default_sort_order, filters=filters or {}, query=query, count=count,
                               get_data=get_data, date_fields={'end_scan', 'start_scan'},
-                              min_select_fields=min_select_fields or {'policy_id'}, backend=WazuhDBBackend(agent_id))
+                              min_select_fields=min_select_fields, backend=WazuhDBBackend(agent_id))
 
     def _default_query(self):
         return self.default_query
@@ -100,13 +101,15 @@ class WazuhDBQuerySCA(WazuhDBQuery):
 class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
     """Class used to get SCA checks items."""
 
-    def __init__(self, agent_id: str, sort: dict, sca_checks_ids: list):
+    def __init__(self, agent_id: str, select: list, sort: dict, sca_checks_ids: list):
         """Class constructor.
 
         Parameters
         ----------
         agent_id : str
             Agent ID.
+        select : list
+            Select which fields to return.
         sort : dict
             Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         sca_checks_ids : list
@@ -117,8 +120,8 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
             default_query += f" WHERE id IN {str(sca_checks_ids).replace('[', '(').replace(']', ')')}"
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={},
-                                 search=None, count=False, get_data=True,
-                                 select=list(SCA_CHECK_DB_FIELDS.keys()), default_query=default_query,
+                                 search=None, count=False, get_data=True, min_select_fields={'id'},
+                                 select=select or list(SCA_CHECK_DB_FIELDS.keys()), default_query=default_query,
                                  fields=SCA_CHECK_DB_FIELDS, default_sort_field='id', default_sort_order='ASC',
                                  query='')
 
@@ -130,7 +133,7 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
                     "LEFT JOIN sca_check_rules c ON a.id=c.id_check"
 
     def __init__(self, agent_id: str, offset: int, limit: int, filters: dict, search: Union[dict, None], query: str,
-                 policy_id: str):
+                 policy_id: str, sort: dict):
         """Class constructor.
 
         Parameters
@@ -149,12 +152,14 @@ class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
             Query to filter in database. Format: field operator value.
         policy_id : str
             Filter by SCA policy ID.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         """
         policy_query_filter = f"policy_id={policy_id}"
         fields = SCA_CHECK_DB_FIELDS | SCA_CHECK_COMPLIANCE_DB_FIELDS | SCA_CHECK_RULES_DB_FIELDS
         fields.pop('id_check')
 
-        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=None, filters=filters,
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=sort, filters=filters,
                                  query=policy_query_filter if not query else f"{policy_query_filter};{query}",
                                  search=search, count=True, get_data=True, select=[], default_query=self.DEFAULT_QUERY,
                                  fields=fields, default_sort_field='id', default_sort_order='ASC')
@@ -166,7 +171,7 @@ class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
     FIELDS_PER_TABLE = MappingProxyType({'sca_check_rules': SCA_CHECK_RULES_DB_FIELDS,
                                          'sca_check_compliance': SCA_CHECK_COMPLIANCE_DB_FIELDS})
 
-    def __init__(self, agent_id: str, table: str, id_check_list: list):
+    def __init__(self, agent_id: str, table: str, id_check_list: list, select: list):
         """Class constructor.
 
         Parameters
@@ -178,6 +183,8 @@ class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
             'sca_check_compliance'.
         id_check_list : list
             List used to filter rules or compliance by ID.
+        select : list
+            Select which fields to return.
         """
         self.sca_check_table = table
         default_query = "SELECT {0} FROM " + self.sca_check_table
@@ -186,6 +193,6 @@ class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
 
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, default_query=default_query,
                                  fields=self.FIELDS_PER_TABLE[self.sca_check_table], offset=0, limit=None, sort=None,
-                                 select=list(self.FIELDS_PER_TABLE[self.sca_check_table].keys()), count=False,
+                                 select=select or list(self.FIELDS_PER_TABLE[self.sca_check_table].keys()), count=False,
                                  get_data=True, default_sort_field='id_check', default_sort_order='ASC', query=None,
-                                 search=None)
+                                 search=None, min_select_fields=set())

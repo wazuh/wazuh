@@ -79,7 +79,7 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
 async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None,
                          description=None, rationale=None, remediation=None, command=None, status=None, reason=None,
                          file=None, process=None, directory=None, registry=None, references=None, result=None,
-                         condition=None, offset=0, limit=DATABASE_LIMIT, sort=None, search=None, q=None):
+                         condition=None, offset=0, limit=DATABASE_LIMIT, sort=None, search=None, select=None, q=None):
     """Get policy monitoring alerts for a given policy
 
     Parameters
@@ -127,7 +127,9 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
     sort : str
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order
     search : str
-        Looks for elements with the specified string
+        Looks for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
     q : str
         Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
 
@@ -156,6 +158,7 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
+                'select': select,
                 'q': q,
                 'filters': filters}
 

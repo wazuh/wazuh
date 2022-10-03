@@ -9,7 +9,8 @@ from wazuh.core.agent import get_agents_info
 from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.sca import (WazuhDBQuerySCA, WazuhDBQuerySCACheck, WazuhDBQuerySCACheckIDs,
-                            WazuhDBQuerySCACheckRelational)
+                            WazuhDBQuerySCACheckRelational, SCA_CHECK_COMPLIANCE_DB_FIELDS, SCA_CHECK_RULES_DB_FIELDS,
+                            SCA_CHECK_DB_FIELDS)
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -65,7 +66,7 @@ def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: i
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
 def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", offset: int = 0,
-                   limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
+                   limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None, select: list = None,
                    filters: dict = None) -> AffectedItemsWazuhResult:
     """Get a list of checks analyzed for a policy.
 
@@ -85,6 +86,8 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     search : dict
         Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    select : list
+        Select which fields to return.
     filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
 
@@ -101,9 +104,9 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
         if agent_list[0] in get_agents_info():
 
             # Get SCA checks IDs from the checks, rules and compliance tables
-            # The query includes the `filters`, `q`, `search`, `limit` and `offset` parameters
+            # The query includes the `filters`, `q`, `search`, `limit`, `offset` and `sort` parameters
             with WazuhDBQuerySCACheckIDs(agent_id=agent_list[0], offset=offset, limit=limit, filters=filters,
-                                         search=search, query=q, policy_id=policy_id) as sca_check_query:
+                                         search=search, query=q, policy_id=policy_id, sort=sort) as sca_check_query:
                 sca_check_data = sca_check_query.run()
                 result.total_affected_items = sca_check_data['totalItems']
 
@@ -112,20 +115,32 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
 
             if id_check_list:
                 # Get SCA checks items from the checks table with the SCA checks IDs list
-                # The query includes the `sort` parameter
-                with WazuhDBQuerySCACheck(agent_id=agent_list[0], sort=sort,
-                                          sca_checks_ids=id_check_list) as sca_check_query:
+                # The query includes the `sort` and `select` parameters
+                with WazuhDBQuerySCACheck(
+                        agent_id=agent_list[0],
+                        select=select if not select else list(set(select).intersection(SCA_CHECK_DB_FIELDS.keys())),
+                        sort=sort, sca_checks_ids=id_check_list) as sca_check_query:
                     sca_check_data = sca_check_query.run()
 
-                # Get compliance
-                with WazuhDBQuerySCACheckRelational(agent_id=agent_list[0], table="sca_check_compliance",
-                                                    id_check_list=id_check_list) as sca_check_compliance_query:
-                    sca_check_compliance_items = sca_check_compliance_query.run()['items']
+                # Get compliance if all fields selected (not select), or if a compliance field is in select
+                sca_check_compliance_items = []
+                select_compliance = set(select).intersection(SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()) if select else None
+                if not select or select_compliance:
+                    with WazuhDBQuerySCACheckRelational(
+                            agent_id=agent_list[0], table="sca_check_compliance", id_check_list=id_check_list,
+                            select=select if not select
+                            else list(select_compliance) + ['id_check']) as sca_check_compliance_query:
+                        sca_check_compliance_items = sca_check_compliance_query.run()['items']
 
-                # Get rules
-                with WazuhDBQuerySCACheckRelational(agent_id=agent_list[0], table="sca_check_rules",
-                                                    id_check_list=id_check_list) as sca_check_rules_query:
-                    sca_check_rules_items = sca_check_rules_query.run()['items']
+                # Get rules if all fields selected (not select), or if a rules field is in select
+                sca_check_rules_items = []
+                select_rules = set(select).intersection(SCA_CHECK_RULES_DB_FIELDS.keys()) if select else None
+                if not select or select_rules:
+                    with WazuhDBQuerySCACheckRelational(
+                            agent_id=agent_list[0], table="sca_check_rules", id_check_list=id_check_list,
+                            select=select if not select
+                            else list(select_rules) + ['id_check']) as sca_check_rules_query:
+                        sca_check_rules_items = sca_check_rules_query.run()['items']
 
                 # Add compliance and rules to SCA checks data
                 id_check_rules_compliance = {id_check: {'compliance': [], 'rules': []} for id_check in id_check_list}
@@ -136,9 +151,16 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
                     id_check_rules_compliance[rule['id_check']]['rules'].append(
                         {k.split('.')[1]: v for k, v in rule.items() if k != 'id_check'})
 
-                for sca_check in sca_check_data['items']:
-                    sca_check['compliance'] = id_check_rules_compliance[sca_check['id']]['compliance']
-                    sca_check['rules'] = id_check_rules_compliance[sca_check['id']]['rules']
+                if sca_check_rules_items and sca_check_compliance_items:
+                    for sca_check in sca_check_data['items']:
+                        sca_check['compliance'] = id_check_rules_compliance[sca_check['id']]['compliance']
+                        sca_check['rules'] = id_check_rules_compliance[sca_check['id']]['rules']
+                elif sca_check_rules_items:
+                    for sca_check in sca_check_data['items']:
+                        sca_check['rules'] = id_check_rules_compliance[sca_check['id']]['rules']
+                elif sca_check_compliance_items:
+                    for sca_check in sca_check_data['items']:
+                        sca_check['compliance'] = id_check_rules_compliance[sca_check['id']]['compliance']
 
             result.affected_items.extend(sca_check_data['items'])
 
