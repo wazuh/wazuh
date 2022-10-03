@@ -2572,183 +2572,213 @@
   <rule id="950264" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4980$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
     <description>IPsec Main Mode and Extended Mode security associations were established.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950265" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4981$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
     <description>IPsec Main Mode and Extended Mode security associations were established.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950266" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4982$</field>
-    <group>logon-logoff,ipsec-extended-mode,</group>
     <description>IPsec Main Mode and Extended Mode security associations were established.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950267" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4985$</field>
-    <group>object-access,file-system,</group>
     <description>The state of a transaction has changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950268" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5024$</field>
-    <group>system,other-system-events,</group>
     <description>The Windows Firewall Service has started successfully.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950269" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5025$</field>
-    <group>system,other-system-events,</group>
     <description>The Windows Firewall Service has been stopped.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950270" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5031$</field>
-    <group>object-access,filtering-platform-connection,</group>
     <description>The Windows Firewall Service blocked an application from accepting incoming connections on the network.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950271" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5032$</field>
-    <group>system,other-system-events,</group>
     <description>Windows Firewall was unable to notify the user that it blocked an application from accepting incoming connections on the network.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950272" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5033$</field>
-    <group>system,other-system-events,</group>
     <description>The Windows Firewall Driver has started successfully.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950273" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5034$</field>
-    <group>system,other-system-events,</group>
     <description>The Windows Firewall Driver has been stopped.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950274" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5039$</field>
-    <group>object-access,registry,</group>
     <description>A registry key was virtualized.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950275" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5040$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. An Authentication Set was added.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950276" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5041$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. An Authentication Set was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950277" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5042$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. An Authentication Set was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950278" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5043$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. A Connection Security Rule was added.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950279" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5044$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. A Connection Security Rule was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950280" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5045$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. A Connection Security Rule was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950281" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5046$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. A Crypto Set was added.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950282" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5047$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. A Crypto Set was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950283" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5048$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A change has been made to IPsec settings. A Crypto Set was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950284" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5050$</field>
-    <group>system,other-system-events,</group>
     <description>An attempt to programmatically disable the Windows Firewall using a call to InetFwProfile.FirewallEnabled(False)</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950285" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5051$</field>
-    <group>object-access,file-system,</group>
     <description>A file was virtualized.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950286" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5056$</field>
-    <group>system,system-integrity,</group>
     <description>A cryptographic self test was performed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950287" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5057$</field>
-    <group>system,system-integrity,</group>
     <description>A cryptographic primitive operation failed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950288" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5058$</field>
-    <group>system,other-system-events,</group>
     <description>Key file operation.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950289" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5059$</field>
-    <group>system,other-system-events,</group>
     <description>Key migration operation.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950290" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5060$</field>
-    <group>system,system-integrity,</group>
     <description>Verification operation failed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950291" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5061$</field>
-    <group>system,system-integrity,</group>
     <description>Cryptographic operation.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950292" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5062$</field>
-    <group>system,system-integrity,</group>
     <description>A kernel-mode cryptographic self test was performed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950293" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5063$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A cryptographic provider operation was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950294" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5064$</field>
