@@ -7,6 +7,7 @@
 
 import sys
 import os
+import json
 import pytest
 import shuffle
 
@@ -25,8 +26,8 @@ msg_template = '{"severity": 1, "pretext": "WAZUH Alert", "title": "alert descri
 
 
 @pytest.mark.parametrize('alert, expected_msg, rule_id', [
-    (alert_template, msg_template, 'rule-id'),
-    (alert_template, "", shuffle.SKIP_RULE_IDS[0])
+(alert_template, "", shuffle.SKIP_RULE_IDS[0]),
+    (alert_template, msg_template, 'rule-id')
 ])
 def test_generate_msg(alert, expected_msg, rule_id):
     """
@@ -42,6 +43,15 @@ def test_generate_msg(alert, expected_msg, rule_id):
     """
     alert['rule']['id'] = rule_id
     assert shuffle.generate_msg(alert) == expected_msg
+
+@pytest.mark.parametrize('alert, rule_level, severity', [
+    (alert_template, 3, 1),
+    (alert_template, 6, 2),
+    (alert_template, 8, 3)
+])
+def test_generate_msg_severity(alert, rule_level, severity):
+    alert['rule']['level'] = rule_level
+    assert json.loads(shuffle.generate_msg(alert))['severity'] == severity
 
 
 @pytest.mark.parametrize('alert, rule_ids', [(alert_template, shuffle.SKIP_RULE_IDS)])
