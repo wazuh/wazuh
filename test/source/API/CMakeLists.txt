@@ -1,6 +1,7 @@
 add_executable(API_test
     registry_test.cpp
     wazuhRequest_test.cpp
+    wazuhResponse_test.cpp
 )
 
 target_include_directories(API_test
