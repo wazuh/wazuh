@@ -24,284 +24,166 @@ alert_template = {'timestamp': 'year-month-dayThours:minuts:seconds+0000',
                   'full_log': 'full log.', 'decoder': {'name': 'decoder-name'},
                   'location': 'wazuh-X'}
 
-msg_template = '{"severity": 1, "pretext": "WAZUH Alert", "title": "alert description", "text": "full log.", "rule_id": "rule-id", "timestamp": "year-month-dayThours:minuts:seconds+0000", "id": "alert_id", "all_fields": {"timestamp": "year-month-dayThours:minuts:seconds+0000", "rule": {"level": 0, "description": "alert description", "id": "rule-id", "firedtimes": 1}, "id": "alert_id", "full_log": "full log.", "decoder": {"name": "decoder-name"}, "location": "wazuh-X"}}'
+msg_template = '{"severity": 1, "pretext": "WAZUH Alert", "title": "alert description", "text": "full log.", ' \
+               '"rule_id": "rule-id", "timestamp": "year-month-dayThours:minuts:seconds+0000", "id": "alert_id", ' \
+               '"all_fields": {"timestamp": "year-month-dayThours:minuts:seconds+0000", "rule": {"level": 0, ' \
+               '"description": "alert description", "id": "rule-id", "firedtimes": 1}, "id": "alert_id", "full_log": ' \
+               '"full log.", "decoder": {"name": "decoder-name"}, "location": "wazuh-X"}}'
 
 sys_args_template = ['/var/ossec/integrations/shuffle.py', '/tmp/shuffle-XXXXXX-XXXXXXX.alert', '',
                      'http://<IP>:3001/api/v1/hooks/<HOOK_ID>', ' > /dev/null 2>&1']
 
 
-@pytest.mark.parametrize('args', [sys_args_template])
-def test_main_bad_arguments_exits(args):
-    """
-    Test that main function exits when wrong number of arguments are passed
-
-    Parameters
-    ----------
-    args: list[str]
-       list of the arguments passed to the main function
-
-    """
+def test_main_bad_arguments_exits():
+    """Test that main function exits when wrong number of arguments are passed."""
     with patch("builtins.open", mock_open()), \
             pytest.raises(SystemExit) as pytest_wrapped_e:
-        shuffle.main(args[0:2])
-    assert pytest_wrapped_e.type == SystemExit
+        shuffle.main(sys_args_template[0:2])
     assert pytest_wrapped_e.value.code == 2
 
 
-@pytest.mark.parametrize('args', [sys_args_template])
-def test_main_exception(args):
-    """
-    Test exception handling in main when process_args raises an exception
-
-    Parameters
-    ----------
-    args: list[str]
-       list of the arguments passed to the process_args function
-
-    """
-
+def test_main_exception():
+    """Test exception handling in main when process_args raises an exception."""
     with patch('shuffle.process_args') as process, \
             patch("builtins.open", mock_open()), \
-            pytest.raises(Exception) as pytest_wrapped_e:
+            pytest.raises(Exception):
         process.side_effect = Exception
-        shuffle.main(args)
+        shuffle.main(sys_args_template)
 
 
-@pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
-def test_main_correct_execution(args, alert):
-    """
-
-    Test the correct execution of the main function
-
-    Parameters
-    ----------
-    args: list[str]
-       list of the arguments passed to the process_args function
-
-    alert: json
-       template alert read from the alert file
-
-    """
+def test_main_correct_execution():
+    """Test the correct execution of the main function."""
     with patch("builtins.open", mock_open()), \
-            patch('json.load', return_value=alert), \
+            patch('json.load', return_value=alert_template), \
             patch('requests.post', return_value=requests.Response):
-        shuffle.main(args)
+        shuffle.main(sys_args_template)
 
 
-@pytest.mark.parametrize('args', [sys_args_template])
-def test_process_args_alert_file_exit(args):
-    """
-    Test that process_args function exits when alert file is not found
-
-    Parameters
-    ----------
-    args: list[str]
-       list of the arguments passed to the process_args function
-
-    -------
-
-    """
+def test_process_args_alert_file_exit():
+    """Test that process_args function exits when alert file is not found."""
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        shuffle.process_args(args)
-    assert pytest_wrapped_e.type == SystemExit
+        shuffle.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == 3
 
 
-@pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
-def test_process_args(args, alert):
-    """
-    Test the correct execution of the process_args function
-
-    Parameters
-    ----------
-    args: list[str]
-       list of the arguments passed to the process_args function
-
-    alert: json
-       template alert read from the alert file
-
-
-    """
-    with patch("builtins.open", mock_open()), \
-            patch('json.load', return_value=alert), \
+def test_process_args():
+    """Test the correct execution of the process_args function."""
+    with patch("builtins.open", mock_open()) as alert_file, \
+            patch('json.load', return_value=alert_template), \
+            patch('shuffle.send_msg') as send_msg, \
+            patch('shuffle.generate_msg', return_value=msg_template) as generate_msg, \
             patch('requests.post', return_value=requests.Response):
-        shuffle.process_args(args)
+        shuffle.process_args(sys_args_template)
+        alert_file.assert_called_once_with(sys_args_template[1])
+        generate_msg.assert_called_once_with(alert_template)
+        send_msg.assert_called_once_with(msg_template, sys_args_template[3])
 
 
-@pytest.mark.parametrize('debug_enabled,args', [(True, sys_args_template)])
-def test_process_args_json_exit(tmpdir, debug_enabled, args):
-    """
-    Test the correct execution of the process_args function
+def test_process_args_json_exit(tmpdir):
+    """Test the correct execution of the process_args function.
 
     Parameters
     ----------
     tmpdir: py.path.local
-        Path to a temporary directory generated for the tests logs
-
-    debug_enabled: bool
-        determines if debug mode is enabled or not
-
-    args: list[str]
-       list of the arguments passed to the process_args function
-
-
+        Path to a temporary directory generated for the tests logs.
     """
     log_file = tmpdir.join('test.log')
-    with patch('shuffle.debug_enabled', return_value=debug_enabled), \
+    with patch('shuffle.debug_enabled', return_value=True), \
             patch('shuffle.LOG_FILE', str(log_file)), \
             patch("builtins.open", mock_open()), \
             pytest.raises(SystemExit) as pytest_wrapped_e:
-        shuffle.process_args(args)
-    assert pytest_wrapped_e.type == SystemExit
+        shuffle.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == 4
 
 
-@pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
-def test_process_args_not_sending_message(args, alert):
-    """
-    Test that the send_msg function is not executed due to empty message after generate_msg
-
-    Parameters
-    ----------
-    args: list[str]
-       list of the arguments passed to the process_args function
-
-    alert: json
-       template alert read from the alert file
-    """
+def test_process_args_not_sending_message():
+    """Test that the send_msg function is not executed due to empty message after generate_msg."""
     with patch("builtins.open", mock_open()), \
-            patch('json.load', return_value=alert), \
+            patch('json.load', return_value=alert_template), \
+            patch('shuffle.send_msg') as send_msg, \
             patch('shuffle.generate_msg', return_value=''):
-        shuffle.process_args(args)
+        shuffle.process_args(sys_args_template)
+        send_msg.assert_not_called()
 
 
-@pytest.mark.parametrize('debug_enabled, msg, expected_result', [
-    (True, msg_template, f"{shuffle.now}: {msg_template}\n")
-])
-def test_debug(tmpdir, debug_enabled, msg, expected_result):
-    """
-    Test the correct execution of the debug function, writing the expected log when debug mode enabled
+def test_debug(tmpdir):
+    """Test the correct execution of the debug function, writing the expected log when debug mode enabled.
 
     Parameters
     ----------
     tmpdir: py.path.local
-        Path to a temporary directory generated for the tests logs
-
-    debug_enabled: bool
-        determines if debug mode is enabled or not
-
-    msg: str
-        message to be logged by the debug function
-
-    expected_result: str
-        expected log to be obtained after the execution of the debug function
-
-
+        Path to a temporary directory generated for the tests logs.
     """
     log_file = tmpdir.join('test.log')
-    with patch('shuffle.debug_enabled', return_value=debug_enabled), \
+    with patch('shuffle.debug_enabled', return_value=True), \
             patch('shuffle.LOG_FILE', str(log_file)):
-        shuffle.debug(msg)
+        shuffle.debug(msg_template)
 
-    assert log_file.read() == expected_result
+    assert log_file.read() == f"{shuffle.now}: {msg_template}\n"
 
 
-@pytest.mark.parametrize('alert, expected_msg, rule_id', [
-    (alert_template, "", shuffle.SKIP_RULE_IDS[0]),
-    (alert_template, msg_template, 'rule-id')
+@pytest.mark.parametrize('expected_msg, rule_id', [
+    ("", shuffle.SKIP_RULE_IDS[0]),
+    (msg_template, 'rule-id')
 ])
-def test_generate_msg(alert, expected_msg, rule_id):
-    """
-    Test that the expected message is generated when json_alert received.
+def test_generate_msg(expected_msg, rule_id):
+    """Test that the expected message is generated when json_alert received.
 
     Parameters
     ----------
-    alert : json
-        json data that simulates the values that could have been obtained from alert_file_location.
-
     expected_msg : str
-        message that should be returned by the generate_msg function
+        Message that should be returned by the generate_msg function.
+    rule_id : str
+        ID of the rule to be processed.
     """
-    alert['rule']['id'] = rule_id
-    assert shuffle.generate_msg(alert) == expected_msg
+    alert_template['rule']['id'] = rule_id
+    assert shuffle.generate_msg(alert_template) == expected_msg
 
 
-@pytest.mark.parametrize('alert, rule_level, severity', [
-    (alert_template, 3, 1),
-    (alert_template, 6, 2),
-    (alert_template, 8, 3)
+@pytest.mark.parametrize('rule_level, severity', [
+    (3, 1),
+    (6, 2),
+    (8, 3)
 ])
-def test_generate_msg_severity(alert, rule_level, severity):
-    """
-    Test that the different rule levels generate different severities in the message delivered by generate_msg
+def test_generate_msg_severity(rule_level, severity):
+    """Test that the different rule levels generate different severities in the message delivered by generate_msg.
 
     Parameters
     ----------
-    alert: json
-        json that that simulates the values that could have been obtained from alert_file_location
-
     rule_level: int
-        integer that represents the rule level
-
+        Integer that represents the rule level.
     severity: int
-        expected severity level for the corresponding rule level
-
+        Expected severity level for the corresponding rule level.
     """
 
-    alert['rule']['level'] = rule_level
-    assert json.loads(shuffle.generate_msg(alert))['severity'] == severity
+    alert_template['rule']['level'] = rule_level
+    assert json.loads(shuffle.generate_msg(alert_template))['severity'] == severity
 
 
-@pytest.mark.parametrize('alert, rule_ids', [(alert_template, shuffle.SKIP_RULE_IDS)])
-def test_filtered_msg(alert, rule_ids):
-    """
-    Test that the alerts with certain rule ids are filtered.
-
-    Parameters
-    ----------
-    alert : json
-        json data that simulates the values that could have been obtained from alert_file_location.
-    rule_ids: str
-         rule ids that will get the alert to be filtered
-
-    """
-    for skip_id in rule_ids:
-        alert['rule']['id'] = skip_id
-        assert not shuffle.filter_msg(alert)
+def test_filtered_msg():
+    """Test that the alerts with certain rule ids are filtered."""
+    for skip_id in shuffle.SKIP_RULE_IDS:
+        alert_template['rule']['id'] = skip_id
+        assert not shuffle.filter_msg(alert_template)
 
 
-@pytest.mark.parametrize('alert, rule_id', [(alert_template, 'rule-id')])
-def test_not_filtered_msg(alert, rule_id):
-    """
-    Test that the alerts that not contain certain rule ids are not filtered.
-
-    Parameters
-    ----------
-    alert : json
-        json data that simulates the values that could have been obtained from alert_file_location.
-
-    rule_id: str
-         rule id that will not get the alert to be filtered
-    """
-    alert['rule']['id'] = rule_id
-    assert shuffle.filter_msg(alert)
+def test_not_filtered_msg():
+    """Test that the alerts that not contain certain rule ids are not filtered."""
+    alert_template['rule']['id'] = 'rule-id'
+    assert shuffle.filter_msg(alert_template)
 
 
-@pytest.mark.parametrize('msg, url', [(msg_template, 'http://webhook-url')])
-def test_send_msg_raise_exception(msg, url):
-    """
-    Test that the send_msg function will raise an exception when passed the wrong webhook url
-
-    Parameters
-    ----------
-    msg: str
-        message to be sent via integratord
-
-    url: str
-        webhook url of the integrated service
-
-    """
-    with patch('requests.post') as sendmock, \
+def test_send_msg_raise_exception():
+    """Test that the send_msg function will raise an exception when passed the wrong webhook url."""
+    with patch('requests.post') as request_post, \
             pytest.raises(requests.exceptions.ConnectionError):
-        sendmock.side_effect = requests.exceptions.ConnectionError
-        shuffle.send_msg(msg, url)
+        request_post.side_effect = requests.exceptions.ConnectionError
+        shuffle.send_msg(msg_template, 'http://webhook-url')
+
+
+def test_send_msg():
+    """Test that the send_msg function works as expected"""
+    headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
+    with patch('requests.post', return_value=requests.Response) as request_post:
+        shuffle.send_msg(msg_template, sys_args_template[3])
+        request_post.assert_called_once_with(sys_args_template[3], data=msg_template, headers=headers, verify=False)
