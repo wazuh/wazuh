@@ -412,16 +412,6 @@ void LogCollectorStart()
             }
 #endif
         }
-
-        if (current->alias) {
-            int ii = 0;
-            while (current->alias[ii] != '\0') {
-                if (current->alias[ii] == ':') {
-                    current->alias[ii] = '\\';
-                }
-                ii++;
-            }
-        }
     }
 
     //Save status localfiles to disk

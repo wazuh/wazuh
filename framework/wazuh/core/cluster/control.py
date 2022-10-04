@@ -201,3 +201,29 @@ async def get_system_nodes():
         if e.code == 3012:
             return WazuhError(3013)
         raise e
+
+
+async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
+    """Retrieve custom ruleset integrity.
+
+    Parameters
+    ----------
+    lc : LocalClient
+        LocalClient instance.
+
+    Returns
+    -------
+    dict
+        Dictionary with results
+    """
+    response = await lc.execute(command=b"get_hash", data=b"", wait_for_complete=False)
+
+    try:
+        result = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if "timeout" in response else e
+
+    if isinstance(result, Exception):
+        raise result
+
+    return result

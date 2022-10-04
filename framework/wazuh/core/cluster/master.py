@@ -770,6 +770,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info(f"Starting.")
 
         await self.wait_for_file(file=received_file, task_id=task_id)
+
         # Full path where the zip sent by the worker is located.
         received_filename = self.sync_tasks[task_id].filename
         if isinstance(received_filename, Exception):

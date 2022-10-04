@@ -11063,7 +11063,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.5.0'
+                    - mitre_version: "1.2"
                       deprecated: 0
                       description: |-
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
@@ -11325,7 +11325,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.5.0'
+                    - mitre_version: "1.0"
                       deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
@@ -11480,7 +11480,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.5.0'
+                    - mitre_version: "1.0"
                       network_requirements: 0
                       remote_support: 0
                       mitre_detection: |-
@@ -12278,19 +12278,19 @@ paths:
               example:
                 data:
                   affected_items:
-                    - total_checks: 192
-                      name: "CIS Benchmark for Debian/Linux 10"
-                      score: 39
-                      pass: 61
-                      description: "This document provides prescriptive guidance for establishing a secure configuration
-                       posture for Debian Linux 10."
-                      start_scan: "2021-05-28T11:16:14Z"
-                      policy_id: "cis_debian10"
-                      invalid: 37
-                      fail: 94
+                    - description: "This document provides prescriptive guidance for establishing a secure configuration
+                      posture for Ubuntu Linux 20.04 LTS."
+                      fail: 87
+                      start_scan: "2022-09-27T08:07:02+00:00"
                       references: "https://www.cisecurity.org/cis-benchmarks/"
-                      hash_file: "f9bc11bb3e2cfa4017da658e833a38840f180cc339c07c01a6239c4d947d1bbe"
-                      end_scan: "2021-05-28T11:16:14Z"
+                      name: "CIS benchmark for Ubuntu Linux 20.04 LTS"
+                      pass: 56
+                      score: 39
+                      end_scan: "2022-09-27T08:07:02+00:00"
+                      policy_id: "cis_ubuntu20-04"
+                      total_checks: 191
+                      hash_file: "fb41fe9660f4320aaed0c3c292c8602953df7f8c42b37b724855f9005c43fafc"
+                      invalid: 48
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -12355,44 +12355,36 @@ paths:
               example:
                 data:
                   affected_items:
-                  - remediation: "For new installations, during installation create a custom partition setup and specify
-                   a separate partition for /var. For systems that were previously installed, create a new partition and
-                    configure /etc/fstab as appropriate"
-                    rationale: "Since the /var directory may contain world-writable files and directories, there is a
-                    risk of resource exhaustion if it is not bound to a separate partition"
-                    title: "Ensure separate partition exists for /var"
-                    policy_id: cis_debian
-                    file: /etc/fstab
-                    description: "The /var directory is used by daemons and other system services to temporarily store
-                    dynamic data. Some directories created by these processes may be world-writable"
-                    id: 5003
-                    result: failed
-                    condition: all
-                    references: "https://tldp.org/HOWTO/LVM-HOWTO/"
-                    compliance:
-                    - key: cis
-                      value: "1.1.6"
-                    - key: cis_csc
-                      value: "5"
-                  - remediation: "Run the following commands to remove exim: # apt-get remove exim4; # apt-get purge
-                  exim4"
-                    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended
-                    that the package be removed to reduce the potential attack surface"
-                    title: "Ensure IMAP and POP3 server is not enabled (POP3)"
-                    policy_id: cis_debian
-                    file: /etc/inetd.conf
-                    description: "Exim is an open source IMAP and POP3 server for Linux based systems"
-                    id: 5022
-                    result: passed
-                    condition: all
-                    compliance:
-                    - key: cis
-                      value: "2.2.11"
-                    - key: cis_csc
-                      value: "9"
-                    - key: pci_dss
-                      value: "2.2.2"
-                  total_affected_items: 2
+                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in 
+                      small footprint systems. A cramfs image can be used without having to first decompress the image."
+                      id: 19000
+                      reason: "Invalid path or wrong permissions to run command 'modprobe -n -v cramfs'"
+                      command: "modprobe -n -v cramfs,lsmod"
+                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the 
+                      server. If this filesystem type is not needed, disable it."
+                      condition: "all"
+                      title: "Ensure mounting of cramfs filesystems is disabled."
+                      result: ""
+                      policy_id: "cis_ubuntu20-04"
+                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add 
+                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs 
+                      module: # rmmod cramfs"
+                      status: "Not applicable"
+                      compliance:
+                        - value: "1.1.1.1"
+                          key: "cis"
+                        - value: "5.1"
+                          key: "cis_csc"
+                        - value: "2.2.5"
+                          key: "pci_dss"
+                        - value: "CC6.3"
+                          key: "tsc"
+                      rules:
+                        - type: "command"
+                          rule: "c:modprobe -n -v cramfs -> r:^install /bin/true"
+                        - type: "numeric"
+                          rule: "not c:lsmod -> r:cramfs"
+                  total_affected_items: 191
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected sca/policy information was returned"

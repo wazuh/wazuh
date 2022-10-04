@@ -721,12 +721,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                           ko_files, zip_path, self.cluster_items, self.task_loggers['Integrity sync'])
                 logger.debug("Updating local files: End.")
 
-            # Send extra valid files to the master.
-            logger.info(
-                f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
-            # if 'TYPE' in ko_files and ko_files['TYPE']:
-            #     logger.debug("Master requires some worker files.")
-            #     asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
+            logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
 
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing files: {e}")

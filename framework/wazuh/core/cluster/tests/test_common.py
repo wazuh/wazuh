@@ -1187,14 +1187,25 @@ async def test_handler_wait_for_file(wait_for_mock):
 
 
 @pytest.mark.asyncio
+@patch("asyncio.wait_for")
 @patch('wazuh.core.cluster.common.Handler.send_request')
-async def test_handler_wait_for_file_ko(send_request_mock):
+async def test_handler_wait_for_file_ko(send_request_mock, wait_for_mock):
     """Check if expected exception is raised."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
     with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
         with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
             await handler.wait_for_file(asyncio.Event(), 'test')
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
+
+    wait_for_mock.side_effect = asyncio.TimeoutError
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
+        await handler.wait_for_file(asyncio.Event(), "task_id")
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
+
+    wait_for_mock.side_effect = Exception
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
+        await handler.wait_for_file(asyncio.Event(), "task_id")
+    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
 
 # Test 'WazuhCommon' class methods
 

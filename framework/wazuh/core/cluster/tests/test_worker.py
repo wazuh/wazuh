@@ -1064,8 +1064,13 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock, js
     wait_mock.assert_called_once_with(event_mock.wait(),
                                       timeout=cluster_items['intervals']['communication']['timeout_receiving_file'])
 
-    wait_mock.side_effect = Exception
+    wait_mock.side_effect = asyncio.TimeoutError
     with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
+        await worker_handler.process_files_from_master(name="task_id", file_received=event_mock)
+    send_request_mock.assert_called_with(command=b'cancel_task', data=b'task_id ')
+
+    wait_mock.side_effect = Exception
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
         await worker_handler.process_files_from_master(name="task_id", file_received=event_mock)
     send_request_mock.assert_called_with(command=b'cancel_task', data=b'task_id ')
 
