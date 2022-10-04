@@ -6,6 +6,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include <name.hpp>
+#include <store/istore.hpp>
+
 #include "environment.hpp"
 #include "registry.hpp"
 #include <json/json.hpp>
@@ -13,22 +16,10 @@
 namespace builder
 {
 
-template<typename Catalog>
 class Builder
 {
 private:
-    // // Assert Catalog has a getAsset method
-    // static_assert(std::is_member_function_pointer_v<decltype(&Catalog::getAsset)>,
-    //               "Catalog::getAsset must be a member function");
-    // // Assert getAsset has expected signature
-    // // TODO: find a way to static assert the signature
-    // // static_assert(std::is_invocable_r_v<Json,
-    // //                                     decltype(&Catalog::getAsset),
-    // //                                     int
-    // //                                     std::string>,
-    // //               "Catalog::getAsset must has signature Json(int, string)");
-
-    const Catalog& m_catalog;
+    std::shared_ptr<store::IStoreRead> m_storeRead;
 
     // TODO: Fix catalog to include asset type as a member of Catalog object
     enum class AssetType
@@ -42,15 +33,25 @@ private:
     };
 
 public:
-    Builder(const Catalog& catalog)
-        : m_catalog {catalog}
+    Builder(std::shared_ptr<store::IStoreRead> storeRead)
+        : m_storeRead {storeRead}
     {
     }
 
-    Environment buildEnvironment(const std::string& name) const
+    Environment buildEnvironment(const base::Name& name) const
     {
-        auto environment = Environment {
-            name, json::Json(m_catalog.getAsset("environment", name)), m_catalog};
+        auto envJson = m_storeRead->get(name);
+        if (std::holds_alternative<base::Error>(envJson))
+        {
+            throw std::runtime_error(fmt::format(
+                "[Environment] Error retreiving environment [{}] from store: {}",
+                name.fullName(),
+                std::get<base::Error>(envJson).message));
+        }
+
+        auto environment =
+            Environment {name.fullName(), std::get<json::Json>(envJson), m_storeRead};
+
         return environment;
     }
 };

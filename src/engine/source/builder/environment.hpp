@@ -9,10 +9,12 @@
 
 #include <fmt/format.h>
 
+#include <json/json.hpp>
+#include <store/istore.hpp>
+
 #include "asset.hpp"
 #include "expression.hpp"
 #include "graph.hpp"
-#include <json/json.hpp>
 
 namespace builder
 {
@@ -85,8 +87,9 @@ public:
      * @param catalog Injected catalog.
      * @throws std::runtime_error if the environment cannot be built.
      */
-    template<typename T>
-    Environment(std::string name, const json::Json& jsonDefinition, T catalog)
+    Environment(std::string name,
+                const json::Json& jsonDefinition,
+                std::shared_ptr<const store::IStoreRead> storeRead)
         : m_name {name}
     {
         auto envObj = jsonDefinition.getObject().value();
@@ -108,12 +111,18 @@ public:
                            {
                                auto assetType = Asset::Type::FILTER;
                                auto assetName = json.getString().value();
+                               auto assetJson = storeRead->get(base::Name {assetName});
+                               if (std::holds_alternative<base::Error>(assetJson))
+                               {
+                                   throw std::runtime_error(fmt::format(
+                                       "[Environment] Cannot retreive filter [{}]: {}",
+                                       assetName,
+                                       std::get<base::Error>(assetJson).message));
+                               }
                                return std::make_pair(
                                    assetName,
                                    std::make_shared<Asset>(
-                                       json::Json(catalog.getAsset(
-                                           Asset::typeToString(assetType), assetName)),
-                                       assetType));
+                                       std::get<json::Json>(assetJson), assetType));
                            });
             envObj.erase(filtersPos);
         }
@@ -139,18 +148,24 @@ public:
 
             // Obtain assets jsons
             auto assetsDefinitions = std::unordered_map<std::string, json::Json>();
-            std::transform(assetNames.begin(),
-                           assetNames.end(),
-                           std::inserter(assetsDefinitions, assetsDefinitions.begin()),
-                           [&](auto& json)
-                           {
-                               auto assetType = getAssetType(name);
-                               auto assetName = json.getString().value();
-                               return std::make_pair(
-                                   assetName,
-                                   json::Json(catalog.getAsset(
-                                       Asset::typeToString(assetType), assetName)));
-                           });
+            std::transform(
+                assetNames.begin(),
+                assetNames.end(),
+                std::inserter(assetsDefinitions, assetsDefinitions.begin()),
+                [&](auto& json)
+                {
+                    auto assetType = getAssetType(name);
+                    auto assetName = json.getString().value();
+                    auto assetJson = storeRead->get(base::Name {assetName});
+                    if (std::holds_alternative<base::Error>(assetJson))
+                    {
+                        throw std::runtime_error(
+                            fmt::format("[Environment] Cannot retreive asset [{}]: {}",
+                                        assetName,
+                                        std::get<base::Error>(assetJson).message));
+                    }
+                    return std::make_pair(assetName, std::get<json::Json>(assetJson));
+                });
 
             // Build graph
             buildGraph(assetsDefinitions, name, getAssetType(name));

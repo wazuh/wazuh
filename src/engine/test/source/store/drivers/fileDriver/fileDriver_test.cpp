@@ -19,26 +19,26 @@ protected:
 
 TEST_F(FileDriverTest, Builds)
 {
-    ASSERT_NO_THROW(store::fileDriver::FileDriver fDriver(TEST_PATH));
+    ASSERT_NO_THROW(store::FileDriver fDriver(TEST_PATH));
 }
 
 TEST_F(FileDriverTest, BuildsNotADirectory)
 {
     auto path = TEST_PATH / "testFile";
     std::ofstream(path) << "test";
-    ASSERT_THROW(store::fileDriver::FileDriver fDriver(path), std::runtime_error);
+    ASSERT_THROW(store::FileDriver fDriver(path), std::runtime_error);
 }
 
 TEST_F(FileDriverTest, BuildsNotExisting)
 {
     auto path = TEST_PATH / "notExisting";
-    ASSERT_THROW(store::fileDriver::FileDriver fDriver(path), std::runtime_error);
+    ASSERT_THROW(store::FileDriver fDriver(path), std::runtime_error);
 }
 
 TEST_F(FileDriverTest, BuildsCreate)
 {
     auto path = TEST_PATH / "dir";
-    ASSERT_NO_THROW(store::fileDriver::FileDriver fDriver(path, true));
+    ASSERT_NO_THROW(store::FileDriver fDriver(path, true));
     ASSERT_TRUE(std::filesystem::exists(path));
     ASSERT_TRUE(std::filesystem::is_directory(path));
 }
@@ -52,7 +52,7 @@ TEST_F(FileDriverTest, Erase)
         std::ofstream file(filePath);
     }
 
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
     ASSERT_NO_THROW(error = fDriver.del(TEST_NAME));
     ASSERT_FALSE(error);
@@ -61,7 +61,7 @@ TEST_F(FileDriverTest, Erase)
 
 TEST_F(FileDriverTest, EraseFailNotExisting)
 {
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
     ASSERT_NO_THROW(error = fDriver.del(TEST_NAME));
     ASSERT_TRUE(error);
@@ -73,7 +73,7 @@ TEST_F(FileDriverTest, EraseFailOsError)
         TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name / TEST_NAME.m_version / "test";
     std::filesystem::create_directories(path);
 
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
     ASSERT_NO_THROW(error = fDriver.del(TEST_NAME));
     ASSERT_TRUE(error);
@@ -81,7 +81,7 @@ TEST_F(FileDriverTest, EraseFailOsError)
 
 TEST_F(FileDriverTest, Add)
 {
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
     ASSERT_NO_THROW(error = fDriver.add(TEST_NAME, TEST_JSON));
     ASSERT_FALSE(error);
@@ -99,7 +99,7 @@ TEST_F(FileDriverTest, Add)
 
 TEST_F(FileDriverTest, AddMultipleVersions)
 {
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
 
     base::Name name1 = TEST_NAME;
@@ -139,7 +139,7 @@ TEST_F(FileDriverTest, AddFailAlreadyExisting)
         std::ofstream file(path);
     }
 
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
     ASSERT_NO_THROW(error = fDriver.add(TEST_NAME, TEST_JSON));
     ASSERT_TRUE(error);
@@ -155,7 +155,7 @@ TEST_F(FileDriverTest, Get)
         file << TEST_JSON.str();
     }
 
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::variant<json::Json, base::Error> result;
     ASSERT_NO_THROW(result = fDriver.get(TEST_NAME));
     ASSERT_TRUE(std::holds_alternative<json::Json>(result));
@@ -164,7 +164,7 @@ TEST_F(FileDriverTest, Get)
 
 TEST_F(FileDriverTest, GetFailNotExisting)
 {
-    store::fileDriver::FileDriver fDriver(TEST_PATH);
+    store::FileDriver fDriver(TEST_PATH);
     std::variant<json::Json, base::Error> result;
     ASSERT_NO_THROW(result = fDriver.get(TEST_NAME));
     ASSERT_TRUE(std::holds_alternative<base::Error>(result));
