@@ -9,6 +9,7 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <rxbk/rxFactory.hpp>
+#include <store/drivers/fileDriver.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
@@ -98,13 +99,21 @@ void run(const std::string& kvdbPath,
         return;
     }
 
-    catalog::Catalog _catalog(catalog::StorageType::Local, fileStorage);
+    auto store = std::make_shared<store::FileDriver>(fileStorage);
 
-    auto hlpParsers =
-        _catalog.getFileContents(catalog::AssetType::Schema, "wazuh-logql-types");
+    auto hlpParsers = store->get({"schema.wazuh-logql-types.v0"});
+    if (std::holds_alternative<base::Error>(hlpParsers))
+    {
+        WAZUH_LOG_ERROR(
+            "[Environment] Error retreiving schema.wazuh-logql-types.v0 from store: {}",
+            std::get<base::Error>(hlpParsers).message);
+        destroy();
+        return;
+    }
+
     // TODO because builders don't have access to the catalog we are configuring
     // the parser mappings on start up for now
-    hlp::configureParserMappings(hlpParsers);
+    hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
 
     try
     {
@@ -126,7 +135,7 @@ void run(const std::string& kvdbPath,
             [=, &eventBuffer = server.output()]()
             {
                 // TODO: Handle errors on construction
-                builder::Builder<catalog::Catalog> _builder(_catalog);
+                builder::Builder _builder(store);
                 decltype(_builder.buildEnvironment(environment)) env;
                 try
                 {

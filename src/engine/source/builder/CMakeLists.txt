@@ -64,4 +64,4 @@ target_include_directories(builders
 )
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders base hlp kvdb re2 logicExpression server wdb OpenSSL::Crypto)
+target_link_libraries(builders store::istore base hlp kvdb re2 logicExpression server wdb OpenSSL::Crypto)

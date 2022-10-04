@@ -13,7 +13,7 @@
  * @brief File driver for the store.
  *
  */
-namespace store::fileDriver
+namespace store
 {
 
 /**
