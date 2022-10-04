@@ -31,33 +31,91 @@ sys_args_template = ['/var/ossec/integrations/shuffle.py', '/tmp/shuffle-XXXXXX-
 
 
 @pytest.mark.parametrize('args', [sys_args_template])
-def test_main_alert_file_exit(args):
+def test_main_bad_arguments_exits(args):
     """
-    Test that main function exits when alert file is not found
+    Test that main function exits when wrong number of arguments are passed
 
     Parameters
     ----------
     args: list[str]
        list of the arguments passed to the main function
 
-    -------
+    """
+    with patch("builtins.open", mock_open()), \
+            pytest.raises(SystemExit) as pytest_wrapped_e:
+        shuffle.main(args[0:2])
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 2
+
+
+@pytest.mark.parametrize('args', [sys_args_template])
+def test_main_exception(args):
+    """
+    Test exception handling in main when process_args raises an exception
+
+    Parameters
+    ----------
+    args: list[str]
+       list of the arguments passed to the process_args function
 
     """
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+
+    with patch('shuffle.process_args') as process, \
+            patch("builtins.open", mock_open()), \
+            pytest.raises(Exception) as pytest_wrapped_e:
+        process.side_effect = Exception
         shuffle.main(args)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 3
 
 
 @pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
-def test_main(args, alert):
+def test_main_correct_execution(args, alert):
     """
+
     Test the correct execution of the main function
 
     Parameters
     ----------
     args: list[str]
-       list of the arguments passed to the main function
+       list of the arguments passed to the process_args function
+
+    alert: json
+       template alert read from the alert file
+
+    """
+    with patch("builtins.open", mock_open()), \
+            patch('json.load', return_value=alert), \
+            patch('requests.post', return_value=requests.Response):
+        shuffle.main(args)
+
+
+@pytest.mark.parametrize('args', [sys_args_template])
+def test_process_args_alert_file_exit(args):
+    """
+    Test that process_args function exits when alert file is not found
+
+    Parameters
+    ----------
+    args: list[str]
+       list of the arguments passed to the process_args function
+
+    -------
+
+    """
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        shuffle.process_args(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 3
+
+
+@pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
+def test_process_args(args, alert):
+    """
+    Test the correct execution of the process_args function
+
+    Parameters
+    ----------
+    args: list[str]
+       list of the arguments passed to the process_args function
 
     alert: json
        template alert read from the alert file
@@ -67,12 +125,13 @@ def test_main(args, alert):
     with patch("builtins.open", mock_open()), \
             patch('json.load', return_value=alert), \
             patch('requests.post', return_value=requests.Response):
-        shuffle.main(args)
+        shuffle.process_args(args)
+
 
 @pytest.mark.parametrize('debug_enabled,args', [(True, sys_args_template)])
-def test_main_json_exit(tmpdir, debug_enabled, args):
+def test_process_args_json_exit(tmpdir, debug_enabled, args):
     """
-    Test the correct execution of the main function
+    Test the correct execution of the process_args function
 
     Parameters
     ----------
@@ -83,7 +142,7 @@ def test_main_json_exit(tmpdir, debug_enabled, args):
         determines if debug mode is enabled or not
 
     args: list[str]
-       list of the arguments passed to the main function
+       list of the arguments passed to the process_args function
 
 
     """
@@ -92,19 +151,20 @@ def test_main_json_exit(tmpdir, debug_enabled, args):
             patch('shuffle.LOG_FILE', str(log_file)), \
             patch("builtins.open", mock_open()), \
             pytest.raises(SystemExit) as pytest_wrapped_e:
-        shuffle.main(args)
+        shuffle.process_args(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 4
 
+
 @pytest.mark.parametrize('args, alert', [(sys_args_template, alert_template)])
-def test_main_not_sending_message(args, alert):
+def test_process_args_not_sending_message(args, alert):
     """
     Test that the send_msg function is not executed due to empty message after generate_msg
 
     Parameters
     ----------
     args: list[str]
-       list of the arguments passed to the main function
+       list of the arguments passed to the process_args function
 
     alert: json
        template alert read from the alert file
@@ -112,7 +172,7 @@ def test_main_not_sending_message(args, alert):
     with patch("builtins.open", mock_open()), \
             patch('json.load', return_value=alert), \
             patch('shuffle.generate_msg', return_value=''):
-        shuffle.main(args)
+        shuffle.process_args(args)
 
 
 @pytest.mark.parametrize('debug_enabled, msg, expected_result', [
