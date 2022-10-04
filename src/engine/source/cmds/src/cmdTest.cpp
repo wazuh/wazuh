@@ -8,6 +8,7 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <rxbk/rxFactory.hpp>
+#include <store/drivers/fileDriver.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
@@ -63,13 +64,19 @@ void test(const std::string& kvdbPath,
     KVDBManager::init(kvdbPath);
     KVDBManager& kvdbManager = KVDBManager::get();
 
-    catalog::Catalog _catalog(catalog::StorageType::Local, fileStorage);
+    auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
 
-    auto hlpParsers =
-        _catalog.getFileContents(catalog::AssetType::Schema, "wazuh-logql-types");
+    auto hlpParsers = fileStore->get("schema.wazuh-logql-types.v0");
+    if (std::holds_alternative<base::Error>(hlpParsers))
+    {
+        WAZUH_LOG_ERROR("Error while getting hlp parsers: [{}]",
+                        std::get<base::Error>(hlpParsers).message);
+        destroy();
+        return;
+    }
     // TODO because builders don't have access to the catalog we are configuring
     // the parser mappings on start up for now
-    hlp::configureParserMappings(hlpParsers);
+    hlp::configureParserMappings(std::get<json::Json>(hlpParsers).str());
 
     try
     {
@@ -84,34 +91,41 @@ void test(const std::string& kvdbPath,
     }
 
     // Delete outputs
-    json::Json envTmp {_catalog.getAsset("environment", environment)};
+    auto envDefinition = fileStore->get(environment);
+    if (std::holds_alternative<base::Error>(envDefinition))
+    {
+        WAZUH_LOG_ERROR("Error while getting environment definition: [{}]",
+                        std::get<base::Error>(envDefinition).message);
+        destroy();
+        return;
+    }
+    json::Json envTmp {std::get<json::Json>(envDefinition)};
     envTmp.erase("/outputs");
 
     // Fake catalog for testing
-    struct TestCatalog
+    struct TestDriver : store::IStoreRead
     {
-        catalog::Catalog _catalog;
-        std::string testEnvironment;
+        std::shared_ptr<store::FileDriver> driver;
+        json::Json testEnvironment;
 
-        rapidjson::Document getAsset(const std::string& type,
-                                     const std::string& name) const
+        std::variant<json::Json, base::Error> get(const base::Name& name) const
         {
-            if (type == "environment")
+            if (name.m_type == "environment")
             {
-                rapidjson::Document doc;
-                doc.Parse(testEnvironment.c_str());
-                return doc;
+                return testEnvironment;
             }
             else
             {
-                return _catalog.getAsset(type, name);
+                return driver->get(name);
             }
         }
     };
-    TestCatalog _testCatalog {_catalog, envTmp.str()};
+    auto _testDriver = std::make_shared<TestDriver>();
+    _testDriver->driver = fileStore;
+    _testDriver->testEnvironment = envTmp;
 
     // TODO: Handle errors on construction
-    builder::Builder<TestCatalog> _builder(_testCatalog);
+    builder::Builder _builder(_testDriver);
     decltype(_builder.buildEnvironment(environment)) env;
     try
     {
