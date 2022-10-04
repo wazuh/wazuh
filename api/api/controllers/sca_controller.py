@@ -79,7 +79,8 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
 async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete=False, policy_id=None, title=None,
                          description=None, rationale=None, remediation=None, command=None, status=None, reason=None,
                          file=None, process=None, directory=None, registry=None, references=None, result=None,
-                         condition=None, offset=0, limit=DATABASE_LIMIT, sort=None, search=None, select=None, q=None):
+                         condition=None, offset=0, limit=DATABASE_LIMIT, sort=None, search=None, select=None, q=None,
+                         distinct=False):
     """Get policy monitoring alerts for a given policy
 
     Parameters
@@ -132,6 +133,8 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
         Select which fields to return (separated by comma).
     q : str
         Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -160,6 +163,7 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
                 'search': parse_api_param(search, 'search'),
                 'select': select,
                 'q': q,
+                'distinct': distinct,
                 'filters': filters}
 
     dapi = DistributedAPI(f=sca.get_sca_checks,

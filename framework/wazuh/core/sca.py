@@ -218,3 +218,60 @@ class WazuhDBQuerySCACheckRelational(WazuhDBQuerySCA):
                                  select=select or list(self.FIELDS_PER_TABLE[self.sca_check_table].keys()), count=False,
                                  get_data=True, default_sort_field='id_check', default_sort_order='ASC', query=None,
                                  search=None, min_select_fields=set())
+
+
+class WazuhDBQueryDistinctSCACheck(WazuhDBQuerySCA):
+    """Class used to get SCA checks from the main SCA checks table joining compliance and rules items,
+    using distinct."""
+
+    INNER_QUERY_PATTERN = "SELECT * FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check LEFT JOIN " \
+                          "sca_check_rules c ON a.id=c.id_check"
+    DEFAULT_QUERY = "SELECT DISTINCT {0} FROM"
+
+    def __init__(self, agent_id: str, offset: int, limit: int, filters: dict, search: Union[dict, None], query: str,
+                 policy_id: str, sort: dict, select: list):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        offset : int
+            First item to return.
+        limit : int or None
+            Maximum number of items to return.
+        search : dict or None
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str
+            Query to filter in database. Format: field operator value.
+        policy_id : str
+            Filter by SCA policy ID.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+        """
+        policy_query_filter = f"policy_id={policy_id}"
+        default_sort_field, default_sort_order = 'id', 'ASC'
+        fields = SCA_CHECK_DB_FIELDS | SCA_CHECK_COMPLIANCE_DB_FIELDS | SCA_CHECK_RULES_DB_FIELDS
+        fields.pop('id_check')
+
+        # Generate inner query
+        # The inner query contains the `filters`, `search`, `sort`, and `query` parameters
+        with WazuhDBQuerySCA(agent_id=agent_id, offset=0, limit=None, sort=sort,
+                             query=policy_query_filter if not query else f"{policy_query_filter};{query}", count=False,
+                             get_data=False, select=[], default_sort_field='id', default_sort_order='ASC',
+                             filters=filters, fields=fields, default_query=self.INNER_QUERY_PATTERN,
+                             search=search) as inner_query:
+            inner_query.run()
+            inner_query.query = inner_query.backend._substitute_params(inner_query.query, inner_query.request)
+
+        # The main object is built using the inner query and `select`, `limit`, `offset`, and `sort` parameters
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=sort, filters={},
+                                 search={}, count=True, get_data=True, select=select or list(fields.keys()),
+                                 default_query=f"{self.DEFAULT_QUERY} ({inner_query.query})",
+                                 fields=fields, default_sort_field=default_sort_field,
+                                 default_sort_order=default_sort_order, min_select_fields=set(),
+                                 query='')
