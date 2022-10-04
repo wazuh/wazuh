@@ -47,6 +47,40 @@ LOG_FILE = f'{pwd}/logs/integrations.log'
 
 
 def main(args):
+    global debug_enabled
+    try:
+        # Read arguments
+        bad_arguments = False
+        if len(args) >= 4:
+            msg = '{0} {1} {2} {3} {4}'.format(
+                now,
+                args[1],
+                args[2],
+                args[3],
+                args[4] if len(args) > 4 else '',
+            )
+            debug_enabled = (len(args) > 4 and args[4] == 'debug')
+        else:
+            msg = '{0} Wrong arguments'.format(now)
+            bad_arguments = True
+
+        # Logging the call
+        with open(LOG_FILE, "a") as f:
+            f.write(msg + '\n')
+
+        if bad_arguments:
+            debug("# Exiting: Bad arguments. Inputted: %s" % args)
+            sys.exit(2)
+
+        # Main function
+        process_args(args)
+
+    except Exception as e:
+        debug(str(e))
+        raise
+
+
+def process_args(args):
     debug("# Starting")
 
     # Read args
@@ -135,35 +169,4 @@ def send_msg(msg: str, url: str):
 
 
 if __name__ == "__main__":
-
-    try:
-        # Read arguments
-        bad_arguments = False
-        if len(sys.argv) >= 4:
-            msg = '{0} {1} {2} {3} {4}'.format(
-                now,
-                sys.argv[1],
-                sys.argv[2],
-                sys.argv[3],
-                sys.argv[4] if len(sys.argv) > 4 else '',
-            )
-
-            debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
-        else:
-            msg = '{0} Wrong arguments'.format(now)
-            bad_arguments = True
-
-        # Logging the call
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
-
-        if bad_arguments:
-            debug("# Exiting: Bad arguments. Inputted: %s" % sys.argv)
-            sys.exit(2)
-
-        # Main function
-        main(sys.argv)
-
-    except Exception as e:
-        debug(str(e))
-        raise
+    main(sys.argv)
