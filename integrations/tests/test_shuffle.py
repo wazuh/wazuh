@@ -61,7 +61,9 @@ def test_main_correct_execution():
 
 def test_process_args_alert_file_exit():
     """Test that process_args function exits when alert file is not found."""
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with patch("builtins.open") as open_mock, \
+            pytest.raises(SystemExit) as pytest_wrapped_e:
+        open_mock.side_effect = FileNotFoundError
         shuffle.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == 3
 
