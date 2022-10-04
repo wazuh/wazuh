@@ -25,7 +25,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
-                            -Wl,--wrap,_merror \
+                            -Wl,--wrap,_merror -Wl,--wrap,_merror_exit \
                             -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile -Wl,--wrap,w_parser_get_group \
                             -Wl,--wrap,wurl_request -Wl,--wrap,TestUnmergeFiles -Wl,--wrap,OS_MD5_File \
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
@@ -33,7 +33,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex \
                             -Wl,--wrap,checkBinaryFile -Wl,--wrap,OSHash_Set -Wl,--wrap,_minfo \
-                            -Wl,--wrap,opendir -Wl,--wrap,cldir_ex -Wl,--wrap,wreaddir -Wl,--wrap=_mwarn \
+                            -Wl,--wrap,opendir -Wl,--wrap,cldir_ex_ignore -Wl,--wrap,wreaddir -Wl,--wrap=_mwarn \
                             -Wl,--wrap,closedir -Wl,--wrap,OSHash_Clean -Wl,--wrap,rmdir_ex -Wl,--wrap,mkdir -Wl,--wrap,stat\
                             -Wl,--wrap,OS_SHA256_String -Wl,--wrap,readdir -Wl,--wrap,strerror \
                             -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \

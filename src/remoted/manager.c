@@ -590,20 +590,21 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                 return;
             }
         }
-    }
 
-    if (OS_MD5_File(merged_tmp, md5sum_tmp, OS_TEXT) != 0) {
         if (create_merged) {
-            merror("Accessing file '%s'", merged_tmp);
-        }
-    } else {
-        if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            OS_MoveFile(merged_tmp, merged);
-        } else {
-            if (strcmp(md5sum_tmp, md5sum) != 0) {
-                OS_MoveFile(merged_tmp, merged);
+            if (OS_MD5_File(merged_tmp, md5sum_tmp, OS_TEXT) == 0) {
+                if (OS_MD5_File(merged, md5sum, OS_TEXT) == 0) {
+                    if (strcmp(md5sum_tmp, md5sum) != 0) {
+                        OS_MoveFile(merged_tmp, merged);
+                    } else {
+                        unlink(merged_tmp);
+                    }
+                } else {
+                    OS_MoveFile(merged_tmp, merged);
+                }
             } else {
-                unlink(merged_tmp);
+                merror("Accessing file '%s'", merged_tmp);
+                return;
             }
         }
     }
@@ -616,6 +617,8 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
         } else {
             ftime_add(_f_time, SHAREDCFG_FILENAME, attrib.st_mtime);
         }
+    } else if (create_merged) {
+        merror("Accessing file '%s'", merged);
     }
 }
 
