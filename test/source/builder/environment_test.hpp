@@ -4,17 +4,21 @@
 #include <map>
 #include <string>
 
-#include "builder/environment.hpp"
 #include <json/json.hpp>
+#include <store/istore.hpp>
+#include <error.hpp>
+
+#include "builder/environment.hpp"
+
 
 constexpr auto outputPath = "/tmp/file";
 
 std::map<std::string, const char*> decoders =
 {
     {
-        "decoder1",
+        "decoder.decoder1.version",
         R"({
-            "name": "decoder1",
+            "name": "decoder.decoder1.version",
             "check": [
                 {"decoder": 1}
             ],
@@ -28,10 +32,10 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder1_1",
+        "decoder.decoder1_1.version",
         R"({
-            "name": "decoder1_1",
-            "parents": ["decoder1"],
+            "name": "decoder.decoder1_1.version",
+            "parents": ["decoder.decoder1.version"],
             "check": [
                 {"child": 1}
             ],
@@ -45,10 +49,10 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder1_2",
+        "decoder.decoder1_2.version",
         R"({
-            "name": "decoder1_2",
-            "parents": ["decoder1"],
+            "name": "decoder.decoder1_2.version",
+            "parents": ["decoder.decoder1.version"],
             "check": [
                 {"child": 2}
             ],
@@ -62,9 +66,9 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder2",
+        "decoder.decoder2.version",
         R"({
-            "name": "decoder2",
+            "name": "decoder.decoder2.version",
             "check": [
                 {"decoder": 2}
             ],
@@ -78,9 +82,9 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder3",
+        "decoder.decoder3.version",
         R"({
-            "name": "decoder3",
+            "name": "decoder.decoder3.version",
             "check": [
                 {"decoder": 3}
             ],
@@ -94,10 +98,10 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder23_1",
+        "decoder.decoder23_1.version",
         R"({
-            "name": "decoder23_1",
-            "parents": ["decoder2", "decoder3"],
+            "name": "decoder.decoder23_1.version",
+            "parents": ["decoder.decoder2.version", "decoder.decoder3.version"],
             "check": [
                 {"child": 1}
             ],
@@ -114,16 +118,16 @@ std::map<std::string, const char*> decoders =
 std::map<std::string, const char*> rules =
 {
     {
-        "rule1",
+        "rule.rule1.version",
         R"({
-            "name": "rule1",
+            "name": "rule.rule1.version",
             "check": [
                 {"rule": 1}
             ],
             "normalize": [
                 {
                     "map": {
-                        "alerted.name": "rule1"
+                        "alerted.name": "rule.rule1.version"
                     }
                 }
             ]
@@ -131,33 +135,33 @@ std::map<std::string, const char*> rules =
     }
     ,
     {
-        "rule1_1",
+        "rule.rule1_1.version",
         R"({
-            "name": "rule1_1",
-            "parents": ["rule1"],
+            "name": "rule.rule1_1.version",
+            "parents": ["rule.rule1.version"],
             "check": [
                 {"child": 1}
             ],
             "normalize": [
                 {
                     "map": {
-                        "alerted.name": "rule1_1"
+                        "alerted.name": "rule.rule1_1.version"
                     }
                 }
             ]
         })"
     },
     {
-        "rule2",
+        "rule.rule2.version",
         R"({
-            "name": "rule2",
+            "name": "rule.rule2.version",
             "check": [
                 {"rule": 2}
             ],
             "normalize": [
                 {
                     "map": {
-                        "alerted.name": "rule2"
+                        "alerted.name": "rule.rule2.version"
                     }
                 }
             ]
@@ -167,11 +171,11 @@ std::map<std::string, const char*> rules =
 std::map<std::string, const char*> filters =
 {
     {
-        "filter1",
+        "filter.filter1.version",
         R"({
-            "name": "filter1",
+            "name": "filter.filter1.version",
             "after": [
-                "decoder1"
+                "decoder.decoder1.version"
             ],
             "check": [
                 {"filter": 1}
@@ -182,9 +186,9 @@ std::map<std::string, const char*> filters =
 std::map<std::string, const char*> outputs =
 {
     {
-        "output1",
+        "output.output1.version",
         R"({
-            "name": "output1",
+            "name": "output.output1.version",
             "check": [
                 {"output": 1}
             ],
@@ -203,105 +207,105 @@ std::map<std::string, const char*> environments =
     {"oneDecEnv",
 R"({
 "decoders": [
-  "decoder1"
+  "decoder.decoder1.version"
 ]
 })"},
     {"oneRuleEnv",
 R"({
 "rules": [
-  "rule1"
+  "rule.rule1.version"
 ]
 })"},
     {"oneFilEnv",
 R"({
 "filters": [
-  "filter1"
+  "filter.filter1.version"
 ]
 })"},
     {"oneOutEnv",
 R"({
 "outputs": [
-  "output1"
+  "output.output1.version"
 ]
 })"},
     {"orphanAssetEnv",
 R"({
     "decoders": [
-        "decoder1_1"
+        "decoder.decoder1_1.version"
     ],
     "rules": [
-        "rule1"
+        "rule.rule1.version"
     ],
     "filters": [
-        "filter1"
+        "filter.filter1.version"
     ],
     "outputs": [
-        "output1"
+        "output.output1.version"
     ]
 })"},
     {"orphanFilterEnv",
 R"({
     "rules": [
-        "rule1"
+        "rule.rule1.version"
     ],
     "filters": [
-        "filter1"
+        "filter.filter1.version"
     ],
     "outputs": [
-        "output1"
+        "output.output1.version"
     ]
 })"},
     {"completeEnv",
 R"({
     "decoders": [
-        "decoder1",
-        "decoder1_1",
-        "decoder1_2",
-        "decoder2",
-        "decoder3",
-        "decoder23_1"
+        "decoder.decoder1.version",
+        "decoder.decoder1_1.version",
+        "decoder.decoder1_2.version",
+        "decoder.decoder2.version",
+        "decoder.decoder3.version",
+        "decoder.decoder23_1.version"
     ],
     "rules": [
-        "rule1",
-        "rule1_1",
-        "rule2"
+        "rule.rule1.version",
+        "rule.rule1_1.version",
+        "rule.rule2.version"
     ],
     "filters": [
-        "filter1"
+        "filter.filter1.version"
     ],
     "outputs": [
-        "output1"
+        "output.output1.version"
     ]
 })"}
 };
 
-struct FakeCatalog
+struct FakeStoreRead : public store::IStoreRead
 {
-    json::Json getAsset(const std::string& type, const std::string& name) const
+    std::variant<json::Json, base::Error> get(const base::Name& name) const override
     {
-        if (type == "decoder")
+        if (name.m_type == "decoder")
         {
-            return json::Json {decoders[name]};
+            return json::Json {decoders[name.fullName()]};
         }
-        else if (type == "rule")
+        else if (name.m_type == "rule")
         {
-            return json::Json {rules[name]};
+            return json::Json {rules[name.fullName()]};
         }
-        else if (type == "filter")
+        else if (name.m_type == "filter")
         {
-            return json::Json {filters[name]};
+            return json::Json {filters[name.fullName()]};
         }
-        else if (type == "output")
+        else if (name.m_type == "output")
         {
-            return json::Json {outputs[name]};
+            return json::Json {outputs[name.fullName()]};
         }
-        else if (type == "environment")
+        else if (name.m_type == "environment")
         {
-            return json::Json {environments[name]};
+            return json::Json {environments[name.m_name]};
         }
         else
         {
-            throw std::runtime_error("Unknown asset type: " + type);
+            throw std::runtime_error("Unknown asset name.m_type: " + name.m_type);
         }
     }
 };

@@ -28,4 +28,4 @@ target_include_directories(rxbk
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
-target_link_libraries(rxbk PUBLIC base json)
+target_link_libraries(rxbk PUBLIC base json store::istore)

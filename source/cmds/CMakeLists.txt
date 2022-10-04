@@ -12,6 +12,7 @@ target_link_libraries(cmds PRIVATE
     catalog
     rxbk
     server
+    store::fileDriver
 )
 
 target_include_directories(cmds PUBLIC

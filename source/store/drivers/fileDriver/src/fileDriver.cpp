@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 
-namespace store::fileDriver
+namespace store
 {
 FileDriver::FileDriver(const std::filesystem::path& path, bool create)
 {
