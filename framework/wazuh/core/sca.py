@@ -6,6 +6,7 @@ from types import MappingProxyType
 from typing import Union
 
 from wazuh.core.agent import Agent
+from wazuh.core.exception import WazuhError
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 
 # API-DB fields mapping
@@ -119,11 +120,32 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
         if sca_checks_ids:
             default_query += f" WHERE id IN {str(sca_checks_ids).replace('[', '(').replace(']', ')')}"
 
+        min_select_fields = {'id'}
+        select = min_select_fields if select == [] else select
+
         WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={},
-                                 search=None, count=False, get_data=True, min_select_fields={'id'},
+                                 search=None, count=False, get_data=True, min_select_fields=min_select_fields,
                                  select=select or list(SCA_CHECK_DB_FIELDS.keys()), default_query=default_query,
                                  fields=SCA_CHECK_DB_FIELDS, default_sort_field='id', default_sort_order='ASC',
                                  query='')
+
+    def _parse_select_filter(self, select_fields):
+        if select_fields:
+            set_select_fields = set(select_fields)
+            set_fields_keys = set(self.fields.keys()) - self.extra_fields
+
+            # if select is empty, it will be a subset of any set
+            if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
+                # Extra fields to be treated as allowed select fields
+                extra_select_fields = set(SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()).union(
+                    SCA_CHECK_RULES_DB_FIELDS.keys()) - {'id_check'}
+
+                raise WazuhError(1724, "Allowed select fields: {0}. Fields {1}".format(
+                    ', '.join(set(self.fields.keys()).union(extra_select_fields)),
+                    ', '.join(set_select_fields - set_fields_keys)))
+
+            return set_select_fields
+        return self.fields.keys()
 
 
 class WazuhDBQuerySCACheckIDs(WazuhDBQuerySCA):
