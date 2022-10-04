@@ -2838,51 +2838,59 @@
   <rule id="950302" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5126$</field>
-    <group>object-access,certification-services,</group>
     <description>Signing Certificate was automatically updated by the OCSP Responder Service</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950303" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5127$</field>
-    <group>object-access,certification-services,</group>
     <description>The OCSP Revocation Provider successfully updated the revocation information</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950304" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5136$</field>
-    <group>ds-access,directory-service-changes,</group>
     <description>A directory service object was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950305" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5137$</field>
-    <group>ds-access,directory-service-changes,</group>
     <description>A directory service object was created.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950306" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5138$</field>
-    <group>ds-access,directory-service-changes,</group>
     <description>A directory service object was undeleted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950307" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5139$</field>
-    <group>ds-access,directory-service-changes,</group>
     <description>A directory service object was moved.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950308" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5140$</field>
-    <group>object-access,file-share,</group>
     <description>A network share object was accessed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950309" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5141$</field>
-    <group>ds-access,directory-service-changes,</group>
     <description>A directory service object was deleted.</description>
+    <options>no_full_log</options>
   </rule>
+  
   <rule id="950310" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5152$</field>
