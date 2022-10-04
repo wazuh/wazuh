@@ -118,13 +118,15 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
                 # The query includes the `sort` and `select` parameters
                 with WazuhDBQuerySCACheck(
                         agent_id=agent_list[0],
-                        select=select if not select else list(set(select).intersection(SCA_CHECK_DB_FIELDS.keys())),
+                        select=select if not select else list(
+                            set(select) - SCA_CHECK_RULES_DB_FIELDS.keys() - SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()),
                         sort=sort, sca_checks_ids=id_check_list) as sca_check_query:
                     sca_check_data = sca_check_query.run()
 
                 # Get compliance if all fields selected (not select), or if a compliance field is in select
                 sca_check_compliance_items = []
-                select_compliance = set(select).intersection(SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()) if select else None
+                select_compliance = set(select) - SCA_CHECK_RULES_DB_FIELDS.keys() - \
+                                    SCA_CHECK_DB_FIELDS.keys() if select else None
                 if not select or select_compliance:
                     with WazuhDBQuerySCACheckRelational(
                             agent_id=agent_list[0], table="sca_check_compliance", id_check_list=id_check_list,
@@ -134,7 +136,8 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
 
                 # Get rules if all fields selected (not select), or if a rules field is in select
                 sca_check_rules_items = []
-                select_rules = set(select).intersection(SCA_CHECK_RULES_DB_FIELDS.keys()) if select else None
+                select_rules = set(select) - SCA_CHECK_COMPLIANCE_DB_FIELDS.keys() - \
+                               SCA_CHECK_DB_FIELDS.keys() if select else None
                 if not select or select_rules:
                     with WazuhDBQuerySCACheckRelational(
                             agent_id=agent_list[0], table="sca_check_rules", id_check_list=id_check_list,
