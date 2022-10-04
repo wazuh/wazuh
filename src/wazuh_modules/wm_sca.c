@@ -1762,7 +1762,7 @@ static int wm_sca_read_command(char * command,
 
 static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison,
                                                    const long int number,
-                                                   char **reason,
+                                                   char ** reason,
                                                    w_expression_t * regex_engine)
 {
     if (!partial_comparison) {
@@ -1789,10 +1789,12 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             sprintf(*reason, "Cannot compile regex.");
         }
         mwarn("Cannot compile regex");
+        w_free_expression_t(&regex);
         return RETURN_INVALID;
     }
     regex_matching * regex_match = NULL;
     os_calloc(1, sizeof(regex_matching), regex_match);
+
     if (!w_expression_match(regex, partial_comparison, NULL, regex_match)) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
@@ -1804,7 +1806,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
         return RETURN_INVALID;
     }
 
-    if (!regex_match->sub_strings[0]) {
+    if (!regex_match->sub_strings || !regex_match->sub_strings[0]) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "No number was captured.");
@@ -1812,7 +1814,6 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
         mwarn("No number was captured.");
         os_free(regex_match);
         w_free_expression_t(&regex);
-
         return RETURN_INVALID;
     }
 
@@ -1833,7 +1834,15 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
         return RETURN_INVALID;
     }
 
-    os_free(regex_match);
+    if (regex_match) {
+        if (regex_match->sub_strings) {
+            for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
+                os_free(regex_match->sub_strings[a]);
+            }
+            os_free(regex_match->sub_strings);
+        }
+        os_free(regex_match);
+    }
     w_free_expression_t(&regex);
 
 
@@ -1867,8 +1876,8 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
 }
 
 static int wm_sca_regex_numeric_comparison (const char * const pattern,
-                                            const char *const str,
-                                            char **reason,
+                                            const char * const str,
+                                            char ** reason,
                                             w_expression_t * regex_engine)
 {
     char *pattern_copy;
@@ -1909,7 +1918,7 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
         return RETURN_NOT_FOUND;
     }
 
-    if (!regex_match->sub_strings[0]) {
+    if (!regex_match->sub_strings || !regex_match->sub_strings[0]) {
         mdebug2("Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
@@ -1943,7 +1952,16 @@ static int wm_sca_regex_numeric_comparison (const char * const pattern,
     mdebug2("Comparison result '%ld %s' -> %d", value_captured, partial_comparison_ref, result);
 
     os_free(pattern_copy);
-    os_free(regex_match);
+    if (regex_match) {
+        if (regex_match->sub_strings) {
+            for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
+                os_free(regex_match->sub_strings[a]);
+            }
+            os_free(regex_match->sub_strings);
+        }
+        os_free(regex_match);
+    }
+
     return result;
 }
 
