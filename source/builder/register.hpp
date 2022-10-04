@@ -133,7 +133,7 @@ static void registerBuilders()
                               "helper.saveNetInfoIPv6");
 
     // Active Response
-    Registry::registerBuilder(builders::opBuilderHelperActiveResponse, "helper.ar");
+    Registry::registerBuilder(builders::opBuilderHelperActiveResponse, "helper.ar_message");
 }
 } // namespace builder::internals
 

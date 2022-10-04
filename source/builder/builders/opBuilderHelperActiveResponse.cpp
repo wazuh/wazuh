@@ -5,19 +5,11 @@
 
 #include "opBuilderHelperActiveResponse.hpp"
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <variant>
 
 #include <baseHelper.hpp>
-#include <utils/socketInterface/unixDatagram.hpp>
-#include <opBuilderARWrite.hpp> //TODO -> check header position
-#include <utils/stringUtils.hpp>
-
-using base::utils::socketInterface::SendRetval;
-using base::utils::socketInterface::unixDatagram;
 
 namespace ar
 {
@@ -31,21 +23,22 @@ json::Json baseJson(R"({
     "command":"",
     "parameters":{
         "extra_args":[],
-        "alert":""
+        "alert":{}
         }
     })");
 
 // Paths
 constexpr auto AGENT_ID_PATH = "/agent/id";
 constexpr auto ORIGIN_NAME_PATH = "/origin/name";
+constexpr auto ORIGIN_MODULE_PATH = "/origin/module";
+constexpr auto COMMAND_PATH = "/command";
 constexpr auto VERSION_PATH = "/version";
 constexpr auto ALERT_PATH = "/parameters/alert";
 constexpr auto EXTRA_ARGS_PATH = "/parameters/extra_args";
-constexpr auto EVENT_ORIGINAL = "/event/original";
 
 // values
 constexpr auto NODE_NAME = "node01";
-constexpr auto MODULE = "wazuh-analysisd";
+constexpr auto MODULE_NAME = "wazuh-analysisd";
 constexpr int VERSION = 1;
 constexpr int AGENT_NONE = -1;
 
@@ -54,7 +47,7 @@ constexpr int AGENT_NONE = -1;
 namespace builder::internals::builders
 {
 
-// _ar_result: +ar/<command-name>/<location>/<timeout>/<$_args>
+// _ar_message: +ar_message/<event_original_path>/<command-name>/<location>/<timeout>/<$_args>
 base::Expression opBuilderHelperActiveResponse(const std::any& definition)
 {
     //TODO: check if Active response is enabled first, if not throw runtime_error
@@ -68,44 +61,48 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
     auto parameters {helper::base::processParameters(raw_parameters)};
 
     // Assert expected number of parameters
-    helper::base::checkParametersMinSize(parameters, 2);
+    helper::base::checkParametersMinSize(parameters, 3);
 
     // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
+    // Get event original path
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::REFERENCE);
+    const auto eventOriginalPath {parameters[0].m_value};
+
     // Get command-name -> mandatory presence being value or reference
-    const helper::base::Parameter commandName {parameters[0]};
+    const helper::base::Parameter commandName {parameters[1]};
+    const auto commandNameType {commandName.m_type};
+    std::string commandNameValue = commandName.m_value;
 
     // Get Location -> mandatory value
     // Not checking location value because nothing will be executed on manager
-    helper::base::checkParameterType(parameters[1], helper::base::Parameter::Type::VALUE);
-    const auto location {parameters[1].m_value};
+    helper::base::checkParameterType(parameters[2], helper::base::Parameter::Type::VALUE);
+    const auto location {parameters[2].m_value};
     if(location.empty())
     {
         throw std::runtime_error(fmt::format("[base::opBuilderHelperActiveResponse] -> "
                                              "Failure: <location> shouldn't be empty"));
     }
-    std::shared_ptr<unixDatagram> socketAR {nullptr};
-    socketAR = std::make_shared<unixDatagram>(AR_QUEUE_PATH);
 
     // Get timeout first optional parameter
     const auto parametersSize = parameters.size();
     std::string timeoutField;
     if(parametersSize > 2)
     {
-        timeoutField = parameters[2].m_value;
+        timeoutField = parameters[3].m_value;
     }
 
     // Get _args seccond optional parameter -> should be an array
     std::string argsRef;
     if(parametersSize > 3)
     {
-        helper::base::checkParameterType(parameters[3], helper::base::Parameter::Type::REFERENCE);
-        argsRef = parameters[3].m_value;
+        helper::base::checkParameterType(parameters[4], helper::base::Parameter::Type::REFERENCE);
+        argsRef = parameters[4].m_value;
     }
 
     // If it has more than 4 arguments then it's an error
-    if(parametersSize > 4)
+    if(parametersSize > 5)
     {
         throw std::runtime_error(fmt::format("[base::opBuilderHelperActiveResponse] -> "
                                              "Failure: Too many arguments"));
@@ -113,19 +110,20 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
-    const auto failureTrace1 {fmt::format("[{}] -> Failure: [{}] not found", name, parameters[3].m_value)};
+    const auto failureTrace1 {fmt::format("[{}] -> Failure: [{}] not found", name, parameters[4].m_value)};
     const auto failureTrace2 {fmt::format("[{}] -> Failure: query is empty", name)};
-    const auto failureTrace3 {fmt::format("[{}] -> Failure", name)};
+    const auto failureTrace3 {fmt::format("[{}] -> Failure: [{}] reference not found", name, parameters[1].m_value)};
     const auto failureTrace4 {fmt::format("[{}] -> Failure: Unable to get agent ID", name)};
+    const auto failureTrace5 {fmt::format("[{}] -> Failure: [{}] reference not found or not JSON object", name, parameters[0].m_value)};
+    const auto failureTrace6 {fmt::format("[{}] -> Failure: inserting event in alert", name)};
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
         name,
         [=,
+         eventOriginalPath = std::move(eventOriginalPath),
          targetField = std::move(targetField),
-         commandName = std::move(commandName),
          location = std::move(location),
-         socketAR = std::move(socketAR),
          timeoutField = std::move(timeoutField),
          argsRef = std::move(argsRef),
          name = std::move(name)](base::Event event) -> base::result::Result<base::Event> {
@@ -135,6 +133,28 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
             // TODO: get Node name from ossec.conf -> if not "undefined" -> if not ""
             // harcoded for now
             ar::baseJson.setString(ar::NODE_NAME, ar::ORIGIN_NAME_PATH);
+
+            // Set module name
+            ar::baseJson.setString(ar::MODULE_NAME, ar::ORIGIN_MODULE_PATH);
+
+            // Get and set command name
+            if (helper::base::Parameter::Type::REFERENCE == commandNameType)
+            {
+                auto commandNameResolvedValue {event->getString(commandNameValue)};
+
+                if (!commandNameResolvedValue.has_value())
+                {
+                    return base::result::makeFailure(event, failureTrace3);
+                }
+                else
+                {
+                    ar::baseJson.setString(commandNameResolvedValue.value(), ar::COMMAND_PATH);
+                }
+            }
+            else
+            {
+                ar::baseJson.setString(commandNameValue, ar::COMMAND_PATH);
+            }
 
             int agentID {ar::AGENT_NONE};
             // Check location
@@ -170,7 +190,7 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
                 {
                     for (const auto arrayElement : extraArgsArray.value())
                     {
-                        // fill "alert" in json with this array
+                        // fill "extra_args" in json with this array
                         ar::baseJson.appendString(
                             std::string_view {arrayElement.getString().value()},
                             std::string_view {ar::EXTRA_ARGS_PATH});
@@ -179,15 +199,22 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
             }
 
             // Set alert field from event
-            // TODO: create alert from event! -> Eventinfo_to_jsonstr(lf, false, NULL);
-            // rigth now we're setting the whole event as an alert
-            ar::baseJson.setString(std::string_view {event->getString(ar::EVENT_ORIGINAL).value()},
-                                   std::string_view {ar::ALERT_PATH});
+            if(!event->exists(eventOriginalPath) && !event->isObject(eventOriginalPath))
+            {
+                return base::result::makeFailure(event, failureTrace5);
+            }
 
-            // If version lower to 4.2.5 should escape exclamation, dollar, single quote
-            // and backquote
+            json::Json jsonObjectEvent{event->getString(eventOriginalPath).value().c_str()};
+            try
+            {
+                ar::baseJson.merge(jsonObjectEvent, std::string_view {ar::ALERT_PATH});
+            }
+            catch(const std::runtime_error& e)
+            {
+                return base::result::makeFailure(event, failureTrace6 + e.what());
+            }
 
-            std::string query {ar::baseJson.prettyStr()};
+            std::string query {ar::baseJson.str()};
 
             // Append header message
             const std::string completeMesage =
@@ -197,31 +224,9 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
                             agentID,
                             query);
 
-            if (query.empty())
-            {
-                return base::result::makeFailure(event, failureTrace2);
-            }
-            else
-            {
-                try
-                {
-                    if (SendRetval::SUCCESS == socketAR->sendMsg(query))
-                    {
-                        event->setBool(true, targetField);
-                        return base::result::makeSuccess(event, successTrace);
-                    }
-                    else
-                    {
-                        return base::result::makeFailure(event, failureTrace3);
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    const auto failureTraceEx {
-                        fmt::format("[{}] -> Failure: [{}]", name, e.what())};
-                    return base::result::makeFailure(event, failureTraceEx);
-                }
-            }
+            event->setString(completeMesage, targetField);
+            return base::result::makeSuccess(event, successTrace);
+
         });
 }
 
