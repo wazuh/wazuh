@@ -17,8 +17,15 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief Helper Function that 
- * 
+ * @brief Helper Function for creating the base event that will be sent through
+ * Active Response socket with ar_write
+ * _message: +ar_message/<event>/<command-name>/<location>/<timeout>/<$_args>
+ *  - <event>        (mandatory) Original event
+ *  - <command-name> (mandatory) Any string or reference.
+ *  - <location>     (mandatory) LOCAL, AGENT_IT (in integer), ALL.
+ *  - <timeout>      (optional) Integer timeout value.
+ *  - <$_args>       (optional) Reference to an array of strings.
+ *
  * @param definition 
  * @return base::Expression 
  */

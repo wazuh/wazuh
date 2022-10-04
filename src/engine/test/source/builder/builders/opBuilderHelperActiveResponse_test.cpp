@@ -29,8 +29,8 @@ using namespace builder::internals::builders;
 using std::string;
 
 const string targetField {"/result"};
-const string helperFunctionName {"ar"};
-const std::vector<string> commonArguments {"command-name", "LOCAL", "100","$_argvs"};
+const string helperFunctionName {"ar_message"};
+const std::vector<string> commonArguments {"$event","command-name", "LOCAL", "100","$_argvs"};
 
 class opBuilderHelperActiveResponseTest : public ::testing::Test
 {
@@ -57,9 +57,18 @@ TEST_F(opBuilderHelperActiveResponseTest, BuildSimplest)
     ASSERT_NO_THROW(opBuilderHelperActiveResponse(tuple));
 }
 
-TEST_F(opBuilderHelperActiveResponseTest, checkWrongQttyParams)
+TEST_F(opBuilderHelperActiveResponseTest, checkWrongQttyParamsLess)
 {
-    const std::vector<string> arguments {"command-name"};
+    const std::vector<string> arguments {"$event"};
+
+    const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
+
+    ASSERT_THROW(opBuilderHelperActiveResponse(tuple), std::runtime_error);
+}
+
+TEST_F(opBuilderHelperActiveResponseTest, checkWrongQttyParamsMore)
+{
+    const std::vector<string> arguments {"$event","command-name", "LOCAL", "100","$_argvs","extra"};
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
 
