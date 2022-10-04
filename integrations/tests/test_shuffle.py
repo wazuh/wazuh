@@ -80,7 +80,7 @@ def test_process_args():
 
 
 def test_process_args_json_exit(tmpdir):
-    """Test the correct execution of the process_args function.
+    """Test that the process_args function exits when json exception is raised.
 
     Parameters
     ----------
@@ -91,7 +91,9 @@ def test_process_args_json_exit(tmpdir):
     with patch('shuffle.debug_enabled', return_value=True), \
             patch('shuffle.LOG_FILE', str(log_file)), \
             patch("builtins.open", mock_open()), \
+            patch('json.load') as json_load, \
             pytest.raises(SystemExit) as pytest_wrapped_e:
+        json_load.side_effect = json.decoder.JSONDecodeError("Expecting value", "", 0)
         shuffle.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == 4
 
