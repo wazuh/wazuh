@@ -9,10 +9,10 @@
 # Foundation.
 
 # Global variables
-VERSION="$(cat src/VERSION | sed 's/v//')"
-MAJOR=$(echo ${VERSION} | cut -dv -f2 | cut -d. -f1)
-MINOR=$(echo ${VERSION} | cut -d. -f2)
-SHA="$(git rev-parse --short $1)"
+VERSION="$(sed 's/v//' src/VERSION)"
+MAJOR=$(echo "${VERSION}" | cut -dv -f2 | cut -d. -f1)
+MINOR=$(echo "${VERSION}" | cut -d. -f2)
+SHA="$(git rev-parse --short=7 "$1")"
 
 conf_path="/Library/Ossec/etc/ossec.conf"
 
@@ -23,9 +23,9 @@ TAGS2=( "</address>" "</port>" "</protocol>" "</manager_address>" "</port>" "</p
 WAZUH_REGISTRATION_PASSWORD_PATH="/Library/Ossec/etc/authd.pass"
 
 function install_wazuh(){
-  echo "Testing the following variables $@"
+  echo "Testing the following variables $*"
 
-  eval "launchctl setenv ${@} && installer -pkg wazuh-agent-${VERSION}-0.commit${SHA}.pkg -target / > /dev/null 2>&1"
+  eval "launchctl setenv ${*} && installer -pkg wazuh-agent-${VERSION}-0.commit${SHA}.pkg -target / > /dev/null 2>&1"
   
 }
 
@@ -42,11 +42,11 @@ function remove_wazuh () {
 function test() {
 
   for i in "${!VARS[@]}"; do
-    if [ -n "$(echo "${@}" | grep -w "${VARS[i]}")" ]; then
+    if ( echo "${@}" | grep -q -w "${VARS[i]}" ); then
       if [ "${VARS[i]}" == "WAZUH_MANAGER" ] || [ "${VARS[i]}" == "WAZUH_PROTOCOL" ]; then
-        LIST=( $(echo "${VALUES[i]}" | sed "s#,# #g") )
+        LIST=( "${VALUES[i]//,/ }" )
         for j in "${!LIST[@]}"; do
-          if [ -n "$(cat "${conf_path}" | grep "${TAGS1[i]}${LIST[j]}${TAGS2[i]}")" ]; then
+          if ( grep -q "${TAGS1[i]}${LIST[j]}${TAGS2[i]}" "${conf_path}" ); then
             echo "The variable ${VARS[i]} is set correctly"
           else
             echo "The variable ${VARS[i]} is not set correctly"
@@ -54,14 +54,14 @@ function test() {
           fi
         done
       elif [ "${VARS[i]}" == "WAZUH_REGISTRATION_PASSWORD" ]; then
-        if [ -n "$(cat "${WAZUH_REGISTRATION_PASSWORD_PATH}" | grep "${VALUES[i]}")" ]; then
+        if ( grep -q "${VALUES[i]}" "${WAZUH_REGISTRATION_PASSWORD_PATH}" ); then
           echo "The variable ${VARS[i]} is set correctly"
         else
           echo "The variable ${VARS[i]} is not set correctly"
           exit 1
         fi
       else
-        if [ -n "$(cat ${conf_path} | grep ${TAGS1[i]}${VALUES[i]}${TAGS2[i]})" ]; then
+        if ( grep -q "${TAGS1[i]}${VALUES[i]}${TAGS2[i]}" "${conf_path}" ); then
           echo "The variable ${VARS[i]} is set correctly"
         else
           echo "The variable ${VARS[i]} is not set correctly"
@@ -73,7 +73,7 @@ function test() {
 
 }
 
-wget https://s3.us-west-1.amazonaws.com/packages-dev.wazuh.com/warehouse/pullrequests/${MAJOR}.${MINOR}/macos/wazuh-agent-${VERSION}-0.commit${SHA}.pkg
+wget "https://s3.us-west-1.amazonaws.com/packages-dev.wazuh.com/warehouse/pullrequests/${MAJOR}.${MINOR}/macos/wazuh-agent-${VERSION}-0.commit${SHA}.pkg"
 
 install_wazuh 'WAZUH_MANAGER "1.1.1.1" WAZUH_MANAGER_PORT "7777" WAZUH_PROTOCOL "udp" WAZUH_REGISTRATION_SERVER "2.2.2.2" WAZUH_REGISTRATION_PORT "8888" WAZUH_REGISTRATION_PASSWORD "password" WAZUH_KEEP_ALIVE_INTERVAL "10" WAZUH_TIME_RECONNECT "10" WAZUH_REGISTRATION_CA "/Library/Ossec/etc/testsslmanager.cert" WAZUH_REGISTRATION_CERTIFICATE "/Library/Ossec/etc/testsslmanager.cert" WAZUH_REGISTRATION_KEY "/Library/Ossec/etc/testsslmanager.key" WAZUH_AGENT_NAME "test-agent" WAZUH_AGENT_GROUP "test-group" ENROLLMENT_DELAY "10"' 
 test "WAZUH_MANAGER WAZUH_MANAGER_PORT WAZUH_PROTOCOL WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_TIME_RECONNECT WAZUH_REGISTRATION_CA WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_NAME WAZUH_AGENT_GROUP ENROLLMENT_DELAY" 
