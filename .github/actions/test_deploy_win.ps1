@@ -23,13 +23,17 @@ $TEST_ARRAY=@(
 
 function install_wazuh($vars)
 {
+
     Write-Output "Testing the following variables $vars"
     Start-Process  C:\Windows\System32\msiexec.exe -ArgumentList  "/i wazuh-agent-$VERSION-0.commit$SHA.msi /qn $vars" -wait
+    
 }
 
 function remove_wazuh
 {
+
     Start-Process  C:\Windows\System32\msiexec.exe -ArgumentList "/x wazuh-agent-$VERSION-commit$SHA.msi /qn" -wait
+
 }
 
 function test($vars)
@@ -82,6 +86,7 @@ function test($vars)
       }
     }
   }
+
 }
 
 Invoke-WebRequest -Uri "https://s3.us-west-1.amazonaws.com/packages-dev.wazuh.com/warehouse/pullrequests/$MAJOR.$MINOR/windows/wazuh-agent-$VERSION-0.commit$SHA.msi" -OutFile "wazuh-agent-$VERSION-0.commit$SHA.msi"

@@ -23,12 +23,16 @@ TAGS2=( "</address>" "</port>" "</protocol>" "</manager_address>" "</port>" "</p
 WAZUH_REGISTRATION_PASSWORD_PATH="/var/ossec/etc/authd.pass"
 
 function install_wazuh(){
+
   echo "Testing the following variables $*"
   eval "${*} apt install -y ./wazuh-agent_${VERSION}-0.commit${SHA}_amd64.deb > /dev/null 2>&1"
+  
 }
 
 function remove_wazuh () {
+
   apt purge -y wazuh-agent > /dev/null 2>&1
+
 }
 
 function test() {
@@ -126,4 +130,3 @@ remove_wazuh
 install_wazuh "ENROLLMENT_DELAY=10"
 test "ENROLLMENT_DELAY"
 remove_wazuh
-

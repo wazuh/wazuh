@@ -23,6 +23,7 @@ use_unix_sed="False"
 
 # Special function to use generic sed
 unix_sed() {
+
     sed_expression="$1"
     target_file="$2"
     special_args="$3"
@@ -30,6 +31,7 @@ unix_sed() {
     sed "${special_args}" "${sed_expression}" "${target_file}" > "${target_file}.tmp"
     cat "${target_file}.tmp" > "${target_file}"
     rm "${target_file}.tmp"
+
 }
 
 # Update the value of a XML tag inside the ossec.conf
@@ -58,17 +60,22 @@ edit_value_tag() {
     if [ "$?" != "0" ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
     fi
+
 }
 
 delete_blank_lines() {
+
     file=$1
     if [ "${use_unix_sed}" = "False" ] ; then
         ${sed} '/^$/d' "${file}"
     else
         unix_sed '/^$/d' "${file}"
     fi
+
 }
+
 delete_auto_enrollment_tag() {
+
     # Delete the configuration tag if its value is empty
     # This will allow using the default value
     if [ "${use_unix_sed}" = "False" ] ; then
@@ -79,6 +86,7 @@ delete_auto_enrollment_tag() {
 
     cat -s "${TMP_ENROLLMENT}" > "${TMP_ENROLLMENT}.tmp"
     mv "${TMP_ENROLLMENT}.tmp" "${TMP_ENROLLMENT}"
+
 }
 
 # Change address block of the ossec.conf
@@ -118,13 +126,16 @@ add_adress_block() {
 }
 
 add_parameter () {
+
     if [ -n "$3" ]; then
         OPTIONS="$1 $2 $3"
     fi
     echo "${OPTIONS}"
+
 }
 
 get_deprecated_vars () {
+
     if [ -n "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
         WAZUH_MANAGER=${WAZUH_MANAGER_IP}
     fi
@@ -152,9 +163,11 @@ get_deprecated_vars () {
     if [ -n "${WAZUH_GROUP}" ] && [ -z "${WAZUH_AGENT_GROUP}" ]; then
         WAZUH_AGENT_GROUP=${WAZUH_GROUP}
     fi
+
 }
 
 set_vars () {
+
     export WAZUH_MANAGER
     export WAZUH_MANAGER_PORT
     export WAZUH_PROTOCOL
@@ -205,6 +218,7 @@ set_vars () {
     WAZUH_CERTIFICATE=$(launchctl getenv WAZUH_CERTIFICATE)
     WAZUH_KEY=$(launchctl getenv WAZUH_KEY)
     WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
+
 }
 
 unset_vars() {
@@ -225,16 +239,20 @@ unset_vars() {
         fi
         unset "${var}"
     done
+
 }
 
 # Function to convert strings to lower version
 tolower () {
+
     echo "$1" | tr '[:upper:]' '[:lower:]'
+
 }
 
 
 # Add auto-enrollment configuration block
 add_auto_enrollment () {
+
     start_config="$(grep -n "<enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
     end_config="$(grep -n "</enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
@@ -258,10 +276,12 @@ add_auto_enrollment () {
             echo "    </enrollment>" 
         } >> "${TMP_ENROLLMENT}"
     fi
+
 }
 
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
+
     if [ "${use_unix_sed}" = "False" ] ; then
         ${sed} "/<\/crypto_method>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
     else
@@ -269,10 +289,12 @@ concat_conf() {
     fi
 
     rm -f "${TMP_ENROLLMENT}"
+
 }
 
 # Set autoenrollment configuration
 set_auto_enrollment_tag_value () {
+
     tag="$1"
     value="$2"
 
@@ -281,10 +303,12 @@ set_auto_enrollment_tag_value () {
     else
         delete_auto_enrollment_tag "${tag}" "auto_enrollment"
     fi
+
 }
 
 # Main function the script begin here
 main () {
+
     uname_s=$(uname -s)
 
     # Check what kind of system we are working with
@@ -347,6 +371,7 @@ main () {
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 
     unset_vars "${uname_s}"
+
 }
 
 # Start script execution

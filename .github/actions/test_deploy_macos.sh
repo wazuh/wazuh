@@ -23,6 +23,7 @@ TAGS2=( "</address>" "</port>" "</protocol>" "</manager_address>" "</port>" "</p
 WAZUH_REGISTRATION_PASSWORD_PATH="/Library/Ossec/etc/authd.pass"
 
 function install_wazuh(){
+
   echo "Testing the following variables $*"
 
   eval "launchctl setenv ${*} && installer -pkg wazuh-agent-${VERSION}-0.commit${SHA}.pkg -target / > /dev/null 2>&1"
@@ -30,6 +31,7 @@ function install_wazuh(){
 }
 
 function remove_wazuh () {
+
   /bin/rm -r /Library/Ossec > /dev/null 2>&1
   /bin/launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist > /dev/null 2>&1
   /bin/rm -f /Library/LaunchDaemons/com.wazuh.agent.plist > /dev/null 2>&1
@@ -37,6 +39,7 @@ function remove_wazuh () {
   /usr/bin/dscl . -delete "/Users/wazuh" > /dev/null 2>&1
   /usr/bin/dscl . -delete "/Groups/wazuh" > /dev/null 2>&1
   /usr/sbin/pkgutil --forget com.wazuh.pkg.wazuh-agent > /dev/null 2>&1
+
 }
 
 function test() {
@@ -134,4 +137,3 @@ remove_wazuh
 install_wazuh 'ENROLLMENT_DELAY "10"'
 test "ENROLLMENT_DELAY"
 remove_wazuh
-
