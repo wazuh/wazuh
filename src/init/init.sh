@@ -95,7 +95,6 @@ runInit()
         then
             ln -sf ../${service} /etc/init.d/${service} > /dev/null 2>&1
             systemctl enable "wazuh-"$type
-
         fi
 
         return 0;
