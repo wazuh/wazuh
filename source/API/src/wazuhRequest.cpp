@@ -20,7 +20,6 @@ std::optional<std::string> WazuhRequest::validate() const
     {
         return "The request version is not supported";
     }
-
     if (!m_jrequest.exists("/command") || !m_jrequest.isString("/command"))
     {
         return "The request must have a command field with a string value";
