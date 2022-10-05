@@ -142,37 +142,43 @@ api_config_schema = {
             },
         },
         "upload_configuration": {
-            "remote_commands": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "localfile": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "properties": {
-                            "allow": {"type": "boolean"},
-                            "exceptions": {"type": "array", "items": {"type": "string"}},
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "remote_commands": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "localfile": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {"type": "boolean"},
+                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                            },
                         },
-                    },
-                    "wodle_command": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "properties": {
-                            "allow": {"type": "boolean"},
-                            "exceptions": {"type": "array", "items": {"type": "string"}},
+                        "wodle_command": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {"type": "boolean"},
+                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                            },
                         },
                     },
                 },
-            },
-            "limits": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "eps": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "properties": {
-                            "allow": {"type": "boolean"}
+                "limits": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "eps": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 }
