@@ -11,8 +11,18 @@
    <prematch type="pcre2">\s\d+:\d+:\d+\s\w+:\s\S+\s\d+.\d+.\d+.\d+</prematch>
 </decoder>
 
+<decoder name="wazuh-api">
+   <prematch type="pcre2">\s\d+:\d+:\d+\s\w+:\s\S+\s\(\S+\)\s+\d+.\d+.\d+.\d+</prematch>
+</decoder>
+
 <decoder name="wazuh-api-info">
   <prematch type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\sINFO:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sWARNING:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sERROR:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sCRITICAL:\s\w+\s\w+</prematch>
+</decoder>
+
+<decoder name="wazuh-api-fields">
+  <parent>wazuh-api</parent>
+  <regex type="pcre2">\S+\s\((\S+)\)\s\d+\.\d+\.\d+\.\d+\s</regex>
+  <order>hash</order>
 </decoder>
 
 <decoder name="wazuh-api-fields">
@@ -35,7 +45,7 @@
 
 <decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
-  <regex type="pcre2">:\s\S+\s(\d+\.\d+\.\d+\.\d+)\s</regex>
+  <regex type="pcre2">:\s\S+(?:\s\(\S+\))?\s(\d+\.\d+\.\d+\.\d+)\s</regex>
   <order>srcip</order>
 </decoder>
 
