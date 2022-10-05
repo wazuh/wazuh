@@ -16,7 +16,7 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
 def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                 sort: dict = None, search: dict = None, select: list = None,
+                 sort: dict = None, search: dict = None, select: list = None, distinct: bool = False,
                  filters: dict = None) -> AffectedItemsWazuhResult:
     """Get a list of policies analyzed in the configuration assessment for a given agent.
 
@@ -36,6 +36,8 @@ def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: i
         Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
     select : list
         Select fields to return. Format: ["field1","field2"].
+    distinct : bool
+        Look for distinct values.
     filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
 
@@ -53,7 +55,8 @@ def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: i
         if agent_list[0] in get_agents_info():
 
             with WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                 select=select, count=True, get_data=True, query=q, filters=filters) as db_query:
+                                 select=select, count=True, get_data=True, query=q, filters=filters,
+                                 distinct=distinct) as db_query:
                 data = db_query.run()
 
             result.affected_items.extend(data['items'])

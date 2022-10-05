@@ -12264,6 +12264,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "SCA database elements"

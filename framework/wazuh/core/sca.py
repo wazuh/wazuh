@@ -27,6 +27,8 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     """Class used to query SCA items."""
 
     DEFAULT_QUERY = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
+    DEFAULT_QUERY_DISTINCT = 'SELECT DISTINCT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ' \
+                             'ON sca.id=si.policy_id'
     # API-DB fields mapping
     DB_FIELDS = MappingProxyType(
         {'policy_id': 'policy_id', 'name': 'name', 'description': 'description', 'references': '`references`',
@@ -36,7 +38,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def __init__(self, agent_id: str, offset: int, limit: Union[int, None], sort: Union[dict, None],
                  search: Union[dict, None], query: Union[str, None], count: bool, get_data: bool, select: list = None,
                  default_sort_field: str = 'policy_id', default_sort_order: str = 'DESC', filters: dict = None,
-                 fields: dict = None, default_query: str = DEFAULT_QUERY, min_select_fields: set = None):
+                 fields: dict = None, default_query: str = '', min_select_fields: set = None, distinct: bool = False):
         """Class constructor.
 
         Parameters
@@ -71,10 +73,13 @@ class WazuhDBQuerySCA(WazuhDBQuery):
             Default query. Default: DEFAULT_QUERY
         min_select_fields : set
             Fields that will always be selected.
+        distinct : bool
+            Look for distinct values.
         """
         min_select_fields = min_select_fields if min_select_fields is not None else {'policy_id'}
         self.agent_id = agent_id
-        self.default_query = default_query
+        self.default_query = default_query if default_query else \
+            WazuhDBQuerySCA.DEFAULT_QUERY if not distinct else WazuhDBQuerySCA.DEFAULT_QUERY_DISTINCT
         Agent(agent_id).get_basic_information()  # check if the agent exists
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
@@ -262,9 +267,9 @@ class WazuhDBQueryDistinctSCACheck(WazuhDBQuerySCA):
         # The inner query contains the `filters`, `search`, `sort`, and `query` parameters
         with WazuhDBQuerySCA(agent_id=agent_id, offset=0, limit=None, sort=sort,
                              query=policy_query_filter if not query else f"{policy_query_filter};{query}", count=False,
-                             get_data=False, select=[], default_sort_field='id', default_sort_order='ASC',
-                             filters=filters, fields=fields, default_query=self.INNER_QUERY_PATTERN,
-                             search=search) as inner_query:
+                             get_data=False, select=[], default_sort_field=default_sort_field,
+                             default_sort_order=default_sort_order, filters=filters, fields=fields,
+                             default_query=self.INNER_QUERY_PATTERN, search=search) as inner_query:
             inner_query.run()
             inner_query.query = inner_query.backend._substitute_params(inner_query.query, inner_query.request)
 
