@@ -10,7 +10,7 @@
 
 # If debug is enabled, Add the RE2_ON_VALGRIND definition for RE2
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_definitions(RE2_ON_VALGRIND)
+  add_compile_definitions(RE2_ON_VALGRIND)
 endif()
 
 CPMAddPackage(
@@ -21,12 +21,17 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
-#TODO: as in curl library this should be added statically inside the project
+# TODO: as in curl library this should be added statically inside the project
 find_package(OpenSSL REQUIRED)
 
 # ###################################################################################################
 # Sources - Includes
 # ###################################################################################################
+add_library(builder_ivalidator INTERFACE)
+target_include_directories(builder_ivalidator INTERFACE ${CMAKE_CURRENT_LIST_DIR}/interface)
+target_link_libraries(builder_ivalidator INTERFACE base json)
+add_library(builder::ivalidator ALIAS builder_ivalidator)
+
 add_library(builders OBJECT
   asset.cpp
   builders/baseHelper.cpp
@@ -64,4 +69,14 @@ target_include_directories(builders
 )
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders store::istore base hlp kvdb re2 logicExpression server wdb OpenSSL::Crypto)
+target_link_libraries(builders
+  builder::ivalidator
+  store::istore
+  base
+  hlp kvdb
+  re2
+  logicExpression
+  server
+  wdb
+  OpenSSL::Crypto
+)

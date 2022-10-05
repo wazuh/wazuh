@@ -11,7 +11,6 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
-#include "catalog.hpp"
 #include "register.hpp"
 
 namespace
