@@ -18,7 +18,7 @@ namespace internal
 {
 constexpr auto QUOTED_TAG = "!";
 
-inline rapidjson::Value parse_scalar(const YAML::Node& node,
+rapidjson::Value parse_scalar(const YAML::Node& node,
                                      rapidjson::Document::AllocatorType& allocator)
 {
 
@@ -51,7 +51,59 @@ inline rapidjson::Value parse_scalar(const YAML::Node& node,
     return v;
 }
 
-inline rapidjson::Value yaml2json(const YAML::Node& root,
+YAML::Node parse_scalar(const rapidjson::Value& node)
+{
+    YAML::Node n;
+    if (node.IsString())
+    {
+        n = node.GetString();
+    }
+    else if (node.IsInt())
+    {
+        n = node.GetInt();
+    }
+    else if (node.IsDouble())
+    {
+        n = node.GetDouble();
+    }
+    else if (node.IsBool())
+    {
+        n = node.GetBool();
+    }
+    else
+    {
+        n = YAML::Node();
+    }
+
+    return n;
+}
+
+YAML::Node json2yaml(const rapidjson::Value& value)
+{
+    YAML::Node node;
+    if (value.IsObject())
+    {
+        for (auto& m : value.GetObject())
+        {
+            node[m.name.GetString()] = json2yaml(m.value);
+        }
+    }
+    else if (value.IsArray())
+    {
+        for (auto& v : value.GetArray())
+        {
+            node.push_back(json2yaml(v));
+        }
+    }
+    else
+    {
+        node = parse_scalar(value);
+    }
+
+    return node;
+}
+
+rapidjson::Value yaml2json(const YAML::Node& root,
                                   rapidjson::Document::AllocatorType& allocator)
 {
 
