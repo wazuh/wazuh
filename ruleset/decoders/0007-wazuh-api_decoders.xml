@@ -23,7 +23,7 @@
 <decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">\S+\s\((\S+)\)\s\d+\.\d+\.\d+\.\d+\s</regex>
-  <order>hash</order>
+  <order>auth_context_hash</order>
 </decoder>
 
 <decoder name="wazuh-api-fields">
