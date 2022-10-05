@@ -15,6 +15,7 @@
 #define PFCTL_TABLE ("wazuh_fwtable")
 #define RCCONF      ("/etc/rc.conf")
 #define LAUNCHCTL   ("/bin/launchctl")
+#define KLDLOAD     ("/sbin/kldload")
 
 static int checking_if_its_configured(const char *path, const char *table);
 static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
@@ -90,6 +91,7 @@ int main (int argc, char **argv) {
         char *exec_cmd3[4] = { PFCTL, "-s", "info", NULL };
         char *exec_cmd4[4] = { LAUNCHCTL, "start", "/Library/LaunchDaemons/pf.plist", NULL };
         char *exec_cmd5[4] = { PFCTL, "-f", PFCTL_RULES, NULL };
+        char *exec_cmd6[3] = { KLDLOAD, "pf", NULL };
 
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
@@ -127,7 +129,8 @@ int main (int argc, char **argv) {
                     cJSON_Delete(input_json);
                     return OS_INVALID;
                 }
-                if (exec_cmd4[0] != NULL ) {
+                
+                if (exec_cmd4[0] != NULL && !strcmp("Darwin", uname_buffer.sysname)) {
                     wfd = wpopenv(LAUNCHCTL, exec_cmd4, W_BIND_STDOUT);
                     if (!wfd) {
                         memset(log_msg, '\0', OS_MAXSTR);
@@ -139,18 +142,33 @@ int main (int argc, char **argv) {
                     wpclose(wfd);
                 }
 
-                if (exec_cmd5[0] != NULL) {
-                    wfd = wpopenv(PFCTL, exec_cmd5, W_BIND_STDOUT);
-                    if (!wfd) {
-                        memset(log_msg, '\0', OS_MAXSTR);
-                        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
-                        write_debug_file(argv[0], log_msg);
-                        cJSON_Delete(input_json);
-                        return OS_INVALID;
+                if (!strcmp("Darwin", uname_buffer.sysname) || !strcmp("OpenBSD", uname_buffer.sysname)) {
+                    if (exec_cmd5[0] != NULL) {
+                        wfd = wpopenv(PFCTL, exec_cmd5, W_BIND_STDOUT);
+                        if (!wfd) {
+                            memset(log_msg, '\0', OS_MAXSTR);
+                            snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                            write_debug_file(argv[0], log_msg);
+                            cJSON_Delete(input_json);
+                            return OS_INVALID;
+                        }
+                        wpclose(wfd);
                     }
-                    wpclose(wfd);
+                } else if (!strcmp("FreeBSD", uname_buffer.sysname)) {
+                    if (exec_cmd6[0] != NULL) {
+                        wfd = wpopenv(KLDLOAD, exec_cmd6, W_BIND_STDOUT);
+                        if (!wfd) {
+                            memset(log_msg, '\0', OS_MAXSTR);
+                            snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", KLDLOAD, strerror(errno));
+                            write_debug_file(argv[0], log_msg);
+                            cJSON_Delete(input_json);
+                            return OS_INVALID;
+                        }
+                        wpclose(wfd);
+                    }
+                } else {
+                    /*misra-c 15.7*/
                 }
-
             }
         } else {
             memset(log_msg, '\0', OS_MAXSTR);
