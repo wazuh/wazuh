@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Copyright (C) 2015, Wazuh Inc.
-# March 6, 2019.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
