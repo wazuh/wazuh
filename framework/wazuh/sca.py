@@ -8,9 +8,9 @@ from wazuh.core import common
 from wazuh.core.agent import get_agents_info
 from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.sca import (WazuhDBQueryDistinctSCACheck, WazuhDBQuerySCA, WazuhDBQuerySCACheck,
-                            WazuhDBQuerySCACheckIDs, WazuhDBQuerySCACheckRelational,
-                            SCA_CHECK_COMPLIANCE_DB_FIELDS, SCA_CHECK_RULES_DB_FIELDS, SCA_CHECK_DB_FIELDS)
+from wazuh.core.sca import (
+    WazuhDBQueryDistinctSCACheck, WazuhDBQuerySCA, WazuhDBQuerySCACheck, WazuhDBQuerySCACheckIDs,
+    WazuhDBQuerySCACheckRelational, SCA_CHECK_COMPLIANCE_DB_FIELDS, SCA_CHECK_RULES_DB_FIELDS, SCA_CHECK_DB_FIELDS)
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -78,7 +78,7 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
     policy_id : str
         Policy id to get the checks from.
     agent_list : list
-        Agent id to get the policies from
+        Agent id to get the policies from.
     q : str
         Defines query to filter in DB.
     offset : int
@@ -179,8 +179,8 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
             else:
                 # Get SCA checks fields distinct
                 with WazuhDBQueryDistinctSCACheck(agent_id=agent_list[0], offset=offset, limit=limit, filters=filters,
-                                                  search=search, query=q, policy_id=policy_id,
-                                                  sort=sort, select=select) as sca_check_query:
+                                                  search=search, query=q, policy_id=policy_id, sort=sort,
+                                                  select=select) as sca_check_query:
                     sca_check_data = sca_check_query.run()
 
                 result.total_affected_items = sca_check_data['totalItems']

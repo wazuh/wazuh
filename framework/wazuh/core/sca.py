@@ -128,8 +128,8 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
         min_select_fields = {'id'}
         select = min_select_fields if select == [] else select
 
-        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={},
-                                 search=None, count=False, get_data=True, min_select_fields=min_select_fields,
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=0, limit=None, sort=sort, filters={}, search=None,
+                                 count=False, get_data=True, min_select_fields=min_select_fields,
                                  select=select or list(SCA_CHECK_DB_FIELDS.keys()), default_query=default_query,
                                  fields=SCA_CHECK_DB_FIELDS, default_sort_field='id', default_sort_order='ASC',
                                  query='')
@@ -254,9 +254,9 @@ class WazuhDBQueryDistinctSCACheck(WazuhDBQuerySCA):
         policy_id : str
             Filter by SCA policy ID.
         sort : dict
-            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}
         select : list
-            Select fields to return. Format: ["field1","field2"].
+            Select fields to return. Format: ["field1","field2"]
         """
         policy_query_filter = f"policy_id={policy_id}"
         default_sort_field, default_sort_order = 'id', 'ASC'
@@ -274,9 +274,8 @@ class WazuhDBQueryDistinctSCACheck(WazuhDBQuerySCA):
             inner_query.query = inner_query.backend._substitute_params(inner_query.query, inner_query.request)
 
         # The main object is built using the inner query and `select`, `limit`, `offset`, and `sort` parameters
-        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=sort, filters={},
-                                 search={}, count=True, get_data=True, select=select or list(fields.keys()),
-                                 default_query=f"{self.DEFAULT_QUERY} ({inner_query.query})",
-                                 fields=fields, default_sort_field=default_sort_field,
-                                 default_sort_order=default_sort_order, min_select_fields=set(),
-                                 query='')
+        WazuhDBQuerySCA.__init__(self, agent_id=agent_id, offset=offset, limit=limit, sort=sort, filters={}, search={},
+                                 count=True, get_data=True, select=select or list(fields.keys()),
+                                 default_query=f"{self.DEFAULT_QUERY} ({inner_query.query})", fields=fields,
+                                 default_sort_field=default_sort_field, default_sort_order=default_sort_order,
+                                 min_select_fields=set(), query='')
