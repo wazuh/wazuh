@@ -1,6 +1,5 @@
 add_executable(catalog_test
   catalog_test.cpp
-  jsonTestAssets.hpp
 )
 
 target_link_libraries(catalog_test gtest_main catalog)

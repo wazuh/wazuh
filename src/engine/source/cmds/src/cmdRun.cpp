@@ -13,7 +13,6 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
-#include "catalog.hpp"
 #include "engineServer.hpp"
 #include "protocolHandler.hpp"
 #include "register.hpp"
