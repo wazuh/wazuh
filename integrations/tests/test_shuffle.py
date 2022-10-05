@@ -61,19 +61,24 @@ def test_main():
         process.assert_called_once_with(sys_args_template)
 
 
-@pytest.mark.parametrize('file_side_effect, json_side_effect, return_value', [
-    (FileNotFoundError, None, 3),
-    (None, json.decoder.JSONDecodeError("Expecting value", "", 0), 4)
+@pytest.mark.parametrize('side_effect, return_value', [
+    (FileNotFoundError, 3),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), 4)
 ])
-def test_process_args_exit(file_side_effect, json_side_effect, return_value):
+def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.
 
+    Parameters
+    ----------
+    side_effect : Exception
+        Exception to be raised when there is a failure inside the Load alert section try.
+    return_value : int
+        Value to be returned when sys.exit() is invoked.
     """
-    with patch("shuffle.open", mock_open()) as open_mock, \
+    with patch("shuffle.open", mock_open()), \
             patch('json.load') as json_load, \
             pytest.raises(SystemExit) as pytest_wrapped_e:
-        open_mock.side_effect = file_side_effect
-        json_load.side_effect = json_side_effect
+        json_load.side_effect = side_effect
         shuffle.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == return_value
 
@@ -111,10 +116,8 @@ def test_debug():
         open_mock().write.assert_called_with(f"{shuffle.now}: {msg_template}\n")
 
 
-@pytest.mark.parametrize('expected_msg, rule_id', [
-    ("", shuffle.SKIP_RULE_IDS[0]),
-    (msg_template, 'rule-id')
-])
+@pytest.mark.parametrize('expected_msg, rule_id',
+                         list(("", x) for x in shuffle.SKIP_RULE_IDS) + [(msg_template, 'rule-id')])
 def test_generate_msg(expected_msg, rule_id):
     """Test that the expected message is generated when json_alert received.
 
@@ -177,7 +180,7 @@ def test_send_msg_raise_exception():
 
 
 def test_send_msg():
-    """Test that the send_msg function works as expected"""
+    """Test that the send_msg function works as expected."""
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     with patch('requests.post', return_value=requests.Response) as request_post:
         shuffle.send_msg(msg_template, sys_args_template[3])
