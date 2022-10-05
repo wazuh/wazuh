@@ -37,6 +37,7 @@ public:
      */
     enum class Type
     {
+        // TODO: Remove this enum
         DECODER,
         RULE,
         OUTPUT,
