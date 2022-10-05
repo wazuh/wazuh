@@ -38,14 +38,46 @@ public:
         m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
 
-    // Getters
+    /**
+     * @brief Return data object of the response
+     *
+     * @return data object
+     */
     const json::Json& data() const { return m_data; }
+
+    /**
+     * @brief Return error code of the response
+     *
+     * @return error code
+     */
     int error() const { return m_error; }
+
+    /**
+     * @brief Return message of the response if exists
+     *
+     * @return message of the response if exists
+     */
     const std::optional<std::string>& message() const { return m_message; }
 
-    // Setters
+    /**
+     * @brief Set data object of the response, overwriting the previous one
+     *
+     * @param data object
+     */
     void data(const json::Json& data) { m_data = data; }
+
+    /**
+     * @brief Set error code of the response, overwriting the previous one
+     *
+     * @param error code
+     */
     void error(int error) { m_error = error; }
+
+    /**
+     * @brief Set message of the response, overwriting the previous one if exists
+     *
+     * @param message of the response
+     */
     void message(const std::string& message) { m_message = message; }
 
     /**
