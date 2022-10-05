@@ -47,8 +47,8 @@ constexpr int AGENT_NONE = -1;
 namespace builder::internals::builders
 {
 
-// _ar_message: +ar_message/<event_original_path>/<command-name>/<location>/<timeout>/<$_args>
-base::Expression opBuilderHelperActiveResponse(const std::any& definition)
+// _ar_create: +ar_create/<event_original_path>/<command-name>/<location>/<timeout>/<$_args>
+base::Expression opBuilderHelperCreateAR(const std::any& definition)
 {
     //TODO: check if Active response is enabled first, if not throw runtime_error
     //for this create ActiveResponse Object with init from main.cpp
@@ -81,7 +81,7 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
     const auto location {parameters[2].m_value};
     if(location.empty())
     {
-        throw std::runtime_error(fmt::format("[base::opBuilderHelperActiveResponse] -> "
+        throw std::runtime_error(fmt::format("[base::opBuilderHelperCreateAR] -> "
                                              "Failure: <location> shouldn't be empty"));
     }
 
@@ -104,7 +104,7 @@ base::Expression opBuilderHelperActiveResponse(const std::any& definition)
     // If it has more than 4 arguments then it's an error
     if(parametersSize > 5)
     {
-        throw std::runtime_error(fmt::format("[base::opBuilderHelperActiveResponse] -> "
+        throw std::runtime_error(fmt::format("[base::opBuilderHelperCreateAR] -> "
                                              "Failure: Too many arguments"));
     }
 
