@@ -19,7 +19,7 @@ namespace builder::internals::builders
 /**
  * @brief Helper Function for creating the base event that will be sent through
  * Active Response socket with ar_write
- * _message: +ar_message/<event>/<command-name>/<location>/<timeout>/<$_args>
+ * _message: +ar_create/<event>/<command-name>/<location>/<timeout>/<$_args>
  *  - <event>        (mandatory) Original event
  *  - <command-name> (mandatory) Any string or reference.
  *  - <location>     (mandatory) LOCAL, AGENT_IT (in integer), ALL.
@@ -29,7 +29,7 @@ namespace builder::internals::builders
  * @param definition 
  * @return base::Expression 
  */
-base::Expression opBuilderHelperActiveResponse(const std::any& definition);
+base::Expression opBuilderHelperCreateAR(const std::any& definition);
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_ACTIVE_RESPONSE_H

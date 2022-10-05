@@ -29,10 +29,10 @@ using namespace builder::internals::builders;
 using std::string;
 
 const string targetField {"/result"};
-const string helperFunctionName {"ar_message"};
+const string helperFunctionName {"ar_create"};
 const std::vector<string> commonArguments {"$event","command-name", "LOCAL", "100","$_argvs"};
 
-class opBuilderHelperActiveResponseTest : public ::testing::Test
+class opBuilderHelperCreateARTest : public ::testing::Test
 {
 protected:
     const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
@@ -50,27 +50,27 @@ protected:
     }
 };
 
-TEST_F(opBuilderHelperActiveResponseTest, BuildSimplest)
+TEST_F(opBuilderHelperCreateARTest, BuildSimplest)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    ASSERT_NO_THROW(opBuilderHelperActiveResponse(tuple));
+    ASSERT_NO_THROW(opBuilderHelperCreateAR(tuple));
 }
 
-TEST_F(opBuilderHelperActiveResponseTest, checkWrongQttyParamsLess)
+TEST_F(opBuilderHelperCreateARTest, checkWrongQttyParamsLess)
 {
     const std::vector<string> arguments {"$event"};
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
 
-    ASSERT_THROW(opBuilderHelperActiveResponse(tuple), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperCreateAR(tuple), std::runtime_error);
 }
 
-TEST_F(opBuilderHelperActiveResponseTest, checkWrongQttyParamsMore)
+TEST_F(opBuilderHelperCreateARTest, checkWrongQttyParamsMore)
 {
     const std::vector<string> arguments {"$event","command-name", "LOCAL", "100","$_argvs","extra"};
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
 
-    ASSERT_THROW(opBuilderHelperActiveResponse(tuple), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperCreateAR(tuple), std::runtime_error);
 }
