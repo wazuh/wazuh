@@ -12,7 +12,6 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
-#include "catalog.hpp"
 #include "protocolHandler.hpp"
 #include "register.hpp"
 
