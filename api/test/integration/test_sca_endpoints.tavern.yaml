@@ -643,16 +643,6 @@ stages:
         - function: tavern_utils:test_count_elements
           extra_kwargs:
             n_expected_items: 2
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001
-            - <<: *sca_check_result_001
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Get SCA checks using sort=-title
     request:

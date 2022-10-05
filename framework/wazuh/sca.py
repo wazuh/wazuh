@@ -125,31 +125,32 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
                     # The query includes the `sort` and `select` parameters
                     with WazuhDBQuerySCACheck(
                             agent_id=agent_list[0],
-                            select=select if not select else list(
-                                set(select) - SCA_CHECK_RULES_DB_FIELDS.keys() - SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()),
+                            select=select if not select else [s for s in select if
+                                                              s not in SCA_CHECK_RULES_DB_FIELDS.keys() and s not in
+                                                              SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()],
                             sort=sort, sca_checks_ids=id_check_list) as sca_check_query:
                         sca_check_data = sca_check_query.run()
 
                     # Get compliance if all fields selected (not select), or if a compliance field is in select
                     sca_check_compliance_items = []
-                    select_compliance = set(select) - SCA_CHECK_RULES_DB_FIELDS.keys() - \
-                                        SCA_CHECK_DB_FIELDS.keys() if select else None
+                    select_compliance = [s for s in select if s not in SCA_CHECK_RULES_DB_FIELDS.keys() and s not in
+                                         SCA_CHECK_DB_FIELDS.keys()] if select else None
                     if not select or select_compliance:
                         with WazuhDBQuerySCACheckRelational(
                                 agent_id=agent_list[0], table="sca_check_compliance", id_check_list=id_check_list,
                                 select=select if not select
-                                else list(select_compliance) + ['id_check']) as sca_check_compliance_query:
+                                else select_compliance + ['id_check']) as sca_check_compliance_query:
                             sca_check_compliance_items = sca_check_compliance_query.run()['items']
 
                     # Get rules if all fields selected (not select), or if a rules field is in select
                     sca_check_rules_items = []
-                    select_rules = set(select) - SCA_CHECK_COMPLIANCE_DB_FIELDS.keys() - \
-                                   SCA_CHECK_DB_FIELDS.keys() if select else None
+                    select_rules = [s for s in select if s not in SCA_CHECK_COMPLIANCE_DB_FIELDS.keys() and s not in
+                                    SCA_CHECK_DB_FIELDS.keys()] if select else None
                     if not select or select_rules:
                         with WazuhDBQuerySCACheckRelational(
                                 agent_id=agent_list[0], table="sca_check_rules", id_check_list=id_check_list,
                                 select=select if not select
-                                else list(select_rules) + ['id_check']) as sca_check_rules_query:
+                                else select_rules + ['id_check']) as sca_check_rules_query:
                             sca_check_rules_items = sca_check_rules_query.run()['items']
 
                     # Add compliance and rules to SCA checks data
