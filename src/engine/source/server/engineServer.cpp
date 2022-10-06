@@ -17,9 +17,8 @@
 
 #include <logging/logging.hpp>
 
-#include "endpoints/datagramSocketEndpoint.hpp"
-#include "endpoints/tcpEndpoint.hpp"
-#include "endpoints/udpEndpoint.hpp"
+#include "endpoints/apiEndpoint.hpp"
+#include "endpoints/eventEndpoint.hpp"
 
 using moodycamel::BlockingConcurrentQueue;
 
@@ -56,17 +55,13 @@ EngineServer::createEndpoint(const std::string& type,
                              const std::string& path,
                              BlockingConcurrentQueue<std::string>& eventBuffer) const
 {
-    if (type == "tcp")
+    if (type == "event")
     {
-        return std::make_unique<TCPEndpoint>(path, eventBuffer);
+        return std::make_unique<EventEndpoint>(path, eventBuffer);
     }
-    else if (type == "udp")
+    else if (type == "api")
     {
-        return std::make_unique<UDPEndpoint>(path, eventBuffer);
-    }
-    else if (type == "datagramsocket")
-    {
-        return std::make_unique<DatagramSocketEndpoint>(path, eventBuffer);
+        return std::make_unique<APIEndpoint>(path, eventBuffer);
     }
     else
     {
@@ -81,7 +76,11 @@ void EngineServer::run(void)
 {
     for (auto it = m_endpoints.begin(); it != m_endpoints.end(); ++it)
     {
-        it->second->run();
+        it->second->configure();
+    }
+    if (m_endpoints.size() > 0)
+    {
+        m_endpoints.begin()->second->run();
     }
 }
 
