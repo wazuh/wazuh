@@ -116,8 +116,10 @@ def test_debug():
         open_mock().write.assert_called_with(f"{shuffle.now}: {msg_template}\n")
 
 
-@pytest.mark.parametrize('expected_msg, rule_id',
-                         list(("", x) for x in shuffle.SKIP_RULE_IDS) + [(msg_template, 'rule-id')])
+@pytest.mark.parametrize('rule_id, expected_msg', [
+    (shuffle.SKIP_RULE_IDS[0], ""),
+    ('rule-id', msg_template)
+])
 def test_generate_msg(expected_msg, rule_id):
     """Test that the expected message is generated when json_alert received.
 
@@ -135,7 +137,8 @@ def test_generate_msg(expected_msg, rule_id):
 
 @pytest.mark.parametrize('rule_level, severity', [
     (3, 1),
-    (6, 2),
+    (5, 2),
+    (7, 2),
     (8, 3)
 ])
 def test_generate_msg_severity(rule_level, severity):
@@ -153,9 +156,10 @@ def test_generate_msg_severity(rule_level, severity):
     assert json.loads(shuffle.generate_msg(alert_template))['severity'] == severity
 
 
-@pytest.mark.parametrize('rule_id, result',
-                         list((x, False) for x in shuffle.SKIP_RULE_IDS) + [('rule-id', True)]
-                         )
+@pytest.mark.parametrize('rule_id, result', [
+    (shuffle.SKIP_RULE_IDS[0], False),
+    ('rule-id', True)
+])
 def test_filter_msg(rule_id, result):
     """Test the filter_msg function.
 
