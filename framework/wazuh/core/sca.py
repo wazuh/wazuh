@@ -76,7 +76,10 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         distinct : bool
             Look for distinct values.
         """
-        min_select_fields = min_select_fields if min_select_fields is not None else {'policy_id'}
+        if not distinct:
+            min_select_fields = min_select_fields if min_select_fields is not None else {'policy_id'}
+        else:
+            min_select_fields = set()
         self.agent_id = agent_id
         self.default_query = default_query if default_query else \
             WazuhDBQuerySCA.DEFAULT_QUERY if not distinct else WazuhDBQuerySCA.DEFAULT_QUERY_DISTINCT
