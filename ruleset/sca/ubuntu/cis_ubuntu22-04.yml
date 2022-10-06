@@ -48,7 +48,11 @@ checks:
     references: "1. https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/ 2. https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html Additional Information: If an entry for /tmp exists in /etc/fstab it will take precedence over entries in systemd unit file."
     compliance:
       - cis: ["1.1.2.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1499","T1499.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:\s*/tmp\s'
@@ -63,7 +67,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.2.2"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:nodev'
@@ -77,7 +85,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.2.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1204","T1204.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:noexec'
@@ -91,7 +103,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.2.4"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:nosuid'
@@ -104,10 +120,13 @@ checks:
     rationale: "The reasoning for mounting /var on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behaviour. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/ Additional Information: When modifying /var it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode.'
+    references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.3.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1499","T1499.001"]
+      - mitre_tactics: ["TA0006"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:\s*/var\s'
@@ -121,7 +140,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.3.2"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:nodev'
@@ -136,7 +159,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.3.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:nosuid'
@@ -149,10 +176,14 @@ checks:
     rationale: "The reasoning for mounting /var/tmp on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/tmp directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/tmp and cause the potential disruption to daemons as the disk is full. Fine grained control over the mount Configuring /var/tmp as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var/tmp may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/ Additional Information: When modifying /var/tmp it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode.'
+    references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.4.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1499","T1499.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:\s*/var/tmp\s'
@@ -166,7 +197,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.4.2"]
-      - cis_csc: ["3'3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [ "T1204","T1204.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:noexec'
@@ -180,7 +215,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.4.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:nosuid'
@@ -194,7 +233,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.4.4"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:nodev'
@@ -210,7 +253,11 @@ checks:
     references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/ Additional Information: When modifying /var/log it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multiuser mode.'
     compliance:
       - cis: ["1.1.5.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["6.4"]
+      - cis_csc_v8: ["8.3"]
+      - mitre_techniques: ["T1499","T1499.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s'
@@ -224,7 +271,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.5.2"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:nodev'
@@ -238,7 +289,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.5.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1204","T1204.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:noexec'
@@ -252,7 +307,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.5.4"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:nosuid'
@@ -265,10 +324,14 @@ checks:
     rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/log/audit directory contain the audit.log file that can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/log/audit and cause auditd to trigger it's space_left_action as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var/log/audit as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection of audit data As /var/log/audit contains audit logs, care should be taken to ensure the security and integrity of the data and mount point."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/ Additional Information: When modifying /var/log/audit it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode.'
+    references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.6.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["6.4"]
+      - cis_csc_v8: ["8.3"]
+      - mitre_techniques: ["T1499","T1499.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s'
@@ -282,7 +345,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.6.2"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1204","T1204.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:noexec'
@@ -296,7 +363,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.6.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:nodev'
@@ -310,7 +381,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.6.4"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:nosuid'
@@ -326,7 +401,11 @@ checks:
     references: '1. AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/ Additional Information: When modifying /home it is advisable to bring the system to emergency mode (so auditd is not running), rename the existing directory, mount the new file system, and migrate the data over before returning to multi-user mode.'
     compliance:
       - cis: ["1.1.7.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1499","T1499.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s'
@@ -340,7 +419,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.7.2"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nodev'
@@ -354,7 +437,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.7.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nosuid'
@@ -366,10 +453,13 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm Additional Information: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
-    references: ""
     compliance:
       - cis: ["1.1.8.1"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nodev'
@@ -383,7 +473,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.8.2"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1204","T1204.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:noexec'
@@ -396,7 +490,11 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm Additional Information: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
     compliance:
       - cis: ["1.1.8.3"]
-      - cis_csc: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1548","T1548.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1038"]
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nosuid'
@@ -410,7 +508,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.1.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -424,7 +526,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.1.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -438,7 +544,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -452,7 +562,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -466,7 +580,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.3.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -480,7 +598,11 @@ checks:
     references: "1. https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service 2. https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer Additional Information: The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy systemd timers, timer file aidecheck.timer and service file aidecheck.service, have been included as an optional alternative to using cron Ubuntu advises using /usr/bin/aide.wrapper rather than calling /usr/bin/aide directly in order to protect the database and prevent conflicts"
     compliance:
       - cis: ["1.3.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -494,7 +616,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.4.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -508,7 +634,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.4.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -522,7 +652,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.4.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -536,7 +670,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.5.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -550,7 +688,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.5.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -564,7 +706,11 @@ checks:
     references: "1. AppArmor Documentation: http://wiki.apparmor.net/index.php/Documentation 2. Ubuntu AppArmor Documentation: https://help.ubuntu.com/community/AppArmor 3. SUSE AppArmor Documentation: https://www.suse.com/documentation/apparmor/ 1.6.1.1 Ensure AppArmor is installed Profile Applicability: Level 1 - Server Level 1 - Workstation Description: AppArmor provides Mandatory Access Controls. Rationale: Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available. Audit: Verify that AppArmor is installed: # dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\ ' apparmor apparmor install ok installed installed Remediation: Install AppArmor. # apt install apparmor"
     compliance:
       - cis: ["1.5.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -578,7 +724,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.6.1.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -592,7 +742,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.6.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -606,7 +760,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.6.1.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -620,7 +778,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.7.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -634,7 +796,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.7.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -648,7 +814,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.8.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -662,7 +832,11 @@ checks:
     references: "1. https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en Additional Information: Additional options and sections may appear in the /etc/dconf/db/gdm.d/01-bannermessage file. If a different GUI login service is in use, consult your documentation and apply an equivalent banner. MITRE ATT&CK Mappings: Techniques / Subtechniques Tactics Mitigations TA0007 1.8.3 Ensure GDM disable-user-list option is enabled Profile Applicability: Level 1 - Server Level 1 - Workstation Description: GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls if a list of users is displayed on the login screen Rationale: Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Audit: Run the following script and to verify that the disable-user-list option is enabled or GNOME isn't installed: #!/usr/bin/env bash { l_pkgoutput="" if command -v dpkg-query > /dev/null 2>&1; then l_pq="dpkg-query -W" elif command -v rpm > /dev/null 2>&1; then l_pq="rpm -q" fi l_pcl="gdm gdm3" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq "$l_pn" > /dev/null 2>&1 && l_pkgoutput="$l_pkgoutput\ - Package: \"$l_pn\" exists on the system\ - checking configuration" done if [ -n "$l_pkgoutput" ]; then output="" output2="" l_gdmfile="$(grep -Pril '^\h*disable-user-list\h*=\h*true\b' /etc/dconf/db)" if [ -n "$l_gdmfile" ]; then output="$output\ - The \"disable-user-list\" option is enabled in \"$l_gdmfile\"" l_gdmprofile="$(awk -F\/ '{split($(NF-1),a,".");print a[1]}' <<< "$l_gdmfile")" if grep -Pq "^\h*system-db:$l_gdmprofile" /etc/dconf/profile/"$l_gdmprofile"; then output="$output\ - The \"$l_gdmprofile\" exists" else output2="$output2\ - The \"$l_gdmprofile\" doesn't exist" fi if [ -f "/etc/dconf/db/$l_gdmprofile" ]; then output="$output\ - The \"$l_gdmprofile\" profile exists in the dconf database" else output2="$output2\ - The \"$l_gdmprofile\" profile doesn't exist in the dconf database" fi else output2="$output2\ - The \"disable-user-list\" option is not enabled" fi if [ -z "$output2" ]; then echo -e "$l_pkgoutput\ - Audit result:\ *** PASS: ***\ $output\ " else echo -e "$l_pkgoutput\ - Audit Result:\ *** FAIL: ***\ $output2\ " [ -n "$output" ] && echo -e "$output\ " fi else echo -e "\ \ - GNOME Desktop Manager isn't installed\ Recommendation is Not Applicable\ - Audit result:\ *** PASS ***\ " fi } Remediation: Run the following script to enable the disable-user-list option: Note: the l_gdm_profile variable in the script can be changed if a different profile name is desired in accordance with local site policy. #!/usr/bin/env bash { l_gdmprofile="gdm" if [ ! -f "/etc/dconf/profile/$l_gdmprofile" ]; then echo "Creating profile \"$l_gdmprofile\"" echo -e "user-db:user\ system-db:$l_gdmprofile\ file- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d "/etc/dconf/db/$l_gdmprofile.d/" ]; then echo "Creating dconf database directory \"/etc/dconf/db/$l_gdmprofile.d/\"" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\h*disable-user-list\h*=\h*true\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo "creating gdm keyfile for machine-wide settings" if ! grep -Piq -- '^\h*\[org\/gnome\/login-screen\]' /etc/dconf/db/$l_gdmprofile.d/*; then echo -e "\ [org/gnome/login-screen]\ # Do not show the user list\ disable-user-list=true" >> /etc/dconf/db/$l_gdmprofile.d/00-loginscreen else sed -ri '/^\s*\[org\/gnome\/login-screen\]/ a\# Do not show the list\ disable-user-list=true' $(grep -Pil -- '^\h*\[org\/gnome\/loginscreen\]' /etc/dconf/db/$l_gdmprofile.d/*) fi fi dconf update } user Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied. OR Run the following command to remove the GNOME package: # apt purge gdm3 Default Value: false References: 1. https://help.gnome.org/admin/system-admin-guide/stable/login-userlistdisable.html.en Additional Information: If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the user list MITRE ATT&CK Mappings: Techniques / Subtechniques Tactics Mitigations T1078, T1078.001, T1078.002, T1078.003, T1087, T1087.001, T1087.002 TA0007 M1028 1.8.4 Ensure GDM screen locks when the user is idle Profile Applicability: Level 1 - Server Level 1 - Workstation Description: GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. idle-delay=uint32 {n} - Number of seconds of inactivity before the screen goes blank lock-delay=uint32 {n} - Number of seconds after the screen is blank before locking the screen Example key file: # Specify the dconf path [org/gnome/desktop/session] # Number of seconds of inactivity before the screen goes blank # Set to 0 seconds if you want to deactivate the screensaver. idle-delay=uint32 900 # Specify the dconf path [org/gnome/desktop/screensaver] # Number of seconds after the screen is blank before locking the screen lock-delay=uint32 5 Rationale: Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended. Audit: Run the following script to verify that the screen locks when the user is idle: #!/usr/bin/env bash { # Check if GNMOE Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\ # determine system's package manager l_pkgoutput="" if command -v dpkg-query > /dev/null 2>&1; then l_pq="dpkg-query -W" elif command -v rpm > /dev/null 2>&1; then l_pq="rpm -q" fi # Check if GDM is installed l_pcl="gdm gdm3" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq "$l_pn" > /dev/null 2>&1 && l_pkgoutput="$l_pkgoutput\ - Package: \"$l_pn\" exists on the system\ - checking configuration" done # Check configuration (If applicable) if [ -n "$l_pkgoutput" ]; then l_output="" l_output2="" l_idmv="900" # Set for max value for idle-delay in seconds l_ldmv="5" # Set for max value for lock-delay in seconds # Look for idle-delay to determine profile in use, needed for remaining tests l_kfile="$(grep -Psril '^\h*idle-delay\h*=\h*uint32\h+\d+\b' /etc/dconf/db/*/)" # Determine file containing idle-delay key if [ -n "$l_kfile" ]; then # set profile name (This is the name of a dconf database) l_profile="$(awk -F'/' '{split($(NF-1),a,".");print a[1]}' <<< "$l_kfile")" #Set the key profile name l_pdbdir="/etc/dconf/db/$l_profile.d" # Set the key file dconf db directory # Confirm that idle-delay exists, includes unit32, and value is between 1 and max value for idle-delay l_idv="$(awk -F 'uint32' '/idle-delay/{print $2}' "$l_kfile" | xargs)" if [ -n "$l_idv" ]; then [ "$l_idv" -gt "0" -a "$l_idv" -le "$l_idmv" ] && l_output="$l_output\ - The \"idle-delay\" option is set to \"$l_idv\" seconds in \"$l_kfile\"" [ "$l_idv" = "0" ] && l_output2="$l_output2\ - The \"idledelay\" option is set to \"$l_idv\" (disabled) in \"$l_kfile\"" [ "$l_idv" -gt "$l_idmv" ] && l_output2="$l_output2\ - The \"idle-delay\" option is set to \"$l_idv\" seconds (greater than $l_idmv) in \"$l_kfile\"" else l_output2="$l_output2\ - The \"idle-delay\" option is not set in \"$l_kfile\"" fi # Confirm that lock-delay exists, includes unit32, and value is between 0 and max value for lock-delay l_ldv="$(awk -F 'uint32' '/lock-delay/{print $2}' "$l_kfile" | xargs)" if [ -n "$l_ldv" ]; then [ "$l_ldv" -ge "0" -a "$l_ldv" -le "$l_ldmv" ] && l_output="$l_output\ - The \"lock-delay\" option is set to \"$l_ldv\" seconds in \"$l_kfile\"" [ "$l_ldv" -gt "$l_ldmv" ] && l_output2="$l_output2\ - The \"lock-delay\" option is set to \"$l_ldv\" seconds (greater than $l_ldmv) in \"$l_kfile\"" else l_output2="$l_output2\ - The \"lock-delay\" option is not set in \"$l_kfile\"" fi # Confirm that dconf profile exists if grep -Psq "^\h*system-db:$l_profile" /etc/dconf/profile/*; then l_output="$l_output\ - The \"$l_profile\" profile exists" else l_output2="$l_output2\ - The \"$l_profile\" doesn't exist" fi # Confirm that dconf profile database file exists if [ -f "/etc/dconf/db/$l_profile" ]; then l_output="$l_output\ - The \"$l_profile\" profile exists in the dconf database" else l_output2="$l_output2\ - The \"$l_profile\" profile doesn't exist in the dconf database" fi else l_output2="$l_output2\ - The \"idle-delay\" option doesn't exist, remaining tests skipped" fi else l_output="$l_output\ - GNOME Desktop Manager package is not installed on the system\ - Recommendation is not applicable" fi # Report results. If no failures output in l_output2, we pass [ -n "$l_pkgoutput" ] && echo -e "\ $l_pkgoutput" if [ -z "$l_output2" ]; then echo -e "\ - Audit Result:\ ** PASS **\ $l_output\ " else echo -e "\ - Audit Result:\ ** FAIL **\ - Reason(s) for audit failure:\ $l_output2\ " [ -n "$l_output" ] && echo -e "\ - Correctly set:\ $l_output\ " fi } Note: idle-delay=uint32 Should be 900 seconds (15 minutes) or less, not 0 (disabled) and follow local site policy lock-delay=uint32 should be 5 seconds or less and follow local site policy Remediation: Create or edit a file in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. Example: # echo -e '\ user-db:user\ system-db:local' >> /etc/dconf/profile/user Create the directory /etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/ if it doesn't already exist: Example: # mkdir /etc/dconf/db/local.d Create the key file `/etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/{FILE_NAME} to provide information for the {NAME_OF_DCONF_DATABASE} database: Example script: #!/usr/bin/env bash { l_key_file="/etc/dconf/db/local.d/00-screensaver" l_idmv="900" # Set max value for idle-delay in seconds (between 1 and 900) l_ldmv="5" # Set max value for lock-delay in seconds (between 0 and 5) { echo '# Specify the dconf path' echo '[org/gnome/desktop/session]' echo '' echo '# Number of seconds of inactivity before the screen goes blank' echo '# Set to 0 seconds if you want to deactivate the screensaver.' echo "idle-delay=uint32 $l_idmv" echo '' echo '# Specify the dconf path' echo '[org/gnome/desktop/screensaver]' echo '' echo '# Number of seconds after the screen is blank before locking the screen' echo "lock-delay=uint32 $l_ldmv" } > "$l_key_file" } Note: You must include the uint32 along with the integer key values as shown. Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect. References: 1. https://help.gnome.org/admin/system-admin-guide/stable/desktoplockscreen.html.en"
     compliance:
       - cis: ["1.8.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -676,7 +850,11 @@ checks:
     references: "1. https://help.gnome.org/admin/system-admin-guide/stable/desktoplockscreen.html.en 2. https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en"
     compliance:
       - cis: ["1.8.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -690,7 +868,11 @@ checks:
     references: "1. https://access.redhat.com/solutions/20107"
     compliance:
       - cis: ["1.8.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -704,7 +886,11 @@ checks:
     references: "1. https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en 1.8.8 Ensure GDM autorun-never is enabled Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM. Rationale: Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute. Audit: Run the following script to verify that autorun-never is set to true for GDM: #!/usr/bin/env bash { l_pkgoutput="" l_output="" l_output2="" # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\ # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq="dpkg-query -W" elif command -v rpm > /dev/null 2>&1; then l_pq="rpm -q" fi # Check if GDM is installed l_pcl="gdm gdm3" # Space separated list of packages to check for l_pn in $l_pcl; do $l_pq "$l_pn" > /dev/null 2>&1 && l_pkgoutput="$l_pkgoutput\ - Package: \"$l_pn\" exists on the system\ - checking configuration" echo -e "$l_pkgoutput" done # Check configuration (If applicable) if [ -n "$l_pkgoutput" ]; then echo -e "$l_pkgoutput" # Look for existing settings and set variables if they exist l_kfile="$(grep -Prils -- '^\h*autorun-never\b' /etc/dconf/db/*.d)" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f "$l_kfile" ]; then l_gpname="$(awk -F\/ '{split($(NF-1),a,".");print a[1]}' <<< "$l_kfile")" fi # If the profile name exist, continue checks if [ -n "$l_gpname" ]; then l_gpdir="/etc/dconf/db/$l_gpname.d" # Check if profile file exists if grep -Pq -- "^\h*system-db:$l_gpname\b" /etc/dconf/profile/*; then l_output="$l_output\ - dconf database profile file \"$(grep -Pl -- "^\h*system-db:$l_gpname\b" /etc/dconf/profile/*)\" exists" else l_output2="$l_output2\ - dconf database profile isn't set" fi # Check if the dconf database file exists if [ -f "/etc/dconf/db/$l_gpname" ]; then l_output="$l_output\ - The dconf database \"$l_gpname\" exists" else l_output2="$l_output2\ - The dconf database \"$l_gpname\" doesn't exist" fi # check if the dconf database directory exists if [ -d "$l_gpdir" ]; then l_output="$l_output\ - The dconf directory \"$l_gpdir\" exitst" else l_output2="$l_output2\ - The dconf directory \"$l_gpdir\" doesn't exist" fi # check autorun-never setting if grep -Pqrs -- '^\h*autorun-never\h*=\h*true\b' "$l_kfile"; then l_output="$l_output\ - \"autorun-never\" is set to true in: \"$l_kfile\"" else l_output2="$l_output2\ - \"autorun-never\" is not set correctly" fi else # Settings don't exist. Nothing further to check l_output2="$l_output2\ - \"autorun-never\" is not set" fi else l_output="$l_output\ - GNOME Desktop Manager package is not installed on the system\ - Recommendation is not applicable" fi # Report results. If no failures output in l_output2, we pass if [ -z "$l_output2" ]; then echo -e "\ - Audit Result:\ ** PASS **\ $l_output\ " else echo -e "\ - Audit Result:\ ** FAIL **\ - Reason(s) for audit failure:\ $l_output2\ " [ -n "$l_output" ] && echo -e "\ - Correctly set:\ $l_output\ " fi } Remediation: Run the following script to set autorun-never to true for GDM users: #!/usr/bin/env bash { l_pkgoutput="" l_output="" l_output2="" l_gpname="local" # Set to desired dconf profile name (default is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\ # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq="dpkg-query -W" elif command -v rpm > /dev/null 2>&1; then l_pq="rpm -q" fi # Check if GDM is installed l_pcl="gdm gdm3" # Space separated list of packages to check for l_pn in $l_pcl; do $l_pq "$l_pn" > /dev/null 2>&1 && l_pkgoutput="$l_pkgoutput\ - Package: \"$l_pn\" exists on the system\ - checking configuration" done echo -e "$l_pkgoutput" # Check configuration (If applicable) if [ -n "$l_pkgoutput" ]; then echo -e "$l_pkgoutput" # Look for existing settings and set variables if they exist l_kfile="$(grep -Prils -- '^\h*autorun-never\b' /etc/dconf/db/*.d)" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f "$l_kfile" ]; then l_gpname="$(awk -F\/ '{split($(NF-1),a,".");print a[1]}' <<< "$l_kfile")" echo " - updating dconf profile name to \"$l_gpname\"" fi [ ! -f "$l_kfile" ] && l_kfile="/etc/dconf/db/$l_gpname.d/00-mediaautorun" # Check if profile file exists if grep -Pq -- "^\h*system-db:$l_gpname\b" /etc/dconf/profile/*; then echo -e "\ - dconf database profile exists in: \"$(grep -Pl -"^\h*system-db:$l_gpname\b" /etc/dconf/profile/*)\"" else [ ! -f "/etc/dconf/profile/user" ] && l_gpfile="/etc/dconf/profile/user" || l_gpfile="/etc/dconf/profile/user2" echo -e " - creating dconf database profile" { echo -e "\ user-db:user" echo "system-db:$l_gpname" } >> "$l_gpfile" fi # create dconf directory if it doesn't exists l_gpdir="/etc/dconf/db/$l_gpname.d" if [ -d "$l_gpdir" ]; then echo " - The dconf database directory \"$l_gpdir\" exists" else echo " - creating dconf database directory \"$l_gpdir\"" mkdir "$l_gpdir" fi # check autorun-never setting if grep -Pqs -- '^\h*autorun-never\h*=\h*true\b' "$l_kfile"; then echo " - \"autorun-never\" is set to true in: \"$l_kfile\"" else echo " - creating or updating \"autorun-never\" entry in \"$l_kfile\"" if grep -Psq -- '^\h*autorun-never' "$l_kfile"; then sed -ri 's/(^\s*autorun-never\s*=\s*)(\S+)(\s*.*)$/\1true \3/' "$l_kfile" else ! grep -Psq -- '\^\h*\[org\/gnome\/desktop\/media-handling\]\b' "$l_kfile" && echo '[org/gnome/desktop/media-handling]' >> "$l_kfile" sed -ri '/^\s*\[org\/gnome\/desktop\/media-handling\]/a \\ autorun-never=true' "$l_kfile" fi fi else echo -e "\ - GNOME Desktop Manager package is not installed on the system\ - Recommendation is not applicable" fi # update dconf database dconf update } Default Value: false"
     compliance:
       - cis: ["1.8.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -718,7 +904,11 @@ checks:
     references: ""
     compliance:
       - cis: ["1.8.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -732,7 +922,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.1.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -746,7 +940,11 @@ checks:
     references: "1. chrony.conf(5) Manual . https://tf.nist.gov/tf-cgi/servers.cgi Additional Information: If pool and/or server directive(s) are set in a sources file in /etc/chrony/sources.d, the line: sourcedir /etc/chrony/sources.d must be present in /etc/chrony/chrony.conf"
     compliance:
       - cis: ["2.1.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -760,7 +958,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.1.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -774,7 +976,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.1.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -788,7 +994,11 @@ checks:
     references: "1. http://www.ntp.org/ 2. ntp.conf(5) 3. ntpd(8)"
     compliance:
       - cis: ["2.1.4.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -802,7 +1012,11 @@ checks:
     references: "1. http://www.ntp.org/ 2. https://tf.nist.gov/tf-cgi/servers.cgi 3. ntp.conf(5) 4. ntpd(8)"
     compliance:
       - cis: ["2.1.4.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -816,7 +1030,11 @@ checks:
     references: "1. http://www.ntp.org/"
     compliance:
       - cis: ["2.1.4.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -830,7 +1048,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.1.4.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -844,7 +1066,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -858,7 +1084,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -872,7 +1102,11 @@ checks:
     references: "1. More detailed documentation on CUPS is available at the project homepage at http://www.cups.org."
     compliance:
       - cis: ["2.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -886,7 +1120,11 @@ checks:
     references: "1. More detailed documentation on DHCP is available at http://www.isc.org/software/dhcp."
     compliance:
       - cis: ["2.2.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -900,7 +1138,11 @@ checks:
     references: "1. For more detailed documentation on OpenLDAP, go to the project homepage at http://www.openldap.org."
     compliance:
       - cis: ["2.2.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -914,7 +1156,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -928,7 +1174,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -942,7 +1192,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -956,7 +1210,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -970,7 +1228,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -984,7 +1246,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.11"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -998,7 +1264,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.12"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1012,7 +1282,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.13"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1026,7 +1300,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.14"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1040,7 +1318,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.2.16"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1054,7 +1336,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.3.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1068,7 +1354,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.3.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1082,7 +1372,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.3.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1096,7 +1390,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.3.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1110,7 +1408,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.3.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1124,7 +1426,11 @@ checks:
     references: ""
     compliance:
       - cis: ["2.3.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1138,7 +1444,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1152,7 +1462,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.1.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1166,7 +1480,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1180,7 +1498,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1194,7 +1516,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1208,7 +1534,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1222,7 +1552,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1236,7 +1570,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1250,7 +1588,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1264,7 +1606,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1278,7 +1624,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1292,7 +1642,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1306,7 +1660,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.3.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1320,7 +1678,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.4.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1334,7 +1696,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.4.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1348,7 +1714,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.4.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1362,7 +1732,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.4.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1376,7 +1750,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1390,7 +1768,11 @@ checks:
     references: "1. http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html"
     compliance:
       - cis: ["3.5.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1404,7 +1786,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.1.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1418,7 +1804,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.1.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1432,7 +1822,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.1.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1446,7 +1840,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.1.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1460,7 +1858,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1474,7 +1876,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1488,7 +1894,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1502,7 +1912,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1516,7 +1930,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1530,7 +1948,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1544,7 +1966,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1558,7 +1984,11 @@ checks:
     references: "1. Manual Page nft"
     compliance:
       - cis: ["3.5.2.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1572,7 +2002,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1586,7 +2020,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.2.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1600,7 +2038,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1614,7 +2056,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.1.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1628,7 +2074,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1642,7 +2092,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1656,7 +2110,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1670,7 +2128,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1684,7 +2146,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.2.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1698,7 +2164,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.3.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1712,7 +2182,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.3.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1726,7 +2200,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.3.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1740,7 +2218,11 @@ checks:
     references: ""
     compliance:
       - cis: ["3.5.3.3.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1754,7 +2236,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1768,7 +2254,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.1.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1782,7 +2272,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1796,7 +2290,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.1.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1810,7 +2308,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1824,7 +2326,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1838,7 +2344,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1852,7 +2362,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1866,7 +2380,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1880,7 +2398,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1894,7 +2416,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1908,7 +2434,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1922,7 +2452,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1936,7 +2470,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1950,7 +2488,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1964,7 +2506,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.11"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1978,7 +2524,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.12"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -1992,7 +2542,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.13"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2006,7 +2560,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.15"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2020,7 +2578,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.16"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2034,7 +2596,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.17"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2048,7 +2614,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.18"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2062,7 +2632,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.19"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2076,7 +2650,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.20"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2090,7 +2668,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.3.21"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2104,7 +2686,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2118,7 +2704,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2132,7 +2722,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2146,7 +2740,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2160,7 +2758,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2174,7 +2776,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2188,7 +2794,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2202,7 +2812,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2216,7 +2830,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2230,7 +2848,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2244,7 +2866,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.1.4.11"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2258,7 +2884,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.1.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2272,7 +2902,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2286,7 +2920,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2300,7 +2938,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2314,7 +2956,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2328,7 +2974,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2342,7 +2992,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.1.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2356,7 +3010,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2370,7 +3028,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2384,7 +3046,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2398,7 +3064,11 @@ checks:
     references: "1. See the rsyslog.conf(5) man page for more information."
     compliance:
       - cis: ["4.2.2.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2412,7 +3082,11 @@ checks:
     references: "1. See the rsyslog.conf(5) man page for more information."
     compliance:
       - cis: ["4.2.2.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2426,7 +3100,11 @@ checks:
     references: "1. See the rsyslog.conf(5) man page for more information. Additional Information: In addition, see the RSyslog documentation for implementation details of TLS."
     compliance:
       - cis: ["4.2.2.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2440,7 +3118,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.2.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2454,7 +3136,11 @@ checks:
     references: ""
     compliance:
       - cis: ["4.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2468,7 +3154,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2482,7 +3172,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.1.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2496,7 +3190,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.1.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2510,7 +3208,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2524,7 +3226,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2538,7 +3244,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2552,7 +3262,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2566,7 +3280,11 @@ checks:
     references: "1. https://www.ssh.com/ssh/sshd_config/"
     compliance:
       - cis: ["5.2.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2580,7 +3298,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2594,7 +3316,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2608,7 +3334,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.8"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2622,7 +3352,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2636,7 +3370,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2650,7 +3388,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.11"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2664,7 +3406,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.2.12"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2678,7 +3424,11 @@ checks:
     references: "1. https://nvd.nist.gov/vuln/detail/CVE-2016-2183 2. https://www.openssh.com/txt/cbc.adv 3. https://nvd.nist.gov/vuln/detail/CVE-2008-5161 4. https://www.openssh.com/txt/cbc.adv 5. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.13"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2692,7 +3442,11 @@ checks:
     references: "1. More information on SSH downgrade attacks can be found here: http://www.mitls.org/pages/attacks/SLOTH 2. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.14"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2706,7 +3460,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.2.15"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2720,7 +3478,11 @@ checks:
     references: "1. https://www.ssh.com/ssh/tunneling/example"
     compliance:
       - cis: ["5.2.16"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2734,7 +3496,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.2.17"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2748,7 +3514,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.18"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2762,7 +3532,11 @@ checks:
     references: "1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.19"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2776,7 +3550,11 @@ checks:
     references: "1. SSHD_CONFIG(5) MITRE ATT&CK Mappings: Techniques / Subtechniques T1499, T1499.002 Tactics TA0040 Mitigations 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access. Rationale: Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy. Audit: Run the following command and verify that output LoginGraceTime is between 1 and 60 seconds or 1m: # sshd -T -C user=root -C host="$(hostname)" -C addr="$(grep $(hostname) /etc/hosts | awk '{print $1}')" | grep logingracetime Verify the output matches: logingracetime 60 Run the following command and verify the output: # grep -Ei '^\s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][09]+|[^1]m)' /etc/ssh/sshd_config Nothing should be returned. Remediation: Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60 Default Value: LoginGraceTime 120 References: 1. SSHD_CONFIG(5)"
     compliance:
       - cis: ["5.2.20"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2790,7 +3568,11 @@ checks:
     references: "1. https://man.openbsd.org/sshd_config Additional Information: https://bugzilla.redhat.com/show_bug.cgi?id=1873547 https://github.com/openssh/openssh-portable/blob/V_8_9/serverloop.c#L137 MITRE ATT&CK Mappings: Techniques / Subtechniques T1078, T1078.001, T1078.002, T1078.003 Tactics TA0001 Mitigations M1026 5.3 Configure privilege escalation There are various tools which allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. sudo sudo documentation The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy. sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. pkexec pkexec documentation pkexec allows an authorized user to execute PROGRAM as another user. If username is not specified, then the program will be executed as the administrative super user, root. 5.3.1 Ensure sudo is installed Profile Applicability: Level 1 - Server Level 1 - Workstation Description: sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy. Rationale: sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific. Audit: Run the following command to verify that either sudo or sudo-ldap is installed: # dpkg-query -W sudo sudo-ldap > /dev/null 2>&1 && dpkg-query -W f='${binary:Package}\t${Status}\t${db:Status-Status}\ ' sudo sudo-ldap '($4=="installed" && $NF=="installed") {print "\ ""PASS:""\ ""Package ""\""$1"\""" is installed""\ "}' || echo -e "\ FAIL:\ neither \"sudo\" \"sudo-ldap\" package is installed\ " | awk or Remediation: First determine is LDAP functionality is required. If so, then install sudo-ldap, else install sudo. Example: # apt install sudo References: 1. SUDO(8)"
     compliance:
       - cis: ["5.2.22"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2804,7 +3586,11 @@ checks:
     references: "1. SUDO(8) 2. VISUDO(8)"
     compliance:
       - cis: ["5.3.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2818,7 +3604,11 @@ checks:
     references: "1. SUDO(8) 2. VISUDO(8) Additional Information: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for parse errors. If the sudoers file is currently being edited you will receive a message to try again later."
     compliance:
       - cis: ["5.3.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2832,7 +3622,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.3.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2846,7 +3640,11 @@ checks:
     references: "1. https://www.sudo.ws/man/1.9.0/sudoers.man.html"
     compliance:
       - cis: ["5.3.6"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2860,7 +3658,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.3.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2874,7 +3676,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.4.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2888,7 +3694,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.4.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2902,7 +3712,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.4.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2916,7 +3730,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.4.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2930,7 +3748,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.4.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2944,7 +3766,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2958,7 +3784,11 @@ checks:
     references: "1. https://www.cisecurity.org/white-papers/cis-password-policy-guide/ Additional Information: A value of -1 will disable password expiration The password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
     compliance:
       - cis: ["5.5.1.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2972,7 +3802,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -2986,7 +3820,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.1.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3000,7 +3838,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.1.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3014,7 +3856,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3028,7 +3874,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3042,7 +3892,11 @@ checks:
     references: "1. pam_umask(8) Additional Information: Other methods of setting a default user umask exist If other methods are in use in your environment they should be audited The default user umask can be overridden with a user specific umask The user creating the directories or files has the discretion of changing the permissions: o Using the chmod command o Setting a different default umask by adding the umask command into a User Shell Configuration File, (.bashrc), in their home directory o Manually changing the umask for the duration of a login session by running the umask command"
     compliance:
       - cis: ["5.5.4"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3056,7 +3910,11 @@ checks:
     references: ""
     compliance:
       - cis: ["5.5.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3070,7 +3928,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3084,7 +3946,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3098,7 +3964,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3112,7 +3982,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.7"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3126,7 +4000,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.9"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3140,7 +4018,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.10"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3154,7 +4036,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.11"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3168,7 +4054,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.12"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3182,7 +4072,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.1.13"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3196,7 +4090,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.1"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3210,7 +4108,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.2"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3224,7 +4126,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.3"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3238,7 +4144,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.5"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3252,7 +4162,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.12"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3266,7 +4180,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.13"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
@@ -3280,7 +4198,11 @@ checks:
     references: ""
     compliance:
       - cis: ["6.2.17"]
-      - cis_csc: [""]
+      - cis_csc_v7: [""]
+      - cis_csc_v8: [""]
+      - mitre_techniques: [""]
+      - mitre_tactics: [""]
+      - mitre_mitigations: [""]
     condition: all
     rules:
       - ''    
