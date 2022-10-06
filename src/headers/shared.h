@@ -96,6 +96,11 @@
 #include <direct.h>
 #endif
 
+#ifdef __cplusplus
+#include <atomic>
+#define _Atomic(T) std::atomic<T>
+#endif
+
 #include <time.h>
 #include <errno.h>
 #include <libgen.h>

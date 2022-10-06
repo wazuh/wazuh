@@ -141,6 +141,7 @@ endif
 		AR_LDFLAGS+=-pthread -lrt -ldl
 		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
+		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif

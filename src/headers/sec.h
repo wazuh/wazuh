@@ -54,7 +54,7 @@ typedef struct _keyentry {
     pthread_mutex_t mutex;
     struct sockaddr_storage peer_info;
     FILE *fp;
-    crypt_method crypto_method;
+    _Atomic (crypt_method) crypto_method;
 
     w_linked_queue_node_t *rids_node;
 } keyentry;
