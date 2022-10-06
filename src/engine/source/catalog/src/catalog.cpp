@@ -16,10 +16,6 @@ void Config::validate() const
     {
         throw std::runtime_error("[Catalog::Config] Validator is not set");
     }
-    if (!apiReg)
-    {
-        throw std::runtime_error("[Catalog::Config] API Registry is not set");
-    }
 }
 
 Catalog::Catalog(const Config& config)
@@ -27,7 +23,6 @@ Catalog::Catalog(const Config& config)
     config.validate();
     m_store = config.store;
     m_validator = config.validator;
-    m_apiReg = config.apiReg;
 
     // Json handling
     m_outFormat[Format::JSON] = [](const json::Json& json)
@@ -86,26 +81,34 @@ Catalog::Catalog(const Config& config)
     };
 }
 
-std::variant<std::string, base::Error> Catalog::get(const base::Name& name,
-                                                    Format format) const
+std::variant<std::string, base::Error> Catalog::getAsset(const base::Name& name,
+                                                         Format format) const
 {
     auto type = stringToType(name.m_type);
     if (type == Type::ERROR_TYPE)
     {
-        return base::Error {fmt::format("[Catalog::get] Invalid type [{}]", name.m_type)};
+        return base::Error {
+            fmt::format("[Catalog::getAsset] Invalid type [{}]", name.m_type)};
+    }
+
+    if (type != Type::DECODER && type != Type::RULE && type != Type::FILTER
+        && type != Type::OUTPUT)
+    {
+        return base::Error {
+            fmt::format("[Catalog::getAsset] Not asset type [{}]", name.m_type)};
     }
 
     auto outFormat = m_outFormat.find(format);
     if (outFormat == m_outFormat.end())
     {
-        return base::Error {fmt::format("[Catalog::get] Format [{}] is not supported",
-                                        formatToString(format))};
+        return base::Error {fmt::format(
+            "[Catalog::getAsset] Format [{}] is not supported", formatToString(format))};
     }
 
     auto content = m_store->get(name);
     if (std::holds_alternative<base::Error>(content))
     {
-        return base::Error {fmt::format("[Catalog::get] Cannot get [{}], {}",
+        return base::Error {fmt::format("[Catalog::getAsset] Cannot get [{}], {}",
                                         name.fullName(),
                                         std::get<base::Error>(content).message)};
     }
@@ -116,21 +119,29 @@ std::variant<std::string, base::Error> Catalog::get(const base::Name& name,
     auto formatResult = outFormat->second(contentJson);
     if (std::holds_alternative<base::Error>(formatResult))
     {
-        return base::Error {fmt::format("[Catalog::get] Cannot format to type [{}], {}",
-                                        formatToString(format),
-                                        std::get<base::Error>(formatResult).message)};
+        return base::Error {
+            fmt::format("[Catalog::getAsset] Cannot format to type [{}], {}",
+                        formatToString(format),
+                        std::get<base::Error>(formatResult).message)};
     }
 
     return std::get<std::string>(formatResult);
 }
 
 std::optional<base::Error>
-Catalog::add(const base::Name& name, const std::string& content, Format format)
+Catalog::addAsset(const base::Name& name, const std::string& content, Format format)
 {
     auto type = stringToType(name.m_type);
     if (type == Type::ERROR_TYPE)
     {
         return base::Error {fmt::format("[Catalog::add] Invalid type [{}]", name.m_type)};
+    }
+
+    if (type != Type::DECODER && type != Type::RULE && type != Type::FILTER
+        && type != Type::OUTPUT)
+    {
+        return base::Error {
+            fmt::format("[Catalog::add] Not asset type [{}]", name.m_type)};
     }
 
     auto inFormat = m_inFormat.find(format);
@@ -163,12 +174,19 @@ Catalog::add(const base::Name& name, const std::string& content, Format format)
     return std::nullopt;
 }
 
-std::optional<base::Error> Catalog::del(const base::Name& name)
+std::optional<base::Error> Catalog::delAsset(const base::Name& name)
 {
     auto type = stringToType(name.m_type);
     if (type == Type::ERROR_TYPE)
     {
         return base::Error {fmt::format("[Catalog::del] Invalid type [{}]", name.m_type)};
+    }
+
+    if (type != Type::DECODER && type != Type::RULE && type != Type::FILTER
+        && type != Type::OUTPUT)
+    {
+        return base::Error {
+            fmt::format("[Catalog::del] Not asset type [{}]", name.m_type)};
     }
 
     auto error = m_store->del(name);

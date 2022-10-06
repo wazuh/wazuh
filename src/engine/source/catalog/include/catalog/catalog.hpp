@@ -12,11 +12,6 @@
 #include <name.hpp>
 #include <store/istore.hpp>
 
-// TODO: Remove once API interface is properly defined
-class IAPIReg
-{
-};
-
 namespace catalog
 {
 
@@ -30,8 +25,6 @@ struct Config
     std::shared_ptr<store::IStore> store;
     /* Validator interface to validate the Asset, Environment and Schema files */
     std::shared_ptr<builder::IValidator> validator;
-    /* API interface, to handle the API calls */
-    std::shared_ptr<IAPIReg> apiReg;
 
     /**
      * @brief Assert that the configuration is valid.
@@ -47,7 +40,8 @@ struct Config
 enum class Format
 {
     JSON,
-    YAML
+    YAML,
+    ERROR_FORMAT
 };
 
 /**
@@ -62,7 +56,29 @@ constexpr auto formatToString(Format format)
     {
         case Format::JSON: return "json";
         case Format::YAML: return "yaml";
-        default: return "unknown";
+        default: return "error_format";
+    }
+}
+
+/**
+ * @brief Get Format from string representation
+ *
+ * @param format String representation of the format
+ * @return Format
+ */
+static const auto stringToFormat(const std::string& format)
+{
+    if (format == "json")
+    {
+        return Format::JSON;
+    }
+    else if (format == "yaml")
+    {
+        return Format::YAML;
+    }
+    else
+    {
+        return Format::ERROR_FORMAT;
     }
 }
 
@@ -140,7 +156,6 @@ class Catalog
 private:
     std::shared_ptr<store::IStore> m_store;
     std::shared_ptr<builder::IValidator> m_validator;
-    std::shared_ptr<IAPIReg> m_apiReg;
 
     std::unordered_map<
         Format,
@@ -152,19 +167,62 @@ private:
         m_inFormat;
 
 public:
+    /**
+     * @brief Construct a new Catalog object
+     *
+     * @param config Catalog configuration
+     * @throw std::runtime_error If could not initialize the catalog
+     */
     Catalog(const Config& config);
     ~Catalog() = default;
 
     Catalog(const Catalog&) = delete;
     Catalog& operator=(const Catalog&) = delete;
 
-    std::variant<std::string, base::Error> get(const base::Name& name,
-                                               Format format) const;
-    std::optional<base::Error>
-    add(const base::Name& name, const std::string& content, Format format);
-    std::optional<base::Error> del(const base::Name& name);
+    /**
+     * @brief Get the Asset object
+     *
+     * @param name Name of the Asset
+     * @param format Output format of the Asset
+     * @return std::variant<std::string, base::Error> Asset in the requested format
+     * string, or error
+     */
+    std::variant<std::string, base::Error> getAsset(const base::Name& name,
+                                                    Format format) const;
 
+    /**
+     * @brief Add an Asset to the catalog
+     *
+     * @param name Name of the Asset
+     * @param content Asset as string, in the format specified
+     * @param format Format of the Asset
+     * @return std::optional<base::Error> Error if the Asset could not be added
+     */
+    std::optional<base::Error>
+    addAsset(const base::Name& name, const std::string& content, Format format);
+
+    /**
+     * @brief Delete an Asset from the catalog
+     *
+     * @param name Name of the Asset
+     * @return std::optional<base::Error> Error if the Asset could not be deleted
+     */
+    std::optional<base::Error> delAsset(const base::Name& name);
+
+    /**
+     * @brief Validate an Environment
+     *
+     * @param environment Environment to validate
+     * @return std::optional<base::Error> Error if the Environment is not valid
+     */
     std::optional<base::Error> validateEnvironment(const json::Json& environment) const;
+
+    /**
+     * @brief Validate an Asset
+     *
+     * @param asset Asset to validate
+     * @return std::optional<base::Error> Error if the Asset is not valid
+     */
     std::optional<base::Error> validateAsset(const json::Json& asset) const;
 };
 
