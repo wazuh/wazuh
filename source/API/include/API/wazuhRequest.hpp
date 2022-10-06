@@ -97,5 +97,6 @@ private:
     std::optional<std::string> validate() const;
 };
 
-#endif // _API_WAZUH_REQUEST_HPP
 }
+
+#endif // _API_WAZUH_REQUEST_HPP
