@@ -19,6 +19,7 @@ CPMAddPackage(
 add_library(catalog STATIC
     ${CMAKE_CURRENT_LIST_DIR}/src/catalog.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/yml2Json.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/commands.cpp
 )
 
 target_include_directories(catalog
@@ -26,4 +27,4 @@ target_include_directories(catalog
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
-target_link_libraries(catalog base yaml-cpp store::istore builder::ivalidator)
+target_link_libraries(catalog base yaml-cpp store::istore builder::ivalidator api)
