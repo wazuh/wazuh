@@ -2894,316 +2894,332 @@
   <rule id="950310" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5152$</field>
-    <group>object-access,filtering-platform-packet-drop-,</group>
     <description>The Windows Filtering Platform blocked a packet.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950311" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5153$</field>
-    <group>object-access,filtering-platform-packet-drop-,</group>
-    <description>A more restrictive Windows Filtering Platform filter has blocked a packet.</description>
-  </rule>
+
   <rule id="950312" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5154$</field>
-    <group>object-access,filtering-platform-connection,</group>
     <description>The Windows Filtering Platform has permitted an application or service to listen on a port for incoming connections.</description>
+    <options>no_full_log</options>
   </rule>
-  <rule id="950313" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5155$</field>
-    <group>object-access,filtering-platform-connection,</group>
-    <description>The Windows Filtering Platform has blocked an application or service from listening on a port for incoming connections.</description>
-  </rule>
-  <rule id="950314" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5156$</field>
-    <group>object-access,filtering-platform-connection,</group>
-    <description>The Windows Filtering Platform has allowed a connection.</description>
-  </rule>
-  <rule id="950315" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5157$</field>
-    <group>object-access,filtering-platform-connection,</group>
-    <description>The Windows Filtering Platform has blocked a connection.</description>
-  </rule>
-  <rule id="950316" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5158$</field>
-    <group>object-access,filtering-platform-connection,</group>
-    <description>The Windows Filtering Platform has permitted a bind to a local port.</description>
-  </rule>
-  <rule id="950317" level="5">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^5159$</field>
-    <group>object-access,filtering-platform-connection,</group>
-    <description>The Windows Filtering Platform has blocked a bind to a local port.</description>
-  </rule>
+
   <rule id="950318" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5378$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
     <description>The requested credentials delegation was disallowed by policy.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950319" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5440$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>The following callout was present when the Windows Filtering Platform Base Filtering Engine started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950320" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5441$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>The following filter was present when the Windows Filtering Platform Base Filtering Engine started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950321" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5442$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>The following provider was present when the Windows Filtering Platform Base Filtering Engine started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950322" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5443$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>The following provider context was present when the Windows Filtering Platform Base Filtering Engine started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950323" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5444$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>The following sublayer was present when the Windows Filtering Platform Base Filtering Engine started.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950324" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5446$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A Windows Filtering Platform callout has been changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950325" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5447$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>A Windows Filtering Platform filter has been changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950326" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5448$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A Windows Filtering Platform provider has been changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950327" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5449$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A Windows Filtering Platform provider context has been changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950328" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5450$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>A Windows Filtering Platform sublayer has been changed.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950329" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5451$</field>
-    <group>logon-logoff,ipsec-quick-mode,</group>
     <description>An IPsec Quick Mode security association was established.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950330" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5452$</field>
-    <group>logon-logoff,ipsec-quick-mode,</group>
     <description>An IPsec Quick Mode security association ended.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950331" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5456$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine applied Active Directory storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950332" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5457$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to apply Active Directory storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950333" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5458$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine applied locally cached copy of Active Directory storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950334" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5459$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to apply locally cached copy of Active Directory storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950335" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5460$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine applied local registry storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950336" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5461$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to apply local registry storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950337" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5462$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to apply some rules of the active IPsec policy on the computer. Use the IP Security Monitor snap-in to diagnose the problem.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950338" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5463$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine polled for changes to the active IPsec policy and detected no changes.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950339" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5464$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine polled for changes to the active IPsec policy, detected changes, and applied them to IPsec Services.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950340" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5465$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine received a control for forced reloading of IPsec policy and processed the control successfully.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950341" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5466$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine polled for changes to the Active Directory IPsec policy, determined that Active Directory cannot be reached, and will use the cached copy of the Active Directory IPsec policy instead. Any changes made to the Active Directory IPsec policy since the last poll could not be applied.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950342" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5467$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine polled for changes to the Active Directory IPsec policy, determined that Active Directory can be reached, and found no changes to the policy. The cached copy of the Active Directory IPsec policy is no longer being used.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950343" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5468$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine polled for changes to the Active Directory IPsec policy, determined that Active Directory can be reached, found changes to the policy, and applied those changes. The cached copy of the Active Directory IPsec policy is no longer being used.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950344" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5471$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine loaded local storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950345" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5472$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to load local storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950346" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5473$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine loaded directory storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950347" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5474$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to load directory storage IPsec policy on the computer.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950348" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5477$</field>
-    <group>policy-change,filtering-platform-policy-change,</group>
     <description>PAStore Engine failed to add quick mode filter.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950349" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5479$</field>
-    <group>system,ipsec-driver,</group>
     <description>IPsec Services has been shut down successfully. The shutdown of IPsec Services can put the computer at greater risk of network attack or expose the computer to potential security risks.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950350" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5632$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
     <description>A request was made to authenticate to a wireless network.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950351" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5633$</field>
-    <group>logon-logoff,other-logon-logoff-events,</group>
     <description>A request was made to authenticate to a wired network.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950352" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5712$</field>
-    <group>detailed-tracking,rpc-events,</group>
     <description>A Remote Procedure Call (RPC) was attempted.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950353" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5888$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>An object in the COM+ Catalog was modified.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950354" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5889$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>An object was deleted from the COM+ Catalog.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950355" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^5890$</field>
-    <group>object-access,other-object-access-events,</group>
     <description>An object was added to the COM+ Catalog.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950356" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6008$</field>
     <description>The previous system shutdown was unexpected</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950357" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6144$</field>
-    <group>policy-change,other-policy-change-events,</group>
     <description>Security policy in the Group Policy objects has been applied successfully.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950358" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6272$</field>
-    <group>logon-logoff,network-policy-server,</group>
     <description>Network Policy Server granted access to a user.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950359" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^561$</field>
     <description>A handle to an object was requested.</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950360" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^563$</field>
     <description>Object open for delete</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950361" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^625$</field>
     <description>User Account Type Changed</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950362" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^613$</field>
     <description>IPsec policy agent started</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950363" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^614$</field>
@@ -3213,7 +3229,9 @@
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^615$</field>
     <description>IPsec policy agent</description>
+    <options>no_full_log</options>
   </rule>
+
   <rule id="950365" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^616$</field>
