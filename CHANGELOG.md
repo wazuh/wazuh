@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 - Updated external protobuf python dependency to 3.19.6. ([#15067](https://github.com/wazuh/wazuh/pull/15067))
 
+
 ## [v4.3.8] - 2022-09-19
 
 ### Manager
