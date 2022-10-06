@@ -105,9 +105,13 @@
                 "nodes_stability_delay": 30,
                 "nodes_stability_time": 300,
                 "nodes_stability_threshold": 3,
-                "posbalance_time": 600,
+                "agents_connection_delay": 30,
+                "lost_agents_percent": 0.1,
+                "tolerance": 0.05,
+                "min_tolerance_window": 3,
+                "test_round_size": 0.05,
                 "max_assignments_per_node": 100,
-                "tolerance": 0.05
+                "post_balance_time": 600
             }
         },
 
