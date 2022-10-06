@@ -88,7 +88,7 @@ void run(const std::string& kvdbPath,
 
     KVDBManager::init(kvdbPath);
 
-    engineserver::EngineServer server {{endpoint}, static_cast<size_t>(queueSize)};
+    engineserver::EngineServer server {{endpoint, "api:/var/ossec/queue/sockets/analysis"}, static_cast<size_t>(queueSize)};
     if (!server.isConfigured())
     {
         WAZUH_LOG_ERROR("Could not configure server for endpoint [{}], engine "
