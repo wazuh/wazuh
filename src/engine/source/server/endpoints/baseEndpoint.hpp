@@ -21,6 +21,8 @@
 namespace engineserver::endpoints
 {
 
+constexpr uint32_t CONNECTION_TIMEOUT_MSEC = 5000; // Stream
+
 /**
  * @brief Endpoint base interfaz that exposes functionality required by
  * EngineServer
@@ -64,6 +66,12 @@ public:
      *
      */
     virtual void run(void) = 0;
+
+        /**
+     * @brief Configure the endpoint.
+     *
+     */
+    virtual void configure(void) = 0;
 
     /**
      * @brief Close and liberate all resources used by endpoint.

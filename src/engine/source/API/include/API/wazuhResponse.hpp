@@ -38,6 +38,11 @@ public:
         m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
 
+      explicit WazuhResponse() noexcept
+        : m_data(json::Json {R"({})"})
+        , m_error(-1),
+        m_message {"Invalid request, malformed JSON"} {};
+
     /**
      * @brief Return data object of the response
      *

@@ -35,13 +35,12 @@ add_library(server STATIC
     ${ENGINE_SERVER_SOURCE_DIR}/engineServer.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/protocolHandler.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/baseEndpoint.cpp
-    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
-    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/udpEndpoint.cpp
-    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/datagramSocketEndpoint.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/eventEndpoint.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/apiEndpoint.cpp
 )
 
 #TODO do this better
-target_link_libraries(server base uv_a)
+target_link_libraries(server base uv_a api)
 
 target_include_directories(server
     PUBLIC
@@ -53,4 +52,5 @@ target_include_directories(server
     ${uvw_SOURCE_DIR}/src/uvw/
     ${RxCpp_SOURCE_DIR}/Rx/v2/src
     ${ENGINE_SERVER_SOURCE_DIR}/base
+    ${ENGINE_SOURCE_DIR}/API/include
 )
