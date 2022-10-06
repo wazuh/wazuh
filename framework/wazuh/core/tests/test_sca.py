@@ -63,8 +63,8 @@ def test_WazuhDBQuerySCA__init__(mock_wdbq, mock_backend, mock_get_basic_info, d
                                       select=select, fields=core_sca.WazuhDBQuerySCA.DB_FIELDS,
                                       default_sort_field='policy_id', default_sort_order='DESC', filters={},
                                       query=query, count=count, get_data=get_data,
-                                      date_fields={'end_scan', 'start_scan'}, min_select_fields={'policy_id'},
-                                      backend=ANY)
+                                      date_fields={'end_scan', 'start_scan'},
+                                      min_select_fields={'policy_id'} if not distinct else set(), backend=ANY)
     mock_backend.assert_called_once_with(agent_id)
 
 
