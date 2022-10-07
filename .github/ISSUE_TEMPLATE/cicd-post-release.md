@@ -14,8 +14,8 @@ The following issue aims to perform required post-release checks to ensure a wel
 | :-- | :-- |
 | **Version** | X.Y.Z |
 | **Tag** | https://github.com/wazuh/wazuh/tree/vX.Y.Z |
-| **Release issue** | -- |
-| **Previous post release issue** | -- |
+| **Release issue** | --- |
+| **Previous post release issue** | --- |
 
 
 
@@ -43,6 +43,7 @@ The following issue aims to perform required post-release checks to ensure a wel
 - [ ] Cache invalidated
 - [ ] Build release containers
 - [ ] Build and push Docker Hub images
+- [ ] Build and release debug packages
 
 ### Documentation
 - [ ] Documentation updated
