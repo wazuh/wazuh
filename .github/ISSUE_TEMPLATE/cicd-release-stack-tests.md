@@ -2,7 +2,7 @@
 name: Release Candidate - Indexer/Dashboard packages
 about: Report the results after running Jenkins tests for the specified release.
 title: 'Release [WAZUH VERSION] - Release candidate [RC NUMBER] - Indexer/Dashboard packages'
-labels: 'release/4.3.0'
+labels: 'team/cicd, type/release tracking'
 assignees: ''
 
 ---
