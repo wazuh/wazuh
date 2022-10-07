@@ -31,15 +31,15 @@ assignees: ''
 
 | System | Status | 
 | :-- | :--: |
-| CentOS 8            | ⚫ | 
-| CentOS 7            | ⚫ | 
-| CentOS 6            | ⚫ | 
+| CentOS 8            | ⚫ |
+| CentOS 7            | ⚫ |
+| CentOS 6            | ⚫ |
 | CentOS 5            | ⚫ |
 | Debian 11           | ⚫ |
 | Debian 10           | ⚫ |
-| Debian 9            | ⚫ | 
-| Debian 8            | ⚫ | 
-| Debian 7            | ⚫ | 
+| Debian 9            | ⚫ |
+| Debian 8            | ⚫ |
+| Debian 7            | ⚫ |
 | Fedora 32           | ⚫ |
 | Fedora 31           | ⚫ |
 | Ubuntu Focal        | ⚫ |
@@ -52,7 +52,7 @@ assignees: ''
 | Oracle Linux 6      | ⚫ |
 | Oracle Linux 7      | ⚫ |
 | Oracle Linux 8      | ⚫ |
-| OpenSuse Tumbleweed | ⚫ | 
+| OpenSuse Tumbleweed | ⚫ |
 | Redhat 6            | ⚫ |
 | Redhat 7            | ⚫ |
 | Redhat 8            | ⚫ |
