@@ -2,7 +2,7 @@
 name: Release Candidate - Footprint metrics 
 about: Report the results after obtaining footprint metrics.
 title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Footprint metrics'
-labels: 'team/cicd'
+labels: 'team/cicd, type/release tracking'
 assignees: ''
 
 ---
