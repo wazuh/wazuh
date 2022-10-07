@@ -10,11 +10,11 @@ assignees: ''
 ### Packages tests metrics information
 |||
 | :-- | :--: |
-| **Main release candidate issue** | -- |
-| **Main packages metrics issue** | -- |
-| **Version** | 4.X.X                              |
-| **Release candidate** | RCX                                        |
-| **Tag** | https://github.com/wazuh/wazuh/tree/v4.3.X-rcX |
+| **Main release candidate issue** | --- |
+| **Main packages metrics issue** | --- |
+| **Version** | 4.X.X |
+| **Release candidate** | RCX |
+| **Tag** | https://github.com/wazuh/wazuh/tree/v4.X.X-rcX |
 
 ### Packages used
 - Repository: `packages-dev.wazuh.com`
