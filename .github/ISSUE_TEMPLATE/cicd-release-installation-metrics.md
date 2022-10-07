@@ -2,7 +2,7 @@
 name: Release Candidate - Installation metrics
 about: Report the results after running Jenkins tests for the specified release.
 title: 'Release [WAZUH VERSION] - Release candidate [RC NUMBER] - Installation metrics'
-labels: 'release/4.3.0, team/cicd'
+labels: 'team/cicd, type/release tracking'
 assignees: ''
 
 ---
