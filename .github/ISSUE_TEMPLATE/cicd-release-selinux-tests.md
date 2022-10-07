@@ -2,7 +2,7 @@
 name: Release Candidate - SELinux packages tests 
 about: Report the results after running Jenkins tests for the specified release.
 title: 'Release [WAZUH VERSION] - Release candidate [RC NUMBER] - SELinux'
-labels: 'release/4.3.0'
+labels: 'team/cicd, type/release tracking'
 assignees: ''
 
 ---
