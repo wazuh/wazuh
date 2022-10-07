@@ -2,7 +2,7 @@
 name: Release - Post release
 about: Perform analysis and tests after the publish release procedure.
 title: 'Release [WAZUH VERSION] - Post release'
-labels: 'type/release tracking'
+labels: 'team/cicd, type/release tracking'
 assignees: ''
 
 ---
