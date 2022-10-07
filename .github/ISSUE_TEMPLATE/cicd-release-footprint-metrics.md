@@ -20,7 +20,7 @@ assignees: ''
 
 ## Checks
 Status | Modules | X.Y.Z Issue (2.5d)  |
-| :--: | :-- | :-- | :-- | 
+| :--: | :-- | :-- | 
 | ⚫ | All                                             | --- |
 | ⚫ | Vulnerability-detector                          | --- |
 | ⚫ | All                                             | --- |
