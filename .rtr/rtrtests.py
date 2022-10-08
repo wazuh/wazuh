@@ -100,3 +100,17 @@ def build(params):
         return bool(not result.returncode)
     else:
         return False
+
+def docs(params):
+    command = 'doxygen'
+    args = f'doxygen.cfg'
+    logging.debug(f'Executing {command} {args}')
+    result = subprocess.run(
+        f'{command} {args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, cwd=params.source)
+    if result.returncode == 0 and not result.stderr:
+        logging.info('DOXYGEN GENERATION: successful')
+    else:
+        logging.info('DOXYGEN GENERATION: fail')
+    log(params.output, 'docs', result.stdout, result.stderr)
+    return bool(not result.returncode)
+
