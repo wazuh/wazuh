@@ -9,13 +9,14 @@ import logging
 import sys
 import os
 
-from rtrtests import (cppcheck, clangformat, build, unittests)
+from rtrtests import (cppcheck, clangformat, build, unittests, docs)
 
 TESTS = {
     "cppcheck": cppcheck,
     "format": clangformat,
     "build": build,
     "ut": unittests,
+    "docs": docs
 }
 
 
