@@ -1,7 +1,6 @@
 #ifndef _REGISTER_H
 #define _REGISTER_H
 
-#include "builders/opBuilderARWrite.hpp"
 #include "builders/opBuilderFileOutput.hpp"
 #include "builders/opBuilderHelperActiveResponse.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
@@ -121,7 +120,6 @@ static void registerBuilders()
     // DB sync
     Registry::registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
     Registry::registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
-    Registry::registerBuilder(builders::opBuilderARWrite, "helper.ar_write");
 
     // SCA decoder
     Registry::registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
@@ -134,6 +132,7 @@ static void registerBuilders()
 
     // Active Response
     Registry::registerBuilder(builders::opBuilderHelperCreateAR, "helper.ar_create");
+    Registry::registerBuilder(builders::opBuilderHelperSendAR, "helper.ar_send");
 }
 } // namespace builder::internals
 

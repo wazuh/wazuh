@@ -16,20 +16,37 @@
 namespace builder::internals::builders
 {
 
+namespace ar
+{
+// TODO: move all the sockets to a shared utils directory
+// TODO: when the api is merged these values can be obtained from "base".
+constexpr const char* AR_QUEUE_PATH {"/var/ossec/queue/alerts/ar"};
+
+constexpr const char* AGENT_ID_PATH {"/agent/id"};
+}
+
+/**
+ * @brief Helper Function that allows to send a message through the AR queue
+ *
+ * @param definition The transformation definition. i.e : `<field>: +ar_send/<str>|$<ref>`
+ * @return base::Expression The lifter with the `ar_send` transformation.
+ */
+base::Expression opBuilderHelperSendAR(const std::any& definition);
+
 /**
  * @brief Helper Function for creating the base event that will be sent through
- * Active Response socket with ar_write
- * _message: +ar_create/<event>/<command-name>/<location>/<timeout>/<$_args>
- *  - <event>        (mandatory) Original event
- *  - <command-name> (mandatory) Any string or reference.
- *  - <location>     (mandatory) LOCAL, AGENT_IT (in integer), ALL.
- *  - <timeout>      (optional) Integer timeout value.
- *  - <$_args>       (optional) Reference to an array of strings.
+ * Active Response socket with ar_send
+ * ar_message: +ar_create/<command-name>/<location>/<timeout>/<extra-args>
+ *  - <command-name> (mandatory) It can be set directly or through a reference.
+ *  - <location>     (mandatory) Accepted values are: "LOCAL", "ALL" or a specific agent id. Such values can be passed directly or through a reference.
+ *  - <timeout>      (optional) Timeout value in seconds. It can be passed directly or through a reference.
+ *  - <extra-args>   (optional) Reference to an array of *strings*.
  *
- * @param definition 
- * @return base::Expression 
+ * @param definition
+ * @return base::Expression
  */
 base::Expression opBuilderHelperCreateAR(const std::any& definition);
-} // namespace builder::internals::builders
+
+} // namespace builder::internals::builders::ar
 
 #endif // _OP_BUILDER_HELPER_ACTIVE_RESPONSE_H
