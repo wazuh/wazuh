@@ -28,25 +28,24 @@ find_package(OpenSSL REQUIRED)
 # Sources - Includes
 # ###################################################################################################
 add_library(builders OBJECT
+  asset.cpp
+  builders/baseHelper.cpp
   builders/opBuilderFileOutput.cpp
-  builders/stageBuilderCheck.cpp
-  builders/stageBuilderNormalize.cpp
-  builders/stageBuilderMap.cpp
+  builders/opBuilderHelperActiveResponse.cpp
+  builders/opBuilderHelperFilter.cpp
+  builders/opBuilderHelperMap.cpp
+  builders/opBuilderHelperNetInfoAddress.cpp
+  builders/opBuilderKVDB.cpp
+  builders/opBuilderLogqlParser.cpp
+  builders/opBuilderSCAdecoder.cpp
+  builders/opBuilderWdb.cpp
   builders/operationBuilder.cpp
+  builders/stageBuilderCheck.cpp
+  builders/stageBuilderMap.cpp
+  builders/stageBuilderNormalize.cpp
   builders/stageBuilderOutputs.cpp
   builders/stageBuilderParse.cpp
-  builders/opBuilderLogqlParser.cpp
-  builders/opBuilderKVDB.cpp
-  builders/opBuilderHelperFilter.cpp
-  builders/opBuilderHelperNetInfoAddress.cpp
-  builders/opBuilderHelperMap.cpp
-  builders/baseHelper.cpp
-  builders/opBuilderWdb.cpp
-  builders/opBuilderARWrite.cpp
-  builders/opBuilderSCAdecoder.cpp
-  builders/opBuilderHelperActiveResponse.cpp
   definitions.cpp
-  asset.cpp
   environment.cpp
   registry.cpp
 )

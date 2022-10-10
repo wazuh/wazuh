@@ -16,7 +16,7 @@ normalize:
       - _query_response: +exists
     map:
       _ar_query: +s_concat/(msg_to_agent) [] N!S /$agent.id/ /$_json.component/ dbsync /$_query_response/ /$_json.data
-      _ar_result: +ar_write/$_ar_query
+      _ar_result: +ar_send/$_ar_query
 
   - check:
       - _json.type: +s_eq/state
