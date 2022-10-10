@@ -11,11 +11,10 @@
 
 #define GREP        ("/usr/bin/grep")
 #define PFCTL       ("/sbin/pfctl")
+#define DEVPF       ("/dev/pf")
 #define PFCTL_RULES ("/etc/pf.conf")
 #define PFCTL_TABLE ("wazuh_fwtable")
 #define RCCONF      ("/etc/rc.conf")
-#define LAUNCHCTL   ("/bin/launchctl")
-#define KLDLOAD     ("/sbin/kldload")
 
 static int checking_if_its_configured(const char *path, const char *table);
 static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
@@ -89,9 +88,7 @@ int main (int argc, char **argv) {
         char *exec_cmd1[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
         char *exec_cmd2[4] = { NULL, NULL, NULL, NULL };
         char *exec_cmd3[4] = { PFCTL, "-s", "info", NULL };
-        char *exec_cmd4[4] = { LAUNCHCTL, "start", "/Library/LaunchDaemons/pf.plist", NULL };
-        char *exec_cmd5[4] = { PFCTL, "-f", PFCTL_RULES, NULL };
-        char *exec_cmd6[3] = { KLDLOAD, "pf", NULL };
+        char *exec_cmd4[4] = { PFCTL, "-f", PFCTL_RULES, NULL };
 
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
@@ -106,45 +103,30 @@ int main (int argc, char **argv) {
                 const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL };
                 memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
             }
-            if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) != 0) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
-                write_debug_file(argv[0], log_msg);
 
-                int retVal  = write_cmd_to_file(RCCONF, "pf_enable=\"YES\"\npf_rules=\"/etc/pf.conf\"\npflog_enable=\"YES\"\npflog_logfile=\"/var/log/pflog\"");
-                if (0 == retVal) {
-                    memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", RCCONF, strerror(errno));
-                    write_debug_file(argv[0], log_msg);
-                    cJSON_Delete(input_json);
-                    return OS_INVALID;
-                }
+            if (access(DEVPF, F_OK) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "table <%s> persist #%s\nblock in quick from <%s> to any\nblock out quick from any to <%s>", PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE);
-                retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
-                if (0 == retVal) {
+                snprintf(log_msg, OS_MAXSTR - 1, "The pfctl '%s' is not accessible", DEVPF);
+                write_debug_file(argv[0], log_msg);
+            } else {
+                if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) != 0) {
                     memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", PFCTL_RULES, strerror(errno));
+                    snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
                     write_debug_file(argv[0], log_msg);
-                    cJSON_Delete(input_json);
-                    return OS_INVALID;
-                }
-                
-                if (exec_cmd4[0] != NULL && !strcmp("Darwin", uname_buffer.sysname)) {
-                    wfd = wpopenv(LAUNCHCTL, exec_cmd4, W_BIND_STDOUT);
-                    if (!wfd) {
+
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR - 1, "table <%s> persist #%s\nblock in quick from <%s> to any\nblock out quick from any to <%s>", PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE);
+                    int retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
+                    if (0 == retVal) {
                         memset(log_msg, '\0', OS_MAXSTR);
-                        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                        snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", PFCTL_RULES, strerror(errno));
                         write_debug_file(argv[0], log_msg);
                         cJSON_Delete(input_json);
                         return OS_INVALID;
                     }
-                    wpclose(wfd);
-                }
 
-                if (!strcmp("Darwin", uname_buffer.sysname) || !strcmp("OpenBSD", uname_buffer.sysname)) {
-                    if (exec_cmd5[0] != NULL) {
-                        wfd = wpopenv(PFCTL, exec_cmd5, W_BIND_STDOUT);
+                    if (exec_cmd4[0] != NULL) {
+                        wfd = wpopenv(PFCTL, exec_cmd4, W_BIND_STDOUT);
                         if (!wfd) {
                             memset(log_msg, '\0', OS_MAXSTR);
                             snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
@@ -154,20 +136,6 @@ int main (int argc, char **argv) {
                         }
                         wpclose(wfd);
                     }
-                } else if (!strcmp("FreeBSD", uname_buffer.sysname)) {
-                    if (exec_cmd6[0] != NULL) {
-                        wfd = wpopenv(KLDLOAD, exec_cmd6, W_BIND_STDOUT);
-                        if (!wfd) {
-                            memset(log_msg, '\0', OS_MAXSTR);
-                            snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", KLDLOAD, strerror(errno));
-                            write_debug_file(argv[0], log_msg);
-                            cJSON_Delete(input_json);
-                            return OS_INVALID;
-                        }
-                        wpclose(wfd);
-                    }
-                } else {
-                    /*misra-c 15.7*/
                 }
             }
         } else {
@@ -196,9 +164,7 @@ int main (int argc, char **argv) {
 
                 if (0 == isEnabledFirewall) {
                     memset(log_msg, '\0', OS_MAXSTR);
-                    snprintf(log_msg, OS_MAXSTR -1, "{\"message\":\"Active response may not have an effect\",\"profile\":\"%s\",\"status\":\"%s\",\"script\":\"pf\"}",
-                        "default", 1 == isEnabledFirewall ? "active" : "inactive"
-                    );
+                    snprintf(log_msg, OS_MAXSTR -1, "{\"message\":\"Active response may not have an effect\",\"profile\":\"default\",\"status\":\"inactive\",\"script\":\"pf\"}");
                     write_debug_file(argv[0], log_msg);
                 }
             }
