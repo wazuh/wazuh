@@ -47,9 +47,6 @@ function test($vars)
 {
 
   For ($i=0; $i -lt $TEST_ARRAY.Length; $i++) {
-    Write-Output $i
-    Write-Output $TEST_ARRAY[$i][0]
-    Write-Output $TEST_ARRAY.Length
     if($vars.Contains($TEST_ARRAY[$i][0])) {
       if ( ($TEST_ARRAY[$i][0] -eq "WAZUH_MANAGER ") -OR ($TEST_ARRAY[$i][0] -eq "WAZUH_PROTOCOL ") ) {
         $LIST = $TEST_ARRAY[$i][1].split(",")

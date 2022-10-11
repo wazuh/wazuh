@@ -89,7 +89,11 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                             formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                         End If
                     End If
-                    formatted_list = formatted_list & "    </server>" & vbCrLf
+                    if i = UBound(ip_list) then
+                        formatted_list = formatted_list & "    </server>"
+                    Else
+                        formatted_list = formatted_list & "    </server>" & vbCrLf
+                    End If
             next
             strText = re.Replace(strText, formatted_list)
         Else
@@ -222,9 +226,9 @@ End If
         Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
         newline = file.ReadAll
         file.Close
-        re.Pattern = "(</server>)"
+        re.Pattern = "(    <crypto_method>.*</crypto_method>)"
         re.Global = False
-        strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)
+        strNewText = re.Replace(strNewText, "    " & newline  & vbCrLf & "$1")
     End If
 
     If objFSO.fileExists(home_dir & "header-comments.template") Then
