@@ -35,7 +35,9 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
+                'select': None,
                 'q': None,
+                'distinct': False,
                 'filters': filters
                 }
     mock_dapi.assert_called_once_with(f=sca.get_sca_list,
@@ -80,7 +82,9 @@ async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
+                'select': None,
                 'q': None,
+                'distinct': False,
                 'filters': filters
                 }
     mock_dapi.assert_called_once_with(f=sca.get_sca_checks,
