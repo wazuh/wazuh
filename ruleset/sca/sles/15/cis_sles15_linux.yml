@@ -23,16 +23,15 @@ requirements:
   description: "Requirements for running the SCA scan against SUSE Linux Enterprise Server 15"
   condition: all
   rules:
-    - 'f:/etc/os-release -> r:SUSE Linux Enterprise Server 15'
+    - "f:/etc/os-release -> r:SUSE Linux Enterprise Server 15"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
 
 checks:
+  # Section 1.1 - Filesystem Configuration
 
-# Section 1.1 - Filesystem Configuration
-
-# 1.1.1.1 Ensure mounting of squashfs filesystems is disabled
+  # 1.1.1.1 Ensure mounting of squashfs filesystems is disabled
   - id: 7500
     title: Ensure mounting of squashfs filesystems is disabled.
     description: >
@@ -55,10 +54,10 @@ checks:
       - cis_csc: ["5.1"]
     condition: any
     rules:
-      - 'c:modprobe -n -v squashfs -> r:install'
-      - 'c:modprobe -n -v squashfs -> r:squashfs'
+      - "c:modprobe -n -v squashfs -> r:install"
+      - "c:modprobe -n -v squashfs -> r:squashfs"
 
-# 1.1.1.2 Ensure mounting of udf filesystems is disabled
+  # 1.1.1.2 Ensure mounting of udf filesystems is disabled
   - id: 7501
     title: Ensure mounting of udf filesystems is disabled.
     description: >
@@ -82,13 +81,13 @@ checks:
       - cis_csc: ["5.1"]
     condition: any
     rules:
-      - 'c:modprobe -n -v udf -> r:install'
-      - 'c:modprobe -n -v udf -> r:udf'
+      - "c:modprobe -n -v udf -> r:install"
+      - "c:modprobe -n -v udf -> r:udf"
 
-# 1.1.1.3 Ensure mounting of FAT filesystems is limited - Not implemented
-# 1.1.2 Ensure /tmp is configured - Not implemented  
+  # 1.1.1.3 Ensure mounting of FAT filesystems is limited - Not implemented
+  # 1.1.2 Ensure /tmp is configured - Not implemented
 
-# 1.1.3 Ensure noexec option set on /tmp partition - Not implemented
+  # 1.1.3 Ensure noexec option set on /tmp partition - Not implemented
   - id: 7502
     title: Ensure noexec option set on /tmp partition.
     description: The noexec mount option specifies that the filesystem cannot contain executable binaries.
@@ -125,7 +124,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/tmp\s && r:noexec'
 
-# 1.1.4 Ensure nodev option set on /tmp partition
+  # 1.1.4 Ensure nodev option set on /tmp partition
   - id: 7503
     title: Ensure nodev option set on /tmp partition.
     description: The nodev mount option specifies that the filesystem cannot contain special devices.
@@ -157,7 +156,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nodev'
 
-# 1.1.5 Ensure nosuid option set on /tmp partition
+  # 1.1.5 Ensure nosuid option set on /tmp partition
   - id: 7504
     title: Ensure nosuid option set on /tmp partition.
     description: The nosuid mount option specifies that the filesystem cannot contain setuid files.
@@ -185,12 +184,12 @@ checks:
       # systemctl restart tmp.mount
     compliance:
       - cis: ["1.1.5"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nosuid'
 
-# 1.1.6 Ensure /dev/shm is configured
+  # 1.1.6 Ensure /dev/shm is configured
   - id: 7505
     title: Ensure /dev/shm is configured.
     description: >
@@ -221,13 +220,13 @@ checks:
       # mount -o remount,noexec,nodev,nosuid /dev/shm
     compliance:
       - cis: ["1.1.6"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\.+\s+/dev/shm\s+'
       - 'f:/etc/fstab -> r:\.+\s+/dev/shm\s+'
 
-# 1.1.7 Ensure noexec option set on /dev/shm partition
+  # 1.1.7 Ensure noexec option set on /dev/shm partition
   - id: 7506
     title: Ensure noexec option set on /dev/shm partition.
     description: >
@@ -245,14 +244,14 @@ checks:
       # mount -o remount,noexec,nodev,nosuid /dev/shm
     compliance:
       - cis: ["1.1.7"]
-      - cis_csc: ["2.6","13"]
+      - cis_csc: ["2.6", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:noexec'
 
-# 1.1.8 Ensure nodev option set on /dev/shm partition - Not implemented
+  # 1.1.8 Ensure nodev option set on /dev/shm partition - Not implemented
 
-# 1.1.9 Ensure nosuid option set on /dev/shm partition
+  # 1.1.9 Ensure nosuid option set on /dev/shm partition
   - id: 7507
     title: Ensure nosuid option set on /dev/shm partition.
     description: >
@@ -270,12 +269,12 @@ checks:
       # mount -o remount,noexec,nodev,nosuid /dev/shm
     compliance:
       - cis: ["1.1.9"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
 
-# 1.1.10 Ensure separate partition exists for /var
+  # 1.1.10 Ensure separate partition exists for /var
   - id: 7508
     title: Ensure separate partition exists for /var.
     description: >
@@ -302,7 +301,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/var\s'
 
-# 1.1.11 Ensure separate partition exists for /var/tmp 
+  # 1.1.11 Ensure separate partition exists for /var/tmp
   - id: 7509
     title: Ensure separate partition exists for /var/tmp.
     description: >
@@ -328,12 +327,12 @@ checks:
       /etc/fstab as appropriate.
     compliance:
       - cis: ["1.1.11"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s'
 
-# 1.1.12 Ensure noexec option set on /var/tmp partition 
+  # 1.1.12 Ensure noexec option set on /var/tmp partition
   - id: 7510
     title: Ensure noexec option set on /var/tmp partition.
     description: The noexec mount option specifies that the filesystem cannot contain executable binaries.
@@ -353,7 +352,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:noexec'
 
-# 1.1.13 Ensure nodev option set on /var/tmp partition 
+  # 1.1.13 Ensure nodev option set on /var/tmp partition
   - id: 7511
     title: Ensure nodev option set on /var/tmp partition.
     description: The nodev mount option specifies that the filesystem cannot contain special devices.
@@ -368,12 +367,12 @@ checks:
       # mount -o remount,nodev /var/tmp
     compliance:
       - cis: ["1.1.13"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s+/var/tmp\s+ && r:nodev'
 
-# 1.1.14 Ensure nosuid option set on /var/tmp partition
+  # 1.1.14 Ensure nosuid option set on /var/tmp partition
   - id: 7512
     title: Ensure nosuid option set on /var/tmp partition.
     description: The nosuid mount option specifies that the filesystem cannot contain setuid files.
@@ -388,12 +387,12 @@ checks:
       # mount -o remount,nosuid /var/tmp
     compliance:
       - cis: ["1.1.14"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s+/var/tmp\s+ && r:nosuid'
 
-# 1.1.15 Ensure separate partition exists for /var/log
+  # 1.1.15 Ensure separate partition exists for /var/log
   - id: 7513
     title: Ensure separate partition exists for /var/log.
     description: The /var/log directory is used by system services to store log data.
@@ -419,7 +418,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/log\s'
 
-# 1.1.16 Ensure separate partition exists for /var/log/audit
+  # 1.1.16 Ensure separate partition exists for /var/log/audit
   - id: 7514
     title: Ensure separate partition exists for /var/log/audit.
     description: >
@@ -448,7 +447,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/log/audit\s'
 
-# 1.1.17 Ensure separate partition exists for /home
+  # 1.1.17 Ensure separate partition exists for /home
   - id: 7515
     title: Ensure separate partition exists for /home.
     description: The /home directory is used to support disk storage needs of local users.
@@ -463,14 +462,14 @@ checks:
       /etc/fstab as appropriate.
     compliance:
       - cis: ["1.1.17"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     references:
       - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s'
 
-# 1.1.18 Ensure nodev option set on /home partition 
+  # 1.1.18 Ensure nodev option set on /home partition
   - id: 7516
     title: Ensure nodev option set on /home partition.
     description: >
@@ -489,17 +488,17 @@ checks:
       # mount -o remount,nodev /home
     compliance:
       - cis: ["1.1.18"]
-      - cis_csc: ["5.1","13"]
+      - cis_csc: ["5.1", "13"]
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s && r:nodev'
 
-# 1.1.19 Ensure noexec option set on removable media partitions - Not implemented
-# 1.1.20 Ensure nodev option set on removable media partitions - Not implemented
-# 1.1.21 Ensure nosuid option set on removable media partitions - Not implemented
-# 1.1.22 Ensure sticky bit is set on all world-writable directories - Not implemented
+  # 1.1.19 Ensure noexec option set on removable media partitions - Not implemented
+  # 1.1.20 Ensure nodev option set on removable media partitions - Not implemented
+  # 1.1.21 Ensure nosuid option set on removable media partitions - Not implemented
+  # 1.1.22 Ensure sticky bit is set on all world-writable directories - Not implemented
 
-# 1.1.23 Disable Automounting 
+  # 1.1.23 Disable Automounting
   - id: 7517
     title: Disable Automounting.
     description: >
@@ -523,16 +522,16 @@ checks:
       # systemctl --now mask autofs
     compliance:
       - cis: ["1.1.23"]
-      - cis_csc: ["8.4","8.5"]
+      - cis_csc: ["8.4", "8.5"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled autofs -> r:enabled'
+      - "c:systemctl is-enabled autofs -> r:enabled"
 
-# 1.2.1 Ensure GPG keys are configured - Not implemented
-# 1.2.2 Ensure package manager repositories are configured - Not implemented
-# 1.2.3 Ensure gpgcheck is globally activated - Not implemented
+  # 1.2.1 Ensure GPG keys are configured - Not implemented
+  # 1.2.2 Ensure package manager repositories are configured - Not implemented
+  # 1.2.3 Ensure gpgcheck is globally activated - Not implemented
 
-# 1.3.1 Ensure sudo is installed
+  # 1.3.1 Ensure sudo is installed
   - id: 7518
     title: Ensure sudo is installed.
     description: >
@@ -559,9 +558,9 @@ checks:
       - SUDO(8)
     condition: none
     rules:
-      - 'c:rpm -q sudo -> r:not installed'
+      - "c:rpm -q sudo -> r:not installed"
 
-# 1.3.2 Ensure sudo commands use pty
+  # 1.3.2 Ensure sudo commands use pty
   - id: 7519
     title: Ensure sudo commands use pty.
     description: >
@@ -590,7 +589,7 @@ checks:
     rules:
       - 'c:grep -REsih "^Defaults" /etc/sudoers /etc/sudoers.d -> r:^\wefaults\s+use_pty'
 
-# 1.3.3 Ensure sudo log file exists
+  # 1.3.3 Ensure sudo log file exists
   - id: 7520
     title: Ensure sudo log file exists.
     description: >
@@ -618,7 +617,7 @@ checks:
     rules:
       - 'c:grep -REsih "^Defaults" /etc/sudoers /etc/sudoers.d -> r:^\wefaults\s+logfile="\.+"'
 
-# 1.4.1 Ensure AIDE is installed
+  # 1.4.1 Ensure AIDE is installed
   - id: 7521
     title: Ensure AIDE is installed.
     description: >
@@ -648,11 +647,11 @@ checks:
       - AIDE stable manual: http://aide.sourceforge.net/stable/manual.html
     condition: none
     rules:
-      - 'c:rpm -q aide -> r:not installed'
+      - "c:rpm -q aide -> r:not installed"
 
-# 1.4.2 Ensure filesystem integrity is regularly checked - Not implemented
+  # 1.4.2 Ensure filesystem integrity is regularly checked - Not implemented
 
-# 1.5.1 Ensure bootloader password is set
+  # 1.5.1 Ensure bootloader password is set
   - id: 7522
     title: Ensure bootloader password is set.
     description: >
@@ -697,7 +696,7 @@ checks:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*set superusers'
       - 'f:/boot/grub2/grub.cfg -> r:^\s*password'
 
-# 1.5.2 Ensure permissions on bootloader config are configured
+  # 1.5.2 Ensure permissions on bootloader config are configured
   - id: 7523
     title: Ensure permissions on bootloader config are configured.
     description: >
@@ -728,7 +727,7 @@ checks:
     rules:
       - 'c:stat -L /boot/grub2/grub.cfg -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 1.5.3 Ensure authentication required for single user mode
+  # 1.5.3 Ensure authentication required for single user mode
   - id: 7524
     title: Ensure authentication required for single user mode.
     description: >
@@ -751,7 +750,7 @@ checks:
       - 'f:/usr/lib/systemd/system/rescue.service -> r:^ExecStart=\.*/systemd/systemd-sulogin-shell\s+rescue'
       - 'f:/usr/lib/systemd/system/emergency.service -> r:^ExecStart=\.*/systemd/systemd-sulogin-shell\s+emergency'
 
-# 1.6.1 Ensure core dumps are restricted
+  # 1.6.1 Ensure core dumps are restricted
   - id: 7525
     title: Ensure core dumps are restricted.
     description: >
@@ -791,7 +790,7 @@ checks:
       - 'c:sysctl fs.suid_dumpable -> r:\s0$'
       - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
 
-# 1.6.2 Ensure XD/NX support is enabled 
+  # 1.6.2 Ensure XD/NX support is enabled
   - id: 7526
     title: Ensure XD/NX support is enabled.
     description: >
@@ -821,7 +820,7 @@ checks:
     rules:
       - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
 
-# 1.6.3 Ensure address space layout randomization (ASLR) is enabled
+  # 1.6.3 Ensure address space layout randomization (ASLR) is enabled
   - id: 7527
     title: Ensure address space layout randomization (ASLR) is enabled.
     description: >
@@ -844,7 +843,7 @@ checks:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:\s2$|\t2$'
 
-# 1.6.4 Ensure prelink is disabled
+  # 1.6.4 Ensure prelink is disabled
   - id: 7528
     title: Ensure prelink is disabled.
     description: >
@@ -866,9 +865,9 @@ checks:
       - cis_csc: ["14.9"]
     condition: all
     rules:
-      - 'c:rpm -q prelink -> r:not installed'
+      - "c:rpm -q prelink -> r:not installed"
 
-# 1.7.1.1 Ensure AppArmor is installed
+  # 1.7.1.1 Ensure AppArmor is installed
   - id: 7529
     title: Ensure AppArmor is installed.
     description: AppArmor provides Mandatory Access Controls.
@@ -883,17 +882,17 @@ checks:
       - cis_csc: ["14.6"]
     condition: none
     rules:
-      - 'c:rpm -q apparmor-docs -> r:not installed'
-      - 'c:rpm -q apparmor-parser -> r:not installed'
-      - 'c:rpm -q apparmor-profiles -> r:not installed'
-      - 'c:rpm -q apparmor-utils -> r:not installed'
-      - 'c:rpm -q libapparmor1 -> r:not installed'
+      - "c:rpm -q apparmor-docs -> r:not installed"
+      - "c:rpm -q apparmor-parser -> r:not installed"
+      - "c:rpm -q apparmor-profiles -> r:not installed"
+      - "c:rpm -q apparmor-utils -> r:not installed"
+      - "c:rpm -q libapparmor1 -> r:not installed"
 
-# 1.7.1.2 Ensure AppArmor is enabled in the bootloader configuration - Not implemented
-# 1.7.1.3 Ensure all AppArmor Profiles are in enforce or complain mode - Not implemented
-# 1.7.1.4 Ensure all AppArmor Profiles are enforcing - Not implemented
+  # 1.7.1.2 Ensure AppArmor is enabled in the bootloader configuration - Not implemented
+  # 1.7.1.3 Ensure all AppArmor Profiles are in enforce or complain mode - Not implemented
+  # 1.7.1.4 Ensure all AppArmor Profiles are enforcing - Not implemented
 
-# 1.8.1.1 Ensure message of the day is configured properly
+  # 1.8.1.1 Ensure message of the day is configured properly
   - id: 7530
     title: Ensure message of the day is configured properly.
     description: >
@@ -932,7 +931,7 @@ checks:
       - 'f:/etc/motd -> r:\\s'
       - 'f:/etc/motd -> r:\\v'
 
-# 1.8.1.2 Ensure local login warning banner is configured properly
+  # 1.8.1.2 Ensure local login warning banner is configured properly
   - id: 7531
     title: Ensure local login warning banner is configured properly.
     description: >
@@ -966,7 +965,7 @@ checks:
       - 'f:/etc/issue -> r:\\s'
       - 'f:/etc/issue -> r:\\v'
 
-# 1.8.1.3 Ensure remote login warning banner is configured properly
+  # 1.8.1.3 Ensure remote login warning banner is configured properly
   - id: 7532
     title: Ensure remote login warning banner is configured properly.
     description: >
@@ -1000,7 +999,7 @@ checks:
       - 'f:/etc/issue.net -> r:\\s'
       - 'f:/etc/issue.net -> r:\\v'
 
-# 1.8.1.4 Ensure permissions on /etc/motd are configured
+  # 1.8.1.4 Ensure permissions on /etc/motd are configured
   - id: 7533
     title: Ensure permissions on /etc/motd are configured.
     description: >
@@ -1020,7 +1019,7 @@ checks:
     rules:
       - 'c:stat -L /etc/motd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 1.8.1.5 Ensure permissions on /etc/issue are configured
+  # 1.8.1.5 Ensure permissions on /etc/issue are configured
   - id: 7534
     title: Ensure permissions on /etc/issue are configured.
     description: >
@@ -1039,7 +1038,7 @@ checks:
     rules:
       - 'c:stat -L /etc/issue -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 1.8.1.6 Ensure permissions on /etc/issue.net are configured
+  # 1.8.1.6 Ensure permissions on /etc/issue.net are configured
   - id: 7535
     title: Ensure permissions on /etc/issue.net are configured.
     description: >
@@ -1059,10 +1058,10 @@ checks:
     rules:
       - 'c:stat -L /etc/issue.net -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 1.9 Ensure updates, patches, and additional security software are installed - Not implemented
-# 1.10 Ensure GDM is removed or login is configured - Not implemented
+  # 1.9 Ensure updates, patches, and additional security software are installed - Not implemented
+  # 1.10 Ensure GDM is removed or login is configured - Not implemented
 
-# 2.1.1 Ensure xinetd is not installed
+  # 2.1.1 Ensure xinetd is not installed
   - id: 7536
     title: Ensure xinetd is not installed.
     description: >
@@ -1080,15 +1079,15 @@ checks:
       # zypper remove xinetd
     compliance:
       - cis: ["2.1.1"]
-      - cis_csc: ["2.6","9.2"]
+      - cis_csc: ["2.6", "9.2"]
     condition: all
     rules:
-      - 'c:rpm -q xinetd -> r:not installed'
+      - "c:rpm -q xinetd -> r:not installed"
 
-# 2.2.1.1 Ensure time synchronization is in use - Not implemented
-# 2.2.1.2 Ensure systemd-timesyncd is configured - Not implemented
+  # 2.2.1.1 Ensure time synchronization is in use - Not implemented
+  # 2.2.1.2 Ensure systemd-timesyncd is configured - Not implemented
 
-# 2.2.1.3 Ensure chrony is configured
+  # 2.2.1.3 Ensure chrony is configured
   - id: 7537
     title: Ensure chrony is configured.
     description: >
@@ -1116,7 +1115,7 @@ checks:
       - 'f:/etc/chrony.conf -> r:^\s*server\s+\.+'
       - 'f:/etc/sysconfig/chronyd -> r:^\s*OPTIONS\s*=\s*"-u\s*chrony"'
 
-# 2.2.2 Ensure X11 Server components are not installed
+  # 2.2.2 Ensure X11 Server components are not installed
   - id: 7538
     title: Ensure X11 Server components are not installed.
     description: >
@@ -1135,9 +1134,9 @@ checks:
       - cis_csc: ["2.6"]
     condition: none
     rules:
-      - 'c:rpm -qa -> r:^xorg-x11'
+      - "c:rpm -qa -> r:^xorg-x11"
 
-# 2.2.3 Ensure Avahi Server is not installed
+  # 2.2.3 Ensure Avahi Server is not installed
   - id: 7539
     title: Ensure Avahi Server is not installed.
     description: >
@@ -1158,10 +1157,10 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q avahi -> r:not installed'
-      - 'c:rpm -q avahi-autoipd -> r:not installed'
+      - "c:rpm -q avahi -> r:not installed"
+      - "c:rpm -q avahi-autoipd -> r:not installed"
 
-# 2.2.4 Ensure CUPS is not installed
+  # 2.2.4 Ensure CUPS is not installed
   - id: 7540
     title: Ensure CUPS is not installed.
     description: >
@@ -1184,9 +1183,9 @@ checks:
       - http://www.cups.org
     condition: all
     rules:
-      - 'c:rpm -q cups -> r:not installed'
+      - "c:rpm -q cups -> r:not installed"
 
-# 2.2.5 Ensure DHCP Server is not installed 
+  # 2.2.5 Ensure DHCP Server is not installed
   - id: 7541
     title: Ensure DHCP Server is not installed.
     description: >
@@ -1205,9 +1204,9 @@ checks:
       - dhcpd(8)
     condition: all
     rules:
-      - 'c:rpm -q dhcp -> r:not installed'
+      - "c:rpm -q dhcp -> r:not installed"
 
-# 2.2.6 Ensure LDAP server is not installed
+  # 2.2.6 Ensure LDAP server is not installed
   - id: 7542
     title: Ensure LDAP server is not installed
     description: >
@@ -1227,12 +1226,12 @@ checks:
       - http://www.openldap.org
     condition: all
     rules:
-      - 'c:rpm -q openldap2 -> r:not installed'
+      - "c:rpm -q openldap2 -> r:not installed"
 
-# 2.2.7 Ensure nfs-utils is not installed or the nfs-server service is masked - Not implemented
-# 2.2.8 Ensure rpcbind is not installed or the rpcbind services are masked - Not implemented
+  # 2.2.7 Ensure nfs-utils is not installed or the nfs-server service is masked - Not implemented
+  # 2.2.8 Ensure rpcbind is not installed or the rpcbind services are masked - Not implemented
 
-# 2.2.9 Ensure DNS Server is not installed
+  # 2.2.9 Ensure DNS Server is not installed
   - id: 7543
     title: Ensure DNS Server is not installed.
     description: >
@@ -1249,9 +1248,9 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q bind -> r:not installed'
+      - "c:rpm -q bind -> r:not installed"
 
-# 2.2.10 Ensure FTP Server is not installed
+  # 2.2.10 Ensure FTP Server is not installed
   - id: 7544
     title: Ensure FTP Server is not installed.
     description: >
@@ -1273,9 +1272,9 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q vsftpd -> r:not installed'
+      - "c:rpm -q vsftpd -> r:not installed"
 
-# 2.2.11 Ensure HTTP server is not installed
+  # 2.2.11 Ensure HTTP server is not installed
   - id: 7545
     title: Ensure HTTP server is not installed.
     description: HTTP or web servers provide the ability to host web site content.
@@ -1295,9 +1294,9 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q apache2 -> r:not installed'
+      - "c:rpm -q apache2 -> r:not installed"
 
-# 2.2.12 Ensure IMAP and POP3 server is not installed 
+  # 2.2.12 Ensure IMAP and POP3 server is not installed
   - id: 7546
     title: Ensure IMAP and POP3 server is not installed.
     description: dovecot is an open source IMAP and POP3 server for Linux based systems.
@@ -1318,9 +1317,9 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q dovecot -> r:not installed'
+      - "c:rpm -q dovecot -> r:not installed"
 
-# 2.2.13 Ensure Samba is not installed
+  # 2.2.13 Ensure Samba is not installed
   - id: 7547
     title: Ensure Samba is not installed.
     description: >
@@ -1339,9 +1338,9 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q samba -> r:not installed'
+      - "c:rpm -q samba -> r:not installed"
 
-# 2.2.14 Ensure HTTP Proxy Server is not installed
+  # 2.2.14 Ensure HTTP Proxy Server is not installed
   - id: 7548
     title: Ensure HTTP Proxy Server is not installed.
     description: Squid is a standard proxy server used in many distributions and environments.
@@ -1358,9 +1357,9 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:rpm -q squid -> r:not installed'
+      - "c:rpm -q squid -> r:not installed"
 
-# 2.2.15 Ensure net-snmp is not installed
+  # 2.2.15 Ensure net-snmp is not installed
   - id: 7549
     title: Ensure net-snmp is not installed.
     description: >
@@ -1390,12 +1389,12 @@ checks:
       # zypper remove net-snmp
     compliance:
       - cis: ["2.2.15"]
-      - cis_csc: ["2.6","9.2"]
+      - cis_csc: ["2.6", "9.2"]
     condition: all
     rules:
-      - 'c:rpm -q net-snmp -> r:not installed'
+      - "c:rpm -q net-snmp -> r:not installed"
 
-# 2.2.16 Ensure mail transfer agent is configured for local-only mode
+  # 2.2.16 Ensure mail transfer agent is configured for local-only mode
   - id: 7550
     title: Ensure mail transfer agent is configured for local-only mode.
     description: >
@@ -1427,7 +1426,7 @@ checks:
     rules:
       - 'f:/etc/postfix/main.cf -> r:^\s*inet_interfaces\s*=\s*loopback-only'
 
-# 2.2.17 Ensure rsync is not installed or the rsyncd service is masked
+  # 2.2.17 Ensure rsync is not installed or the rsyncd service is masked
   - id: 7551
     title: Ensure rsync is not installed or the rsyncd service is masked.
     description: The rsyncd service can be used to synchronize files between systems over network links.
@@ -1453,10 +1452,10 @@ checks:
       - cis_csc: ["9.2"]
     condition: any
     rules:
-      - 'c:rpm -q rsync -> r:not installed'
-      - 'c:systemctl is-enabled rsyncd -> r:^masked'
+      - "c:rpm -q rsync -> r:not installed"
+      - "c:systemctl is-enabled rsyncd -> r:^masked"
 
-# 2.2.18 Ensure NIS server is not installed
+  # 2.2.18 Ensure NIS server is not installed
   - id: 7552
     title: Ensure NIS server is not installed.
     description: >
@@ -1475,12 +1474,12 @@ checks:
       # zypper remove ypserv
     compliance:
       - cis: ["2.2.18"]
-      - cis_csc: ["2.6","9.2"]
+      - cis_csc: ["2.6", "9.2"]
     condition: all
     rules:
-      - 'c:rpm -q ypserv -> r:not installed'
+      - "c:rpm -q ypserv -> r:not installed"
 
-# 2.2.19 Ensure telnet-server is not installed
+  # 2.2.19 Ensure telnet-server is not installed
   - id: 7553
     title: Ensure telnet-server is not installed.
     description: >
@@ -1495,12 +1494,12 @@ checks:
       # zypper remove telnet
     compliance:
       - cis: ["2.2.19"]
-      - cis_csc: ["2.6","9.2"]
+      - cis_csc: ["2.6", "9.2"]
     condition: all
     rules:
-      - 'c:rpm -q telnet -> r:not installed'
+      - "c:rpm -q telnet -> r:not installed"
 
-# 2.3.1 Ensure NIS Client is not installed
+  # 2.3.1 Ensure NIS Client is not installed
   - id: 7554
     title: Ensure NIS Client is not installed.
     description: >
@@ -1521,9 +1520,9 @@ checks:
       - cis_csc: ["2.6"]
     condition: all
     rules:
-      - 'c:rpm -q ypbind -> r:not installed'
+      - "c:rpm -q ypbind -> r:not installed"
 
-# 2.3.2 Ensure rsh client is not installed
+  # 2.3.2 Ensure rsh client is not installed
   - id: 7555
     title: Ensure rsh client is not installed.
     description: The rsh package contains the client commands for the rsh services.
@@ -1541,9 +1540,9 @@ checks:
       - cis_csc: ["2.6"]
     condition: all
     rules:
-      - 'c:rpm -q rsh -> r:not installed'
+      - "c:rpm -q rsh -> r:not installed"
 
-# 2.3.3 Ensure talk client is not installed
+  # 2.3.3 Ensure talk client is not installed
   - id: 7556
     title: Ensure talk client is not installed.
     description: >
@@ -1560,9 +1559,9 @@ checks:
       - cis_csc: ["2.6"]
     condition: all
     rules:
-      - 'c:rpm -q talk -> r:not installed'
+      - "c:rpm -q talk -> r:not installed"
 
-# 2.3.4 Ensure telnet client is not installed
+  # 2.3.4 Ensure telnet client is not installed
   - id: 7557
     title: Ensure telnet client is not installed.
     description: >
@@ -1580,9 +1579,9 @@ checks:
       - cis_csc: ["2.6"]
     condition: all
     rules:
-      - 'c:rpm -q telnet -> r:not installed'
+      - "c:rpm -q telnet -> r:not installed"
 
-# 2.3.5 Ensure LDAP client is not installed
+  # 2.3.5 Ensure LDAP client is not installed
   - id: 7558
     title: Ensure LDAP client is not installed.
     description: >
@@ -1600,14 +1599,14 @@ checks:
       - cis_csc: ["2.6"]
     condition: all
     rules:
-      - 'c:rpm -q openldap2-clients -> r:not installed'
+      - "c:rpm -q openldap2-clients -> r:not installed"
 
-# 2.4 Ensure nonessential services are removed or masked - Not implemented
-# 3.1.1 Disable IPv6 - Not implemented
-# 3.1.2 Ensure wireless interfaces are disabled - Not implemented
-# 3.2.1 Ensure IP forwarding is disabled - Not implemented
+  # 2.4 Ensure nonessential services are removed or masked - Not implemented
+  # 3.1.1 Disable IPv6 - Not implemented
+  # 3.1.2 Ensure wireless interfaces are disabled - Not implemented
+  # 3.2.1 Ensure IP forwarding is disabled - Not implemented
 
-# 3.2.2 Ensure packet redirect sending is disabled
+  # 3.2.2 Ensure packet redirect sending is disabled
   - id: 7559
     title: Ensure packet redirect sending is disabled
     description: >
@@ -1636,10 +1635,10 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
 
-# 3.3.1 Ensure source routed packets are not accepted - Not implemented
-# 3.3.2 Ensure ICMP redirects are not accepted - Not implemented
+  # 3.3.1 Ensure source routed packets are not accepted - Not implemented
+  # 3.3.2 Ensure ICMP redirects are not accepted - Not implemented
 
-#3.3.3 Ensure secure ICMP redirects are not accepted
+  #3.3.3 Ensure secure ICMP redirects are not accepted
   - id: 7560
     title: Ensure secure ICMP redirects are not accepted.
     description: >
@@ -1669,7 +1668,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
 
-# 3.3.4 Ensure suspicious packets are logged
+  # 3.3.4 Ensure suspicious packets are logged
   - id: 7561
     title: Ensure suspicious packets are logged.
     description: >
@@ -1689,7 +1688,7 @@ checks:
       # sysctl -w net.ipv4.route.flush=1
     compliance:
       - cis: ["3.3.4"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
@@ -1697,7 +1696,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
 
-# 3.3.5 Ensure broadcast ICMP requests are ignored
+  # 3.3.5 Ensure broadcast ICMP requests are ignored
   - id: 7562
     title: Ensure broadcast ICMP requests are ignored
     description: >
@@ -1726,7 +1725,7 @@ checks:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
-# 3.3.6 Ensure bogus ICMP responses are ignored
+  # 3.3.6 Ensure bogus ICMP responses are ignored
   - id: 7563
     title: Ensure bogus ICMP responses are ignored.
     description: >
@@ -1751,7 +1750,7 @@ checks:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
-# 3.3.7 Ensure Reverse Path Filtering is enabled
+  # 3.3.7 Ensure Reverse Path Filtering is enabled
   - id: 7564
     title: Ensure Reverse Path Filtering is enabled.
     description: >
@@ -1785,7 +1784,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
 
-# 3.3.8 Ensure TCP SYN Cookies is enabled 
+  # 3.3.8 Ensure TCP SYN Cookies is enabled
   - id: 7565
     title: Ensure TCP SYN Cookies is enabled
     description: >
@@ -1819,7 +1818,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
       - 'c:/sbin/sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
-# 3.3.9 Ensure IPv6 router advertisements are not accepted
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted
   - id: 7566
     title: Ensure IPv6 router advertisements are not accepted
     description: This setting disables the system's ability to accept IPv6 router advertisements.
@@ -1849,7 +1848,7 @@ checks:
       - 'c:grep -Rh "net\.ipv6\.conf\.all\.accept_ra" /etc/sysctl.conf /etc/sysctl.d -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
       - 'c:grep -Rh "net\.ipv6\.conf\.default\.accept_ra" /etc/sysctl.conf /etc/sysctl.d -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
 
-# 3.4.1 Ensure DCCP is disabled
+  # 3.4.1 Ensure DCCP is disabled
   - id: 7567
     title: Ensure DCCP is disabled
     description: >
@@ -1873,7 +1872,7 @@ checks:
     rules:
       - 'c:grep -R dccp /etc/modprobe.d -> r:^/etc/modprobe.d/\.+.conf:\s*install\s+dccp\s+/bin/true'
 
-# 3.4.2 Ensure SCTP is disabled 
+  # 3.4.2 Ensure SCTP is disabled
   - id: 7568
     title: Ensure SCTP is disabled
     description: >
@@ -1898,7 +1897,7 @@ checks:
     rules:
       - 'c:grep -R sctp /etc/modprobe.d -> r:^/etc/modprobe.d/\.+.conf:\s*install\s+sctp\s+/bin/true'
 
-# 3.5.1.1 Ensure FirewallD is installed
+  # 3.5.1.1 Ensure FirewallD is installed
   - id: 7569
     title: Ensure FirewallD is installed
     description: >
@@ -1933,12 +1932,12 @@ checks:
       - cis_csc: ["9.4"]
     condition: none
     rules:
-      - 'c:rpm -q firewalld -> r:not installed'
-      - 'c:rpm -q iptables -> r:not installed'
+      - "c:rpm -q firewalld -> r:not installed"
+      - "c:rpm -q iptables -> r:not installed"
 
-# 3.5.1.2 Ensure nftables is not installed or stopped and masked - Not implemented
+  # 3.5.1.2 Ensure nftables is not installed or stopped and masked - Not implemented
 
-# 3.5.1.3 Ensure firewalld service is enabled and running
+  # 3.5.1.3 Ensure firewalld service is enabled and running
   - id: 7570
     title: Ensure firewalld service is enabled and running
     description: >
@@ -1958,14 +1957,14 @@ checks:
       - cis_csc: ["9.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled firewalld -> r:^enabled'
-      - 'c:firewall-cmd --state -> r:^running'
+      - "c:systemctl is-enabled firewalld -> r:^enabled"
+      - "c:firewall-cmd --state -> r:^running"
 
-# 3.5.1.4 Ensure default zone is set - Not implemented
-# 3.5.1.5 Ensure network interfaces are assigned to appropriate zone - Not implemented
-# 3.5.1.6 Ensure unnecessary services and ports are not accepted - Not implemented
+  # 3.5.1.4 Ensure default zone is set - Not implemented
+  # 3.5.1.5 Ensure network interfaces are assigned to appropriate zone - Not implemented
+  # 3.5.1.6 Ensure unnecessary services and ports are not accepted - Not implemented
 
-# 3.5.2.1 Ensure nftables is installed 
+  # 3.5.2.1 Ensure nftables is installed
   - id: 7571
     title: Ensure nftables is installed
     description: >
@@ -1988,12 +1987,12 @@ checks:
       - cis_csc: ["9.4"]
     condition: none
     rules:
-      - 'c:rpm -q nftables -> r:not installed'
+      - "c:rpm -q nftables -> r:not installed"
 
-# 3.5.2.2 Ensure firewalld is not installed or stopped and masked - Not implemented
-# 3.5.2.3 Ensure iptables are flushed - Not implemented
+  # 3.5.2.2 Ensure firewalld is not installed or stopped and masked - Not implemented
+  # 3.5.2.3 Ensure iptables are flushed - Not implemented
 
-# 3.5.2.4 Ensure a table exists 
+  # 3.5.2.4 Ensure a table exists
   - id: 7572
     title: Ensure a table exists.
     description: >
@@ -2012,7 +2011,7 @@ checks:
     rules:
       - 'c:nft list tables -> r:^table inet\s+\.+'
 
-# 3.5.2.5 Ensure base chains exist 
+  # 3.5.2.5 Ensure base chains exist
   - id: 7573
     title: Ensure base chains exist.
     description: >
@@ -2035,10 +2034,10 @@ checks:
       - 'c:nft list ruleset -> !r:^# && r:type hook forward\s+\.+'
       - 'c:nft list ruleset -> !r:^# && r:type hook output\s+\.+'
 
-# 3.5.2.6 Ensure loopback traffic is configured
-# 3.5.2.7 Ensure outbound and established connections are configured
+  # 3.5.2.6 Ensure loopback traffic is configured
+  # 3.5.2.7 Ensure outbound and established connections are configured
 
-# 3.5.2.8 Ensure default deny firewall policy 
+  # 3.5.2.8 Ensure default deny firewall policy
   - id: 7574
     title: Ensure default deny firewall policy.
     description: >
@@ -2072,7 +2071,7 @@ checks:
       - 'c:nft list ruleset -> !r:^# && r:type hook forward\s+\.+policy\s+drop'
       - 'c:nft list ruleset -> !r:^# && r:type hook output\s+\.+policy\s+drop'
 
-# 3.5.2.9 Ensure nftables service is enabled 
+  # 3.5.2.9 Ensure nftables service is enabled
   - id: 7575
     title: Ensure nftables service is enabled
     description: >
@@ -2089,12 +2088,12 @@ checks:
       - cis_csc: ["9.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled nftables -> r:^enabled'
+      - "c:systemctl is-enabled nftables -> r:^enabled"
 
-# 3.5.2.10 Ensure nftables rules are permanent - Not implemented
-# 3.5.3.1.1 Ensure iptables package is installed - Not implemented
+  # 3.5.2.10 Ensure nftables rules are permanent - Not implemented
+  # 3.5.3.1.1 Ensure iptables package is installed - Not implemented
 
-# 3.5.3.1.2 Ensure nftables is not installed - Not implemented
+  # 3.5.3.1.2 Ensure nftables is not installed - Not implemented
   - id: 7576
     title: Ensure nftables is not installed
     description: >
@@ -2110,11 +2109,11 @@ checks:
       - cis_csc: ["9.4"]
     condition: all
     rules:
-      - 'c:rpm -q nftables -> r:not installed'
+      - "c:rpm -q nftables -> r:not installed"
 
-# 3.5.3.1.3 Ensure firewalld is not installed or stopped and masked - Not implemented
+  # 3.5.3.1.3 Ensure firewalld is not installed or stopped and masked - Not implemented
 
-# 3.5.3.2.1 Ensure default deny firewall policy
+  # 3.5.3.2.1 Ensure default deny firewall policy
   - id: 7577
     title: Ensure default deny firewall policy
     description: >
@@ -2140,7 +2139,7 @@ checks:
       - 'c:iptables -L -> r:^Chain FORWARD \(policy DROP\)'
       - 'c:iptables -L -> r:^Chain OUTPUT \(policy DROP\)'
 
-# 3.5.3.2.2 Ensure loopback traffic is configured
+  # 3.5.3.2.2 Ensure loopback traffic is configured
   - id: 7578
     title: Ensure loopback traffic is configured
     description: >
@@ -2168,14 +2167,14 @@ checks:
       - 'c:iptables -L INPUT -v -n -> r:^\s*\d+\s+\d+\s+DROP\s+all\s+--\s+*\s+*\s+127.0.0.0/8\s+0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:^\s*\d+\s+\d+\s+ACCEPT\s+all\s+--\s+*\s+lo\s+0.0.0.0/0\s+0.0.0.0/0'
 
-# 3.5.3.2.3 Ensure outbound and established connections are configured - Not implemented
-# 3.5.3.2.4 Ensure firewall rules exist for all open ports - Not implemented
-# 3.5.3.3.1 Ensure IPv6 default deny firewall policy - Not implemented
-# 3.5.3.3.2 Ensure IPv6 loopback traffic is configured - Not implemented
-# 3.5.3.3.3 Ensure IPv6 outbound and established connections are configured - Not implemented
-# 3.5.3.3.4 Ensure IPv6 firewall rules exist for all open ports - Not implemented
+  # 3.5.3.2.3 Ensure outbound and established connections are configured - Not implemented
+  # 3.5.3.2.4 Ensure firewall rules exist for all open ports - Not implemented
+  # 3.5.3.3.1 Ensure IPv6 default deny firewall policy - Not implemented
+  # 3.5.3.3.2 Ensure IPv6 loopback traffic is configured - Not implemented
+  # 3.5.3.3.3 Ensure IPv6 outbound and established connections are configured - Not implemented
+  # 3.5.3.3.4 Ensure IPv6 firewall rules exist for all open ports - Not implemented
 
-# 4.1.1.1 Ensure auditd is installed
+  # 4.1.1.1 Ensure auditd is installed
   - id: 7579
     title: Ensure auditd is installed
     description: >
@@ -2189,12 +2188,12 @@ checks:
       # zypper install audit
     compliance:
       - cis: ["4.1.1.1"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     condition: none
     rules:
-      - 'c:rpm -q audit -> r:not installed'
+      - "c:rpm -q audit -> r:not installed"
 
-# 4.1.1.2 Ensure auditd service is enabled and running
+  # 4.1.1.2 Ensure auditd service is enabled and running
   - id: 7580
     title: Ensure auditd service is enabled and running
     description: Turn on the auditd daemon to record system events.
@@ -2206,15 +2205,15 @@ checks:
       # systemctl --now enable auditd
     compliance:
       - cis: ["4.1.1.2"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled auditd -> r:^enabled'
+      - "c:systemctl is-enabled auditd -> r:^enabled"
       - 'c:systemctl status auditd -> r:^\s*Active: active \(running\) since \.+'
 
-# 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled - Not implemented
+  # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled - Not implemented
 
-# 4.1.2.1 Ensure audit log storage size is configured 
+  # 4.1.2.1 Ensure audit log storage size is configured
   - id: 7581
     title: Ensure audit log storage size is configured.
     description: >
@@ -2240,7 +2239,7 @@ checks:
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
 
-# 4.1.2.2 Ensure audit logs are not automatically deleted
+  # 4.1.2.2 Ensure audit logs are not automatically deleted
   - id: 7582
     title: Ensure audit logs are not automatically deleted.
     description: >
@@ -2254,12 +2253,12 @@ checks:
       max_log_file_action = keep_logs
     compliance:
       - cis: ["4.1.2.2"]
-      - cis_csc: ["6.2","6.4"]
+      - cis_csc: ["6.2", "6.4"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
 
-# 4.1.2.3 Ensure system is disabled when audit logs are full
+  # 4.1.2.3 Ensure system is disabled when audit logs are full
   - id: 7583
     title: Ensure system is disabled when audit logs are full.
     description: The auditd daemon can be configured to halt the system when the audit logs are full.
@@ -2273,17 +2272,17 @@ checks:
       admin_space_left_action = halt
     compliance:
       - cis: ["4.1.2.3"]
-      - cis_csc: ["6.2","6.4"]
+      - cis_csc: ["6.2", "6.4"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email'
       - 'f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root'
       - 'f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*halt'
 
-# 4.1.2.4 Ensure audit_backlog_limit is sufficient - Not implemented
-# 4.1.3 Ensure events that modify date and time information are collected - Not implemented
+  # 4.1.2.4 Ensure audit_backlog_limit is sufficient - Not implemented
+  # 4.1.3 Ensure events that modify date and time information are collected - Not implemented
 
-# 4.1.4 Ensure events that modify user/group information are collected
+  # 4.1.4 Ensure events that modify user/group information are collected
   - id: 7584
     title: Ensure events that modify user/group information are collected.
     description: >
@@ -2324,9 +2323,9 @@ checks:
       - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity'
       - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity'
 
-# 4.1.5 Ensure events that modify the system's network environment are collected - Not implemented
+  # 4.1.5 Ensure events that modify the system's network environment are collected - Not implemented
 
-# 4.1.6 Ensure events that modify the system's Mandatory Access Controls are collected
+  # 4.1.6 Ensure events that modify the system's Mandatory Access Controls are collected
   - id: 7585
     title: Ensure events that modify the system's Mandatory Access Controls are collected.
     description: >
@@ -2360,7 +2359,7 @@ checks:
       - 'c:sh -c "auditctl -l | grep MAC-policy" -> r:^\s*-w\s+/etc/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
       - 'c:sh -c "auditctl -l | grep MAC-policy" -> r:^\s*-w\s+/usr/share/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
 
-# 4.1.7 Ensure login and logout events are collected 
+  # 4.1.7 Ensure login and logout events are collected
   - id: 7586
     title: Ensure login and logout events are collected.
     description: >
@@ -2386,7 +2385,7 @@ checks:
       -w /var/log/tallylog -p wa -k logins
     compliance:
       - cis: ["4.1.7"]
-      - cis_csc: ["4.9","16.11","16.13"]
+      - cis_csc: ["4.9", "16.11", "16.13"]
     condition: all
     rules:
       - 'c:grep -R logins /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/log/faillog\s+-p\s+wa\s+-k\s+logins'
@@ -2396,7 +2395,7 @@ checks:
       - 'c:sh -c "auditctl -l | grep logins" -> r:^\s*-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins'
       - 'c:sh -c "auditctl -l | grep logins" -> r:^\s*-w\s+/var/log/tallylog\s+-p\s+wa\s+-k\s+logins'
 
-# 4.1.8 Ensure session initiation information is collected
+  # 4.1.8 Ensure session initiation information is collected
   - id: 7587
     title: Ensure session initiation information is collected.
     description: >
@@ -2426,7 +2425,7 @@ checks:
       -w /var/log/btmp -p wa -k logins
     compliance:
       - cis: ["4.1.8"]
-      - cis_csc: ["4.9","16.11","16.13"]
+      - cis_csc: ["4.9", "16.11", "16.13"]
     condition: all
     rules:
       - 'c:grep -RE "(session|logins)" /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/run/utmp\s+-p\s+wa\s+-k\s+session'
@@ -2436,13 +2435,13 @@ checks:
       - 'c:sh -c "auditctl -l | grep -E \"(session|logins)\"" -> r:^\s*-w\s+/var/log/wtmp\s+-p\s+wa\s+-k\s+logins'
       - 'c:sh -c "auditctl -l | grep -E \"(session|logins)\"" -> r:^\s*-w\s+/var/log/btmp\s+-p\s+wa\s+-k\s+logins'
 
-# 4.1.9 Ensure discretionary access control permission modification events are collected - Not implemented
-# 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected - Not implemented
-# 4.1.11 Ensure use of privileged commands is collected - Not implemented
-# 4.1.12 Ensure successful file system mounts are collected - Not implemented
-# 4.1.13 Ensure file deletion events by users are collected - Not implemented
+  # 4.1.9 Ensure discretionary access control permission modification events are collected - Not implemented
+  # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected - Not implemented
+  # 4.1.11 Ensure use of privileged commands is collected - Not implemented
+  # 4.1.12 Ensure successful file system mounts are collected - Not implemented
+  # 4.1.13 Ensure file deletion events by users are collected - Not implemented
 
-# 4.1.14 Ensure changes to system administration scope (sudoers) is collected
+  # 4.1.14 Ensure changes to system administration scope (sudoers) is collected
   - id: 7588
     title: Ensure changes to system administration scope (sudoers) is collected
     description: >
@@ -2473,10 +2472,10 @@ checks:
       - 'c:sh -c "auditctl -l | grep scope" -> r:^\s*-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+scope'
       - 'c:sh -c "auditctl -l | grep scope" -> r:^\s*-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+scope'
 
-# 4.1.15 Ensure system administrator actions (sudolog) are collected - Not implemented
-# 4.1.16 Ensure kernel module loading and unloading is collected - Not implemented
+  # 4.1.15 Ensure system administrator actions (sudolog) are collected - Not implemented
+  # 4.1.16 Ensure kernel module loading and unloading is collected - Not implemented
 
-# 4.1.17 Ensure the audit configuration is immutable
+  # 4.1.17 Ensure the audit configuration is immutable
   - id: 7589
     title: Ensure the audit configuration is immutable.
     description: >
@@ -2498,12 +2497,12 @@ checks:
       -e 2
     compliance:
       - cis: ["4.1.17"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     condition: all
     rules:
       - 'c:sh -c "grep -R \"^\s*[^#]\" /etc/audit/rules.d/ | tail -1" -> r:^/etc/audit/rules.d/\.+.rules:\s*-e\s+2\s*$'
 
-# 4.2.1.1 Ensure rsyslog is installed
+  # 4.2.1.1 Ensure rsyslog is installed
   - id: 7590
     title: Ensure rsyslog is installed.
     description: >
@@ -2521,12 +2520,12 @@ checks:
       # zypper install rsyslog
     compliance:
       - cis: ["4.2.1.1"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     condition: none
     rules:
-      - 'c:rpm -q rsyslog -> r:not installed'
+      - "c:rpm -q rsyslog -> r:not installed"
 
-# 4.2.1.2 Ensure rsyslog Service is enabled and running
+  # 4.2.1.2 Ensure rsyslog Service is enabled and running
   - id: 7591
     title: Ensure rsyslog Service is enabled and running.
     description: rsyslog needs to be enabled and running to perform logging
@@ -2538,13 +2537,13 @@ checks:
       # systemctl --now enable rsyslog
     compliance:
       - cis: ["4.2.1.2"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled rsyslog -> r:^enabled'
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
       - 'c:systemctl status rsyslog -> r:^\s*Active: active \(running\) since \.+'
 
-# 4.2.1.3 Ensure rsyslog default file permissions configured 
+  # 4.2.1.3 Ensure rsyslog default file permissions configured
   - id: 7592
     title: Ensure rsyslog default file permissions configured.
     description: >
@@ -2574,11 +2573,11 @@ checks:
     rules:
       - 'c:grep -Rh ^\$FileCreateMode /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$FileCreateMode\s+0640'
 
-# 4.2.1.4 Ensure logging is configured - Not implemented
-# 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host - Not implemented
-# 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts - Not implemented
+  # 4.2.1.4 Ensure logging is configured - Not implemented
+  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host - Not implemented
+  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts - Not implemented
 
-# 4.2.2.1 Ensure journald is configured to send logs to rsyslog
+  # 4.2.2.1 Ensure journald is configured to send logs to rsyslog
   - id: 7593
     title: Ensure journald is configured to send logs to rsyslog.
     description: >
@@ -2614,9 +2613,9 @@ checks:
       - https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes'
+      - "f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes"
 
-# 4.2.2.2 Ensure journald is configured to compress large log files
+  # 4.2.2.2 Ensure journald is configured to compress large log files
   - id: 7594
     title: Ensure journald is configured to compress large log files.
     description: >
@@ -2640,9 +2639,9 @@ checks:
       - https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^Compress=yes'
+      - "f:/etc/systemd/journald.conf -> r:^Compress=yes"
 
-# 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk
+  # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk
   - id: 7595
     title: Ensure journald is configured to write logfiles to persistent disk.
     description: >
@@ -2662,17 +2661,17 @@ checks:
       Storage=persistent
     compliance:
       - cis: ["4.2.2.3"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     references:
       - https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^Storage=persistent'
+      - "f:/etc/systemd/journald.conf -> r:^Storage=persistent"
 
-# 4.2.3 Ensure permissions on all logfiles are configured - Not implemented
-# 4.2.4 Ensure logrotate is configured - Not implemented
+  # 4.2.3 Ensure permissions on all logfiles are configured - Not implemented
+  # 4.2.4 Ensure logrotate is configured - Not implemented
 
-# 5.1.1 Ensure cron daemon is enabled and running 
+  # 5.1.1 Ensure cron daemon is enabled and running
   - id: 7596
     title: Ensure cron daemon is enabled and running
     description: The cron daemon is used to execute batch jobs on the system.
@@ -2694,10 +2693,10 @@ checks:
       - cis_csc: ["5.1"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled cron -> r:^enabled'
+      - "c:systemctl is-enabled cron -> r:^enabled"
       - 'c:systemctl status cron -> r:^\s*Active: active \(running\) since \.+'
 
-# 5.1.2 Ensure permissions on /etc/crontab are configured
+  # 5.1.2 Ensure permissions on /etc/crontab are configured
   - id: 7597
     title: Ensure permissions on /etc/crontab are configured.
     description: >
@@ -2725,7 +2724,7 @@ checks:
     rules:
       - 'c:stat -L /etc/crontab -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.3 Ensure permissions on /etc/cron.hourly are configured
+  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured
   - id: 7598
     title: Ensure permissions on /etc/cron.hourly are configured.
     description: >
@@ -2756,7 +2755,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.hourly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.4 Ensure permissions on /etc/cron.daily are configured
+  # 5.1.4 Ensure permissions on /etc/cron.daily are configured
   - id: 7599
     title: Ensure permissions on /etc/cron.daily are configured.
     description: >
@@ -2787,7 +2786,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.daily/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.5 Ensure permissions on /etc/cron.weekly are configured
+  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured
   - id: 7600
     title: Ensure permissions on /etc/cron.weekly are configured.
     description: >
@@ -2813,7 +2812,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.weekly -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.6 Ensure permissions on /etc/cron.monthly are configured
+  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured
   - id: 7601
     title: Ensure permissions on /etc/cron.monthly are configured.
     description: >
@@ -2844,7 +2843,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.monthly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.7 Ensure permissions on /etc/cron.d are configured 
+  # 5.1.7 Ensure permissions on /etc/cron.d are configured
   - id: 7602
     title: Ensure permissions on /etc/cron.d are configured.
     description: >
@@ -2875,7 +2874,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.d -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.8 Ensure cron is restricted to authorized users
+  # 5.1.8 Ensure cron is restricted to authorized users
   - id: 7603
     title: Ensure cron is restricted to authorized users.
     description: >
@@ -2912,10 +2911,10 @@ checks:
       - cis_csc: ["16"]
     condition: all
     rules:
-      - 'not f:/etc/cron.deny'
+      - "not f:/etc/cron.deny"
       - 'c:stat -L /etc/cron.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.1.9 Ensure at is restricted to authorized users
+  # 5.1.9 Ensure at is restricted to authorized users
   - id: 7604
     title: Ensure at is restricted to authorized users.
     description: >
@@ -2952,10 +2951,10 @@ checks:
       - cis_csc: ["16"]
     condition: all
     rules:
-      - 'not f:/etc/at.deny'
+      - "not f:/etc/at.deny"
       - 'c:stat -L /etc/at.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured
+  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured
   - id: 7614
     title: Ensure permissions on /etc/ssh/sshd_config are configured
     description: >
@@ -2975,10 +2974,10 @@ checks:
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 5.2.2 Ensure permissions on SSH private host key files are configured - Not implemented
-# 5.2.3 Ensure permissions on SSH public host key files are configured - Not implemented
+  # 5.2.2 Ensure permissions on SSH private host key files are configured - Not implemented
+  # 5.2.3 Ensure permissions on SSH public host key files are configured - Not implemented
 
-# 5.2.4 Ensure SSH access is limited
+  # 5.2.4 Ensure SSH access is limited
   - id: 7615
     title: Ensure SSH access is limited.
     description: >
@@ -3033,7 +3032,7 @@ checks:
       - 'c:sshd -T -> r:^\s*denyusers\s+\S+'
       - 'c:sshd -T -> r:^\s*denygroups\s+\S+'
 
-# 5.2.5 Ensure SSH LogLevel is appropriate
+  # 5.2.5 Ensure SSH LogLevel is appropriate
   - id: 7616
     title: Ensure SSH LogLevel is appropriate.
     description: >
@@ -3056,7 +3055,7 @@ checks:
       LogLevel INFO
     compliance:
       - cis: ["5.2.5"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
     references:
       - https://www.ssh.com/ssh/sshd_config/
     condition: any
@@ -3064,7 +3063,7 @@ checks:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*VERBOSE'
       - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*INFO'
 
-# 5.2.6 Ensure SSH X11 forwarding is disabled 
+  # 5.2.6 Ensure SSH X11 forwarding is disabled
   - id: 7617
     title: Ensure SSH X11 forwarding is disabled.
     description: >
@@ -3085,7 +3084,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*x11forwarding\s+no'
 
-# 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less 
+  # 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less
   - id: 7618
     title: Ensure SSH MaxAuthTries is set to 4 or less.
     description: >
@@ -3106,7 +3105,7 @@ checks:
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
 
-# 5.2.8 Ensure SSH IgnoreRhosts is enabled 
+  # 5.2.8 Ensure SSH IgnoreRhosts is enabled
   - id: 7619
     title: Ensure SSH IgnoreRhosts is enabled.
     description: >
@@ -3123,7 +3122,7 @@ checks:
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:IgnoreRhosts\s*\t*yes'
 
-# 5.2.9 Ensure SSH HostbasedAuthentication is disabled
+  # 5.2.9 Ensure SSH HostbasedAuthentication is disabled
   - id: 7620
     title: Ensure SSH HostbasedAuthentication is disabled.
     description: >
@@ -3143,8 +3142,8 @@ checks:
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:HostbasedAuthentication\s*\t*no'
 
-# 5.2.10 Ensure SSH root login is disabled
-  - id: 7521
+  # 5.2.10 Ensure SSH root login is disabled
+  - id: 7621
     title: Ensure SSH root login is disabled.
     description: >
       The PermitRootLogin parameter specifies if the root user can log in using ssh. The default
@@ -3163,8 +3162,8 @@ checks:
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitRootLogin\s*\t*no'
 
-# 5.2.11 Ensure SSH PermitEmptyPasswords is disabled 
-  - id: 7522
+  # 5.2.11 Ensure SSH PermitEmptyPasswords is disabled
+  - id: 7622
     title: Ensure SSH PermitEmptyPasswords is disabled.
     description: >
       The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts
@@ -3182,7 +3181,7 @@ checks:
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitEmptyPasswords\s*\t*no'
 
-# 5.2.12 Ensure SSH PermitUserEnvironment is disabled 
+  # 5.2.12 Ensure SSH PermitUserEnvironment is disabled
   - id: 7623
     title: Ensure SSH PermitUserEnvironment is disabled.
     description: >
@@ -3202,7 +3201,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*permituserenvironment\s+no'
 
-# 5.2.13 Ensure only strong Ciphers are used
+  # 5.2.13 Ensure only strong Ciphers are used
   - id: 7624
     title: Ensure only strong Ciphers are used.
     description: >
@@ -3276,7 +3275,7 @@ checks:
       - 'c:sshd -T -> r:^ciphers\s+ && r:aes192-cbc'
       - 'c:sshd -T -> r:^ciphers\s+ && r:aes256-cbc'
 
-# 5.2.14 Ensure only strong MAC algorithms are used
+  # 5.2.14 Ensure only strong MAC algorithms are used
   - id: 7625
     title: Ensure only strong MAC algorithms are used.
     description: >
@@ -3318,7 +3317,7 @@ checks:
       512,hmac-sha2-256
     compliance:
       - cis: ["5.2.14"]
-      - cis_csc: ["14.4","16.5"]
+      - cis_csc: ["14.4", "16.5"]
     references:
       - http://www.mitls.org/pages/attacks/SLOTH
       - SSHD_CONFIG(5)
@@ -3339,7 +3338,7 @@ checks:
       - 'c:sshd -T -> r:^macs\s+ && r:umac-64-etm@openssh.com'
       - 'c:sshd -T -> r:^macs\s+ && r:umac-128-etm@openssh.com'
 
-# 5.2.15 Ensure only strong Key Exchange algorithms are used
+  # 5.2.15 Ensure only strong Key Exchange algorithms are used
   - id: 7626
     title: Ensure only strong Key Exchange algorithms are used.
     description: >
@@ -3389,7 +3388,7 @@ checks:
       - 'c:sshd -T -> r:^kexalgorithms\s+ && r:diffie-hellman-group14-sha1'
       - 'c:sshd -T -> r:^kexalgorithms\s+ && r:diffie-hellman-group-exchange-sha1'
 
-# 5.2.16 Ensure SSH Idle Timeout Interval is configured
+  # 5.2.16 Ensure SSH Idle Timeout Interval is configured
   - id: 7627
     title: Ensure SSH Idle Timeout Interval is configured
     description: >
@@ -3437,7 +3436,7 @@ checks:
       - 'c:sshd -T -> n:^clientaliveinterval\s+(\d+) compare <= 300'
       - 'c:sshd -T -> n:^ClientAliveCountMax\s+(\d+) compare <= 3'
 
-# 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less
+  # 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less
   - id: 7628
     title: Ensure SSH LoginGraceTime is set to one minute or less.
     description: >
@@ -3461,7 +3460,7 @@ checks:
       - 'c:sshd -T -> n:^logingracetime\s+(\d+) compare >= 1'
       - 'c:sshd -T -> n:^logingracetime\s+(\d+) compare <= 60'
 
-# 5.2.18 Ensure SSH warning banner is configured
+  # 5.2.18 Ensure SSH warning banner is configured
   - id: 7629
     title: Ensure SSH warning banner is configured.
     description: >
@@ -3482,7 +3481,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^banner\s+/etc/issue.net'
 
-# 5.2.19 Ensure SSH PAM is enabled
+  # 5.2.19 Ensure SSH PAM is enabled
   - id: 7630
     title: Ensure SSH PAM is enabled.
     description: >
@@ -3506,7 +3505,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^usepam\s+yes'
 
-# 5.2.20 Ensure SSH AllowTcpForwarding is disabled
+  # 5.2.20 Ensure SSH AllowTcpForwarding is disabled
   - id: 7631
     title: Ensure SSH AllowTcpForwarding is disabled.
     description: >
@@ -3535,7 +3534,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^allowtcpforwarding\s+no'
 
-# 5.2.21 Ensure SSH MaxStartups is configured
+  # 5.2.21 Ensure SSH MaxStartups is configured
   - id: 7632
     title: Ensure SSH MaxStartups is configured.
     description: >
@@ -3556,7 +3555,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^maxstartups\s+10:30:60\s*$'
 
-# 5.2.22 Ensure SSH MaxSessions is limited
+  # 5.2.22 Ensure SSH MaxSessions is limited
   - id: 7633
     title: Ensure SSH MaxSessions is limited.
     description: >
@@ -3577,10 +3576,10 @@ checks:
     rules:
       - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10'
 
-# 5.3.1 Ensure password creation requirements are configured - Not implemented
-# 5.3.2 Ensure lockout for failed password attempts is configured - Not implemented
+  # 5.3.1 Ensure password creation requirements are configured - Not implemented
+  # 5.3.2 Ensure lockout for failed password attempts is configured - Not implemented
 
-# 5.3.3 Ensure password reuse is limited
+  # 5.3.3 Ensure password reuse is limited
   - id: 7634
     title: Ensure password reuse is limited.
     description: >
@@ -3611,7 +3610,7 @@ checks:
       - 'f:/etc/pam.d/common-password -> n:^\s*password\t+requisite\t+pam_pwhistory\.so\t+remember\s*=\s*(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> n:^\s*password\t+required\t+pam_pwhistory\.so\t+remember\s*=\s*(\d+) compare >= 5'
 
-# 5.4.1.1 Ensure password hashing algorithm is SHA-512 
+  # 5.4.1.1 Ensure password hashing algorithm is SHA-512
   - id: 7635
     title: Ensure password hashing algorithm is SHA-512.
     description: >
@@ -3642,14 +3641,14 @@ checks:
     rules:
       - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD\s+SHA512'
 
-# 5.4.1.2 Ensure password expiration is 365 days or less - Not implemented
-# 5.4.1.3 Ensure minimum days between password changes is configured - Not implemented
-# 5.4.1.4 Ensure password expiration warning days is 7 or more - Not implemented
-# 5.4.1.5 Ensure inactive password lock is 30 days or less - Not implemented
-# 5.4.1.6 Ensure all users last password change date is in the past - Not implemented
-# 5.4.2 Ensure system accounts are secured - Not implemented
+  # 5.4.1.2 Ensure password expiration is 365 days or less - Not implemented
+  # 5.4.1.3 Ensure minimum days between password changes is configured - Not implemented
+  # 5.4.1.4 Ensure password expiration warning days is 7 or more - Not implemented
+  # 5.4.1.5 Ensure inactive password lock is 30 days or less - Not implemented
+  # 5.4.1.6 Ensure all users last password change date is in the past - Not implemented
+  # 5.4.2 Ensure system accounts are secured - Not implemented
 
-# 5.4.3 Ensure default group for the root account is GID 0
+  # 5.4.3 Ensure default group for the root account is GID 0
   - id: 7636
     title: Ensure default group for the root account is GID 0
     description: >
@@ -3668,13 +3667,13 @@ checks:
     rules:
       - 'f:/etc/passwd -> r:^root:\S+:\S+:0:'
 
-# 5.4.4 Ensure default user shell timeout is configured - Not implemented
-# 5.4.5 Ensure default user umask is configured - Not implemented
-# 5.5 Ensure root login is restricted to system console - Not implemented
-# 5.6 Ensure access to the su command is restricted - Not implemented
-# 6.1.1 Audit system file permissions 
+  # 5.4.4 Ensure default user shell timeout is configured - Not implemented
+  # 5.4.5 Ensure default user umask is configured - Not implemented
+  # 5.5 Ensure root login is restricted to system console - Not implemented
+  # 5.6 Ensure access to the su command is restricted - Not implemented
+  # 6.1.1 Audit system file permissions
 
-# 6.1.2 Ensure permissions on /etc/passwd are configured
+  # 6.1.2 Ensure permissions on /etc/passwd are configured
   - id: 7637
     title: Ensure permissions on /etc/passwd are configured.
     description: >
@@ -3696,7 +3695,7 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 6.1.3 Ensure permissions on /etc/shadow are configured
+  # 6.1.3 Ensure permissions on /etc/shadow are configured
   - id: 7638
     title: Ensure permissions on /etc/shadow are configured.
     description: >
@@ -3720,7 +3719,7 @@ checks:
     rules:
       - 'c:stat -L /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
 
-# 6.1.4 Ensure permissions on /etc/group are configured 
+  # 6.1.4 Ensure permissions on /etc/group are configured
   - id: 7639
     title: Ensure permissions on /etc/group are configured.
     description: >
@@ -3742,7 +3741,7 @@ checks:
     rules:
       - 'c:stat -L /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 6.1.5 Ensure permissions on /etc/passwd- are configured
+  # 6.1.5 Ensure permissions on /etc/passwd- are configured
   - id: 7640
     title: Ensure permissions on /etc/passwd- are configured.
     description: The /etc/passwd- file contains backup user account information.
@@ -3762,7 +3761,7 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 6.1.6 Ensure permissions on /etc/shadow- are configured
+  # 6.1.6 Ensure permissions on /etc/shadow- are configured
   - id: 7641
     title: Ensure permissions on /etc/shadow- are configured
     description: >
@@ -3785,7 +3784,7 @@ checks:
     rules:
       - 'c:stat -L /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
 
-# 6.1.7 Ensure permissions on /etc/group- are configured 
+  # 6.1.7 Ensure permissions on /etc/group- are configured
   - id: 7642
     title: Ensure permissions on /etc/group- are configured.
     description: The /etc/group- file contains a backup list of all the valid groups defined in the system.
@@ -3805,13 +3804,13 @@ checks:
     rules:
       - 'c:stat -L /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-# 6.1.8 Ensure no world writable files exist - Not implemented
-# 6.1.9 Ensure no unowned files or directories exist - Not implemented
-# 6.1.10 Ensure no ungrouped files or directories exist - Not implemented
-# 6.1.11 Audit SUID executables - Not implemented
-# 6.1.12 Audit SGID executables - Not implemented
+  # 6.1.8 Ensure no world writable files exist - Not implemented
+  # 6.1.9 Ensure no unowned files or directories exist - Not implemented
+  # 6.1.10 Ensure no ungrouped files or directories exist - Not implemented
+  # 6.1.11 Audit SUID executables - Not implemented
+  # 6.1.12 Audit SGID executables - Not implemented
 
-# 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords
+  # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords
   - id: 7643
     title: Ensure accounts in /etc/passwd use shadowed passwords.
     description: >
@@ -3848,7 +3847,7 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^\.+:x:'
 
-# 6.2.2 Ensure /etc/shadow password fields are not empty
+  # 6.2.2 Ensure /etc/shadow password fields are not empty
   - id: 7644
     title: Ensure /etc/shadow password fields are not empty.
     description: >
@@ -3870,9 +3869,9 @@ checks:
       - cis_csc: ["4.4"]
     condition: none
     rules:
-      - 'c:grep -E ^[^:]+:: /etc/shadow -> r:::'
+      - "c:grep -E ^[^:]+:: /etc/shadow -> r:::"
 
-# 6.2.3 Ensure root is the only UID 0 account
+  # 6.2.3 Ensure root is the only UID 0 account
   - id: 7645
     title: Ensure root is the only UID 0 account.
     description: Any account with UID 0 has superuser privileges on the system.
@@ -3888,7 +3887,6 @@ checks:
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
-
 # 6.2.4 Ensure root PATH Integrity - Not implemented
 # 6.2.5 Ensure all users' home directories exist - Not implemented
 # 6.2.6 Ensure users' home directories permissions are 750 or more restrictive - Not implemented
