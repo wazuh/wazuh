@@ -1137,7 +1137,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
     raise_error : bool
         Boolean variable used to indicate that the
     """
-    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
 
         if raise_error:
@@ -1250,7 +1250,7 @@ def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent
     raise_error : bool
         Boolean variable used to indicate that the
     """
-    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
 
         if raise_error:

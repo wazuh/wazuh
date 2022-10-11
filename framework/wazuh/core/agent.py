@@ -1385,7 +1385,7 @@ def get_rbac_filters(system_resources: set = None, permitted_resources: list = N
     return {'filters': filters, 'rbac_negate': negate}
 
 
-def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, **kwargs: dict) -> list:
+def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, **kwargs) -> list:
     """Recursive function used to create the agents upgrade tasks.
 
     If a task manager communication error is in the response (error with code 4), the chunk size used is split in half.
@@ -1398,7 +1398,7 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
         Number of agents to be sent to the upgrade socket at the same time.
     command : str
         Upgrade command. Values: 'upgrade', 'upgrade_custom', 'upgrade_result'.
-    **kwargs : dict
+    **kwargs
         Upgrade procedure extra parameters.
 
     Returns
