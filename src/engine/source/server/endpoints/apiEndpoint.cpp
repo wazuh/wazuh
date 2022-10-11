@@ -82,24 +82,23 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
     client->on<DataEvent>(
         [&, timer, protocolHandler](const DataEvent& event, PipeHandle& client)
         {
-            // TODO: Are we moving the buffer? we should.
             timer->again();
-            // const auto result {protocolHandler->process(event.data.get(), event.length)};
-            std::string message{event.data.get(), event.length};
-            if (true)
-            {
-                // for (const auto& message : result.value())
-                // {
+            const auto result {protocolHandler->process(event.data.get(), event.length)};
 
-                    json::Json jrequest {};
-                    api::WazuhResponse wresponse {}; // Protocol error
+            if (result)
+            {
+                for (const auto& message : result.value())
+                {
+                    api::WazuhResponse wresponse {};
                     try
                     {
-                        jrequest = json::Json {message.c_str()};
+                        auto jrequest = json::Json {message.c_str()};
                         auto wrequest = api::WazuhRequest {jrequest};
                         if (wrequest.isValid())
                         {
-                             wresponse = g_registry->getCallback(wrequest.getCommand().value())(wrequest.getParameters().value());
+                            wresponse =
+                                g_registry->getCallback(wrequest.getCommand().value())(
+                                    wrequest.getParameters().value());
                         }
                         else
                         {
@@ -108,8 +107,13 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                             // Create ERROR API response
                         }
                     }
+                    catch (const std::runtime_error& e)
+                    {
+                        wresponse = api::WazuhResponse::invalidRequest();
+                    }
                     catch (const std::exception& e)
                     {
+                        wresponse = api::WazuhResponse::unknownError();
                         WAZUH_LOG_ERROR("API DataEvent: endpoint[{}] error: {}",
                                         client.peer(),
                                         e.what());
@@ -117,13 +121,16 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
 
                     auto [buffer, size] {addSecureHeader(wresponse.toString())};
                     client.write(std::move(buffer), size);
-                // }
+                }
             }
             else
             {
-                WAZUH_LOG_ERROR("API DataEvent: endpoint[{}] error: Data could "
-                                "not be processed.",
-                                m_path);
+                WAZUH_LOG_WARN("API DataEvent: endpoint[{}] error: Data could "
+                               "not be processed.",
+                               m_path);
+                auto invalidSize = api::WazuhResponse::invalidSize();
+                auto [buffer, size] {addSecureHeader(invalidSize.toString())};
+                client.write(std::move(buffer), size);
                 timer->close();
                 client.close();
             }
