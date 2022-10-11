@@ -1,10 +1,10 @@
-#include "catalog/catalog.hpp"
+#include "api/catalog/catalog.hpp"
 
 #include <fmt/format.h>
 
 #include "yml2Json.hpp"
 
-namespace catalog
+namespace api::catalog
 {
 void Config::validate() const
 {
@@ -81,21 +81,21 @@ Catalog::Catalog(const Config& config)
     };
 }
 
-std::variant<std::string, base::Error> Catalog::getAsset(const base::Name& name,
+std::variant<std::string, base::Error> Catalog::getAsset(const CatalogName& name,
                                                          Format format) const
 {
-    auto type = stringToType(name.m_type);
+    auto type = stringToType(name.type().c_str());
     if (type == Type::ERROR_TYPE)
     {
         return base::Error {
-            fmt::format("[Catalog::getAsset] Invalid type [{}]", name.m_type)};
+            fmt::format("[Catalog::getAsset] Invalid type [{}]", name.type())};
     }
 
     if (type != Type::DECODER && type != Type::RULE && type != Type::FILTER
         && type != Type::OUTPUT)
     {
         return base::Error {
-            fmt::format("[Catalog::getAsset] Not asset type [{}]", name.m_type)};
+            fmt::format("[Catalog::getAsset] Not asset type [{}]", name.type())};
     }
 
     auto outFormat = m_outFormat.find(format);
@@ -129,19 +129,19 @@ std::variant<std::string, base::Error> Catalog::getAsset(const base::Name& name,
 }
 
 std::optional<base::Error>
-Catalog::addAsset(const base::Name& name, const std::string& content, Format format)
+Catalog::addAsset(const CatalogName& name, const std::string& content, Format format)
 {
-    auto type = stringToType(name.m_type);
+    auto type = stringToType(name.type().c_str());
     if (type == Type::ERROR_TYPE)
     {
-        return base::Error {fmt::format("[Catalog::add] Invalid type [{}]", name.m_type)};
+        return base::Error {fmt::format("[Catalog::add] Invalid type [{}]", name.type())};
     }
 
     if (type != Type::DECODER && type != Type::RULE && type != Type::FILTER
         && type != Type::OUTPUT)
     {
         return base::Error {
-            fmt::format("[Catalog::add] Not asset type [{}]", name.m_type)};
+            fmt::format("[Catalog::add] Not asset type [{}]", name.type())};
     }
 
     auto inFormat = m_inFormat.find(format);
@@ -174,19 +174,19 @@ Catalog::addAsset(const base::Name& name, const std::string& content, Format for
     return std::nullopt;
 }
 
-std::optional<base::Error> Catalog::delAsset(const base::Name& name)
+std::optional<base::Error> Catalog::delAsset(const CatalogName& name)
 {
-    auto type = stringToType(name.m_type);
+    auto type = stringToType(name.type().c_str());
     if (type == Type::ERROR_TYPE)
     {
-        return base::Error {fmt::format("[Catalog::del] Invalid type [{}]", name.m_type)};
+        return base::Error {fmt::format("[Catalog::del] Invalid type [{}]", name.type())};
     }
 
     if (type != Type::DECODER && type != Type::RULE && type != Type::FILTER
         && type != Type::OUTPUT)
     {
         return base::Error {
-            fmt::format("[Catalog::del] Not asset type [{}]", name.m_type)};
+            fmt::format("[Catalog::del] Not asset type [{}]", name.type())};
     }
 
     auto error = m_store->del(name);
@@ -231,4 +231,4 @@ std::optional<base::Error> Catalog::validateAsset(const json::Json& asset) const
 
     return std::nullopt;
 }
-} // namespace catalog
+} // namespace api::catalog
