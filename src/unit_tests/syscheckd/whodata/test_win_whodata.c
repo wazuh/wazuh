@@ -5321,7 +5321,7 @@ void test_whodata_callback_4719_success(void **state) {
 
     successful_whodata_event_render(event, raw_data);
 
-    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_WHODATA_WIN_POL_CH);
+    expect_string(__wrap__mwarn, formatted_msg, FIM_WHODATA_POLICY_CHANGE);
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);

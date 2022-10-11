@@ -11,11 +11,10 @@
 #include "hash_op.h"
 #include "../syscheck.h"
 #include "syscheck_op.h"
-#include "ntsecapi.h"
-#include "combaseapi.h"
 
 #ifdef WIN_WHODATA
 
+#include <ntsecapi.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
@@ -36,6 +35,7 @@
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "unit_tests/wrappers/windows/ntsecapi_wrappers.h"
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
 #include "unit_tests/wrappers/windows/handleapi_wrappers.h"
@@ -150,7 +150,7 @@ void replace_device_path(char **path);
 /**
  * @brief Function to check if a global policy is configured as Success.
  *
- * @return int 1 if the policies are configured properly or 0 if not.
+ * @return int 0 if the policies are configured properly, 0 if not and -1 if some function fail.
  */
 int policy_check();
 
@@ -955,7 +955,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 break;
 
             case 4719:
-                merror(FIM_ERROR_WHODATA_WIN_POL_CH);
+                mwarn(FIM_WHODATA_POLICY_CHANGE);
                 win_whodata_release_resources(&syscheck.wdata);
 
             break;
@@ -990,9 +990,6 @@ int whodata_audit_start() {
 }
 
 int policy_check() {
-    static const char *guid_PolicyChange = "{6997984d-797a-11d9-bed3-505054503030}";
-    static const char *guid_AuditPolicy = "{0CCE922F-69AE-11D9-BED3-505054503030}";
-
     static const char *guid_ObjectAccess = "{6997984a-797a-11d9-bed3-505054503030}";
     static const char *guid_FileSystem = "{0CCE921D-69AE-11D9-BED3-505054503030}";
     static const char *guid_Handle =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
@@ -1000,17 +997,22 @@ int policy_check() {
     int file_system_success = 0;
     int handle_manipulation_success = 0;
     LSA_HANDLE PolicyHandle;
-    NTSTATUS Status;
     LSA_OBJECT_ATTRIBUTES ObjectAttributes;
     PPOLICY_AUDIT_EVENTS_INFO AuditEvents;
     GUID *pAuditSubCategoryGuids = NULL;
     AUDIT_POLICY_INFORMATION *pAuditPolicies = NULL;
+    BOOL open_policy = FALSE;
+    NTSTATUS Status;
+    DWORD err_code;
+    char err_msg[OS_SIZE_1024 + 1];
+    err_msg[OS_SIZE_1024] = '\0';
 
     ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
 
     Status = LsaOpenPolicy(NULL, &ObjectAttributes, POLICY_VIEW_AUDIT_INFORMATION, &PolicyHandle);
 
     if(!Status) {
+        open_policy = TRUE;
         Status = LsaQueryInformationPolicy(PolicyHandle, PolicyAuditEventsInformation, (PVOID *)&AuditEvents);
 
         if(!Status) {
@@ -1022,33 +1024,24 @@ int policy_check() {
 
                 while (policyAuditEventType < AuditEvents->MaximumAuditEventCount) {
                     if(AuditLookupCategoryGuidFromCategoryId((POLICY_AUDIT_EVENT_TYPE)policyAuditEventType, &auditCategoryId) == FALSE) {
-                        merror("AuditLookupCategoryGuidFromCategoryId fail");
-                        LsaFreeMemory(AuditEvents);
-                        LsaClose(PolicyHandle);
-                        return -1;
+                        goto error;
                     }
                     snprintf(guid_string, 40, "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
                                                 auditCategoryId.Data1, auditCategoryId.Data2, auditCategoryId.Data3,
                                                 auditCategoryId.Data4[0], auditCategoryId.Data4[1], auditCategoryId.Data4[2], auditCategoryId.Data4[3],
                                                 auditCategoryId.Data4[4], auditCategoryId.Data4[5], auditCategoryId.Data4[6], auditCategoryId.Data4[7]);
 
-                    if(!strcmp(guid_string, guid_PolicyChange) || !strcmp(guid_string, guid_ObjectAccess)) {
+                    if(!strcasecmp(guid_string, guid_ObjectAccess)) {
                         if(AuditEnumerateSubCategories(&auditCategoryId, FALSE, &pAuditSubCategoryGuids, &subCategoryCount) == FALSE) {
-                            merror("AuditEnumerateSubCategories fail");
-                            LsaFreeMemory(AuditEvents);
-                            LsaClose(PolicyHandle);
-                            return -1;
+                            goto error;
                         }
 
                         if(AuditQuerySystemPolicy(pAuditSubCategoryGuids, subCategoryCount, &pAuditPolicies) == FALSE) {
-                            merror("AuditQuerySystemPolicy fail");
-                            LsaFreeMemory(AuditEvents);
-                            LsaClose(PolicyHandle);
-                            return -1;
+                            goto error;
                         }
 
                         // Probe each subcategory in the category
-                        for(ULONG subcategoryIndex = 0; subcategoryIndex < 2; subcategoryIndex++) {
+                        for(ULONG subcategoryIndex = 0; subcategoryIndex < subCategoryCount; subcategoryIndex++) {
                             AUDIT_POLICY_INFORMATION currentPolicy = pAuditPolicies[subcategoryIndex];
 
                             snprintf(guid_string, 40, "{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}",
@@ -1057,29 +1050,50 @@ int policy_check() {
                                                         currentPolicy.AuditSubCategoryGuid.Data4[4], currentPolicy.AuditSubCategoryGuid.Data4[5], currentPolicy.AuditSubCategoryGuid.Data4[6], currentPolicy.AuditSubCategoryGuid.Data4[7]);
 
                             if(currentPolicy.AuditingInformation & POLICY_AUDIT_EVENT_SUCCESS) {
-                                if(!strcmp(guid_string, guid_AuditPolicy)) {
-                                    mwarn("The 'Audit Policy Change' policy has been disabled. Changes in the configured policies are not detected.");
-                                }
-                                if(!strcmp(guid_string, guid_FileSystem)) {
+                                if(!strcasecmp(guid_string, guid_FileSystem)) {
                                     file_system_success = 1;
                                 }
-                                if(!strcmp(guid_string, guid_Handle)) {
+                                if(!strcasecmp(guid_string, guid_Handle)) {
                                     handle_manipulation_success = 1;
+                                }
+                                if(file_system_success && handle_manipulation_success) {
+                                    LsaFreeMemory(AuditEvents);
+                                    LsaClose(PolicyHandle);
+
+                                    return 0;
                                 }
                             }
                         }
                     }
                     policyAuditEventType++;
                 }
-            } else {
-                merror("Auditing Disabled");
             }
+        } else {
+            SetLastError(LsaNtStatusToWinError(Status));
+            goto error;
         }
+    } else {
+        SetLastError(LsaNtStatusToWinError(Status));
+        goto error;
+    }
+    LsaFreeMemory(AuditEvents);
+    LsaClose(PolicyHandle);
+
+    return 1;
+
+error:
+    err_code = GetLastError();
+
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                  NULL, err_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &err_msg, OS_SIZE_1024, NULL);
+    mwarn(FIM_WHODATA_ERROR_CHECKING_POL, err_msg, err_code);
+
+    if(open_policy) {
         LsaFreeMemory(AuditEvents);
         LsaClose(PolicyHandle);
     }
 
-    return file_system_success && handle_manipulation_success;
+    return -1;
 }
 
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
@@ -1106,8 +1120,8 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     while (atomic_int_get(&whodata_end) == 0) {
         // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
         // Check the Audit Policy Change policy, if disabled, show a warning but keep whodata monitoring.
-        if (policy_check() == 0) {
-            merror(FIM_ERROR_WHODATA_WIN_POL_CH);
+        if (policy_check() == 1) {
+            mwarn(FIM_WHODATA_POLICY_CHANGE);
             win_whodata_release_resources(&syscheck.wdata);
             break;
         }
@@ -1226,7 +1240,6 @@ int set_policies() {
     int retval = 1;
     static const char *WPOL_FILE_SYSTEM_SUC = ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n";
     static const char *WPOL_HANDLE_SUC = ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n";
-    static const char *WPOL_AUDIT_POL_CH = ",System,Audit Policy Change,{0CCE922F-69AE-11D9-BED3-505054503030},,,1\n";
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_REMOVE, WPOL_BACKUP_FILE, strerror(errno), errno);
@@ -1260,7 +1273,6 @@ int set_policies() {
     // Add the new policies
     fprintf(f_new, WPOL_FILE_SYSTEM_SUC);
     fprintf(f_new, WPOL_HANDLE_SUC);
-    fprintf(f_new, WPOL_AUDIT_POL_CH);
 
     fclose(f_new);
 
@@ -1312,17 +1324,19 @@ void set_subscription_query(wchar_t *query) {
                                             "( " \
                                                 "System/EventID = 4719 " \
                                                 "and " \
-                                                    "(" \
-                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE9223-69AE-11D9-BED3-505054503030}'" \
+                                                    "( " \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE9223-69AE-11D9-BED3-505054503030}' " \
                                                     "or " \
-                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE921D-69AE-11D9-BED3-505054503030}'" \
-                                                    "or " \
-                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE922F-69AE-11D9-BED3-505054503030}'" \
-                                                    ")" \
+                                                        "EventData/Data[@Name='SubcategoryGuid'] = '{0CCE921D-69AE-11D9-BED3-505054503030}' " \
+                                                    ") " \
                                                 "and " \
                                                     "( " \
                                                         "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448'" \
-                                                    ")" \
+                                                    "or " \
+                                                        "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448, %%%%8450'" \
+                                                    "or " \
+                                                        "EventData/Data[@Name='AuditPolicyChanges'] = '%%%%8448, %%%%8451'" \
+                                                    " )" \
                                             ") " \
                                         ") " \
                                     "]",
