@@ -1,3 +1,6 @@
+set(ENGINE_API_SOURCE_DIR ${ENGINE_SOURCE_DIR}/api/src)
+set(ENGINE_API_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/api/include)
+
 # ###################################################################################################
 # Dependencies
 # ###################################################################################################
@@ -16,15 +19,19 @@ CPMAddPackage(
 # ###################################################################################################
 # Sources - Includes
 # ###################################################################################################
-add_library(catalog STATIC
-    ${CMAKE_CURRENT_LIST_DIR}/src/catalog.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/yml2Json.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/commands.cpp
+add_library(api STATIC
+    ${ENGINE_API_SOURCE_DIR}/registry.cpp
+    ${ENGINE_API_SOURCE_DIR}/wazuhRequest.cpp
+    ${ENGINE_API_SOURCE_DIR}/catalog/catalog.cpp
+    ${ENGINE_API_SOURCE_DIR}/catalog/commands.cpp
 )
 
-target_include_directories(catalog
+target_include_directories(api
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${ENGINE_API_INCLUDE_DIR}
+    PRIVATE
+    ${ENGINE_API_SOURCE_DIR}
+    ${ENGINE_API_SOURCE_DIR}/catalog
 )
 
-target_link_libraries(catalog base yaml-cpp store::istore builder::ivalidator api)
+target_link_libraries(api PRIVATE base json builder::ivalidator store::istore yaml-cpp)

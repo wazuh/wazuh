@@ -1,7 +1,12 @@
 #ifndef _BASE_NAME_HPP
 #define _BASE_NAME_HPP
 
+#include <initializer_list>
+#include <iostream>
+#include <numeric>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -17,78 +22,58 @@ namespace base
  * Details of the resource path and storage are handled by the store driver.
  *
  * Name can be constructed from a string in the form:
- * <type>SEPARATOR<name>SEPARATOR<version> Where SEPARATOR is the separator character,
- * currently '.'
+ * <part>[SEPARATOR<part>...] Where SEPARATOR is the separator character,
+ * currently '/'
  *
  * @note The name is not a path, it's a name.
  */
 class Name
 {
-private:
-    void copy(const Name& other)
-    {
-        m_type = other.m_type;
-        m_name = other.m_name;
-        m_version = other.m_version;
-    }
-
 public:
     constexpr static auto SEPARATOR_S = ".";
     constexpr static auto SEPARATOR_C = '.';
+    constexpr static auto MAX_PARTS = 10;
 
-    std::string m_type;
-    std::string m_name;
-    std::string m_version;
+private:
+    std::vector<std::string> m_parts;
 
+    void assertSize(size_t size) const
+    {
+        if (size < 1 || size > MAX_PARTS)
+        {
+            throw std::runtime_error(
+                fmt::format("[Name] size must be between 1 and {}", MAX_PARTS));
+        }
+    }
+
+    void copy(const Name& other) { m_parts = other.m_parts; }
+    void copyMove(Name&& other) noexcept { m_parts = std::move(other.m_parts); }
+
+public:
     Name() = default;
 
     /**
      * @brief Construct a new Name object
      *
-     * @param type Type string
-     * @param name Name string
-     * @param version Version string
-     *
-     * @throw std::runtime_error if any of the strings is empty
+     * @tparam Parts Parameter pack of string types
+     * @param parts Parts of the name
      */
-    Name(const std::string& type, const std::string& name, const std::string& version)
-        : m_type(type)
-        , m_name(name)
-        , m_version(version)
+    Name(const std::vector<std::string>& parts)
     {
-        if (m_type.empty() || m_name.empty() || m_version.empty())
-        {
-            throw std::runtime_error("[Name] Name parts cannot be empty");
-        }
+        assertSize(parts.size());
+        m_parts = parts;
     }
 
     /**
      * @brief Construct a new Name object
      *
-     * @param fullName Name string in the form <type>SEPARATOR<name>SEPARATOR<version>
-     *
+     * @param fullName Name string in the form <part>SEPARATOR<part>...
      * @throw std::runtime_error if the string does not have the correct format
      */
     Name(const std::string& fullName)
     {
-        auto parts = utils::string::split(fullName, SEPARATOR_C);
-        if (parts.size() != 3)
-        {
-            throw std::runtime_error(fmt::format("[Name] Invalid name [{}]", fullName));
-        }
-
-        for (const auto& part : parts)
-        {
-            if (part.empty())
-            {
-                throw std::runtime_error(
-                    fmt::format("[Name] Invalid name [{}]", fullName));
-            }
-        }
-
-        m_type = parts[0];
-        m_name = parts[1];
-        m_version = parts[2];
+        m_parts = utils::string::split(fullName, SEPARATOR_C);
+        assertSize(m_parts.size());
     }
 
     /**
@@ -111,6 +96,13 @@ public:
     Name(const Name& other) { copy(other); }
 
     /**
+     * @brief Construct a new Name object
+     *
+     * @param other Name to move
+     */
+    Name(Name&& other) noexcept { copyMove(std::move(other)); }
+
+    /**
      * @brief Copy assignment operator
      *
      * @param other Name to copy
@@ -127,17 +119,26 @@ public:
     }
 
     /**
+     * @brief Move assignment operator
+     *
+     * @param other Name to move
+     * @return Name& self
+     */
+    Name& operator=(Name&& other) noexcept
+    {
+        copyMove(std::move(other));
+
+        return *this;
+    }
+
+    /**
      * @brief Equality comparison operator
      *
      * @param other Name to compare
      * @return true
      * @return false
      */
-    bool operator==(const Name& other) const
-    {
-        return m_type == other.m_type && m_name == other.m_name
-               && m_version == other.m_version;
-    }
+    bool operator==(const Name& other) const { return m_parts == other.m_parts; }
 
     /**
      * @brief Inequality comparison operator
@@ -148,6 +149,17 @@ public:
      */
     bool operator!=(const Name& other) const { return !(*this == other); }
 
+    friend std::ostream& operator<<(std::ostream& os, const Name& name)
+    {
+        os << std::accumulate(
+            name.m_parts.begin(),
+            name.m_parts.end(),
+            std::string(),
+            [](const std::string& a, const std::string& b) -> std::string
+            { return a + (a.length() > 0 ? SEPARATOR_S : "") + b; });
+        return os;
+    }
+
     /**
      * @brief Get the full name string
      *
@@ -156,8 +168,17 @@ public:
      */
     std::string fullName() const
     {
-        return m_type + SEPARATOR_S + m_name + SEPARATOR_S + m_version;
+        std::stringstream ss;
+        ss << *this;
+        return ss.str();
     }
+
+    /**
+     * @brief Get the parts of the name
+     *
+     * @return const std::vector<std::string>&
+     */
+    const std::vector<std::string>& parts() const { return m_parts; }
 };
 
 } // namespace base

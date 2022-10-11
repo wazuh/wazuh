@@ -137,10 +137,9 @@ target_include_directories(main
     ${CLI11_SOURCE_DIR}/include
 )
 
-add_subdirectory(${ENGINE_SOURCE_DIR}/API)
+add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
-add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicExpression)

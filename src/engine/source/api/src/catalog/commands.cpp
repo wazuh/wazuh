@@ -1,10 +1,10 @@
-#include "catalog/commands.hpp"
+#include "api/catalog/commands.hpp"
 
 #include <json/json.hpp>
 
-namespace catalog::cmds
+namespace api::catalog::cmds
 {
-api::CommandFn getAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
+api::CommandFn getAssetCmd(std::shared_ptr<Catalog> catalog)
 {
     return [catalog](const json::Json& params) -> api::WazuhResponse
     {
@@ -20,10 +20,10 @@ api::CommandFn getAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
             return api::WazuhResponse {
                 json::Json {"{}"}, 400, "Invalid [name] parameter, expected string"};
         }
-        base::Name name;
+        CatalogName name;
         try
         {
-            name = base::Name {nameOpt.value()};
+            name = CatalogName {nameOpt.value()};
         }
         catch (const std::exception& e)
         {
@@ -45,8 +45,7 @@ api::CommandFn getAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
         }
 
         // Get asset
-        auto assetOpt =
-            catalog->getAsset(name, catalog::stringToFormat(formatOpt.value()));
+        auto assetOpt = catalog->getAsset(name, stringToFormat(formatOpt.value()));
         if (std::holds_alternative<base::Error>(assetOpt))
         {
             return api::WazuhResponse {
@@ -58,7 +57,7 @@ api::CommandFn getAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
     };
 }
 
-api::CommandFn postAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
+api::CommandFn postAssetCmd(std::shared_ptr<Catalog> catalog)
 {
     return [catalog](const json::Json& params) -> api::WazuhResponse
     {
@@ -74,10 +73,10 @@ api::CommandFn postAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
             return api::WazuhResponse {
                 json::Json {"{}"}, 400, "Invalid [name] parameter, expected string"};
         }
-        base::Name name;
+        CatalogName name;
         try
         {
-            name = base::Name {nameOpt.value()};
+            name = CatalogName {nameOpt.value()};
         }
         catch (const std::exception& e)
         {
@@ -111,7 +110,7 @@ api::CommandFn postAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
 
         // Post asset
         auto error = catalog->addAsset(
-            name, contentOpt.value(), catalog::stringToFormat(formatOpt.value()));
+            name, contentOpt.value(), stringToFormat(formatOpt.value()));
         if (error)
         {
             return api::WazuhResponse {json::Json {"{}"}, 400, error.value().message};
@@ -121,7 +120,7 @@ api::CommandFn postAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
     };
 }
 
-api::CommandFn deleteAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
+api::CommandFn deleteAssetCmd(std::shared_ptr<Catalog> catalog)
 {
     return [catalog](const json::Json& params) -> api::WazuhResponse
     {
@@ -137,10 +136,10 @@ api::CommandFn deleteAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
             return api::WazuhResponse {
                 json::Json {"{}"}, 400, "Invalid [name] parameter, expected string"};
         }
-        base::Name name;
+        CatalogName name;
         try
         {
-            name = base::Name {nameOpt.value()};
+            name = CatalogName {nameOpt.value()};
         }
         catch (const std::exception& e)
         {
@@ -161,19 +160,19 @@ api::CommandFn deleteAssetCmd(std::shared_ptr<catalog::Catalog> catalog)
     };
 }
 
-void registerAllCmds(std::shared_ptr<catalog::Catalog> catalog,
+void registerAllCmds(std::shared_ptr<Catalog> catalog,
                      std::shared_ptr<api::Registry> registry)
 {
     try
     {
-        registry->registerCommand("get_asset", getAssetCmd(catalog));
-        registry->registerCommand("post_asset", postAssetCmd(catalog));
-        registry->registerCommand("delete_asset", deleteAssetCmd(catalog));
+        registry->registerCommand("get_decoders", getAssetCmd(catalog));
+        registry->registerCommand("post_decoders", postAssetCmd(catalog));
+        registry->registerCommand("delete_decoders", deleteAssetCmd(catalog));
     }
     catch (...)
     {
-        std::throw_with_nested(std::runtime_error(
-            "[catalog::cmds::registerAllCmds] Failed to register commands"));
+        std::throw_with_nested(
+            std::runtime_error("[cmds::registerAllCmds] Failed to register commands"));
     }
 }
-} // namespace catalog::cmds
+} // namespace api::catalog::cmds

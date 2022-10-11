@@ -20,6 +20,7 @@ class WazuhRequest
     std::optional<std::string> m_error;
 
 public:
+    WazuhRequest() = default;
     // TODO Delete explicit when json constructor does not throw exceptions
     /**
      * @brief Construct a new Wazuh Request object
@@ -86,6 +87,8 @@ public:
      * object
      */
     static WazuhRequest create(std::string_view command, const json::Json& parameters);
+
+    std::string toStr() const { return m_jrequest.str(); }
 
 private:
     /**

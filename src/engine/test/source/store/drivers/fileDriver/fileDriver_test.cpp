@@ -5,7 +5,7 @@
 #include <fstream>
 
 static const std::filesystem::path TEST_PATH = "/tmp/fileDriver_test";
-static const base::Name TEST_NAME("type", "name", "version");
+static const base::Name TEST_NAME({"type", "name", "version"});
 
 static const json::Json TEST_JSON {R"({"key": "value"})"};
 
@@ -45,9 +45,9 @@ TEST_F(FileDriverTest, BuildsCreate)
 
 TEST_F(FileDriverTest, Erase)
 {
-    auto path = TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name;
+    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1];
     std::filesystem::create_directories(path);
-    auto filePath = path / std::string {TEST_NAME.m_version + ".json"};
+    auto filePath = path / std::string {TEST_NAME.parts()[2] + ".json"};
     {
         std::ofstream file(filePath);
     }
@@ -70,7 +70,7 @@ TEST_F(FileDriverTest, EraseFailNotExisting)
 TEST_F(FileDriverTest, EraseFailOsError)
 {
     auto path =
-        TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name / TEST_NAME.m_version / "test";
+        TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1] / TEST_NAME.parts()[2] / "test";
     std::filesystem::create_directories(path);
 
     store::FileDriver fDriver(TEST_PATH);
@@ -85,8 +85,8 @@ TEST_F(FileDriverTest, Add)
     std::optional<base::Error> error;
     ASSERT_NO_THROW(error = fDriver.add(TEST_NAME, TEST_JSON));
     ASSERT_FALSE(error);
-    auto path = TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name
-                / std::string {TEST_NAME.m_version + ".json"};
+    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1]
+                / std::string {TEST_NAME.parts()[2] + ".json"};
     ASSERT_TRUE(std::filesystem::exists(path));
     ASSERT_TRUE(std::filesystem::is_regular_file(path));
     std::ifstream file(path);
@@ -102,17 +102,15 @@ TEST_F(FileDriverTest, AddMultipleVersions)
     store::FileDriver fDriver(TEST_PATH);
     std::optional<base::Error> error;
 
-    base::Name name1 = TEST_NAME;
-    name1.m_version = "1.0.0";
+    base::Name name1({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "1.0.0"});
     ASSERT_NO_THROW(error = fDriver.add(name1, TEST_JSON));
     ASSERT_FALSE(error);
 
-    base::Name name2 = TEST_NAME;
-    name2.m_version = "2.0.0";
+    base::Name name2({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "2.0.0"});
     ASSERT_NO_THROW(error = fDriver.add(name2, TEST_JSON));
     ASSERT_FALSE(error);
 
-    auto path = TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name;
+    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1];
     ASSERT_TRUE(std::filesystem::exists(path));
     ASSERT_TRUE(std::filesystem::is_directory(path));
     ASSERT_EQ(std::distance(std::filesystem::directory_iterator(path),
@@ -132,8 +130,8 @@ TEST_F(FileDriverTest, AddMultipleVersions)
 
 TEST_F(FileDriverTest, AddFailAlreadyExisting)
 {
-    auto path = TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name
-                / std::string {TEST_NAME.m_version + ".json"};
+    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1]
+                / std::string {TEST_NAME.parts()[2] + ".json"};
     std::filesystem::create_directories(path);
     {
         std::ofstream file(path);
@@ -147,8 +145,8 @@ TEST_F(FileDriverTest, AddFailAlreadyExisting)
 
 TEST_F(FileDriverTest, Get)
 {
-    auto path = TEST_PATH / TEST_NAME.m_type / TEST_NAME.m_name
-                / std::string {TEST_NAME.m_version + ".json"};
+    auto path = TEST_PATH / TEST_NAME.parts()[0] / TEST_NAME.parts()[1]
+                / std::string {TEST_NAME.parts()[2] + ".json"};
     std::filesystem::create_directories(path.parent_path());
     {
         std::ofstream file(path);

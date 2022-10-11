@@ -61,10 +61,10 @@ void graph(const std::string& kvdbPath,
     }
 
     builder::Builder _builder(store);
-    decltype(_builder.buildEnvironment(environment)) env;
+    decltype(_builder.buildEnvironment({environment})) env;
     try
     {
-        env = _builder.buildEnvironment(environment);
+        env = _builder.buildEnvironment({environment});
     }
     catch (const std::exception& e)
     {

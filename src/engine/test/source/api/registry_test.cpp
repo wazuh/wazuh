@@ -1,7 +1,7 @@
 
 #include <gtest/gtest.h>
 
-#include <API/registry.hpp>
+#include <api/registry.hpp>
 #include <json/json.hpp>
 
 TEST(Registry, empty)

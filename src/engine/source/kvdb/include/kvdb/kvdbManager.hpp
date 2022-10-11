@@ -31,6 +31,13 @@ public:
     bool createDBfromCDB(const std::filesystem::path& path, bool createIfMissing = true);
     bool deleteDB(const std::string& name);
     KVDBHandle getDB(const std::string& name);
+    void clear()
+    {
+        if (m_availableKVDBs.size() > 0)
+        {
+            m_availableKVDBs.clear();
+        }
+    }
 };
 
 #endif // _KVDBMANAGER_H
