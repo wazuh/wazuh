@@ -42,7 +42,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add the following line: install cramfs /bin/true. Run the following command to unload the cramfs module: # rmmod cramfs."
     compliance:
       - cis: ["1.1.1.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -58,7 +58,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/freevxfs.conf and add the following line: install freevxfs /bin/true. Run the following command to unload the freevxfs module: # rmmod freevxfs."
     compliance:
       - cis: ["1.1.1.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -74,7 +74,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/jffs2.conf and add the following line: install jffs2 /bin/true. Run the following command to unload the jffs2 module: # rmmod jffs2."
     compliance:
       - cis: ["1.1.1.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -90,7 +90,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/hfs.conf and add the following line: install hfs /bin/true. Run the following command to unload the hfs module: # rmmod hfs."
     compliance:
       - cis: ["1.1.1.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -106,7 +106,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .confExample: vi /etc/modprobe.d/hfsplus.conf and add the following line: install hfsplus /bin/true. Run the following command to unload the hfsplus module: # rmmod hfsplus."
     compliance:
       - cis: ["1.1.1.5"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -119,16 +119,17 @@ checks:
     title: "Ensure mounting of squashfs filesystems is disabled."
     description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems (similar to cramfs ). A squashfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: 'Disabling squashfs will prevent the use of snap. Snap is a package manager for Linux for installing Snap packages. "Snap" application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment. When snaps are deployed on versions of Linux, the Ubuntu app store is used as default back-end, but other stores can be enabled as well.'
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/squashfs.conf and add the following line: install squashfs /bin/true. Run the following command to unload the squashfs module: # rmmod squashfs"
     compliance:
       - cis: ["1.1.1.6"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - "c:/sbin/modprobe -n -v udf -> r:^install /bin/true|^install /bin/false"
-      - "not c:lsmod -> r:udf"
+      - "c:/sbin/modprobe -n -v squashfs -> r:^install /bin/true|^install /bin/false"
+      - "not c:lsmod -> r:squashfs"
 
   # 1.1.1.7 Ensure mounting of udf filesystems is disabled (Automated)
   - id: 19006
@@ -138,7 +139,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/udf.conf and add the following line: install udf /bin/true Run the following command to unload the udf module: # rmmod udf"
     compliance:
       - cis: ["1.1.1.7"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -151,10 +152,11 @@ checks:
     title: "Ensure /tmp is configured."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
+    impact: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a default installation a disk-based /tmp will essentially have the whole disk available, as it only creates a single / partition. On the other hand, a RAM-based /tmp as with tmpfs will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. /tmp utilizing tmpfs can be resized using the size={size} parameter on the Options line on the tmp.mount file."
     remediation: "Configure /etc/fstab as appropriate. Example: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0. OR Run the following commands to enable systemd /tmp mounting: Run the following command to create the tmp.mount file in the correct location: # cp -v /usr/share/systemd/tmp.mount /etc/systemd/system/. Edit /etc/systemd/system/tmp.mount to configure the /tmp mount: [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,nosuid,nodev,noexec. Run the following command to reload the systemd daemon with the unpdated tmp.mount unit file: # systemctl daemon-reload. Run the following command to enable and start tmp.mount # systemctl --now enable tmp.mount."
     compliance:
       - cis: ["1.1.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -170,10 +172,10 @@ checks:
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab file OR the /etc/systemd/system/local- fs.target.wants/tmp.mount file: If /etc/fstab is used to mount /tmp: Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp. OR If systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid. Run the following command to restart the systemd daemon: # systemctl daemon-reload. Run the following command to restart tmp.mount # systemctl restart tmp.mount."
+    remediation: "Edit the /etc/fstab file OR the /etc/systemd/system/local-fs.target.wants/tmp.mount file: If /etc/fstab is used to mount /tmp: Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp. OR If systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid. Run the following command to restart the systemd daemon: # systemctl daemon-reload. Run the following command to restart tmp.mount # systemctl restart tmp.mount."
     compliance:
       - cis: ["1.1.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -189,7 +191,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nosuid /tmp. OR Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid. Run the following command to remount /tmp: # mount -o remount,nosuid /tmp"
     compliance:
       - cis: ["1.1.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -205,7 +207,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,noexec /tmp. OR Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp: # mount -o remount,noexec /tmp."
     compliance:
       - cis: ["1.1.5"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -221,7 +223,7 @@ checks:
     remediation: "Edit /etc/fstab and add or edit the following line: tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid,seclabel 0 0. Run the following command to remount /dev/shm: # mount -o remount,noexec,nodev,nosuid /dev/shm."
     compliance:
       - cis: ["1.1.6"]
-      - cis_csc: ["5.1", "13"]
+      - cis_csc_v7: ["5.1", "13"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -237,7 +239,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nosuid,nodev,noexec /dev/shm."
     compliance:
       - cis: ["1.1.7"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -253,7 +255,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nosuid,nodev,noexec /dev/shm."
     compliance:
       - cis: ["1.1.8"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -269,7 +271,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nosuid,nodev,noexec /dev/shm."
     compliance:
       - cis: ["1.1.9"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -285,7 +287,7 @@ checks:
     remediation: "For new installations, during installationcreate a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.10"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -303,7 +305,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.11"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -319,7 +321,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid,nodev,noexec /var/tmp."
     compliance:
       - cis: ["1.1.12"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -335,7 +337,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid,nodev,noexec /var/tmp."
     compliance:
       - cis: ["1.1.13"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -351,7 +353,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid,nodev,noexec /var/tmp."
     compliance:
       - cis: ["1.1.14"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -367,7 +369,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.15"]
-      - cis_csc: ["6.4"]
+      - cis_csc_v7: ["6.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -385,7 +387,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.16"]
-      - cis_csc: ["6.4"]
+      - cis_csc_v7: ["6.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -393,16 +395,18 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/log/audit\s'
+      - 'c:findmnt -n /var/log/audit -> r:\s*/var/log/audit\s'
 
-  - id: 19021
+  # 1.1.17 Ensure separate partition exists for /home (Automated)
+  - id: 19022
     title: "Ensure separate partition exists for /home."
     description: "The /home directory is used to support disk storage needs of local users."
     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     compliance:
       - cis: ["1.1.17"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -410,55 +414,105 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/home\s'
+      - 'c:findmnt -n /home -> r:\s*/home\s'
 
-  - id: 19022
-    title: "Ensure nodev option set on /home partition."
+  # 1.1.18 Ensure /home partition includes the nodev option (Automated)
+  - id: 19023
+    title: "Ensure /home partition includes the nodev option."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices.  Note: The actions in the item refer to the /home partition, which is the default user partition that is defined in many distributions. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
+    rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information. # mount -o remount,nodev /home"
     compliance:
       - cis: ["1.1.18"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/home\s && r:nodev'
+      - 'c:findmnt -n /home -> r:\s*/home\s && r:nodev'
 
-  - id: 19023
+  # 1.1.19 Ensure nodev option set on removable media partitions (Manual) - NOT IMPLEMENTED
+  # 1.1.20 Ensure nosuid option set on removable media partitions (Manual) - NOT IMPLEMENTED
+  # 1.1.21 Ensure noexec option set on removable media partitions (Manual) - NOT IMPLEMENTED
+  # 1.1.22 Ensure sticky bit is set on all world-writable directories (Automated) - NOT IMPLEMENTED
+
+  # 1.1.23 Disable Automounting (Automated)
+  - id: 19024
     title: "Disable Automounting."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have it's contents available in system even if they lacked permissions to mount it themselves."
+    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
+    impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
     remediation: "Run one of the following commands:  Run the following command to disable autofs: # systemctl --now disable autofs    OR  Run the following command to remove autofs:  # apt purge autofs"
     compliance:
       - cis: ["1.1.23"]
-      - cis_csc: ["8.4", "8.5"]
+      - cis_csc_v7: ["8.4", "8.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: any
     rules:
-      - "c:systemctl is-enabled autofs -> enabled"
+      - "c: dpkg -s autofs -> r:package 'autofs' is not installed"
+      - "c: systemctl is-enabled autofs -> r:No such file or directory|disabled"
 
-  - id: 19024
+  # 1.1.24 Disable USB Storage (Automated)
+  - id: 19025
     title: "Disable USB Storage."
-    description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
+    description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment. Note: An alternative solution to disabling the usb-storage module may be found in USBGuard. Use of USBGuard and construction of USB device policies should be done in alignment with site policy."
     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/usb_storage.conf and add the following line: # install usb-storage /bin/true . Run the following command to unload the usb-storage module: # rmmod usb-storage"
+    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/usb_storage.conf and add the following line: install usb-storage /bin/true. Run the following command to unload the usb-storage module: rmmod usb-storage"
     compliance:
       - cis: ["1.1.24"]
-      - cis_csc: ["8.4", "8.5"]
+      - cis_csc_v7: ["8.4", "8.5"]
       - pci_dss: ["2.2.5"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - "c:/sbin/modprobe -n -v usb-storage -> r:install /bin/true"
+      - "c:/sbin/modprobe -n -v usb-storage -> r:install /bin/true|install /bin/false"
       - "not c:lsmod -> r:usb-storage"
 
-  # 1.3 Configure Sudo
+  # 1.2 Configure Software Updates
+  # 1.2.1 Ensure package manager repositories are configured (Manual) - NOT IMPLEMENTED
+  # 1.2.2 Ensure GPG keys are configured (Manual) - NOT IMPLEMENTED
+
+  # 1.3 Filesystem Integrity Checking
+
+  # 1.3.1 Ensure AIDE is installed (Automated)
+  - id: 19026
+    title: "Ensure AIDE is installed."
+    description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
+    rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
+    remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # dpkg -s aide | grep -E '(Status:|not installed)' Status: install ok installed # dpkg -s aide-common | grep -E '(Status:|not installed)' Status: install ok installed # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db"
+    compliance:
+      - cis: ["1.3.1"]
+      - cis_csc_v7: ["14.9"]
+      - pci_dss: ["11.5"]
+      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+    condition: all
+    rules:
+      - "c:dpkg -s aide -> r:install ok installed"
+      - "c:dpkg -s aide-common -> r:install ok installed"
+
+  # 1.3.2 Ensure filesystem integrity is regularly checked (Automated)
+  - id: 19027
+    title: "Ensure filesystem integrity is regularly checked."
+    description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
+    rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
+    remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
+    compliance:
+      - cis: ["1.3.2"]
+      - cis_csc_v7: ["14.9"]
+      - pci_dss: ["11.5"]
+      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+    references:
+      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
+      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
+    condition: all
+    rules:
+      - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:^\s*\.+'
+      - 'c: sh -c "grep -Ers ''^([^#]+\s+)?(\/usr\/s?bin\/|^\s*)aide(\.wrapper)?\s(-- check|\$AIDEARGS)\b'' /etc/cron.* /etc/crontab /var/spool/cron/" -> r:^\s*\.+'
+      - "c:crontab -u root -l -> r:aide"
 
   - id: 19025
     title: "Ensure sudo is installed."
@@ -467,7 +521,7 @@ checks:
     remediation: "Install sudo using the following command. # apt install sudo OR # apt install sudo-ldap"
     compliance:
       - cis: ["5.2.1"]
-      - cis_csc: ["4.3"]
+      - cis_csc_v7: ["4.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -485,7 +539,7 @@ checks:
     remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
     compliance:
       - cis: ["5.2.2"]
-      - cis_csc: ["4.3"]
+      - cis_csc_v7: ["4.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -501,7 +555,7 @@ checks:
     remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
     compliance:
       - cis: ["5.2.3"]
-      - cis_csc: ["6.3"]
+      - cis_csc_v7: ["6.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -509,39 +563,6 @@ checks:
     rules:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
-
-  # 1.4 Filesystem Integrity Checking
-  - id: 19028
-    title: "Ensure AIDE is installed."
-    description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
-    rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
-    remediation: "Install AIDE: # apt install aide aide-common. Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: # aideinit .  Notes: The prelinking feature can interfere with AIDE because it alters binaries to speed up their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus avoiding false positives from AIDE."
-    compliance:
-      - cis: ["1.3.1"]
-      - cis_csc: ["14.9"]
-      - pci_dss: ["11.5"]
-      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
-    condition: all
-    rules:
-      - "c:dpkg -s aide -> r:install ok installed"
-
-  - id: 19029
-    title: "Ensure filesystem integrity is regularly checked."
-    description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
-    rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
-    remediation: "Run the following commands: # cp ./config/aidecheck.service /etc/systemd/system/aidecheck.service  # cp ./config/aidecheck.timer /etc/systemd/system/aidecheck.timer   # chmod 0644 /etc/systemd/system/aidecheck.*  # systemctl reenable aidecheck.timer  # systemctl restart aidecheck.timer  # systemctl daemon-reload    OR  If cron will be used to schedule and run aide check, run the following command:    # crontab -u root -e    Add the following line to the crontab:    0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check"
-    compliance:
-      - cis: ["1.3.2"]
-      - cis_csc: ["14.9"]
-      - pci_dss: ["11.5"]
-      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
-    references:
-      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
-      - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
-    condition: all
-    rules:
-      - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:\.+'
-      - "c:crontab -u root -l -> r:aide"
 
   # 1.5 Secure Boot Settings
 
@@ -552,7 +573,7 @@ checks:
     remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub-mkpasswd-pbkdf2     Enter password: <password>      Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF     set superusers="<username>"   password_pbkdf2 <username> <encrypted-password>      EOF     The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS=  Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["1.4.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -568,7 +589,7 @@ checks:
     remediation: "Run the following commands to set permissions on your grub configuration: chown root:root /boot/grub/grub.cfg, chmod og-rwx /boot/grub/grub.cfg"
     compliance:
       - cis: ["1.4.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -583,7 +604,7 @@ checks:
     remediation: "Run the following command and follow the prompts to set a password for the root user: # passwd root"
     compliance:
       - cis: ["1.4.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -600,7 +621,7 @@ checks:
     remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios."
     compliance:
       - cis: ["1.5.1"]
-      - cis_csc: ["8.3"]
+      - cis_csc_v7: ["8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -615,7 +636,7 @@ checks:
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
     compliance:
       - cis: ["1.5.2"]
-      - cis_csc: ["8.3"]
+      - cis_csc_v7: ["8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -631,7 +652,7 @@ checks:
     remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink"
     compliance:
       - cis: ["1.5.3"]
-      - cis_csc: ["14.9"]
+      - cis_csc_v7: ["14.9"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -646,7 +667,7 @@ checks:
     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0"
     compliance:
       - cis: ["1.5.4"]
-      - cis_csc: ["13"]
+      - cis_csc_v7: ["13"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -667,7 +688,7 @@ checks:
     remediation: "Install Apparmor. # apt install apparmor"
     compliance:
       - cis: ["1.6.1.1"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -682,7 +703,7 @@ checks:
     remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line   GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor"      Run the following command to update the grub2 configuration # update-grub    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
     compliance:
       - cis: ["1.6.1.2"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -698,7 +719,7 @@ checks:
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/*   OR   Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.3"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -713,7 +734,7 @@ checks:
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.4"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -732,7 +753,7 @@ checks:
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.7.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: any
@@ -747,7 +768,7 @@ checks:
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
     compliance:
       - cis: ["1.7.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: none
@@ -761,7 +782,7 @@ checks:
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net"
     compliance:
       - cis: ["1.7.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: none
@@ -775,7 +796,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd"
     compliance:
       - cis: ["1.7.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -793,7 +814,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/issue: # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue"
     compliance:
       - cis: ["1.7.5"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -811,7 +832,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net"
     compliance:
       - cis: ["1.7.6"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -829,7 +850,7 @@ checks:
     remediation: "Use your package manager to update all packages on the system according to site policy. Notes: Site policy may mandate a testing period before install onto production systems for available updates."
     compliance:
       - cis: ["1.9"]
-      - cis_csc: ["3.4", "3.5"]
+      - cis_csc_v7: ["3.4", "3.5"]
       - pci_dss: ["5.2"]
       - nist_800_53: ["AU.6", "SI.4"]
       - gpg_13: ["4.2"]
@@ -847,7 +868,7 @@ checks:
     remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and add: [org/gnome/login-screen], banner-message-enable=true, banner-message-text='Authorized uses only. All activity may be monitored and reported.'"
     compliance:
       - cis: ["1.8.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -871,7 +892,7 @@ checks:
     remediation: 'On systems where host based time synchronization is not available, configure systemd-timesyncd. If "full featured" and/or encrypted time synchronization is required, install chrony or NTP. To install chrony: # apt install chrony To install ntp: # apt install ntp On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization.'
     compliance:
       - cis: ["2.1.1.1"]
-      - cis_csc: ["6.1"]
+      - cis_csc_v7: ["6.1"]
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
@@ -883,12 +904,12 @@ checks:
 
   - id: 19050
     title: "Ensure systemd-timesyncd is configured."
-    description: 'systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network. It implements an SNTP client. In contrast to NTP implementations such as chrony or the NTP reference server this only implements a client side, and does not bother with the full NTP complexity, focusing only on querying time from one remote server and synchronizing the local clock to it. The daemon runs with minimal privileges, and has been hooked up with networkd to only operate when network connectivity is available. The daemon saves the current clock to disk every time a new NTP sync has been acquired, and uses this to possibly correct the system clock early at bootup, in order to accommodate for systems that lack an RTC such as the Raspberry Pi and embedded devices, and make sure that time monotonically progresses on these systems, even if it is not always correct. To make use of this daemon a new system user and group "systemd- timesync" needs to be created on installation of systemd. Note: The systemd-timesyncd service specifically implements only SNTP. This minimalistic service will set the system clock for large offsets or slowly adjust it for smaller deltas. More complex use cases are not covered by systemd-timesyncd. This recommendation only applies if timesyncd is in use on the system.'
+    description: 'systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network. It implements an SNTP client. In contrast to NTP implementations such as chrony or the NTP reference server this only implements a client side, and does not bother with the full NTP complexity, focusing only on querying time from one remote server and synchronizing the local clock to it. The daemon runs with minimal privileges, and has been hooked up with networkd to only operate when network connectivity is available. The daemon saves the current clock to disk every time a new NTP sync has been acquired, and uses this to possibly correct the system clock early at bootup, in order to accommodate for systems that lack an RTC such as the Raspberry Pi and embedded devices, and make sure that time monotonically progresses on these systems, even if it is not always correct. To make use of this daemon a new system user and group "systemd-timesync" needs to be created on installation of systemd. Note: The systemd-timesyncd service specifically implements only SNTP. This minimalistic service will set the system clock for large offsets or slowly adjust it for smaller deltas. More complex use cases are not covered by systemd-timesyncd. This recommendation only applies if timesyncd is in use on the system.'
     rationale: "Proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if timesyncd is in use on the system."
     remediation: "Run the following command to enable systemd-timesyncd   # systemctl enable systemd-timesyncd.service  ||  Edit the file /etc/systemd/timesyncd.conf and add/modify the following lines in accordance with local site policy:    (1) NTP=0.ubuntu.pool.ntp.org 1.ubuntu.pool.ntp.org 2.ubuntu.pool.ntp.org        (2) FallbackNTP=ntp.ubuntu.com 3.ubuntu.pool.ntp.org        (3) RootDistanceMaxSec=1    || Run the following commands to start systemd-timesyncd.service   # systemctl start systemd-timesyncd.service   # timedatectl set-ntp true  || Notes: Servers listed and RootDistanceMax should be In Accordance With Local Policy some versions of systemd have been compiled without systemd-timesycnd. On these distributions, chrony or NTP should be used instead of systemd-timesycnd. Not all options are available on all versions of systemd-timesyncd"
     compliance:
       - cis: ["2.1.1.2"]
-      - cis_csc: ["6.1"]
+      - cis_csc_v7: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -903,7 +924,7 @@ checks:
     remediation: "Add or edit server or pool lines to /etc/chrony/chrony.conf as appropriate: server <remote-server> Configure chrony to run as the chrony user by configuring the appropriate startup script for your distribution. Startup scripts are typically stored in /etc/init.d or /etc/systemd ."
     compliance:
       - cis: ["2.1.1.3"]
-      - cis_csc: ["6.1"]
+      - cis_csc_v7: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -918,7 +939,7 @@ checks:
     remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server> Configure ntp to run as the ntp user by adding or editing the /etc/init.d/ntp file: RUNASUSER=ntp"
     compliance:
       - cis: ["2.1.1.4"]
-      - cis_csc: ["6.1"]
+      - cis_csc_v7: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -939,7 +960,7 @@ checks:
     remediation: "Remove the X Windows System packages: apt purge xserver-xorg*"
     compliance:
       - cis: ["2.1.2"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
@@ -954,7 +975,7 @@ checks:
     remediation: "Run the following command to remove avahi-daemon: # systemctl --now disable avahi-daemon # systemctl stop avahi-daemon.socket  # apt purge avahi-daemon"
     compliance:
       - cis: ["2.1.3"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -969,7 +990,7 @@ checks:
     remediation: "Run the following command to remove cups: # apt purge cups"
     compliance:
       - cis: ["2.1.4"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -988,7 +1009,7 @@ checks:
       - https://www.isc.org/dhcp/
     compliance:
       - cis: ["2.1.5"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1003,7 +1024,7 @@ checks:
     remediation: "Run the following command to remove slapd: # apt purge slapd"
     compliance:
       - cis: ["2.1.6"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1020,7 +1041,7 @@ checks:
     remediation: "Run the following commands to remove nfs: # apt purge nfs-kernel-server"
     compliance:
       - cis: ["2.1.7"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1035,7 +1056,7 @@ checks:
     remediation: "Run the following command to disable dns server: # apt purge bind9"
     compliance:
       - cis: ["2.1.8"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1050,7 +1071,7 @@ checks:
     remediation: "Run the following command to remove vsftpd: # apt purge vsftpd"
     compliance:
       - cis: ["2.1.9"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1065,7 +1086,7 @@ checks:
     remediation: "Run the following command to remove apache2: # apt purge apache2"
     compliance:
       - cis: ["2.1.10"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1080,7 +1101,7 @@ checks:
     remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d :# apt purge dovecot-imapd dovecot-pop3d"
     compliance:
       - cis: ["2.1.11"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1095,7 +1116,7 @@ checks:
     remediation: "Run the following command to remove smbd: # apt purge samba"
     compliance:
       - cis: ["2.1.12"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1110,7 +1131,7 @@ checks:
     remediation: "Run the following command to remove squid: # apt purge squid"
     compliance:
       - cis: ["2.1.13"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1125,7 +1146,7 @@ checks:
     remediation: "Run the following command to remove snmpd: # apt purge snmpd"
     compliance:
       - cis: ["2.1.14"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1140,7 +1161,7 @@ checks:
     remediation: "Edit /etc/postfix/main.cf and add thefollowing line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below:   inet_interfaces = loopback-only   Restart postfix:    # systemctl restart postfix"
     compliance:
       - cis: ["2.1.15"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1", "AC.4", "SC.7"]
       - tsc: ["CC5.2", "CC6.4", "CC6.6", "CC6.7"]
@@ -1155,7 +1176,7 @@ checks:
     remediation: "Run the following command to remove rsync: # apt purge rsync"
     compliance:
       - cis: ["2.1.16"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
     condition: none
@@ -1169,7 +1190,7 @@ checks:
     remediation: "Run the following command to remove nis: # apt purge nis"
     compliance:
       - cis: ["2.1.17"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1189,7 +1210,7 @@ checks:
     remediation: "Uninstall nis : apt purge nis"
     compliance:
       - cis: ["2.2.1"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1207,7 +1228,7 @@ checks:
     remediation: "Uninstall rsh : apt remove rsh-client"
     compliance:
       - cis: ["2.2.2"]
-      - cis_csc: ["4.5"]
+      - cis_csc_v7: ["4.5"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1225,7 +1246,7 @@ checks:
     remediation: "Uninstall talk : apt remove talk"
     compliance:
       - cis: ["2.2.3"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1243,7 +1264,7 @@ checks:
     remediation: "Uninstall telnet : # apt purge telnet"
     compliance:
       - cis: ["2.2.4"]
-      - cis_csc: ["4.5"]
+      - cis_csc_v7: ["4.5"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1261,7 +1282,7 @@ checks:
     remediation: "Uninstall ldap-utils : # apt purge ldap-utils"
     compliance:
       - cis: ["2.2.5"]
-      - cis_csc: ["2.6"]
+      - cis_csc_v7: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1279,7 +1300,7 @@ checks:
     remediation: "Run the following command to remove rpcbind: # apt purge rpcbind"
     compliance:
       - cis: ["2.2.6"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1303,7 +1324,7 @@ checks:
     remediation: 'Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["3.1.1"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1321,7 +1342,7 @@ checks:
     remediation: "Run the following command to disable any wireless interfaces: # nmcli radio all off"
     compliance:
       - cis: ["3.6"]
-      - cis_csc: ["15.4", "15.5"]
+      - cis_csc_v7: ["15.4", "15.5"]
       - pci_dss: ["1.2.3"]
       - tsc: ["CC6.6"]
     references:
@@ -1342,7 +1363,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.2.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1360,7 +1381,7 @@ checks:
     remediation: "Run the following command to restore the default parameter and set the active kernel parameter: # grep -Els \"^\\s*net\\.ipv4\\.ip_forward\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv4.ip_forward=0; sysctl -w net.ipv4.route.flush=1 IF IPv6 is enabled: Run the following command to restore the default parameter and set the active kernel parameter: # grep -Els \"^\\s*net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv6\\.conf\\.all\\.forwarding\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv6.conf.all.forwarding=0; sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.2.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1382,7 +1403,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0     net.ipv6.conf.all.accept_source_route = 0    net.ipv6.conf.default.accept_source_route = 0   || Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1  # sysctl -w net.ipv6.conf.all.accept_source_route=0 # sysctl -w net.ipv6.conf.default.accept_source_route=0 # sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.3.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1404,7 +1425,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1  # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.3.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1426,7 +1447,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1444,7 +1465,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.4"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1462,7 +1483,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.5"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1478,7 +1499,7 @@ checks:
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.6"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1494,7 +1515,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.7"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1513,7 +1534,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.8"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -1530,7 +1551,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_ra=0 # sysctl -w net.ipv6.conf.default.accept_ra=0 # sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.3.9"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1550,12 +1571,12 @@ checks:
 
   - id: 19088
     title: "Ensure DCCP is disabled."
-    description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in- sequence delivery."
+    description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
     rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/dccp.conf and add the following line: install dccp /bin/true"
     compliance:
       - cis: ["3.4.1"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1575,7 +1596,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/sctp.conf and add the following line: install sctp /bin/true"
     compliance:
       - cis: ["3.4.2"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1595,7 +1616,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/rds.conf and add the following line: install rds /bin/true"
     compliance:
       - cis: ["3.4.3"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1615,7 +1636,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/tipc.conf and add the following line: install tipc /bin/true"
     compliance:
       - cis: ["3.4.4"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - gpg_13: ["4.3"]
@@ -1643,7 +1664,7 @@ checks:
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
     compliance:
       - cis: ["3.5.1.1", "3.5.2.1", "3.5.3.1.1"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     reference:
@@ -1661,7 +1682,7 @@ checks:
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
     compliance:
       - cis: ["3.5.1.2"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     reference:
@@ -1678,7 +1699,7 @@ checks:
     remediation: "Run the following command to enable ufw: # ufw enable"
     compliance:
       - cis: ["3.5.1.3"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     reference:
@@ -1695,7 +1716,7 @@ checks:
     remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo  # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1"
     compliance:
       - cis: ["3.5.1.4"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     condition: all
@@ -1714,7 +1735,7 @@ checks:
     remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed"
     compliance:
       - cis: ["3.5.1.7"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     condition: all
@@ -1734,7 +1755,7 @@ checks:
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
     compliance:
       - cis: ["3.5.2.2"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     reference:
@@ -1751,7 +1772,7 @@ checks:
     remediation: "Run the following command to create a table in nftables: # nft create table inet <table name> .Example: # nft create table inet filter"
     compliance:
       - cis: ["3.5.2.4"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1765,7 +1786,7 @@ checks:
     remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } . Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0\\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }"
     compliance:
       - cis: ["3.5.2.5"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1781,7 +1802,7 @@ checks:
     remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept   # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop   If IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop"
     compliance:
       - cis: ["3.5.2.6"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1797,7 +1818,7 @@ checks:
     remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; } . Example: # nft chain inet filter input { policy drop \\; } ; # nft chain inet filter forward { policy drop \\; } and # nft chain inet filter output { policy drop \\; }"
     compliance:
       - cis: ["3.5.2.8"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1813,7 +1834,7 @@ checks:
     remediation: "Run the following command to enable the nftables service: # systemctl enable nftables"
     compliance:
       - cis: ["3.5.2.9"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1834,7 +1855,7 @@ checks:
     remediation: "RRun the following command to remove nftables:: # apt purge nftables"
     compliance:
       - cis: ["3.5.3.1.2"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1849,7 +1870,7 @@ checks:
     remediation: "Run the following command to remove ufw:# apt purge ufw  OR Run the following commands to disable ufw:# ufw disable"
     compliance:
       - cis: ["3.5.3.1.3"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1866,7 +1887,7 @@ checks:
     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP; # iptables -P OUTPUT DROP; # iptables -P FORWARD DROP"
     compliance:
       - cis: ["3.5.3.2.3"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1883,7 +1904,7 @@ checks:
     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP"
     compliance:
       - cis: ["3.5.3.2.1"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
     condition: all
@@ -1903,7 +1924,7 @@ checks:
     remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP. Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     compliance:
       - cis: ["3.5.3.3.3"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     condition: all
@@ -1919,7 +1940,7 @@ checks:
     remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP"
     compliance:
       - cis: ["3.5.3.3.1"]
-      - cis_csc: ["9.4"]
+      - cis_csc_v7: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
     condition: all
@@ -1940,7 +1961,7 @@ checks:
     remediation: "Run the following command to enable auditd: # apt install auditd audispd-plugins"
     compliance:
       - cis: ["4.1.1.1"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["10.1"]
       - nist_800_53: ["AU.2"]
       - hipaa: ["164.312.b"]
@@ -1956,7 +1977,7 @@ checks:
     remediation: "Run the following command to enable auditd: # systemctl --now enable auditd"
     compliance:
       - cis: ["4.1.1.2"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["10.1", "10.7"]
       - nist_800_53: ["AU.2"]
       - hipaa: ["164.312.b"]
@@ -1972,7 +1993,7 @@ checks:
     remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
     compliance:
       - cis: ["4.1.1.3"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["10.2.6", "10.7"]
       - nist_800_53: ["AU.2"]
       - gpg_13: ["7.9"]
@@ -1992,7 +2013,7 @@ checks:
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB> Notes: The max_log_file parameter is measured in megabytes."
     compliance:
       - cis: ["4.1.2.1"]
-      - cis_csc: ["6.4"]
+      - cis_csc_v7: ["6.4"]
       - pci_dss: ["10.7"]
       - nist_800_53: ["AU.4"]
       - hipaa: ["164.312.b"]
@@ -2009,7 +2030,7 @@ checks:
     remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs"
     compliance:
       - cis: ["4.1.2.2"]
-      - cis_csc: ["6.4"]
+      - cis_csc_v7: ["6.4"]
       - pci_dss: ["10.7"]
       - nist_800_53: ["AU.9"]
       - hipaa: ["164.312.b"]
@@ -2026,7 +2047,7 @@ checks:
     remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root admin_space_left_action = halt"
     compliance:
       - cis: ["4.1.2.3"]
-      - cis_csc: ["6.4"]
+      - cis_csc_v7: ["6.4"]
       - pci_dss: ["10.7"]
     condition: all
     rules:
@@ -2040,10 +2061,10 @@ checks:
     title: "Ensure events that modify date and time information are collected."
     description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change"'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change | -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change | -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change | -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change"
+    remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change | -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change | -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change | -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change"
     compliance:
       - cis: ["4.1.3"]
-      - cis_csc: ["5.5"]
+      - cis_csc_v7: ["5.5"]
       - pci_dss: ["10.4.2", "10.2.7"]
       - nist_800_53: ["AU.14", "AU.6"]
       - gpg_13: ["7.9"]
@@ -2065,7 +2086,7 @@ checks:
     remediation: "edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /etc/group -p wa -k identity | -w /etc/passwd -p wa -k identity | -w /etc/gshadow -p wa -k identity | -w /etc/shadow -p wa -k identity | -w /etc/security/opasswd -p wa -k identity Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.4"]
-      - cis_csc: ["4.8"]
+      - cis_csc_v7: ["4.8"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -2083,12 +2104,12 @@ checks:
 
   - id: 19117
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/sysconfig/network (directory containing network interface scripts and configurations) files."
+    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre-login), /etc/hosts (file containing host names and associated IP addresses) and /etc/sysconfig/network (directory containing network interface scripts and configurations) files."
     rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules and add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale      -w /etc/issue -p wa -k system-locale      -w /etc/issue.net -p wa -k system-locale     -w /etc/hosts -p wa -k system-locale-w /etc/network -p wa -k system-locale     For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules   and add the following lines:  -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale   -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale       -w /etc/issue -p wa -k system-locale          -w /etc/issue.net -p wa -k system-locale           -w /etc/hosts -p wa -k system-locale         -w /etc/network -p wa -k system-locale"
     compliance:
       - cis: ["4.1.5"]
-      - cis_csc: ["5.5"]
+      - cis_csc_v7: ["5.5"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -2111,7 +2132,7 @@ checks:
     remediation: "On systems using AppArmor add the following line to the /etc/audit/audit.rules file: -w /etc/apparmor/ -p wa -k MAC-policy | -w /etc/apparmor.d/ -p wa -k MAC-policy. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.6"]
-      - cis_csc: ["5.5"]
+      - cis_csc_v7: ["5.5"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -2131,7 +2152,7 @@ checks:
     remediation: "edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /var/log/faillog -p wa -k logins | -w /var/log/lastlog -p wa -k logins | -w /var/log/tallylog -p wa -k logins. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.7"]
-      - cis_csc: ["4.9", "16.11", "16.13"]
+      - cis_csc_v7: ["4.9", "16.11", "16.13"]
       - pci_dss: ["10.2.1", "10.2.4", "10.3"]
       - nist_800_53: ["AC.7", "AU.14"]
       - gpg_13: ["7.8"]
@@ -2152,7 +2173,7 @@ checks:
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /var/run/utmp -p wa -k session | -w /var/log/wtmp -p wa -k logins | -w /var/log/btmp -p wa -k logins. Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp). Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.8"]
-      - cis_csc: ["4.9", "16.11", "16.13"]
+      - cis_csc_v7: ["4.9", "16.11", "16.13"]
       - pci_dss: ["10.3"]
       - nist_800_53: ["AC.7", "AU.14"]
       - hipaa: ["164.312.b"]
@@ -2170,7 +2191,7 @@ checks:
     remediation: "For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.9"]
-      - cis_csc: ["5.5"]
+      - cis_csc_v7: ["5.5"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -2186,12 +2207,12 @@ checks:
 
   - id: 19122
     title: "Ensure unsuccessful unauthorized file access attempts are collected."
-    description: 'Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation ( creat ), opening ( open , openat ) and truncation ( truncate , ftruncate ) of files. An audit log record will only be written if the user is a non- privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier "access."'
+    description: 'Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation ( creat ), opening ( open , openat ) and truncation ( truncate , ftruncate ) of files. An audit log record will only be written if the user is a non-privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier "access."'
     rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/directory ending in .rules  Example: vi /etc/audit/rules.d/audit.rules and add the following lines:    -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access    |    -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access                    For 64 bit systems Edit or create a file in the /etc/audit/rules.d/directory ending in .rules Example: vi /etc/audit/rules.d/access.rules and add the following lines:                -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access     |  -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access     |    -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access   |  -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access          Notes: Reloading the auditd config toset active settings requires the auditd service to be restarted, and may require a system reboot."
     compliance:
       - cis: ["4.1.10"]
-      - cis_csc: ["14.9"]
+      - cis_csc_v7: ["14.9"]
       - pci_dss: ["10.2.4"]
       - nist_800_53: ["AC.7"]
       - gpg_13: ["7.8"]
@@ -2211,7 +2232,7 @@ checks:
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts | -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts. Notes: This tracks successful and unsuccessful mount commands. File system mounts do not have to come from external media and this action still does not verify write (e.g. CD ROMS). Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.12"]
-      - cis_csc: ["13"]
+      - cis_csc_v7: ["13"]
       - pci_dss: ["10.2.7"]
       - nist_800_53: ["AU.14", "AU.6"]
       - gpg_13: ["7.9"]
@@ -2231,7 +2252,7 @@ checks:
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete | -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.13"]
-      - cis_csc: ["13"]
+      - cis_csc_v7: ["13"]
       - pci_dss: ["10.5.5"]
       - nist_800_53: ["AU.14"]
       - hipaa: ["164.312.b"]
@@ -2249,7 +2270,7 @@ checks:
     remediation: "Add the following line to the /etc/audit/audit.rules file: -w /etc/sudoers -p wa -k scope | -w /etc/sudoers.d/ -p wa -k scope. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.14"]
-      - cis_csc: ["4.8"]
+      - cis_csc_v7: ["4.8"]
       - pci_dss: ["10.5.5"]
       - nist_800_53: ["AU.14"]
       - hipaa: ["164.312.b"]
@@ -2267,7 +2288,7 @@ checks:
     rationale: "Creating an audit log of administrators with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo logfile to verify if unauthorized commands have been executed."
     compliance:
       - cis: ["4.1.15"]
-      - cis_csc: ["4.9"]
+      - cis_csc_v7: ["4.9"]
       - pci_dss: ["10.2.2"]
       - nist_800_53: ["AU.14", "AC.6", "AC.7"]
       - gpg_13: ["7.8"]
@@ -2287,7 +2308,7 @@ checks:
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /sbin/insmod -p x -k modules | -w /sbin/rmmod -p x -k modules | -w /sbin/modprobe -p x -k modules | -a always,exit -F arch=b32 -S init_module -S delete_module -k modules. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /sbin/insmod -p x -k modules | -w /sbin/rmmod -p x -k modules | -w /sbin/modprobe -p x -k modules | -a always,exit -F arch=b64 -S init_module -S delete_module -k modules. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.16"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.2.7"]
       - nist_800_53: ["AU.14", "AU.6"]
       - gpg_13: ["7.9"]
@@ -2312,7 +2333,7 @@ checks:
     remediation: "Install rsyslog: # apt install rsyslog"
     compliance:
       - cis: ["4.2.1.1"]
-      - cis_csc: ["6.2"]
+      - cis_csc_v7: ["6.2"]
       - pci_dss: ["10.1"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2", "CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
@@ -2328,7 +2349,7 @@ checks:
     remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog"
     compliance:
       - cis: ["4.2.1.2"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["10.1"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2", "CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
@@ -2344,7 +2365,7 @@ checks:
     remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and set $FileCreateMode to 0640 or more restrictive:   $FileCreateMode 0640"
     compliance:
       - cis: ["4.2.1.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.5.1", "10.5.2"]
       - nist_800_53: ["CM.1", "AU.9"]
       - tsc: ["CC5.2", "CC6.1", "CC7.2", "CC.7.3", "CC7.4"]
@@ -2360,7 +2381,7 @@ checks:
     remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type="omfwd" target="<FQDN or ip of loghost>" port="<port number>" protocol="tcp" ction.resumeRetryCount="<number of re-tries>"  queue.type="linkList" queue.size=<number of messages to queue>") Example: *.* action(type="omfwd" target="192.168.2.100" port"514" protocol="tcp" action.resumeRetryCount="100" queue.type="linkList" queue.size="1000") Older syntax: *.* @@<FQDN or ip of loghost>'
     compliance:
       - cis: ["4.2.1.5"]
-      - cis_csc: ["6.6", "6.8"]
+      - cis_csc_v7: ["6.6", "6.8"]
       - pci_dss: ["10.5.3"]
       - nist_800_53: ["CM.1", "AU.4"]
       - tsc: ["CC5.2"]
@@ -2377,7 +2398,7 @@ checks:
     remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un-comment or add the following lines: $ModLoad imtcp        $InputTCPServerRun 514. For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514. Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd"
     compliance:
       - cis: ["4.2.1.6"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["10.5.1"]
     references:
       - rsyslog.conf(8) man page
@@ -2395,7 +2416,7 @@ checks:
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes"
     compliance:
       - cis: ["4.2.2.1"]
-      - cis_csc: ["6.5"]
+      - cis_csc_v7: ["6.5"]
       - pci_dss: ["10.5.3"]
       - nist_800_53: ["CM.1", "AU.9", "AU.4"]
       - tsc: ["CC5.2", "CC7.2"]
@@ -2412,7 +2433,7 @@ checks:
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line:   Compress=yes"
     compliance:
       - cis: ["4.2.2.2"]
-      - cis_csc: ["6.4"]
+      - cis_csc_v7: ["6.4"]
       - pci_dss: ["10.7"]
       - nist_800_53: ["CM.1", "AU.4"]
       - tsc: ["CC5.2"]
@@ -2429,7 +2450,7 @@ checks:
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line:   Storage=persistent"
     compliance:
       - cis: ["4.2.2.3"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["10.7"]
       - nist_800_53: ["CM.1", "AU.4"]
       - tsc: ["CC5.2"]
@@ -2447,7 +2468,7 @@ checks:
     remediation: 'Run the following command to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-w,o-rwx "{}" +'
     compliance:
       - cis: ["4.2.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.5.1", "10.5.2"]
       - nist_800_53: ["CM.1", "AU.9"]
       - tsc: ["CC5.2", "CC7.2"]
@@ -2469,7 +2490,7 @@ checks:
     remediation: "Run the following command to enable cron: systemctl --now enable cron"
     compliance:
       - cis: ["5.1.1"]
-      - cis_csc: ["6"]
+      - cis_csc_v7: ["6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2486,7 +2507,7 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : chown root:root /etc/crontab and chmod og-rwx /etc/crontab"
     compliance:
       - cis: ["5.1.2"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -2505,7 +2526,7 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : chown root:root /etc/cron.hourly and chmod og-rwx /etc/cron.hourly"
     compliance:
       - cis: ["5.1.3"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2521,7 +2542,7 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : chown root:root /etc/cron.daily and chmod og-rwx /etc/cron.daily"
     compliance:
       - cis: ["5.1.4"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2537,7 +2558,7 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : chown root:root /etc/cron.weekly and chmod og-rwx /etc/cron.weekly"
     compliance:
       - cis: ["5.1.5"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2553,7 +2574,7 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : chown root:root /etc/cron.monthly and chmod og-rwx /etc/cron.monthly"
     compliance:
       - cis: ["5.1.6"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2569,7 +2590,7 @@ checks:
     remediation: "Run the following commands to remove /etc/cron.deny and /etc/at.deny and create and set permissions and ownership for /etc/cron.allow and /etc/at.allow: rm /etc/cron.deny;rm /etc/at.deny;touch /etc/cron.allow; touch /etc/at.allow; chmod og-rwx /etc/cron.allow; chmod og-rwx /etc/at.allow; chown root:root /etc/cron.allow and chown root:root /etc/at.allow"
     compliance:
       - cis: ["5.1.7"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2585,7 +2606,7 @@ checks:
     remediation: "Run the following commands to remove /etc/cron.deny and create and set permissions and ownership for /etc/cron.allow: # rm /etc/cron.deny # touch /etc/cron.allow # chmod og-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
     compliance:
       - cis: ["5.1.8"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2603,7 +2624,7 @@ checks:
     remediation: "Run the following commands to remove /etc/at.deny and create and set permissions and ownership for/etc/at.allow: # rm /etc/at.deny # touch /etc/at.allow # chmod og-rwx /etc/at.allow # chown root:root /etc/at.allow"
     compliance:
       - cis: ["5.1.9"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2620,11 +2641,11 @@ checks:
   - id: 19146
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
-    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non- privileged users."
+    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config"
     compliance:
       - cis: ["5.3.1"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2639,7 +2660,7 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;"
     compliance:
       - cis: ["5.3.2"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2656,7 +2677,7 @@ checks:
     remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod 0644 {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
     compliance:
       - cis: ["5.3.3"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2675,7 +2696,7 @@ checks:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
       - cis: ["5.3.5"]
-      - cis_csc: ["6.2", "6.3"]
+      - cis_csc_v7: ["6.2", "6.3"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2692,7 +2713,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_configfile to set the parameter as follows: X11Forwarding no"
     compliance:
       - cis: ["5.3.6"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2710,7 +2731,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
     compliance:
       - cis: ["5.3.7"]
-      - cis_csc: ["16.13"]
+      - cis_csc_v7: ["16.13"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2725,7 +2746,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
     compliance:
       - cis: ["5.3.8"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2743,7 +2764,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
     compliance:
       - cis: ["5.3.9"]
-      - cis_csc: ["16.3"]
+      - cis_csc_v7: ["16.3"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2760,7 +2781,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
     compliance:
       - cis: ["5.3.10"]
-      - cis_csc: ["4.3"]
+      - cis_csc_v7: ["4.3"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2777,7 +2798,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
     compliance:
       - cis: ["5.3.11"]
-      - cis_csc: ["16.3"]
+      - cis_csc_v7: ["16.3"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2794,7 +2815,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
     compliance:
       - cis: ["5.3.12"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2811,7 +2832,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     compliance:
       - cis: ["5.3.13"]
-      - cis_csc: ["14.4"]
+      - cis_csc_v7: ["14.4"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2837,7 +2858,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
     compliance:
       - cis: ["5.3.14"]
-      - cis_csc: ["14.4", "16.5"]
+      - cis_csc_v7: ["14.4", "16.5"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2856,7 +2877,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
     compliance:
       - cis: ["5.3.15"]
-      - cis_csc: ["14.4"]
+      - cis_csc_v7: ["14.4"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2873,7 +2894,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 300    ClientAliveCountMax 0"
     compliance:
       - cis: ["5.3.16"]
-      - cis_csc: ["16.11"]
+      - cis_csc_v7: ["16.11"]
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
@@ -2887,7 +2908,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
     compliance:
       - cis: ["5.3.17"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
     condition: all
@@ -2901,7 +2922,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist>    AllowGroups <grouplist>    DenyUsers <userlist>    DenyGroups <grouplist>"
     compliance:
       - cis: ["5.3.4"]
-      - cis_csc: ["4.3"]
+      - cis_csc_v7: ["4.3"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
     condition: all
@@ -2915,7 +2936,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net"
     compliance:
       - cis: ["5.3.18"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2930,7 +2951,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes"
     compliance:
       - cis: ["5.3.19"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2945,7 +2966,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
     compliance:
       - cis: ["5.3.20"]
-      - cis_csc: ["9.2"]
+      - cis_csc_v7: ["9.2"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2964,7 +2985,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: maxstartups 10:30:60"
     compliance:
       - cis: ["5.3.21"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
@@ -2976,7 +2997,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
     compliance:
       - cis: ["5.3.21"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -2995,7 +3016,7 @@ checks:
     remediation: "1) Run the following command to install the pam_pwquality module: apt install libpam-pwquality 2) Edit the /etc/pam.d/common-password file to include the appropriate options for pam_pwquality.so and to conform to site policy: password requisite pam_pwquality.so retry=3 3) Edit /etc/security/pwquality.conf to add or update the following settings to conform to site policy: minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Notes: Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. Settings in /etc/security/pwquality.conf must use spaces around the = symbol."
     compliance:
       - cis: ["5.4.1"]
-      - cis_csc: ["4.4"]
+      - cis_csc_v7: ["4.4"]
       - pci_dss: ["8.2.3"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3011,7 +3032,7 @@ checks:
     remediation: 'Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900. Edit the /etc/pam.d/common-account file and add the account lines below: account    requisite    pam_deny.so      account    required    pam_tally2.so. Note: If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_tally2.so module, the user can be unlocked by issuing the command /sbin/pam_tally2 -u <username> --reset. This command sets the failed count to 0, effectively unlocking the user. Notes:BUG In pam_tally2.so To work around this issue the addition of pam_tally2.so in the accounts section of the /etc/pam.d/common-account file has been added to the audit and remediation sections. pam_tally2 line must be added for the counter to reset to 0 when using sudo.     Use of the "audit" keyword may log credentials in the case of user error during authentication. This risk should be evaluated in the context of the site policies of your organization.'
     compliance:
       - cis: ["5.4.2"]
-      - cis_csc: ["16.7"]
+      - cis_csc_v7: ["16.7"]
       - pci_dss: ["8.2.5"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3028,7 +3049,7 @@ checks:
     remediation: "Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password required pam_pwhistory.so remember=5. Notes: Additional module options may be set, recommendation only covers those listed here."
     compliance:
       - cis: ["5.4.3"]
-      - cis_csc: ["16"]
+      - cis_csc_v7: ["16"]
       - pci_dss: ["8.2.5"]
       - tsc: ["CC6.1"]
     condition: none
@@ -3044,7 +3065,7 @@ checks:
     remediation: "Edit the /etc/pam.d/common-password file to include the sha512 option for pam_unix.so as shown: password [success=1 default=ignore] pam_unix.so sha512"
     compliance:
       - cis: ["5.4.4"]
-      - cis_csc: ["16.14"]
+      - cis_csc_v7: ["16.14"]
       - pci_dss: ["3.6.1", "8.2.1"]
       - tsc: ["CC6.1", "CC6.7"]
     condition: none
@@ -3065,7 +3086,7 @@ checks:
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 90. Modify user parameters for all users with a password set to match: # chage --maxdays 90 <user>. Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
     compliance:
       - cis: ["5.5.1.2"]
-      - cis_csc: ["4.4"]
+      - cis_csc_v7: ["4.4"]
       - pci_dss: ["8.2.4"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3081,7 +3102,7 @@ checks:
     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7. Modify user parameters for all users with a password set to match: # chage --mindays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
     compliance:
       - cis: ["5.5.1.1"]
-      - cis_csc: ["4.4", "16"]
+      - cis_csc_v7: ["4.4", "16"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3096,7 +3117,7 @@ checks:
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7. Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 6th field should be 7 or more for all users with a password."
     compliance:
       - cis: ["5.5.1.3"]
-      - cis_csc: ["4.4"]
+      - cis_csc_v7: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3111,7 +3132,7 @@ checks:
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30. Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>. Notes: You can also check this setting in /etc/shadow directly. The 7th field should be 30 or less for all users with a password. A value of -1 would disable this setting."
     compliance:
       - cis: ["5.5.1.4"]
-      - cis_csc: ["4.4", "16"]
+      - cis_csc_v7: ["4.4", "16"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3127,7 +3148,7 @@ checks:
     remediation: "Run the following command to set the root user default group to GID 0: # usermod -g 0 root"
     compliance:
       - cis: ["5.5.3"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: all
@@ -3142,7 +3163,7 @@ checks:
     remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: umask 027"
     compliance:
       - cis: ["5.5.4"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: none
@@ -3162,7 +3183,7 @@ checks:
     remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: readonly TMOUT=900 ; export TMOUT . Note that setting the value to readonly prevents unwanted modification during runtime."
     compliance:
       - cis: ["5.5.5"]
-      - cis_csc: ["16.11"]
+      - cis_csc_v7: ["16.11"]
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
@@ -3181,7 +3202,7 @@ checks:
     remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup"
     compliance:
       - cis: ["5.7"]
-      - cis_csc: ["5.1"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -3207,7 +3228,7 @@ checks:
     remediation: "Run the following command to set permissions on /etc/passwd: # chown root:root /etc/passwd # chmod 644 /etc/passwd"
     compliance:
       - cis: ["6.1.2"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3223,7 +3244,7 @@ checks:
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadow- # chmod o-rwx,g-wx /etc/gshadow-"
     compliance:
       - cis: ["6.1.9"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3239,7 +3260,7 @@ checks:
     remediation: "Run the one following commands to set permissions on /etc/shadow : # chown root:shadow /etc/shadow # chmod o-rwx,g-wx /etc/shadow"
     compliance:
       - cis: ["6.1.6"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3255,7 +3276,7 @@ checks:
     remediation: "Run the following command to set permissions on /etc/group: # chown root:root /etc/group # chmod 644 /etc/group"
     compliance:
       - cis: ["6.1.4"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3271,7 +3292,7 @@ checks:
     remediation: "Run the following command to set permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-rwx /etc/passwd-"
     compliance:
       - cis: ["6.1.3"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3287,7 +3308,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/shadow- : # chown root:shadow /etc/shadow- # chmod u-x,go-rwx /etc/shadow-"
     compliance:
       - cis: ["6.1.7"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3303,7 +3324,7 @@ checks:
     remediation: "Run the following command to set permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-rwx /etc/group-"
     compliance:
       - cis: ["6.1.5"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3319,7 +3340,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/gshadow : # chown root:shadow /etc/gshadow # chmod o-rwx,g-rw /etc/gshadow"
     compliance:
       - cis: ["6.1.8"]
-      - cis_csc: ["16.4"]
+      - cis_csc_v7: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -3338,7 +3359,7 @@ checks:
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <em><username></em>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
       - cis: ["6.2.2"]
-      - cis_csc: ["4.4"]
+      - cis_csc_v7: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     condition: none
@@ -3369,7 +3390,7 @@ checks:
     remediation: "Remove all users from the shadow group, and change the primary group of any users with shadow as their primary group."
     compliance:
       - cis: ["6.2.17"]
-      - cis_csc: ["14.6"]
+      - cis_csc_v7: ["14.6"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
