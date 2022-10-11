@@ -1,9 +1,6 @@
 ---
 test_name: DELETE /security/roles/{role_id}
 
-marks:
-  - base_tests
-
 stages:
 
   # DELETE /security/roles/{role_id}

@@ -1,9 +1,6 @@
 ---
 test_name: GET RULES RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Try to show the rules of the system

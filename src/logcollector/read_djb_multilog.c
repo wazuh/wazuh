@@ -81,10 +81,9 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char buffer[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
-    str[OS_MAXSTR] = '\0';
     *rc = 0;
 
     /* Must have a valid program name */
@@ -98,7 +97,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAX_LOG_SIZE, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         if (is_valid_context_file) {
             OS_SHA1_Stream(&context, NULL, str);
@@ -145,7 +144,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                     (p[12] == ':') &&
                     (p[15] == ' ')) {
                 p += 16;
-                strncpy(buffer, p, OS_MAXSTR);
+                snprintf(buffer, sizeof(buffer), "%s", p);
             } else {
                 /* We will add a proper syslog header */
                 time_t djbtime;
@@ -155,7 +154,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                 localtime_r(&djbtime, &tm_result);
 
                 /* Syslog time: Apr 27 14:50:32  */
-                snprintf(buffer, OS_MAXSTR, "%s %02d %02d:%02d:%02d %s %s: %s",
+                const int size = snprintf(buffer, sizeof(buffer), "%s %02d %02d:%02d:%02d %s %s: %s",
                          djb_month[tm_result.tm_mon],
                          tm_result.tm_mday,
                          tm_result.tm_hour,
@@ -164,6 +163,12 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                          djb_host,
                          lf->djb_program_name,
                          p);
+
+                if (size < 0) {
+                    merror("Error %d (%s) while reading message: '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 size, buffer);
+                } else if ((size_t)size >= sizeof(buffer)) {
+                    merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 size, buffer);
+                }
             }
         }
 

@@ -18,10 +18,15 @@ static wm_rule_data *head;                            // Pointer to head of rule
 static int queue_fd;                                // Output queue file descriptor
 #endif
 
+#ifdef WIN32
+static DWORD WINAPI wm_ciscat_main(void *arg);                  // Module main function. It won't return
+#else
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
+#endif
+static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
-static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path);      // Run a CIS-CAT policy
+static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_path, const char *ciscat_binary);      // Run a CIS-CAT policy
 static char * wm_ciscat_get_profile();               // Read evaluated profile from the report
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
 static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
@@ -34,7 +39,6 @@ static void wm_ciscat_info();                        // Show module info
 #ifndef WIN32
 static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 #endif
-static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 cJSON *wm_ciscat_dump(const wm_ciscat *ciscat);
 
 const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event sending
@@ -44,15 +48,19 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
-    (wm_routine)(void *)wm_ciscat_destroy,
+    (void(*)(void *))wm_ciscat_destroy,
     (cJSON * (*)(const void *))wm_ciscat_dump,
     NULL,
     NULL
 };
 
 // CIS-CAT module main function. It won't return.
-
+#ifdef WIN32
+DWORD WINAPI wm_ciscat_main(void *arg) {
+    wm_ciscat *ciscat = (wm_ciscat *)arg;
+#else
 void* wm_ciscat_main(wm_ciscat *ciscat) {
+#endif
     wm_ciscat_eval *eval;
     int skip_java = 0;
     char *cis_path = NULL;
@@ -116,8 +124,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Define path where CIS-CAT is installed
 
     if (ciscat->ciscat_path) {
-        char pwd[PATH_MAX];
-
         switch (wm_relative_path(ciscat->ciscat_path)) {
             case 0:
                 // Full path
@@ -130,11 +136,14 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
                 }
             #else
-                if (getcwd(pwd, sizeof(pwd)) == NULL) {
-                    mterror(WM_CISCAT_LOGTAG, "Could not get the current working directory: %s (%d)", strerror(errno), errno);
-                    ciscat->flags.error = 1;
-                } else {
-                    os_snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", pwd, ciscat->ciscat_path);
+                {
+                    char pwd[PATH_MAX];
+                    if (getcwd(pwd, sizeof(pwd)) == NULL) {
+                        mterror(WM_CISCAT_LOGTAG, "Could not get the current working directory: %s (%d)", strerror(errno), errno);
+                        ciscat->flags.error = 1;
+                    } else {
+                        os_snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", pwd, ciscat->ciscat_path);
+                    }
                 }
             #endif
                 break;
@@ -144,8 +153,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
     } else {
     #ifdef WIN32
-        if (*current)
+        if (*current) {
             snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, WM_CISCAT_DEFAULT_DIR_WIN);
+        }
     #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
     #endif
@@ -210,7 +220,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     if (IsFile(eval->path) < 0) {
                         mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
                     } else {
-                        wm_ciscat_run(eval, cis_path, id, ciscat->java_path);
+                        wm_ciscat_run(eval, cis_path, id, ciscat->java_path, ciscat->ciscat_binary);
                         ciscat->flags.error = 0;
                     }
                 }
@@ -223,9 +233,10 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     free(cis_path);
 #ifdef WIN32
     free(current);
-#endif
-
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 // Setup module
@@ -272,7 +283,7 @@ void wm_ciscat_cleanup() {
 
 #ifdef WIN32
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_path, const char *ciscat_binary) {
     char *command = NULL;
     char msg[OS_MAXSTR];
     char *ciscat_script;
@@ -281,15 +292,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
 
-    snprintf(ciscat_script, OS_MAXSTR - 1, "\"%s\\CIS-CAT.BAT\"", path);
+    snprintf(ciscat_script, OS_MAXSTR - 1, "\"%s\\%s\"", path, ciscat_binary);
 
     // Create arguments
 
     wm_strcat(&command, ciscat_script, '\0');
-
-    // Accepting Terms of Use
-
-    wm_strcat(&command, "-a", ' ');
 
     switch (eval->type) {
     case WM_CISCAT_XCCDF:
@@ -319,31 +326,62 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
         pthread_exit(NULL);
     }
 
-    // Specify location for reports
+    // CIS-CAT Pro V3
+    if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY_WIN)) {
+        // Accepting Terms of Use
 
-    wm_strcat(&command, "-r", ' ');
-    wm_strcat(&command, TMP_DIR, ' ');
+        wm_strcat(&command, "-a", ' ');
 
-    // Set reports file name
+        // Specify location for reports
 
-    wm_strcat(&command, "-rn", ' ');
-    wm_strcat(&command, "ciscat-report", ' ');
+        wm_strcat(&command, "-r", ' ');
+        wm_strcat(&command, TMP_DIR, ' ');
 
-    // Get xml reports
+        // Set reports file name
 
-    wm_strcat(&command, "-x", ' ');
+        wm_strcat(&command, "-rn", ' ');
+        wm_strcat(&command, "ciscat-report", ' ');
 
-    // Get txt reports
+        // Get xml reports
 
-    wm_strcat(&command, "-t", ' ');
+        wm_strcat(&command, "-x", ' ');
 
-    // Do not create HTML report
+        // Get txt reports
 
-    wm_strcat(&command, "-n", ' ');
+        wm_strcat(&command, "-t", ' ');
 
-    // Add not selected checks
+        // Do not create HTML report
 
-    wm_strcat(&command, "-y", ' ');
+        wm_strcat(&command, "-n", ' ');
+
+        // Add not selected checks
+
+        wm_strcat(&command, "-y", ' ');
+    } else if (!strcmp(ciscat_binary, WM_CISCAT_V4_BINARY_WIN)) {
+        // CIS-CAT Pro V4
+
+        // Specify location for reports
+
+        wm_strcat(&command, "-rd", ' ');
+        wm_strcat(&command, TMP_DIR, ' ');
+
+        // Set reports file name
+
+        wm_strcat(&command, "-rp", ' ');
+        wm_strcat(&command, "ciscat-report", ' ');
+
+        // Do not include the auto-generated timestamp as part of the report name
+        wm_strcat(&command, "-nts", ' ');
+
+        // Get txt reports
+        wm_strcat(&command, "-txt", ' ');
+    } else {
+        mterror(WM_CISCAT_LOGTAG, "CIS-CAT binary (%s) is neither %s nor %s. Exiting...", ciscat_binary, WM_CISCAT_V3_BINARY_WIN, WM_CISCAT_V4_BINARY_WIN);
+        ciscat->flags.error = 1;
+        os_free(ciscat_script);
+        pthread_exit(NULL);
+        return;
+    }
 
     // Send rootcheck message
 
@@ -391,6 +429,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             } else {
                 scan_info->profile = wm_ciscat_get_profile();
             }
+            // send scan results if the txt file is right.
+            wm_ciscat_send_scan(scan_info, id);
+        } else {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
@@ -420,13 +461,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
 // Run a CIS-CAT policy for UNIX systems
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_path, const char *ciscat_binary) {
 
     char *command = NULL;
     int status, child_status;
     char *output = NULL;
     char msg[OS_MAXSTR];
-    char *ciscat_script = "./CIS-CAT.sh";
     wm_scan_data *scan_info = NULL;
     char pwd[PATH_MAX];
 
@@ -436,12 +476,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     }
 
     // Create arguments
-
-    wm_strcat(&command, ciscat_script, '\0');
-
-    // Accepting Terms of Use
-
-    wm_strcat(&command, "-a", ' ');
+    wm_strcat(&command, path, '/');
+    wm_strcat(&command, ciscat_binary, '/');
 
     switch (eval->type) {
     case WM_CISCAT_XCCDF:
@@ -464,33 +500,63 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
         pthread_exit(NULL);
     }
 
-    // Specify location for reports
-
-    wm_strcat(&command, "-r", ' ');
     char reports_path[PATH_MAX];
     os_snprintf(reports_path, sizeof(reports_path), "%s/%s", pwd, WM_CISCAT_REPORTS);
-    wm_strcat(&command, reports_path, ' ');
 
-    // Set reports file name
+    // CIS-CAT Pro V3
+    if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY)) {
+        // Accepting Terms of Use
 
-    wm_strcat(&command, "-rn", ' ');
-    wm_strcat(&command, "ciscat-report", ' ');
+        wm_strcat(&command, "-a", ' ');
 
-    // Get xml reports
+        // Specify location for reports
 
-    wm_strcat(&command, "-x", ' ');
+        wm_strcat(&command, "-r", ' ');
+        wm_strcat(&command, reports_path, ' ');
 
-    // Get txt reports
+        // Set reports file name
 
-    wm_strcat(&command, "-t", ' ');
+        wm_strcat(&command, "-rn", ' ');
+        wm_strcat(&command, "ciscat-report", ' ');
 
-    // Do not create HTML report
+        // Get xml reports
 
-    wm_strcat(&command, "-n", ' ');
+        wm_strcat(&command, "-x", ' ');
 
-    // Add not selected checks
+        // Get txt reports
 
-    wm_strcat(&command, "-y", ' ');
+        wm_strcat(&command, "-t", ' ');
+
+        // Do not create HTML report
+
+        wm_strcat(&command, "-n", ' ');
+
+        // Add not selected checks
+
+        wm_strcat(&command, "-y", ' ');
+    } else if (!strcmp(ciscat_binary, WM_CISCAT_V4_BINARY)) {
+        // CIS-CAT Pro V4
+
+        // Specify location for reports
+
+        wm_strcat(&command, "-rd", ' ');
+        wm_strcat(&command, reports_path, ' ');
+
+        // Set reports file name
+
+        wm_strcat(&command, "-rp", ' ');
+        wm_strcat(&command, "ciscat-report", ' ');
+
+        // Do not include the auto-generated timestamp as part of the report name
+        wm_strcat(&command, "-nts", ' ');
+
+        // Get txt reports
+        wm_strcat(&command, "-txt", ' ');
+    } else {
+        mterror(WM_CISCAT_LOGTAG, "CIS-CAT binary (%s) is neither %s nor %s. Exiting...", ciscat_binary, WM_CISCAT_V3_BINARY, WM_CISCAT_V4_BINARY);
+        ciscat->flags.error = 1;
+        pthread_exit(NULL);
+    }
 
     // Send rootcheck message
 
@@ -508,11 +574,13 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             // Child process
             setsid();
 
-            if (chdir(path) < 0) {
-                ciscat->flags.error = 1;
-                mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
-                os_free(command);
-                _exit(EXIT_FAILURE);
+            if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY)) {
+                if (chdir(path) < 0) {
+                    ciscat->flags.error = 1;
+                    mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                    os_free(command);
+                    _exit(EXIT_FAILURE);
+                }
             }
 
             mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
@@ -574,6 +642,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             } else {
                 scan_info->profile = wm_ciscat_get_profile();
             }
+            // send scan results if the txt file is right.
+            wm_ciscat_send_scan(scan_info, id);
+        } else {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
@@ -803,6 +874,10 @@ wm_scan_data* wm_ciscat_txt_parser(){
                 last_line = 1;
                 continue;
 
+            } else if ((readbuff[0] == '\0')) {
+                // Jump the empty line
+                continue;
+
             } else {
 
                 char ** parts = NULL;
@@ -838,7 +913,7 @@ wm_scan_data* wm_ciscat_txt_parser(){
 
         fclose(fp);
     } else {
-        mtdebug1(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
+        mterror(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
         ciscat->flags.error = 1;
     }
 
@@ -1477,6 +1552,7 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 
     if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);
     if (ciscat->ciscat_path) cJSON_AddStringToObject(wm_cscat,"ciscat_path",ciscat->ciscat_path);
+    if (ciscat->ciscat_binary) cJSON_AddStringToObject(wm_cscat,"ciscat_binary",ciscat->ciscat_binary);
     cJSON_AddNumberToObject(wm_cscat,"timeout",ciscat->timeout);
     if (ciscat->evals) {
         cJSON *evals = cJSON_CreateArray();
@@ -1497,14 +1573,10 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
     return root;
 }
 
-
 // Destroy data
-
 void wm_ciscat_destroy(wm_ciscat *ciscat) {
-
     wm_ciscat_eval *cur_eval;
     wm_ciscat_eval *next_eval;
-
     // Delete evals
 
     for (cur_eval = ciscat->evals; cur_eval; cur_eval = next_eval) {
@@ -1515,6 +1587,9 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
         free(cur_eval);
     }
 
+    free(ciscat->java_path);
+    free(ciscat->ciscat_path);
+    free(ciscat->ciscat_binary);
     free(ciscat);
 }
 #endif

@@ -102,8 +102,10 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
 
 cJSON * __wrap_wdb_exec_stmt_sized(__attribute__((unused)) sqlite3_stmt *stmt,
                                    size_t max_size,
-                                   int* status) {
+                                   int* status,
+                                   bool column_mode) {
     check_expected(max_size);
+    check_expected(column_mode);
     *status = mock();
     return mock_ptr_type(cJSON *);
 }
@@ -337,4 +339,30 @@ int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
                               const char * scan_id) {
     check_expected(scan_id);
     return mock();
+}
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
+    return mock_ptr_type(sqlite3_stmt*);
+}
+
+cJSON *__wrap_wdb_get_internal_config() {
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_get_config() {
+    return mock_ptr_type(cJSON *);
+}
+
+int __wrap_wdb_get_global_group_hash(__attribute__((unused))wdb_t * wdb,
+                                     os_sha1 hexdigest) {
+    check_expected(hexdigest);
+    return mock();
+}
+
+int __wrap_wdb_commit2(__attribute__((unused))wdb_t * wdb) {
+    return mock();
+}
+
+void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb) {
+    function_called();
 }

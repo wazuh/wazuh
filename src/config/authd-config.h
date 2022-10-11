@@ -38,10 +38,21 @@ typedef struct authd_flags_t {
     unsigned short remote_enrollment:1;
 } authd_flags_t;
 
+typedef struct authd_key_request_t {
+    int             enabled;
+    char            *exec_path;
+    char            *socket;
+    unsigned int    timeout;
+    unsigned int    threads;
+    unsigned int    queue_size;
+    unsigned short  compatibility_flag; // Flag to avoid overwriting configuration settings
+} authd_key_request_t;
+
 typedef struct authd_config_t {
     unsigned short port;
     authd_flags_t flags;
     authd_force_options_t force_options;
+    authd_key_request_t key_request;
     char *ciphers;
     char *agent_ca;
     char *manager_cert;
@@ -49,13 +60,14 @@ typedef struct authd_config_t {
     long timeout_sec;
     long timeout_usec;
     bool worker_node;
+    bool ipv6;
 } authd_config_t;
 
 /**
  * @brief It converts a time string with the format <time><unit>, where the unit could be
  *        d (days), h (hours), m (minutes), or s (seconds), to a representation in seconds saved
  *        in a `time_t` variable.
- *        The time unit is optional. If not provided, it is asumed as seconds.
+ *        The time unit is optional. If not provided, it is assumed as seconds.
  *
  * @param syscheck String with the format <time><unit>.
  * @param interval The variable to save the time conversion.

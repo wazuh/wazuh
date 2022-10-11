@@ -57,7 +57,7 @@ def test_totals_ko_():
             stats.totals_(date(1996, 8, 13))
 
 
-@patch('wazuh.core.common.stats_path', new=test_data_path)
+@patch('wazuh.core.common.STATS_PATH', new=test_data_path)
 def test_weekly_():
     """Verify weekly_() function works as expected"""
     result = stats.weekly_()
@@ -66,7 +66,7 @@ def test_weekly_():
         assert day in [d for r in result for d in r.keys()], 'Data do not match'
 
 
-@patch('wazuh.core.common.stats_path', new='')
+@patch('wazuh.core.common.STATS_PATH', new='')
 def test_weekly_data():
     """Verify weekly_() function works as expected"""
     result = stats.weekly_()
@@ -77,7 +77,7 @@ def test_weekly_data():
         assert 0 == result[days.index(day)][day]['interactions']
 
 
-@patch('wazuh.core.common.stats_path', new=test_data_path)
+@patch('wazuh.core.common.STATS_PATH', new=test_data_path)
 def test_hourly_():
     """Verify hourly_() function works as expected"""
     result = stats.hourly_()
@@ -86,7 +86,7 @@ def test_hourly_():
         assert hour in result[0]['averages'], 'Data do not match'
 
 
-@patch('wazuh.core.common.stats_path', new='')
+@patch('wazuh.core.common.STATS_PATH', new='')
 def test_hourly_data():
     """Test hourly_() function exceptions works"""
     result = stats.hourly_()
@@ -127,10 +127,10 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
                     stats.get_daemons_stats_from_socket(agent_id, daemon)
 
         if agent_id == '000':
-            mock_socket.assert_called_once_with(os.path.join(common.wazuh_path, "queue", "sockets", "logcollector"))
+            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "logcollector"))
             mock_send.assert_called_once_with(b'getstate')
         else:
-            mock_socket.assert_called_once_with(os.path.join(common.wazuh_path, "queue", "sockets", "request"))
+            mock_socket.assert_called_once_with(os.path.join(common.WAZUH_PATH, "queue", "sockets", "request"))
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 

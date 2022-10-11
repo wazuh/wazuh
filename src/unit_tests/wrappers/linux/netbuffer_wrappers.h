@@ -12,7 +12,7 @@
 
 void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock);
 
-void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info);
+void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
 
 int __wrap_nb_queue(__attribute__((unused)) netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size);
 

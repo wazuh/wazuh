@@ -63,8 +63,8 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFile.Close
 
     If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-        If WAZUH_MANAGER <> "" and InStr(WAZUH_MANAGER,";") > 0 Then 'list of address
-            ip_list=Split(WAZUH_MANAGER,";")
+        If WAZUH_MANAGER <> "" and InStr(WAZUH_MANAGER,",") > 0 Then 'list of address
+            ip_list=Split(WAZUH_MANAGER,",")
             formatted_list ="    </server>" & vbCrLf
             not_replaced = True
             for each ip in ip_list
@@ -164,6 +164,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
             objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
             objFile.Close
+            strText = Replace(strText, "    </enrollment>", "        <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_REGISTRATION_CA <> "" Then
@@ -362,8 +363,22 @@ End Function
 
 Public Function CheckSvcRunning()
 	Set wmi = GetObject("winmgmts://./root/cimv2")
-	state = wmi.Get("Win32_Service.Name='OssecSvc'").State
-	Session.Property("OSSECRUNNING") = state
+
+    SERVICE = "OssecSvc"
+    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
+
+    If svc.Count <> 0 Then
+        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
+        Session.Property("OSSECRUNNING") = state
+    End If
+
+    SERVICE = "WazuhSvc"
+    Set svc = wmi.ExecQuery("Select * from Win32_Service where Name = '" & SERVICE & "'")
+
+    If svc.Count <> 0 Then
+        state = wmi.Get("Win32_Service.Name='" & SERVICE & "'").State
+        Session.Property("WAZUHRUNNING") = state
+    End If
 
 	CheckSvcRunning = 0
 End Function

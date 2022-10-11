@@ -1,9 +1,6 @@
 ---
 test_name: PUT /active-response/{:agent_id}
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Runs an Active Response command on a specified agent with version >= 4.2.0

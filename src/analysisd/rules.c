@@ -1609,6 +1609,20 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     }
                 }
 
+                /* Check syntax if_sid */
+                if (config_ruleinfo->if_sid) {
+                    w_expression_t * validation_regex = NULL;
+                    w_calloc_expression_t(&validation_regex, EXP_TYPE_PCRE2);
+                    // matches if all characters are valid
+                    w_expression_compile(validation_regex, "^[\\d, ]+$", 0);
+
+                    if (!w_expression_match(validation_regex, config_ruleinfo->if_sid, NULL, NULL)) {
+                        do_skip_rule = true;
+                        smwarn(log_msg, ANALYSISD_INVALID_IF_SID, config_ruleinfo->if_sid, config_ruleinfo->sigid);
+                    }
+                    w_free_expression_t(&validation_regex);
+                }
+
                 // Skip rule, without having to abort analysisd execution
                 if (do_skip_rule) {
                     w_free_rules_tmp_params(&rule_tmp_params);
@@ -2006,7 +2020,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
                 merror(MEM_ERROR, errno, strerror(errno));
                 return (NULL);
             }
-            strncpy(at, str, strsize);
+            memcpy(at, str, strsize);
             return (at);
         } else {
             smerror(log_msg, SIZE_ERROR, str);
@@ -2030,8 +2044,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
             return (NULL);
         }
 
-        strncat(at, str, strsize);
-        at[finalsize - 1] = '\0';
+        strcat(at, str);
 
         return (at);
     }

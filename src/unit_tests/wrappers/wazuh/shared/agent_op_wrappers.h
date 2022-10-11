@@ -11,10 +11,10 @@
 #ifndef AGENT_OP_WRAPPERS_H
 #define AGENT_OP_WRAPPERS_H
 
+#include "stddef.h"
+
 int __wrap_auth_connect();
 char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name);
 int __wrap_control_check_connection();
-int __wrap_get_agent_group(const char *id, char *group, __attribute__((unused)) size_t size);
-int __wrap_set_agent_group(const char * id, const char * group);
 
 #endif

@@ -1,9 +1,6 @@
 ---
 test_name: PUT /logtest
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Run logtest without token (allow)

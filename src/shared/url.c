@@ -85,6 +85,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     CURL *curl;
     FILE *fp;
     CURLcode res;
+    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
     int old_mask;
@@ -315,9 +316,10 @@ int wurl_check_connection() {
     }
 }
 
-char * wurl_http_get(const char * url, size_t max_size) {
+char * wurl_http_get(const char * url, size_t max_size, const long timeout) {
     CURL *curl;
     CURLcode res;
+    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
 
@@ -344,6 +346,10 @@ char * wurl_http_get(const char * url, size_t max_size) {
 
         res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
         res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+        if (timeout) {
+            res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+        }
 
         if (res != 0) {
             mdebug1("Parameter setup error at CURL");
@@ -422,7 +428,7 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
+curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, const long timeout) {
     curl_response *response;
     struct curl_slist* headers_list = NULL;
     struct curl_slist* headers_tmp = NULL;
@@ -435,6 +441,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
         return NULL;
     }
 
+    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
     CURL* curl = curl_easy_init();
 
     if (!curl) {
@@ -497,6 +504,10 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
 
     if (payload) {
         res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
+    }
+
+    if (timeout) {
+        res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
     }
 
     if (res != CURLE_OK) {

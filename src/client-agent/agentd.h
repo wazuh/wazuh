@@ -51,7 +51,9 @@ void *EventForward(void);
 int receive_msg(void);
 
 /* Receiver messages for Windows */
-void *receiver_thread(void *none);
+#ifdef WIN32
+DWORD WINAPI receiver_thread(LPVOID none);
+#endif
 
 /* Initialize agent buffer */
 void buffer_init();
@@ -60,8 +62,11 @@ void buffer_init();
 int buffer_append(const char *msg);
 
 /* Thread to dispatch messages from the buffer */
+#ifdef WIN32
+DWORD WINAPI dispatch_buffer(LPVOID arg);
+#else
 void *dispatch_buffer(void * arg);
-
+#endif
 /**
  * @brief get the number of events in buffer
  *
@@ -105,7 +110,11 @@ void run_notify(void);
 int format_labels(char *str, size_t size);
 
 // Thread to rotate internal log
+#ifdef WIN32
+DWORD WINAPI w_rotate_log_thread(LPVOID arg);
+#else
 void * w_rotate_log_thread(void * arg);
+#endif
 
 // Initialize request module
 void req_init();
@@ -114,7 +123,11 @@ void req_init();
 int req_push(char * buffer, size_t length);
 
 // Request receiver thread start
+#ifdef WIN32
+DWORD WINAPI req_receiver(LPVOID arg);
+#else
 void * req_receiver(void * arg);
+#endif
 
 // Restart agent
 void * restartAgent();
@@ -124,9 +137,6 @@ int verifyRemoteConf();
 
 // Clear merged.mg hash cache value.
 void clear_merged_hash_cache();
-
-// Resolve manager hostnames
-void agent_setup_hostnames();
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
