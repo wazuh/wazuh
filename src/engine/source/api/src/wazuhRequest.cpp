@@ -1,4 +1,4 @@
-#include <API/wazuhRequest.hpp>
+#include "api/wazuhRequest.hpp"
 
 namespace api
 {

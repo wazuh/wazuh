@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <API/wazuhRequest.hpp>
+#include <api/wazuhRequest.hpp>
 #include <json/json.hpp>
 
 // A valid request
