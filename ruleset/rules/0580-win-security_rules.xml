@@ -588,7 +588,7 @@
 
   <rule id="60154" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.targetSid">^\p*S-1-5-32-544</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-544}$|^S-1-5-32-544$</field>
     <options>no_full_log</options>
     <description>Administrators group changed.</description>
     <mitre>
@@ -705,7 +705,7 @@
   </rule>
 
   <rule id="60165" level="10">
-    <if_sid>60144,60145</if_sid>
+    <if_sid>60141,60142</if_sid>
     <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-517}$|^S-1-5-21\S+-517$</field>
     <options>no_full_log</options>
     <description>Cert publishers group changed.</description>
@@ -716,7 +716,7 @@
   </rule>
 
   <rule id="60166" level="12">
-    <if_sid>60149,60150,60151,60152</if_sid>
+    <if_sid>60149,60150,60151,60152,60141,60142</if_sid>
     <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-518}$|^S-1-5-21\S+-518$</field>
     <options>no_full_log</options>
     <description>Schema admins group changed.</description>
@@ -727,7 +727,7 @@
   </rule>
 
   <rule id="60167" level="12">
-    <if_sid>60149,60150,60151,60152</if_sid>
+    <if_sid>60149,60150,60151,60152,60141,60142</if_sid>
     <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-519}$|^S-1-5-21\S+-519$</field>
     <options>no_full_log</options>
     <description>Enterprise admins group changed.</description>
@@ -761,7 +761,7 @@
 
   <rule id="60170" level="5">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.targetSid">^%{S-1-5-32\S+-545}$|^S-1-5-32\S+-545$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-545}$|^S-1-5-32-545$</field>
     <options>no_full_log</options>
     <description>Users group changed.</description>
     <mitre>
@@ -772,7 +772,7 @@
 
   <rule id="60171" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.targetSid">^%{S-1-5-32\S+-546}$|^S-1-5-32\S+-546$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-546}$|^S-1-5-32-546$</field>
     <options>no_full_log</options>
     <description>Guests group changed.</description>
     <mitre>
@@ -783,7 +783,7 @@
 
   <rule id="60172" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.targetSid">^%{S-1-5-32\S+-547}$|^S-1-5-32\S+-547$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-547}$|^S-1-5-32-547$</field>
     <options>no_full_log</options>
     <description>Power users group changed.</description>
     <mitre>
@@ -958,7 +958,7 @@
   </rule>
 
   <rule id="60188" level="12">
-    <if_sid>60144,60145</if_sid>
+    <if_sid>60141,60142</if_sid>
     <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-521}$|^S-1-5-21\S+-521$</field>
     <options>no_full_log</options>
     <description>Read-only domain controllers group changed.</description>
@@ -1014,7 +1014,7 @@
 
   <rule id="60193" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.targetSid">^%{S-1-5-32\S+-574}$|^S-1-5-32\S+-574$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32\S*-574}$|^S-1-5-32\S*-574$</field>
     <options>no_full_log</options>
     <description>Certificate service DCOM access group changed.</description>
     <mitre>
