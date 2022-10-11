@@ -334,9 +334,12 @@ main () {
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
         ADDRESSES=( ${WAZUH_MANAGER//,/ } ) 
-        # Get uniques values
-        ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
         PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
+        # Get uniques values if all protocols are the same
+        if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) )|| [ -z "${PROTOCOLS[@]}" ]; then
+            ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
+        fi
+        
         add_adress_block
         if [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
             WAZUH_REGISTRATION_SERVER="${ADDRESSES[0]}"
