@@ -1,4 +1,5 @@
 #include "api/registry.hpp"
+#include "logging/logging.hpp"
 
 namespace api
 {
@@ -27,9 +28,10 @@ CommandFn Registry::getCallback(const std::string& command)
     {
         return m_commands[command];
     }
-    return [](const json::Json&)
+    return [command](const json::Json&)
     {
-        return WazuhResponse {json::Json {}, -1, "Command not found"};
+        return WazuhResponse {
+            json::Json {}, -1, fmt::format("Command '{}' not found", command)};
     };
 };
 

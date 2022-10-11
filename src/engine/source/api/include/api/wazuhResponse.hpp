@@ -7,6 +7,18 @@
 namespace api
 {
 
+namespace
+{
+enum class RESPONSE_ERROR_CODES
+{
+    OK = 0,
+    UNKNOWN_ERROR,
+    INVALID_JSON_REQUEST,
+    INVALID_MSG_SIZE,
+};
+
+}
+
 /**
  * @brief A standard protocol for internal communication between Wazuh components
  *
@@ -38,10 +50,10 @@ public:
         m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
 
-      explicit WazuhResponse() noexcept
+    explicit WazuhResponse() noexcept
         : m_data(json::Json {R"({})"})
-        , m_error(-1),
-        m_message {"Invalid request, malformed JSON"} {};
+        , m_error(static_cast<int>(RESPONSE_ERROR_CODES::OK))
+        , m_message() {};
 
     /**
      * @brief Return data object of the response
@@ -94,10 +106,12 @@ public:
     {
         if (m_message.has_value())
         {
-            return fmt::format("{{\"data\":{},\"error\":{},\"message\":\"{}\"}}",
+            json::Json jsonMesage;
+            jsonMesage.setString(m_message.value(), "");
+            return fmt::format("{{\"data\":{},\"error\":{},\"message\":{}}}",
                                m_data.str(),
                                m_error,
-                               m_message.value());
+                               jsonMesage.str());
         }
         return fmt::format("{{\"data\":{},\"error\":{}}}", m_data.str(), m_error);
     }
@@ -110,6 +124,43 @@ public:
      * @return false
      */
     bool isValid() const { return !(!m_data.isObject() && !m_data.isArray()); }
+
+    /************************************************************************
+     *                     Predefined responses
+     ***********************************************************************/
+
+    /**
+     * @brief Return a request with invalid JSON format message
+     *
+     */
+    static WazuhResponse invalidRequest()
+    {
+        return WazuhResponse(json::Json(R"({})"),
+                             static_cast<int>(RESPONSE_ERROR_CODES::INVALID_JSON_REQUEST),
+                             "Invalid request, malformed JSON");
+    }
+
+    /**
+     * @brief Return a request with invalid Size message
+     *
+     */
+    static WazuhResponse invalidSize()
+    {
+        return WazuhResponse(json::Json(R"({})"),
+                             static_cast<int>(RESPONSE_ERROR_CODES::INVALID_MSG_SIZE),
+                             "Invalid Size");
+    }
+
+    /**
+     * @brief Return a request with unknown error message
+     *
+     */
+    static WazuhResponse unknownError() 
+    {
+        return WazuhResponse(json::Json(R"({})"),
+                             static_cast<int>(RESPONSE_ERROR_CODES::UNKNOWN_ERROR),
+                             "Unknown error");
+    }
 };
 
 } // namespace api

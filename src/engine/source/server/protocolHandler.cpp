@@ -240,8 +240,6 @@ std::optional<vector<string>> ProtocolHandler::process(const char* data,
                                                        const size_t length)
 {
     vector<string> events;
-    events.push_back(data);
-    return events;
 
     for (size_t i = 0; length > i; i++)
     {
