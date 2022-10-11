@@ -1,4 +1,4 @@
-#include "API/registry.hpp"
+#include "api/registry.hpp"
 
 namespace api
 {

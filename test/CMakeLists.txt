@@ -38,10 +38,9 @@ include(GoogleTest)
 
 #TODO: Fix server tests
 #add_subdirectory(${TEST_SOURCE_DIR}/server)
-add_subdirectory(${TEST_SOURCE_DIR}/API)
+add_subdirectory(${TEST_SOURCE_DIR}/api)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
-add_subdirectory(${TEST_SOURCE_DIR}/catalog)
 add_subdirectory(${TEST_SOURCE_DIR}/hlp)
 add_subdirectory(${TEST_SOURCE_DIR}/json)
 add_subdirectory(${TEST_SOURCE_DIR}/kvdb)

@@ -34,8 +34,12 @@ FileDriver::FileDriver(const std::filesystem::path& path, bool create)
 
 std::filesystem::path FileDriver::nameToPath(const base::Name& name) const
 {
-    auto path =
-        m_path / name.m_type / name.m_name / std::string {name.m_version + ".json"};
+    std::filesystem::path path {m_path};
+    for (const auto& part : name.parts())
+    {
+        path /= part;
+    }
+    path.replace_extension(".json");
     return path;
 }
 
@@ -114,8 +118,9 @@ std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) co
     if (std::filesystem::exists(path))
     {
         std::ifstream file(path);
-        std::string content;
-        file >> content;
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string content{buffer.str()};
         file.close();
         try
         {

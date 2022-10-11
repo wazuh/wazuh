@@ -15,7 +15,7 @@
 #include <stdexcept>
 #include <tuple>
 
-#include <API/API.hpp>
+#include <api/api.hpp>
 #include <json/json.hpp>
 #include <logging/logging.hpp>
 #include <uvw/timer.hpp>
@@ -31,6 +31,8 @@ using uvw::Loop;
 using uvw::PipeHandle;
 using uvw::TimerEvent;
 using uvw::TimerHandle;
+
+extern std::shared_ptr<api::Registry> g_registry;
 
 namespace
 {
@@ -82,12 +84,12 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
         {
             // TODO: Are we moving the buffer? we should.
             timer->again();
-            const auto result {protocolHandler->process(event.data.get(), event.length)};
-
-            if (result)
+            // const auto result {protocolHandler->process(event.data.get(), event.length)};
+            std::string message{event.data.get(), event.length};
+            if (true)
             {
-                for (const auto& message : result.value())
-                {
+                // for (const auto& message : result.value())
+                // {
 
                     json::Json jrequest {};
                     api::WazuhResponse wresponse {}; // Protocol error
@@ -97,9 +99,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         auto wrequest = api::WazuhRequest {jrequest};
                         if (wrequest.isValid())
                         {
-                            wresponse =
-                                api::WazuhResponse(json::Json {R"({})"}, 0, "test API");
-                            // TODO Search command in regitry and execute it
+                             wresponse = g_registry->getCallback(wrequest.getCommand().value())(wrequest.getParameters().value());
                         }
                         else
                         {
@@ -110,15 +110,14 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                     }
                     catch (const std::exception& e)
                     {
-                        WAZUH_LOG_ERROR("API DataEvent: endpoint[{}] error: code=[{}]; "
-                                        "name=[{}]; message=[{}]",
+                        WAZUH_LOG_ERROR("API DataEvent: endpoint[{}] error: {}",
                                         client.peer(),
                                         e.what());
                     }
 
                     auto [buffer, size] {addSecureHeader(wresponse.toString())};
                     client.write(std::move(buffer), size);
-                }
+                // }
             }
             else
             {

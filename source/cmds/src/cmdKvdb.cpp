@@ -4,7 +4,6 @@
 
 #include <fmt/format.h>
 
-#include <catalog/catalog.hpp>
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>

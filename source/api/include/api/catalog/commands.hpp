@@ -1,13 +1,13 @@
 #ifndef _CATALOG_COMMANDS_HPP
 #define _CATALOG_COMMANDS_HPP
 
-#include "catalog/catalog.hpp"
+#include "api/catalog/catalog.hpp"
 
 #include <memory>
 
-#include <API/registry.hpp>
+#include <api/registry.hpp>
 
-namespace catalog::cmds
+namespace api::catalog::cmds
 {
 /****************************************************************************************/
 /* GET                                                                                  */
@@ -18,7 +18,7 @@ namespace catalog::cmds
  * @param catalog Catalog to use
  * @return api::CommandFn Command function
  */
-api::CommandFn getAssetCmd(std::shared_ptr<catalog::Catalog> catalog);
+api::CommandFn getAssetCmd(std::shared_ptr<Catalog> catalog);
 
 /****************************************************************************************/
 /* POST                                                                                 */
@@ -29,7 +29,7 @@ api::CommandFn getAssetCmd(std::shared_ptr<catalog::Catalog> catalog);
  * @param catalog Catalog to use
  * @return api::CommandFn Command function
  */
-api::CommandFn postAssetCmd(std::shared_ptr<catalog::Catalog> catalog);
+api::CommandFn postAssetCmd(std::shared_ptr<Catalog> catalog);
 
 /****************************************************************************************/
 /* DELETE                                                                               */
@@ -40,7 +40,7 @@ api::CommandFn postAssetCmd(std::shared_ptr<catalog::Catalog> catalog);
  * @param catalog Catalog to use
  * @return api::CommandFn Command function
  */
-api::CommandFn deleteAssetCmd(std::shared_ptr<catalog::Catalog> catalog);
+api::CommandFn deleteAssetCmd(std::shared_ptr<Catalog> catalog);
 
 /**
  * @brief Register all available Catalog commands in the API registry.
@@ -50,9 +50,9 @@ api::CommandFn deleteAssetCmd(std::shared_ptr<catalog::Catalog> catalog);
  * @throw std::runtime_error If the command registration fails for any reason and at any
  * point
  */
-void registerAllCmds(std::shared_ptr<catalog::Catalog> catalog,
+void registerAllCmds(std::shared_ptr<Catalog> catalog,
                      std::shared_ptr<api::Registry> registry);
 
-} // namespace catalog::cmds
+} // namespace cmds
 
 #endif // _CATALOG_COMMANDS_HPP
