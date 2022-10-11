@@ -89,7 +89,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                             formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                         End If
                     End If
-                    formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     formatted_list = formatted_list & "    </server>" & vbCrLf
             next
             strText = re.Replace(strText, formatted_list)
