@@ -13,8 +13,10 @@
 
 #include "wazuh_db/wdb.h"
 
-int __wrap_wdb_metadata_table_check(wdb_t * wdb, const char * key);
+int __wrap_wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* counter);
 
 int __wrap_wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
+
+int __wrap_wdb_is_older_than_v310(wdb_t *wdb);
 
 #endif

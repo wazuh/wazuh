@@ -63,13 +63,13 @@ rule_contents = '''
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
-    with patch('wazuh.core.common.wazuh_path', new=parent_directory):
+    with patch('wazuh.core.common.WAZUH_PATH', new=parent_directory):
         yield
 
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_rules_path():
-    with patch('wazuh.core.common.ruleset_rules_path', new=data_path):
+    with patch('wazuh.core.common.RULES_PATH', new=data_path):
         yield
 
 
@@ -272,11 +272,11 @@ def test_get_rules_file_invalid_xml(get_rules_mock):
 ])
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_file')
-@patch('wazuh.core.utils.copyfile')
+@patch('wazuh.core.utils.full_copy')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file,
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_full_copy, mock_xml, mock_delete, file,
                      overwrite):
     """Test uploading a rule file.
 

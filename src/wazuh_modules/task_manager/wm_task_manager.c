@@ -31,7 +31,11 @@ extern void mock_assert(const int result, const char* const expression,
 
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
+#ifdef WIN32
+STATIC DWORD WINAPI wm_task_manager_main(void *arg);
+#else
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
+#endif
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config);
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 
@@ -39,7 +43,7 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 const wm_context WM_TASK_MANAGER_CONTEXT = {
     TASK_MANAGER_WM_NAME,
     (wm_routine)wm_task_manager_main,
-    (wm_routine)(void *)wm_task_manager_destroy,
+    (void (*)(void *))wm_task_manager_destroy,
     (cJSON * (*)(const void *))wm_task_manager_dump,
     NULL,
     NULL
@@ -114,7 +118,7 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     w_create_thread(wm_task_manager_clean_tasks, task_config);
 
     /* Set the queue */
-    if (sock = OS_BindUnixDomain(TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomainWithPerms(TASK_QUEUE, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_SOCK_ERROR, TASK_QUEUE, strerror(errno)); // LCOV_EXCL_LINE
         pthread_exit(NULL);
     }
@@ -122,7 +126,12 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     return sock;
 }
 
+#ifdef WIN32
+STATIC DWORD WINAPI wm_task_manager_main(void *arg) {
+    wm_task_manager* task_config = (wm_task_manager *)arg;
+#else
 STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
+#endif
     int sock;
     int peer;
     char *buffer = NULL;
@@ -132,7 +141,11 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
 
     if (w_is_worker()) {
         mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DISABLED_WORKER);
+#ifdef WIN32
+        return 0;
+#else
         return NULL;
+#endif
     }
 
     // Initial configuration
@@ -198,7 +211,11 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
     }
 
     close(sock);
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {

@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
+#include "key_request.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
@@ -82,7 +83,7 @@ static void help_authd(char * home_path)
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", home_path);
+    print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
@@ -95,36 +96,6 @@ static void help_authd(char * home_path)
     print_out(" ");
     os_free(home_path);
     exit(1);
-}
-
-/* Generates a random and temporary shared pass to be used by the agents. */
-char *__generatetmppass()
-{
-    int rand1;
-    int rand2;
-    char *rand3;
-    char *rand4;
-    os_md5 md1;
-    os_md5 md3;
-    os_md5 md4;
-    char *fstring = NULL;
-    char str1[STR_SIZE +1];
-
-    rand1 = os_random();
-    rand2 = os_random();
-
-    rand3 = GetRandomNoise();
-    rand4 = GetRandomNoise();
-
-    OS_MD5_Str(rand3, -1, md3);
-    OS_MD5_Str(rand4, -1, md4);
-
-    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
-    OS_MD5_Str(str1, -1, md1);
-    fstring = strdup(md1);
-    free(rand3);
-    free(rand4);
-    return(fstring);
 }
 
 /* Function to use with SSL on non blocking socket,
@@ -163,6 +134,7 @@ int main(int argc, char **argv)
     pthread_t thread_dispatcher = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
+    pthread_t thread_key_request = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -334,22 +306,22 @@ int main(int argc, char **argv)
         }
 
         if (ciphers) {
-            free(config.ciphers);
+            os_free(config.ciphers);
             config.ciphers = strdup(ciphers);
         }
 
         if (ca_cert) {
-            free(config.agent_ca);
+            os_free(config.agent_ca);
             config.agent_ca = strdup(ca_cert);
         }
 
         if (server_cert) {
-            free(config.manager_cert);
+            os_free(config.manager_cert);
             config.manager_cert = strdup(server_cert);
         }
 
         if (server_key) {
-            free(config.manager_key);
+            os_free(config.manager_key);
             config.manager_key = strdup(server_key);
         }
 
@@ -436,7 +408,7 @@ int main(int argc, char **argv)
         }
 
         /* Connect via TCP */
-        if (remote_sock = OS_Bindporttcp(config.port, NULL, 0), remote_sock <= 0) {
+        if (remote_sock = OS_Bindporttcp(config.port, NULL, config.ipv6), remote_sock <= 0) {
             merror(BIND_ERROR, config.port, errno, strerror(errno));
             exit(1);
         }
@@ -466,15 +438,17 @@ int main(int argc, char **argv)
                 minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
-                authpass = __generatetmppass();
-                minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                if (authpass = w_generate_random_pass(), authpass) {
+                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                } else {
+                    merror_exit("Unable to generate random password. Exiting.");
+                }
             }
         } else {
             minfo("Accepting connections on port %hu. No password required.", config.port);
         }
     }
 
-    /* Before chroot */
     srandom_init();
     getuname();
 
@@ -483,12 +457,6 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-
-    nowChroot();
     os_free(home_path);
 
     /* Initialize queues */
@@ -532,6 +500,13 @@ int main(int argc, char **argv)
         }
     }
 
+    if (config.key_request.enabled) {
+        if (status = pthread_create(&thread_key_request, NULL, (void *)&run_key_request_main, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    }
+
     /* Join threads */
     pthread_join(thread_local_server, NULL);
     if (config.flags.remote_enrollment) {
@@ -544,6 +519,9 @@ int main(int argc, char **argv)
         w_cond_signal(&cond_pending);
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
+    }
+    if (config.key_request.enabled) {
+        pthread_join(thread_key_request, NULL);
     }
 
     queue_free(client_queue);
@@ -575,7 +553,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
+        if (client->is_ipv6) {
+            get_ipv6_string(*client->addr6, ip, IPSIZE);
+        } else {
+            get_ipv4_string(*client->addr4, ip, IPSIZE);
+        }
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client->socket);
         ret = SSL_accept(ssl);
@@ -584,6 +566,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
             close(client->socket);
+            if (client->is_ipv6) {
+                os_free(client->addr6);
+            } else {
+                os_free(client->addr4);
+            }
             os_free(client);
             continue;
         }
@@ -597,6 +584,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
                 close(client->socket);
+                if (client->is_ipv6) {
+                    os_free(client->addr6);
+                } else {
+                    os_free(client->addr4);
+                }
                 os_free(client);
                 continue;
             }
@@ -615,8 +607,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
             SSL_free(ssl);
             close(client->socket);
+            if (client->is_ipv6) {
+                os_free(client->addr6);
+            } else {
+                os_free(client->addr4);
+            }
             os_free(client);
-            free(buf);
+            os_free(buf);
             continue;
         }
         buf[ret] = '\0';
@@ -640,7 +637,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             else {
                 w_mutex_lock(&mutex_keys);
                 if (OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group, key_hash)) {
-                    if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)) {
+                    if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, &new_id, &new_key)) {
                         enrollment_ok = TRUE;
                     }
                 }
@@ -693,6 +690,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         SSL_free(ssl);
         close(client->socket);
+        if (client->is_ipv6) {
+            os_free(client->addr6);
+        } else {
+            os_free(client->addr4);
+        }
         os_free(client);
         os_free(buf);
         os_free(agentname);
@@ -711,7 +713,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 /* Thread for remote server */
 void* run_remote_server(__attribute__((unused)) void *arg) {
     int client_sock = 0;
-    struct sockaddr_in _nc;
+    struct sockaddr_storage _nc;
     socklen_t _ncl;
     fd_set fdset;
     struct timeval timeout;
@@ -761,14 +763,32 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
             struct client *new_client;
             os_malloc(sizeof(struct client), new_client);
             new_client->socket = client_sock;
-            new_client->addr = _nc.sin_addr;
+
+            switch (_nc.ss_family) {
+            case AF_INET:
+                new_client->is_ipv6 = FALSE;
+                os_calloc(1, sizeof(struct in_addr), new_client->addr4);
+                memcpy(new_client->addr4, &((struct sockaddr_in *)&_nc)->sin_addr, sizeof(struct in_addr));
+                break;
+            case AF_INET6:
+                new_client->is_ipv6 = TRUE;
+                os_calloc(1, sizeof(struct in6_addr), new_client->addr6);
+                memcpy(new_client->addr6, &((struct sockaddr_in6 *)&_nc)->sin6_addr, sizeof(struct in6_addr));
+                break;
+            default:
+                merror("IP address family not supported. Rejecting.");
+                os_free(new_client);
+                close(client_sock);
+            }
 
             if (queue_push_ex(client_queue, new_client) == -1) {
                 merror("Too many connections. Rejecting.");
+                os_free(new_client);
                 close(client_sock);
             }
-        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
+        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
             merror("at main(): accept(): %s", strerror(errno));
+        }
     }
 
     mdebug1("Remote server thread finished");
@@ -840,29 +860,41 @@ void* run_writer(__attribute__((unused)) void *arg) {
         mdebug2("[Writer] OS_WriteTimestamps(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
         OS_FreeKeys(copy_keys);
-        free(copy_keys);
+        os_free(copy_keys);
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
+            gettime(&t0);
+            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->group, 1, &wdb_sock)) {
+                mdebug2("The agent %s '%s' already exists in the database.", cur->id, cur->name);
+            }
+            gettime(&t1);
+            mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
             if (cur->group) {
-                if (set_agent_group(cur->id,cur->group) == -1) {
+                if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                             cur->group,
+                                             WDB_GROUP_MODE_OVERRIDE,
+                                             w_is_single_node(NULL) ? "synced" : "syncreq",
+                                             &wdb_sock)) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
 
-                set_agent_multigroup(cur->group);
             }
 
             gettime(&t1);
-            mdebug2("[Writer] set_agent_group(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur->group);
-            free(cur);
+            os_free(cur->id);
+            os_free(cur->name);
+            os_free(cur->ip);
+            os_free(cur->group);
+            os_free(cur->raw_key);
+            os_free(cur);
 
             inserted_agents++;
         }
@@ -885,9 +917,9 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
-            OS_RemoveAgentGroup(cur->id);
+            OS_RemoveAgentTimestamp(cur->id);
             gettime(&t1);
-            mdebug2("[Writer] OS_RemoveAgentGroup(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            mdebug2("[Writer] OS_RemoveAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
             if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
@@ -902,10 +934,12 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdbc_query_ex(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur);
+            os_free(cur->id);
+            os_free(cur->name);
+            os_free(cur->ip);
+            os_free(cur->group);
+            os_free(cur->raw_key);
+            os_free(cur);
 
             removed_agents++;
         }

@@ -93,3 +93,33 @@ async def test_get_nodes_info():
     assert result.total_affected_items == expected['totalItems']
     assert result.failed_items[WazuhResourceNotFound(1730)] == {'noexists'}
     assert result.total_failed_items == 1
+
+
+@pytest.mark.parametrize("ruleset_integrity", [
+    True,
+    False
+])
+@patch("wazuh.cluster.node_id", new="testing_node")
+@pytest.mark.asyncio
+async def test_get_ruleset_sync_status(ruleset_integrity):
+    """Verify that `get_ruleset_sync_status` function correctly returns node ruleset synchronization status."""
+    master_md5 = {'key1': 'value1'}
+    with patch("wazuh.cluster.get_node_ruleset_integrity",
+               return_value=master_md5 if ruleset_integrity else {}) as ruleset_integrity_mock:
+        result = await cluster.get_ruleset_sync_status(master_md5=master_md5)
+        assert result.total_affected_items == 1
+        assert result.total_failed_items == 0
+        assert result.affected_items[0]['name'] == "testing_node"
+        assert result.affected_items[0]['synced'] is ruleset_integrity
+
+
+@patch("wazuh.cluster.node_id", new="testing_node")
+@pytest.mark.asyncio
+async def test_get_ruleset_sync_status_ko():
+    """Verify proper exceptions behavior with `get_ruleset_sync_status`."""
+    exc = WazuhError(1000)
+    with patch("wazuh.cluster.get_node_ruleset_integrity", side_effect=exc):
+        result = await cluster.get_ruleset_sync_status(master_md5={})
+        assert result.total_affected_items == 0
+        assert result.total_failed_items == 1
+        assert result.failed_items[exc] == {"testing_node"}

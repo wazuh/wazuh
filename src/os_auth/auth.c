@@ -38,10 +38,8 @@ void add_insert(const keyentry *entry,const char *group) {
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
     node->ip = strdup(entry->ip->ip);
-    node->group = NULL;
-
-    if (group != NULL)
-        node->group = strdup(group);
+    node->raw_key = strdup(entry->raw_key);
+    node->group = group ? strdup(group) : NULL;
 
     (*insert_tail) = node;
     insert_tail = &node->next;
@@ -160,12 +158,16 @@ w_err_t w_auth_parse_data(const char* buf,
 
         /* If IP: != 'src' overwrite the provided ip */
         if (strncmp(client_source_ip,"src",3) != 0) {
-            if (!OS_IsValidIP(client_source_ip, NULL)) {
+            os_ip *aux_ip;
+            os_calloc(1, sizeof(os_ip), aux_ip);
+            if (!OS_IsValidIP(client_source_ip, aux_ip)) {
                 merror("Invalid IP: '%s'", client_source_ip);
                 snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
+                w_free_os_ip(aux_ip);
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE + 1, "%s", client_source_ip);
+            snprintf(ip, IPSIZE, "%s", aux_ip->ip);
+            w_free_os_ip(aux_ip);
         }
 
         /* Forward the string pointer IP:'........' 3 for IP: , 2 for '' */
@@ -320,7 +322,7 @@ w_err_t w_auth_validate_data(char *response,
     return result;
 }
 
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key) {
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, char **id, char **key) {
 
     /* Add the new agent */
     int index;
@@ -329,18 +331,6 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
         merror("Unable to add agent: %s (internal error)", agentname);
         snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s", agentname);
         return OS_INVALID;
-    }
-
-    /* Add the agent to the centralized configuration group */
-    if (groups) {
-        char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-            OS_RemoveAgent(keys.keyentries[index]->id);
-            merror("Unable to set agent centralized group: %s (internal error)", groups);
-            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s", groups);
-            return OS_INVALID;
-        }
     }
 
     os_strdup(keys.keyentries[index]->id, *id);
@@ -360,6 +350,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
     while ( group != NULL ) {
+        max_multigroups++;
         DIR * dp;
         char dir[PATH_MAX + 1] = {0};
 
@@ -385,9 +376,64 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
 
         group = strtok_r(NULL, delim, &save_ptr);
-        max_multigroups++;
         closedir(dp);
     }
     os_free(tmp_groups);
     return ret;
+}
+
+char *w_generate_random_pass()
+{
+    int rand1;
+    int rand2;
+    char *rand3;
+    char *rand4;
+    os_md5 md1;
+    os_md5 md3;
+    os_md5 md4;
+    char *fstring = NULL;
+    char *str1 = NULL;
+    int time_value = (int)time(NULL);
+
+    rand1 = os_random();
+    rand2 = os_random();
+
+    rand3 = GetRandomNoise();
+    rand4 = GetRandomNoise();
+
+    OS_MD5_Str(rand3, -1, md3);
+    OS_MD5_Str(rand4, -1, md4);
+
+    const int requested_size = snprintf(NULL,
+                                        0,
+                                        "%d%d%s%d%s%s",
+                                        time_value,
+                                        rand1,
+                                        getuname(),
+                                        rand2,
+                                        md3,
+                                        md4);
+
+    if (requested_size > 0) {
+        os_calloc(requested_size + 1, sizeof(char), str1);
+        const int requested_size_assignation = snprintf(str1,
+                                                        requested_size + 1,
+                                                        "%d%d%s%d%s%s",
+                                                        time_value,
+                                                        rand1,
+                                                        getuname(),
+                                                        rand2,
+                                                        md3,
+                                                        md4);
+
+        if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
+            OS_MD5_Str(str1, -1, md1);
+            fstring = strdup(md1);
+        }
+    }
+
+    free(rand3);
+    free(rand4);
+    os_free(str1);
+    return(fstring);
 }

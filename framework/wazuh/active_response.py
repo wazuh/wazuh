@@ -39,19 +39,19 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                                       none_msg='AR command was not sent to any agent'
                                       )
     if agent_list:
-        wq = WazuhQueue(common.ARQUEUE)
-        system_agents = get_agents_info()
-        for agent_id in agent_list:
-            try:
-                if agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                if agent_id == "000":
-                    raise WazuhError(1703)
-                active_response.send_ar_message(agent_id, wq, command, arguments, custom, alert)
-                result.affected_items.append(agent_id)
-                result.total_affected_items += 1
-            except WazuhException as e:
-                result.add_failed_item(id_=agent_id, error=e)
-        wq.close()
+        with WazuhQueue(common.AR_SOCKET) as wq:
+            system_agents = get_agents_info()
+            for agent_id in agent_list:
+                try:
+                    if agent_id not in system_agents:
+                        raise WazuhResourceNotFound(1701)
+                    if agent_id == "000":
+                        raise WazuhError(1703)
+                    active_response.send_ar_message(agent_id, wq, command, arguments, custom, alert)
+                    result.affected_items.append(agent_id)
+                    result.total_affected_items += 1
+                except WazuhException as e:
+                    result.add_failed_item(id_=agent_id, error=e)
+            result.affected_items.sort(key=int)
 
     return result

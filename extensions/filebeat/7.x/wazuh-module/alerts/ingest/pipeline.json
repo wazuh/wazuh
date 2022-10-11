@@ -3,6 +3,22 @@
   "processors": [
     { "json" : { "field" : "message", "add_to_root": true } },
     {
+      "set": {
+        "field": "data.aws.region",
+        "value": "{{data.aws.awsRegion}}",
+        "override": false,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "field": "data.aws.accountId",
+        "value": "{{data.aws.aws_account_id}}",
+        "override": false,
+        "ignore_failure": true
+      }
+    },
+    {
       "geoip": {
         "field": "data.srcip",
         "target_field": "GeoLocation",
@@ -23,6 +39,15 @@
     {
       "geoip": {
         "field": "data.aws.sourceIPAddress",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.aws.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
@@ -64,6 +89,7 @@
         "ignore_failure": false 
       }
     },
+
     { "remove": { "field": "message", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "ecs", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "beat", "ignore_missing": true, "ignore_failure": true } },

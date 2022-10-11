@@ -77,7 +77,7 @@ def agent_config(expected_exception):
     (None, 'restart-wazuh0', [], True),
     (None, 'restart-wazuh0', ["arg1", "arg2"], False)
 ])
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
     """Check if the returned message is correct.
 
@@ -114,7 +114,7 @@ def test_create_message(expected_exception, command, arguments, custom):
     (None, 'restart-wazuh0', ["arg1", "arg2"], None),
     (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
 ])
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
     """Check if the returned json message is correct.
 
@@ -145,7 +145,7 @@ def test_create_json_message(expected_exception, command, arguments, alert):
             assert alert == ret["parameters"]["alert"], f'Alert information not being added'
 
 
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_get_commands():
     """
     Checks if get_commands method returns a list

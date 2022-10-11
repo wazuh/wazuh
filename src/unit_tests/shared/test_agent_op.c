@@ -22,6 +22,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "cJSON.h"
 
 /* redefinitons/wrapping */
