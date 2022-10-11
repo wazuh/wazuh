@@ -1,10 +1,9 @@
-
-
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import glob
+import logging
 import os
 import sys
 from os import path
@@ -58,7 +57,21 @@ def pyDaemon():
     os.chdir('/')
 
 
-def create_pid(name, pid):
+def create_pid(name: str, pid: int):
+    """Create pidfile.
+
+    Parameters
+    ----------
+    name : str
+        Process name.
+    pid : int
+        Process ID.
+
+    Raises
+    ------
+    WazuhInternalError(3002)
+        Error creating pidfile.
+    """
     filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     with open(filename, 'a') as fp:
@@ -69,7 +82,16 @@ def create_pid(name, pid):
             raise WazuhInternalError(3002, str(e))
 
 
-def delete_pid(name, pid):
+def delete_pid(name: str, pid: int):
+    """Unlink pidfile.
+
+    Parameters
+    ----------
+    name : str
+        Process name.
+    pid : int
+        Process ID.
+    """
     filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     try:
@@ -79,7 +101,18 @@ def delete_pid(name, pid):
         pass
 
 
-def delete_child_pids(name, ppid, logger):
+def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
+    """Delete all childs from a process given its PID.
+
+    Parameters
+    ----------
+    name : str
+        Process name.
+    ppid : int
+        Parent process ID.
+    logger : logging.Logger
+        Logger object.
+    """
     filenames = glob.glob(path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}*.pid'))
 
     for process in psutil.Process(ppid).children(recursive=True):

@@ -5,6 +5,7 @@
 import re
 from os import listdir, chmod, remove, path
 from pathlib import Path
+from typing import Union
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
@@ -18,22 +19,37 @@ _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
 
 
-def check_path(path):
-    """Check if path is well formed (without './' or '../')
+def check_path(path: str):
+    """Check if path is well-formed (without './' or '../').
 
-    :param path: Path to check
-    :return: Result of check the path (boolean)
+    Parameters
+    ----------
+    path : str
+        Path to check.
+
+    Raises
+    ------
+    WazuhError(1801)
+        If the path is not valid.
     """
     if './' in path or '../' in path or not _pattern_path.match(path):
         raise WazuhError(1801)
 
 
-def iterate_lists(absolute_path=common.USER_LISTS_PATH, only_names=False):
-    """Get the content of all CDB lists
+def iterate_lists(absolute_path: str = common.USER_LISTS_PATH, only_names: bool = False) -> list:
+    """Get the content of all CDB lists.
 
-    :param absolute_path: Full path of directory to get CDB lists
-    :param only_names: If this parameter is true, only the name of all lists will be showed
-    :return: List with all CDB lists
+    Parameters
+    ----------
+    absolute_path : str
+        Full path of directory to get CDB lists.
+    only_names : bool
+        If this parameter is True, only the name of all lists will be showed.
+
+    Returns
+    -------
+    list
+        List with all CDB lists.
     """
     dir_content = listdir(absolute_path)
     output = list()
@@ -59,7 +75,7 @@ def iterate_lists(absolute_path=common.USER_LISTS_PATH, only_names=False):
     return output
 
 
-def split_key_value_with_quotes(line, file_path='/CDB_LISTS_PATH'):
+def split_key_value_with_quotes(line: str, file_path: str = '/CDB_LISTS_PATH') -> tuple:
     """Return the key and value of a cdb list line when they are surrounded by quotes.
 
     Parameters
@@ -67,19 +83,17 @@ def split_key_value_with_quotes(line, file_path='/CDB_LISTS_PATH'):
     line : str
         String to split in key and value.
     file_path : str
-        Relative path of list file which contains "line"
-
-    Returns
-    -------
-    str
-        Key of the CDB list line.
-    str
-        Value of the CDB list line.
+        Relative path of list file which contains "line". Default: '/CDB_LISTS_PATH'
 
     Raises
     ------
-    WazuhError
+    WazuhError(1800)
         If the input line has a wrong format.
+
+    Returns
+    -------
+    tupe
+        Key of the CDB list line and value of the CDB list line.
     """
     first_quote = find_nth(line, '"', 1)
     second_quote = find_nth(line, '"', 2)
@@ -128,19 +142,30 @@ def split_key_value_with_quotes(line, file_path='/CDB_LISTS_PATH'):
     return key, value
 
 
-def get_list_from_file(path, raw=False):
+def get_list_from_file(path: str, raw: bool = False) -> Union[dict, str]:
     """Get CDB list from a file.
 
     Parameters
     ----------
-    path : string
+    path : str
         Full path of list file to get.
     raw : bool, optional
         Respond in raw format.
 
+    Raises
+    ------
+    WazuhError(1800)
+        Bad format in CDB list.
+    WazuhError(1802)
+        CDB list file not found.
+    WazuhError(1803)
+        Error reading list file (permissions).
+    WazuhError(1804)
+        Error reading list file (filepath).
+
     Returns
     -------
-    result : dict, str
+    dict or str
         CDB list.
     """
     # Match empty lines or lines which start with "TEMPLATE:"
@@ -179,7 +204,7 @@ def get_list_from_file(path, raw=False):
     return result
 
 
-def validate_cdb_list(content):
+def validate_cdb_list(content: str):
     """Validate a CDB list.
 
     This regex allow any line like key:value. If key or value contains ":", the whole
@@ -197,8 +222,10 @@ def validate_cdb_list(content):
 
     Raises
     -------
-    WazuhError
-        If the CDB list content is not valid or content is empty.
+    WazuhError(1800)
+        Bad format in CDB list.
+    WazuhError(1112)
+        Empty CDB list.
     """
     regex_cdb = re.compile(r'(?:^"([\w\-:]+?)"|^[^:"\s]+):(?:"([\w\-:]*?)"$|[^:\"]*$)')
 
@@ -210,7 +237,7 @@ def validate_cdb_list(content):
             raise WazuhError(1800)
 
 
-def create_list_file(full_path, content, permissions=0o660):
+def create_list_file(full_path: str, content: str, permissions: int = 0o660) -> str:
     """Create list file.
 
     Parameters
@@ -221,6 +248,11 @@ def create_list_file(full_path, content, permissions=0o660):
         Content of file to be created.
     permissions : int
         String mask in octal notation.
+
+    Raises
+    ------
+    WazuhError(1806)
+        Error trying to create CDB list file.
 
     Returns
     -------
@@ -241,7 +273,7 @@ def create_list_file(full_path, content, permissions=0o660):
     return full_path
 
 
-def delete_list(rel_path):
+def delete_list(rel_path: str):
     """Delete a Wazuh CDB list file.
 
     Parameters
@@ -258,7 +290,7 @@ def delete_list(rel_path):
         pass
 
 
-def get_filenames_paths(filenames_list, root_directory=common.USER_LISTS_PATH):
+def get_filenames_paths(filenames_list: list, root_directory: str = common.USER_LISTS_PATH) -> list:
     """Get full paths from filename list. I.e: test_filename -> {wazuh_path}/etc/lists/test_filename
 
     Parameters
@@ -266,7 +298,7 @@ def get_filenames_paths(filenames_list, root_directory=common.USER_LISTS_PATH):
     filenames_list : list
         Filenames to be searched inside root_directory.
     root_directory : str
-        Directory where to start the recursive filenames search.
+        Directory where to start the recursive filenames search. Default: common.USER_LISTS_PATH
 
     Returns
     -------

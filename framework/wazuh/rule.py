@@ -4,6 +4,7 @@
 
 from os import remove
 from os.path import exists, join
+from typing import Union
 from xml.parsers.expat import ExpatError
 
 import xmltodict
@@ -24,35 +25,71 @@ cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
-def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
-              tsc=None, mitre=None, relative_dirname=None, filename=None, level=None, offset=0,
-              limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True, search_text=None,
-              complementary_search=False, search_in_fields=None, q=''):
-    """Gets a list of rules.
+def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_dss: str = None, gpg13: str = None,
+              gdpr: str = None, hipaa: str = None, nist_800_53: str = None, tsc: str = None, mitre: str = None,
+              relative_dirname: str = None, filename: list = None, level: str = None, offset: int = 0,
+              limit: int = common.DATABASE_LIMIT, select: str = None, sort_by: dict = None, sort_ascending: bool = True,
+              search_text: str = None, complementary_search: bool = False, search_in_fields: list = None,
+              q: str = '') -> AffectedItemsWazuhResult:
+    """Get a list of rules.
 
-    :param rule_ids: IDs of rules.
-    :param status: Filters the rules by status.
-    :param group: Filters the rules by group.
-    :param pci_dss: Filters the rules by pci_dss requirement.
-    :param gpg13: Filters the rules by gpg13 requirement.
-    :param gdpr: Filters the rules by gdpr requirement.
-    :param hipaa: Filters the rules by hipaa requirement.
-    :param nist_800_53: Filters the rules by nist_800_53 requirement.
-    :param tsc: Filters the rules by tsc requirement.
-    :param mitre: Filters the rules by mitre technique ID.
-    :param relative_dirname: Filters the relative dirname.
-    :param filename: List of filenames to filter by.
-    :param level: Filters the rules by level. level=2 or level=2-5.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param select: List of selected fields to return
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :param q: Defines query to filter.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    rule_ids : list
+        Filters by rule ID.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    select : str
+        Select which fields to return (separated by comma).
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    status : str
+        Filters by rules status.
+    group : str
+        Filters by rule group.
+    level : str
+        Filters by rule level. Can be a single level (4) or an interval (2-4).
+    filename : list
+        List of filenames to filter by.
+    relative_dirname : str
+        Filters by relative dirname.
+    pci_dss : str
+        Filters by PCI_DSS requirement name.
+    gdpr : str
+        Filters by GDPR requirement.
+    gpg13 : str
+        Filters by GPG13 requirement.
+    nist_800_53 : str
+        Filters the rules by nist_800_53 requirement.
+    hipaa : str
+        Filters by HIPAA requirement.
+    tsc : str
+        Filters by TSC requirement.
+    mitre : str
+        Filters by mitre technique ID.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    search_in_fields : list
+        Fields to search in.
+
+    Raises
+    ------
+    WazuhError(1203)
+        Error in argument 'level'.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       some_msg='Some rules were not returned',
@@ -105,22 +142,45 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
 
 
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
-def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
-                    sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
-                    search_in_fields=None):
-    """Gets a list of the rule files.
+def get_rules_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
+                    limit: int = common.DATABASE_LIMIT, sort_by: dict = None, sort_ascending: bool = True,
+                    search_text: str = None, complementary_search: bool = False,
+                    search_in_fields: list = None) -> AffectedItemsWazuhResult:
+    """Get a list of the rule files.
 
-    :param status: Filters by status: enabled, disabled, all.
-    :param relative_dirname: Filters by relative dirname.
-    :param filename: List of filenames to filter by.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    status : str
+        Filters by rules status.
+    filename : list
+        List of filenames to filter by.
+    relative_dirname : str
+        Filters by relative dirname.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    search_in_fields : list
+        Fields to search in.
+
+    Raises
+    ------
+    WazuhError(1200)
+        Error reading rules from `WAZUH_HOME/etc/ossec.conf`.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(none_msg='No rule files were returned',
                                       some_msg='Some rule files were not returned',
@@ -153,18 +213,33 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
     return result
 
 
-def get_groups(offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True, search_text=None,
-               complementary_search=False, search_in_fields=None):
+def get_groups(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None, sort_ascending: bool = True,
+               search_text: str = None, complementary_search: bool = False,
+               search_in_fields: list = None) -> AffectedItemsWazuhResult:
     """Get all the groups used in the rules.
 
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    search_in_fields : list
+        Fields to search in.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     result = AffectedItemsWazuhResult(none_msg='No groups in rules were returned',
                                       some_msg='Some groups in rules were not returned',
@@ -181,26 +256,43 @@ def get_groups(offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascendi
     return result
 
 
-def get_requirement(requirement=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True,
-                    search_text=None, complementary_search=False, search_in_fields=None):
+def get_requirement(requirement: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+                    sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
+                    search_in_fields: list = None) -> AffectedItemsWazuhResult:
     """Get the requirements used in the rules
 
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :param requirement: Requirement to get
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    requirement : str
+        Requirement to get.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    search_in_fields : list
+        Fields to search in.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='All selected rules were returned')
 
     if requirement not in RULE_REQUIREMENTS:
-        result.add_failed_item(id_=requirement, error=WazuhError(1205, extra_message=requirement,
-                               extra_remediation=f'Valid ones are {RULE_REQUIREMENTS}'))
+        result.add_failed_item(id_=requirement,
+                               error=WazuhError(1205, extra_message=requirement,
+                                                extra_remediation=f'Valid ones are {RULE_REQUIREMENTS}'))
 
         return result
 
@@ -215,7 +307,7 @@ def get_requirement(requirement=None, offset=0, limit=common.DATABASE_LIMIT, sor
     return result
 
 
-def get_rule_file(filename=None, raw=False):
+def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
 
     Parameters
@@ -227,7 +319,7 @@ def get_rule_file(filename=None, raw=False):
 
     Returns
     -------
-    str or dict
+    str or AffectedItemsWazuhResult
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
@@ -248,7 +340,7 @@ def get_rule_file(filename=None, raw=False):
                 result.total_affected_items = 1
         except ExpatError as e:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"     
+                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"
                                                                         f" {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
@@ -261,7 +353,7 @@ def get_rule_file(filename=None, raw=False):
 
 
 @expose_resources(actions=['rules:update'], resources=['*:*:*'])
-def upload_rule_file(filename=None, content=None, overwrite=False):
+def upload_rule_file(filename: str = None, content: str = None, overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new rule file or update an existing one.
 
     Parameters
@@ -277,6 +369,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     Returns
     -------
     AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule'
@@ -309,7 +402,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
 
 
 @expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
-def delete_rule_file(filename=None):
+def delete_rule_file(filename: str = None) -> AffectedItemsWazuhResult:
     """Delete a rule file.
 
     Parameters
@@ -320,6 +413,7 @@ def delete_rule_file(filename=None):
     Returns
     -------
     AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
                                       none_msg='Could not delete rule'

@@ -12,6 +12,7 @@ from os.path import dirname
 from signal import signal, SIGINT
 from sys import exit, path, argv
 from time import sleep
+from typing import Union
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -38,12 +39,12 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 
-def get_script_arguments():
+def get_script_arguments() -> argparse.Namespace:
     """Get script arguments.
 
     Returns
     -------
-    ArgumentParser object
+    argparse.Namespace
         Arguments passed to the script.
     """
     parser = argparse.ArgumentParser()
@@ -65,6 +66,7 @@ def get_script_arguments():
 
 
 def list_outdated():
+    """Print outdated agents."""
     agents = wazuh.agent.get_outdated_agents()
     if agents.total_affected_items == 0:
         print("All agents are updated.")
@@ -75,7 +77,7 @@ def list_outdated():
         print("\nTotal outdated agents: {0}".format(agents.total_affected_items))
 
 
-def get_agents_versions(agents):
+def get_agents_versions(agents: list) -> dict:
     """Get the current versions of the specified agents.
 
     Parameters
@@ -101,12 +103,12 @@ def get_agents_versions(agents):
     return agents_versions
 
 
-def create_command():
+def create_command() -> dict:
     """Create a custom command based on the CLI arguments.
 
     Returns
     -------
-    Dict
+    dict
         Dictionary with upgrade command.
     """
     if not args.file and not args.execute:
@@ -119,23 +121,24 @@ def create_command():
     return f_kwargs
 
 
-def send_command(function, command, local_master=False):
+def send_command(function: callable, command: dict, local_master: bool = False) -> Union[object, None]:
     """Send the command to the specified function.
 
     If local_master is True, the request type must be local_master (upgrade_result).
 
     Parameters
     ----------
-    function : func
+    function : callable
         Upgrade function.
     command : dict
         Arguments for the specified function.
     local_master : bool
-        True for get the upgrade results, False for send upgrade command.
+        Whether to use local_master or not (distributed_master) as request_type of the DistributedAPI object.
 
     Returns
     -------
-    Distributed API request result.
+    object or None
+        Distributed API request result.
     """
     dapi = DistributedAPI(f=function, f_kwargs=command,
                           request_type='distributed_master' if not local_master else 'local_master',
@@ -144,7 +147,7 @@ def send_command(function, command, local_master=False):
     return raise_if_exc(pool.submit(run, dapi.distribute_function()).result())
 
 
-def print_result(agents_versions, failed_agents):
+def print_result(agents_versions: dict, failed_agents: dict):
     """Print the operation's result.
 
     Parameters
@@ -163,7 +166,7 @@ def print_result(agents_versions, failed_agents):
         print(f"\tAgent {agent_id} status: {error}")
 
 
-def check_status(affected_agents, result_dict, failed_agents, silent):
+def check_status(affected_agents: list, result_dict: dict, failed_agents: dict, silent: bool):
     """Check the agent's upgrade status.
 
     Parameters
@@ -175,7 +178,7 @@ def check_status(affected_agents, result_dict, failed_agents, silent):
     failed_agents : dict
         Contain the error's information.
     silent : bool
-        Do not show output if it is True.
+        Whether to show output or not.
     """
     affected_agents = set(affected_agents)
     len(affected_agents) and print('\nUpgrading...')

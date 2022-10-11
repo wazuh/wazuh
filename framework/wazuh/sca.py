@@ -88,6 +88,11 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
     filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
 
+    Raises
+    ------
+    WazuhInternalError(2007)
+        If there was an error retrieving data from Wazuh DB.
+
     Returns
     -------
     AffectedItemsWazuhResult

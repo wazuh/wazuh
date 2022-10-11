@@ -137,7 +137,7 @@ def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
         result = validate_ossec_conf()
 
         assert result == {'status': 'OK'}
-        mock_exists.assert_called_with(join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
+        mock_exists.assert_called_with(os.path.join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
 
 
 @patch("wazuh.core.manager.exists", return_value=True)
