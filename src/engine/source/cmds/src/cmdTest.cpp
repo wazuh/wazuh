@@ -65,7 +65,7 @@ void test(const std::string& kvdbPath,
 
     auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
 
-    auto hlpParsers = fileStore->get("schema.wazuh-logql-types.v0");
+    auto hlpParsers = fileStore->get({"schema.wazuh-logql-types.v0"});
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
         WAZUH_LOG_ERROR("Error while getting hlp parsers: [{}]",
@@ -90,7 +90,18 @@ void test(const std::string& kvdbPath,
     }
 
     // Delete outputs
-    auto envDefinition = fileStore->get(environment);
+    try
+    {
+        base::Name envName {environment};
+    }
+    catch (const std::exception& e)
+    {
+        WAZUH_LOG_ERROR("Exception while creating environment name: [{}]",
+                        utils::getExceptionStack(e));
+        destroy();
+        return;
+    }
+    auto envDefinition = fileStore->get({environment});
     if (std::holds_alternative<base::Error>(envDefinition))
     {
         WAZUH_LOG_ERROR("Error while getting environment definition: [{}]",
@@ -109,7 +120,7 @@ void test(const std::string& kvdbPath,
 
         std::variant<json::Json, base::Error> get(const base::Name& name) const
         {
-            if (name.m_type == "environment")
+            if (name.parts()[0] == "environment")
             {
                 return testEnvironment;
             }
@@ -125,10 +136,10 @@ void test(const std::string& kvdbPath,
 
     // TODO: Handle errors on construction
     builder::Builder _builder(_testDriver);
-    decltype(_builder.buildEnvironment(environment)) env;
+    decltype(_builder.buildEnvironment({environment})) env;
     try
     {
-        env = _builder.buildEnvironment(environment);
+        env = _builder.buildEnvironment({environment});
     }
     catch (const std::exception& e)
     {

@@ -74,7 +74,7 @@ void configureParserMappings(const std::string& config)
         }
         else
         {
-            WAZUH_LOG_ERROR("Invalid parser type [{}] for field [{}]",
+            WAZUH_LOG_DEBUG("Invalid parser type [{}] for field [{}]",
                             it->value.GetString(),
                             it->name.GetString());
         }

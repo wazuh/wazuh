@@ -5,6 +5,7 @@
 
 #include <CLI/CLI.hpp>
 
+#include <cmds/apiclnt/cmdApiCatalog.hpp>
 #include <cmds/cmdGraph.hpp>
 #include <cmds/cmdKvdb.hpp>
 #include <cmds/cmdRun.hpp>
@@ -21,6 +22,8 @@ constexpr auto SUBCOMMAND_RUN = "run";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
+constexpr auto SUBCOMMAND_API = "api";
+constexpr auto SUBCOMMAND_API_CATALOG = "catalog";
 
 // Graph file names
 constexpr auto ENV_DEF_DIR = ".";
@@ -31,7 +34,8 @@ constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 constexpr auto TRACE_ALL = "ALL";
 
 // Arguments
-std::string endpoint;
+std::string eventEndpoint;
+std::string apiEndpoint;
 std::string file_storage;
 unsigned int queue_size;
 unsigned int threads;
@@ -46,18 +50,29 @@ int log_level;
 std::string kvdb_name;
 std::string kvdb_input_file;
 std::string kvdb_input_type;
+std::string apiMethod;
+std::string apiUri;
+std::string apiCatalogFormat;
+std::string apiCatalogContent;
 
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 {
     CLI::App* run =
         app->add_subcommand(args::SUBCOMMAND_RUN, "Run the Wazuh engine module.");
 
-    // Endpoint
-    run->add_option("-e, --endpoint",
-                    args::endpoint,
+    // Endpoints
+    run->add_option("-e, --event_endpoint",
+                    args::eventEndpoint,
                     "Endpoint configuration string. Specifies the endpoint where the "
                     "engine module will be listening for incoming connections. "
-                    "PROTOCOL_STRING = <protocol>:<ip>:<port>")
+                    "PROTOCOL_STRING = <unix_socket_path>")
+        ->option_text("TEXT:PROTOCOL_STRING REQUIRED")
+        ->required();
+    run->add_option("-a, --api_endpoint",
+                    args::apiEndpoint,
+                    "Endpoint configuration string. Specifies the endpoint where the "
+                    "engine module will be listening for api calls. "
+                    "PROTOCOL_STRING = <unix_socket_path>")
         ->option_text("TEXT:PROTOCOL_STRING REQUIRED")
         ->required();
 
@@ -86,7 +101,8 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
         ->check(CLI::ExistingDirectory);
 
     // Environment
-    run->add_option("--environment", args::environment, "Environment name.")->required();
+    run->add_option("--environment", args::environment, "Environment name.")
+        ->default_val("environment.wazuh.alpha");
 
     // Log level
     run->add_option("-l, --log_level",
@@ -211,6 +227,40 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->required();
 }
 
+void configureSubCommandApi(std::shared_ptr<CLI::App> app)
+{
+    CLI::App* api =
+        app->add_subcommand(args::SUBCOMMAND_API, "Run the Wazuh API integrated client.");
+
+    // Endpoint
+    api->add_option(
+           "-a, --api_endpoint", args::apiEndpoint, "Engine api endpoint to connect.")
+        ->required();
+
+    // Method
+    api->add_option("method", args::apiMethod, "HTTP method to use.")
+        ->required()
+        ->check(CLI::IsMember({"GET", "POST", "PUT", "DELETE"}));
+
+    // Uri
+    api->add_option("uri", args::apiUri, "URI to use in the request.")->required();
+
+    api->require_subcommand();
+    CLI::App* apiCatalog =
+        api->add_subcommand(args::SUBCOMMAND_API_CATALOG, "API Catalog");
+
+    // format
+    apiCatalog
+        ->add_option(
+            "-f, --format", args::apiCatalogFormat, "Format of the catalog content.")
+        ->default_val("yaml")
+        ->check(CLI::IsMember({"json", "yaml"}));
+
+    // content
+    apiCatalog->add_option("content", args::apiCatalogContent, "Content of the catalog.")
+        ->default_val("");
+}
+
 std::shared_ptr<CLI::App> configureCliApp()
 {
     auto app = std::make_shared<CLI::App>(
@@ -222,6 +272,7 @@ std::shared_ptr<CLI::App> configureCliApp()
     configureSubcommandLogtest(app);
     configureSubcommandGraph(app);
     configureSubcommandKvdb(app);
+    configureSubCommandApi(app);
 
     return app;
 }
@@ -237,7 +288,8 @@ int main(int argc, char* argv[])
     if (app->get_subcommand(args::SUBCOMMAND_RUN)->parsed())
     {
         cmd::run(args::kvdb_path,
-                 args::endpoint,
+                 args::eventEndpoint,
+                 args::apiEndpoint,
                  args::queue_size,
                  args::threads,
                  args::file_storage,
@@ -279,6 +331,18 @@ int main(int argc, char* argv[])
                   args::kvdb_name,
                   args::kvdb_input_file,
                   cmd::stringToInputType(args::kvdb_input_type));
+    }
+    else if (app->get_subcommand(args::SUBCOMMAND_API)->parsed())
+    {
+        auto api = app->get_subcommand(args::SUBCOMMAND_API);
+        if (api->get_subcommand(args::SUBCOMMAND_API_CATALOG)->parsed())
+        {
+            cmd::apiclnt::catalog(args::apiEndpoint,
+                                  args::apiMethod,
+                                  args::apiUri,
+                                  args::apiCatalogFormat,
+                                  args::apiCatalogContent);
+        }
     }
     else
     {

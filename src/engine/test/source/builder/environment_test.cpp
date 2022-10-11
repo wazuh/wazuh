@@ -64,7 +64,7 @@ TEST_F(EnvironmentTest, OneDecoderEnvironment)
 {
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment.oneDecEnv.version"}));
+        storeRead->get(base::Name ("environment.oneDecEnv.version")));
     ASSERT_NO_THROW(Environment("environment.oneDecEnv.version", envJson, storeRead));
     auto env = Environment("environment.oneDecEnv.version", envJson, storeRead);
     ASSERT_EQ(env.name(), "environment.oneDecEnv.version");

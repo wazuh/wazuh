@@ -10,7 +10,8 @@ namespace cmd
  * @brief Run environment.
  *
  * @param kvdbPath Path to KVDB folder.
- * @param endpoint Endpoint of the server.
+ * @param eventEndpoint Endpoint of the server.
+ * @param apiEndpoint Endpoint of the API.
  * @param queueSize Size of the event ingestion queue.
  * @param threads Number of environment threads.
  * @param fileStorage Path to asset folders.
@@ -18,7 +19,8 @@ namespace cmd
  * @param logLevel Log level.
  */
 void run(const std::string& kvdbPath,
-         const std::string& endpoint,
+         const std::string& eventEndpoint,
+         const std::string& apiEndpoint,
          const int queueSize,
          const int threads,
          const std::string& fileStorage,
