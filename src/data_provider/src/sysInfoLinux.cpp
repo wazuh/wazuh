@@ -10,6 +10,7 @@
  */
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
@@ -26,6 +27,8 @@
 #include "ports/portImpl.h"
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
+
+#include "linuxInfoHelper.h"
 
 struct ProcTableDeleter
 {
@@ -122,7 +125,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["vm_size"]    = process->vm_size;
     jsProcessInfo["resident"]   = process->resident;
     jsProcessInfo["share"]      = process->share;
-    jsProcessInfo["start_time"] = process->start_time;
+    jsProcessInfo["start_time"] = Utils::timeTick2unixTime(process->start_time);
     jsProcessInfo["pgrp"]       = process->pgrp;
     jsProcessInfo["session"]    = process->session;
     jsProcessInfo["tgid"]       = process->tgid;
@@ -191,6 +194,43 @@ int SysInfo::getCpuMHz() const
     {
         retVal = std::stoi(it->second) + 1;
     }
+    else
+    {
+        int cpuFreq { 0 };
+        const auto cpusInfo { Utils::enumerateDir(WM_SYS_CPU_FREC_DIR) };
+        constexpr auto CPU_FREQ_DIRNAME_PATTERN {"cpu[0-9]+"};
+        const std::regex cpuDirectoryRegex {CPU_FREQ_DIRNAME_PATTERN};
+
+        for (const auto& cpu : cpusInfo)
+        {
+            if (std::regex_match(cpu, cpuDirectoryRegex))
+            {
+                std::fstream file{WM_SYS_CPU_FREC_DIR + cpu + "/cpufreq/cpuinfo_max_freq", std::ios_base::in};
+
+                if (file.is_open())
+                {
+                    std::string frequency;
+                    std::getline(file, frequency);
+
+                    try
+                    {
+                        cpuFreq = std::stoi(frequency);  // Frequency on KHz
+
+                        if (cpuFreq > retVal)
+                        {
+                            retVal = cpuFreq;
+                        }
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+            }
+        }
+
+        retVal /= 1000;  // Convert frequency from KHz to MHz
+    }
+
 
     return retVal;
 }
@@ -210,9 +250,14 @@ void SysInfo::getMemory(nlohmann::json& info) const
         memTotal = std::stoull(itTotal->second);
     }
 
+    const auto& itAvailable { systemInfo.find("MemAvailable") };
     const auto& itFree { systemInfo.find("MemFree") };
 
-    if (itFree != systemInfo.end())
+    if (itAvailable != systemInfo.end())
+    {
+        memFree = std::stoull(itAvailable->second);
+    }
+    else if (itFree != systemInfo.end())
     {
         memFree = std::stoull(itFree->second);
     }

@@ -17,7 +17,6 @@
 #include "../../data_provider/include/sysInfo.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
-
 #ifdef TEST_WINAGENT
 
 #define TIME_INCREMENT ((time_t)(60))
@@ -28,6 +27,11 @@ extern sysinfo_free_result_func sysinfo_free_result_ptr;
 static agent global_config = { .main_ip_update_interval = (int)TIME_INCREMENT };
 static int test_case_selector = 0;
 static int error_code_sysinfo_network = 0;
+
+int __wrap_send_msg(const char *msg, ssize_t msg_length) {
+    check_expected(msg);
+    return mock();
+}
 
 int mock_sysinfo_networks_func(cJSON **object) {
 
@@ -148,11 +152,99 @@ static void test_get_agent_ip_no_update(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
+static void test_SendMSGAction_mutex_abandoned(void **state) {
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_ABANDONED);
+
+    expect_string(__wrap__merror, formatted_msg, "Error waiting mutex (abandoned).");
+
+    int ret = SendMSG(0, "message", "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_SendMSGAction_mutex_error(void **state) {
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, -8);
+
+    expect_string(__wrap__merror, formatted_msg, "Error waiting mutex.");
+
+    int ret = SendMSG(0, "message", "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_SendMSGAction_non_escape(void **state) {
+
+    agt->buffer = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap_send_msg, msg, "1:locmsg:message");
+    will_return(__wrap_send_msg, 0);
+
+    expect_any_always(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, "message", "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_SendMSGAction_escape(void **state) {
+
+    agt->buffer = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap_send_msg, msg, "1:loc||msg|:test:message");
+    will_return(__wrap_send_msg, 0);
+
+    expect_any_always(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 0);
+    expect_string(__wrap__merror, formatted_msg, "Error releasing mutex.");
+
+    int ret = SendMSG(0, "message", "loc|msg:test", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_SendMSGAction_multi_escape(void **state) {
+
+    agt->buffer = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap_send_msg, msg, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
+    will_return(__wrap_send_msg, 0);
+
+    expect_any_always(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, "message", "a||a::::::::::::::::a||a", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_get_agent_ip_update_ip_success), cmocka_unit_test(test_get_agent_ip_sysinfo_error),
         cmocka_unit_test(test_get_agent_ip_iface_bad_name),    cmocka_unit_test(test_get_agent_ip_iface_no_elements),
         cmocka_unit_test(test_get_agent_ip_gateway_unknown),   cmocka_unit_test(test_get_agent_ip_no_update),
+        cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
+        cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
+        cmocka_unit_test(test_SendMSGAction_multi_escape),
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

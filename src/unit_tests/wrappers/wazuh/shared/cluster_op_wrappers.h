@@ -13,4 +13,6 @@
 
 int __wrap_w_is_worker(void);
 
+int __wrap_w_is_single_node(int* is_worker);
+
 #endif

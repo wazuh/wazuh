@@ -14,10 +14,13 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
+#include "../../headers/shared.h"
 
 #ifdef WIN32
 typedef uint16_t u_int16_t;
 #endif
+
+int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm);
 
 int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size);
 
@@ -48,5 +51,15 @@ int __wrap_OS_SetSendTimeout(int socket, int seconds);
 int __wrap_wnet_select(int sock, int timeout);
 
 uint32_t __wrap_wnet_order(uint32_t value);
+
+int __wrap_external_socket_connect(char *socket_path, int response_timeout);
+
+int __wrap_get_ipv4_numeric(const char *address, struct in_addr *addr);
+
+int __wrap_get_ipv6_numeric(const char *address, struct in6_addr *addr6);
+
+int __wrap_get_ipv4_string(struct in_addr addr, char *address, size_t address_size);
+
+int __wrap_get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size);
 
 #endif

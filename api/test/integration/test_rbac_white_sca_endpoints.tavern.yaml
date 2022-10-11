@@ -1,9 +1,6 @@
 ---
 test_name: GET /sca/{agent_id}
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Request sca for agent 000 (Allowed)

@@ -1,9 +1,6 @@
 ---
 test_name: PUT /logtest
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Run logtest with an invalid body (invalid key)

@@ -9,7 +9,7 @@ import os
 import signal
 import sys
 
-from api.constants import API_LOG_FILE_PATH
+from api.constants import API_LOG_PATH
 from wazuh.core import pyDaemonModule
 
 API_MAIN_PROCESS = 'wazuh-apid'
@@ -72,7 +72,7 @@ def start():
                 strict_validation=True,
                 validate_responses=False,
                 pass_context_arg_name='request',
-                options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
+                options={"middlewares": [response_postprocessing, security_middleware, request_logging,
                                          set_secure_headers]})
 
     # Maximum body size that the API can accept (bytes)
@@ -152,7 +152,7 @@ def version():
 def exit_handler(signum, frame):
     """Try to kill API child processes and remove their PID files."""
     api_pid = os.getpid()
-    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid)
+    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid, logger)
     pyDaemonModule.delete_pid(API_MAIN_PROCESS, api_pid)
 
 
@@ -181,15 +181,16 @@ if __name__ == '__main__':
     from api import alogging, configuration
     from wazuh.core import common, utils
 
-
-    def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
+    def set_logging(log_path=f'{API_LOG_PATH}.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
                 log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
                 debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
             )
             api_logger.setup_logger()
-
+        if os.path.exists(log_path):
+            os.chown(log_path, common.wazuh_uid(), common.wazuh_gid())
+            os.chmod(log_path, 0o660)
 
     if args.config_file is not None:
         configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
@@ -197,7 +198,15 @@ if __name__ == '__main__':
     security_conf = configuration.security_conf
 
     # Set up logger
-    set_logging(log_path=API_LOG_FILE_PATH, debug_mode=api_conf['logs']['level'], foreground_mode=args.foreground)
+    plain_log = 'plain' in api_conf['logs']['format']
+    json_log = 'json' in api_conf['logs']['format']
+    if plain_log:
+        set_logging(log_path=f'{API_LOG_PATH}.log', debug_mode=api_conf['logs']['level'],
+                    foreground_mode=args.foreground)
+    if json_log:
+        set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
+                    foreground_mode=args.foreground and not plain_log)
+
     logger = logging.getLogger('wazuh-api')
 
     import asyncio
@@ -208,11 +217,9 @@ if __name__ == '__main__':
     from aiohttp_cache import setup_cache
     from api import __path__ as api_path
     # noinspection PyUnresolvedReferences
-    from api import validator
     from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
-        set_secure_headers
+    from api.middlewares import security_middleware, response_postprocessing, request_logging, set_secure_headers
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
@@ -226,12 +233,7 @@ if __name__ == '__main__':
     if 'path' in api_conf['logs']:
         del api_conf['logs']['path']
         logger.warning("Log 'path' option was deprecated on v4.3.0. Default path will always be used: "
-                       f"{API_LOG_FILE_PATH}")
-
-    # Set correct permissions on api.log file
-    if os.path.exists(os.path.join(common.wazuh_path, API_LOG_FILE_PATH)):
-        os.chown(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), 0o660)
+                       f"{API_LOG_PATH}.<log_format>")
 
     # Configure https
     ssl_context = None
@@ -302,7 +304,7 @@ if __name__ == '__main__':
     if not args.foreground:
         pyDaemonModule.pyDaemon()
     else:
-        print(f"Starting API in foreground")
+        print('Starting API in foreground')
 
     # Drop privileges to wazuh
     if not args.root:
@@ -310,7 +312,7 @@ if __name__ == '__main__':
             os.setgid(common.wazuh_gid())
             os.setuid(common.wazuh_uid())
     else:
-        print(f"Starting API as root")
+        print('Starting API as root')
 
     pid = os.getpid()
     pyDaemonModule.create_pid(API_MAIN_PROCESS, pid)
@@ -326,5 +328,5 @@ if __name__ == '__main__':
         print(f'Internal error when trying to start the Wazuh API. {e}')
         sys.exit(1)
     finally:
-        pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, pid)
+        pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(API_MAIN_PROCESS, pid)

@@ -230,7 +230,7 @@ STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
     }
 
     if (file.fp = fopen(final_path, mode_obj->valuestring), file.fp) {
-        strncpy(file.path, final_path, PATH_MAX);
+        snprintf(file.path, sizeof(file.path), "%s", final_path);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
         mterror(WM_AGENT_UPGRADE_LOGTAG, FOPEN_ERROR, file_path_obj->valuestring, errno, strerror(errno));

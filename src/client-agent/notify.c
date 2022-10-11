@@ -88,7 +88,7 @@ void run_notify()
     static char tmp_labels[OS_MAXSTR - OS_SIZE_2048] = { '\0' };
     os_md5 md5sum;
     time_t curr_time;
-    static char agent_ip[IPSIZE] = { '\0' };
+    static char agent_ip[IPSIZE + 1] = { '\0' };
     static time_t last_update = 0;
     static const char no_hash_value[] = "x merged.mg\n";
 
@@ -169,7 +169,7 @@ void run_notify()
         char *tmp_agent_ip = get_agent_ip();
 
         if (tmp_agent_ip) {
-            strncpy(agent_ip, tmp_agent_ip, IPSIZE - 1);
+            strncpy(agent_ip, tmp_agent_ip, IPSIZE);
             os_free(tmp_agent_ip);
         } else {
            mdebug1("Cannot update host IP.");
@@ -182,20 +182,20 @@ void run_notify()
         snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s%s\n", CONTROL_HEADER,
                     getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s%s\n", CONTROL_HEADER,
                     getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
         }
     }
     else {
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s\n", CONTROL_HEADER,
                     getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s\n", CONTROL_HEADER,
                     getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
         }
     }

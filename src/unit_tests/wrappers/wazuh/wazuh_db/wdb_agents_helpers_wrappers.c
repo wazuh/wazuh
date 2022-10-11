@@ -56,12 +56,6 @@ cJSON* __wrap_wdb_insert_vuln_cves(int id,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_clear_vuln_cves(int id,
-                               __attribute__((unused)) int *sock) {
-    check_expected(id);
-    return mock_type(int);
-}
-
 cJSON* __wrap_wdb_remove_vuln_cves_by_status(int id,
                                              const char *status,
                                              __attribute__((unused)) int *sock) {

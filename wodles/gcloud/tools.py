@@ -16,18 +16,15 @@ from logging.handlers import TimedRotatingFileHandler
 from pytz import UTC
 
 
-logger_name = 'gcloud_wodle'
+logger_name = ':gcloud_wodle:'
 logger = logging.getLogger(logger_name)
-log_levels = {0: logging.NOTSET,
-              1: logging.DEBUG,
-              2: logging.INFO,
-              3: logging.WARNING,
-              4: logging.ERROR,
-              5: logging.CRITICAL,
-              }
+log_levels = {0: logging.WARNING,
+              1: logging.INFO,
+              2: logging.DEBUG}
 logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 min_num_threads = 1
 min_num_messages = 1
+valid_types = ['pubsub', 'access_logs']
 
 
 def get_script_arguments():
@@ -43,7 +40,7 @@ def get_script_arguments():
                                      formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-T', '--integration_type', dest='integration_type',
-                        help='Supported integration types: pubsub, access_logs', required=True)
+                        help=f'Supported integration types: {*valid_types,}', required=True)
 
     parser.add_argument('-p', '--project', dest='project',
                         help='Project ID')
@@ -58,9 +55,9 @@ def get_script_arguments():
                         help='Number of maximum messages pulled in each iteration', default=100)
 
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
-                        help='Log level', required=False, default=3)
+                        help='Log level', required=False, default=0)
 
-    parser.add_argument('-b', '--bucket_name', dest='bucket_name',
+    parser.add_argument('-b', '--bucket_name', dest='bucket_name', type=str,
                         help='The name of the bucket to read the logs from')
 
     parser.add_argument('-P', '--prefix', dest='prefix', help='The relative path to the logs', default='')
@@ -74,11 +71,14 @@ def get_script_arguments():
 
     parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
                         help='Number of threads', required=False, default=min_num_threads)
+    
+    parser.add_argument('--reparse', action='store_true', dest='reparse', 
+                        help='Parse the log, even if its been parsed before', default=False)
 
     return parser.parse_args()
 
 
-def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
+def get_stdout_logger(name: str, level: int = 0) -> logging.Logger:
     """Create a logger which returns the messages by stdout.
 
     Parameters

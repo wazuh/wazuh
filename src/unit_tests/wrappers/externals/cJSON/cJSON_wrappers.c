@@ -13,7 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {
     function_called();
@@ -98,6 +97,10 @@ char* WSTD_CALL __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON *
 }
 
 cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
+    return mock_type(cJSON_bool);
+}
+
+cJSON_bool __wrap_cJSON_IsString(const cJSON * const item) {
     return mock_type(cJSON_bool);
 }
 

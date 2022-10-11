@@ -1,9 +1,6 @@
 ---
 test_name: GET /syscheck/000
 
-marks:
-  - base_tests
-
 stages:
 
     # GET /syscheck/000
@@ -401,6 +398,19 @@ stages:
         distinct: tr
     response:
       status_code: 400
+
+  # GET /syscheck/012
+  - name: Try to get 012 agent's syscheck data (never connected)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/012"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 2007
 
 ---
 # Another GET /syscheck/{agent_id} test to parametrize values for sort and select parameters

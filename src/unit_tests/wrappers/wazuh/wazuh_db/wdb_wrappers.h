@@ -47,7 +47,7 @@ int __wrap_wdb_syscheck_save2(wdb_t *wdb, const char *payload);
 
 cJSON * __wrap_wdb_exec_stmt(sqlite3_stmt *stmt);
 
-cJSON * __wrap_wdb_exec_stmt_sized(sqlite3_stmt *stmt, size_t max_size, int* status);
+cJSON * __wrap_wdb_exec_stmt_sized(sqlite3_stmt *stmt, size_t max_size, int* status, bool column_mode);
 
 int __wrap_wdbc_parse_result(char *result, char **payload);
 
@@ -78,5 +78,17 @@ void __wrap_wdb_pool_append(wdb_t * wdb);
 sqlite3_stmt* __wrap_wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
 int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt);
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(wdb_t * wdb, char const *query);
+
+cJSON *__wrap_wdb_get_internal_config();
+
+cJSON *__wrap_wdb_get_config();
+
+int __wrap_wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
+
+int __wrap_wdb_commit2(wdb_t * wdb);
+
+void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb);
 
 #endif

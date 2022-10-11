@@ -4,7 +4,6 @@
 
 from json import JSONDecodeError
 from logging import getLogger
-from time import time
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPException
@@ -15,6 +14,7 @@ from secure import SecureHeaders
 from api.configuration import api_conf
 from api.util import raise_if_exc
 from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
+from wazuh.core.utils import get_utc_now
 
 # API secure headers
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
@@ -24,13 +24,6 @@ logger = getLogger('wazuh-api')
 
 def _cleanup_detail_field(detail):
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
-
-
-@web.middleware
-async def set_user_name(request, handler):
-    if 'token_info' in request:
-        request['user'] = request['token_info']['sub']
-    return await handler(request)
 
 
 @web.middleware
@@ -50,7 +43,7 @@ async def unlock_ip(request, block_time):
     """This function blocks/unblocks the IPs that are requesting an API token"""
     global ip_block, ip_stats
     try:
-        if time() - block_time >= ip_stats[request.remote]['timestamp']:
+        if get_utc_now().timestamp() - block_time >= ip_stats[request.remote]['timestamp']:
             del ip_stats[request.remote]
             ip_block.remove(request.remote)
     except (KeyError, ValueError):
@@ -69,7 +62,7 @@ async def prevent_bruteforce_attack(request, attempts=5):
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
-            ip_stats[request.remote]['timestamp'] = time()
+            ip_stats[request.remote]['timestamp'] = get_utc_now().timestamp()
         else:
             ip_stats[request.remote]['attempts'] += 1
 
@@ -95,13 +88,13 @@ async def prevent_denial_of_service(request, max_requests=300):
     """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
     global current_time, request_counter
     if not current_time:
-        current_time = time()
+        current_time = get_utc_now().timestamp()
 
-    if time() - 60 <= current_time:
+    if get_utc_now().timestamp() - 60 <= current_time:
         request_counter += 1
     else:
         request_counter = 0
-        current_time = time()
+        current_time = get_utc_now().timestamp()
 
     if request_counter > max_requests:
         logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
@@ -152,14 +145,17 @@ async def response_postprocessing(request, handler):
                                     ex.reason if ex.reason else '',
                                     type=ex.reason if ex.reason else '',
                                     detail=ex.text if ex.text else '')
-    except (OAuthProblem, Unauthorized):
+    except (OAuthProblem, Unauthorized) as auth_exception:
         if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
                 request.method in {'GET', 'POST'}:
             await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
             problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
         else:
-            problem = connexion_problem(401, "Unauthorized", type="about:blank",
-                                        detail="No authorization token provided")
+            if isinstance(auth_exception, OAuthProblem):
+                problem = connexion_problem(401, "Unauthorized", type="about:blank",
+                                            detail="No authorization token provided")
+            else:
+                problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid token")
     finally:
         problem and remove_unwanted_fields()
 

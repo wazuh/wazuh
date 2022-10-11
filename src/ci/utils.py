@@ -321,7 +321,7 @@ def runCppCheck(moduleName):
     printHeader(moduleName, 'cppcheck')
 
     currentDir = currentDirPath(moduleName)
-    cppcheckCommand = f'cppcheck --force --std=c++14 --quiet --suppressions-list={currentDir}/cppcheckSuppress.txt {currentDir}'
+    cppcheckCommand = f'cppcheck --force --std=c++14 --quiet {currentDir}'
 
     out = subprocess.run(cppcheckCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
@@ -528,12 +528,12 @@ def runScanBuild(targetName):
         makeDeps(targetName, True)
         makeTarget("winagent", False, True)
         cleanInternals()
-        scanBuildCommand = 'scan-build-10 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc \
+        scanBuildCommand = 'scan-build-12 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc \
                             --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 \
                             --force-analyze-debug-code make TARGET=winagent DEBUG=1 -j4'
     else:
         makeDeps(targetName, False)
-        scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code make TARGET=' + targetName + ' DEBUG=1 -j4'
+        scanBuildCommand = 'scan-build-12 --status-bugs --force-analyze-debug-code --exclude external/ make TARGET=' + targetName + ' DEBUG=1 -j4'
 
     out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 

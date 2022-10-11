@@ -38,6 +38,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND analysisd_names "test_analysisd_syscheck")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND analysisd_names "test_cleanevent")
+list(APPEND analysisd_flags "-Wl,--wrap,_merror")
+
 list(APPEND analysisd_names "test_dbsync")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                          -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
@@ -47,6 +50,9 @@ list(APPEND analysisd_names "test_exec")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,Eventinfo_to_jsonstr \
                              -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML -Wl,--wrap,StartMQ \
                              -Wl,--wrap,wdb_get_agents_by_connection_status -Wl,--wrap,labels_find -Wl,--wrap,labels_get -Wl,--wrap,labels_free \
+                             -Wl,--wrap,OS_IPFoundList \
+                             -Wl,--wrap,OSMatch_Execute \
+                             -Wl,--wrap,OSRegex_Compile -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSRegex_Execute \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_log")
@@ -123,7 +129,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
 
 LIST(APPEND analysisd_names "test_rule_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules \
-                            -Wl,--wrap,_os_analysisd_add_logmsg")
+                            -Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,OS_IsValidIP")
 
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
