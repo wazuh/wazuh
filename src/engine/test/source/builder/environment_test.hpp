@@ -283,29 +283,29 @@ struct FakeStoreRead : public store::IStoreRead
 {
     std::variant<json::Json, base::Error> get(const base::Name& name) const override
     {
-        if (name.m_type == "decoder")
+        if (name.parts()[0] == "decoder")
         {
             return json::Json {decoders[name.fullName()]};
         }
-        else if (name.m_type == "rule")
+        else if (name.parts()[0] == "rule")
         {
             return json::Json {rules[name.fullName()]};
         }
-        else if (name.m_type == "filter")
+        else if (name.parts()[0] == "filter")
         {
             return json::Json {filters[name.fullName()]};
         }
-        else if (name.m_type == "output")
+        else if (name.parts()[0] == "output")
         {
             return json::Json {outputs[name.fullName()]};
         }
-        else if (name.m_type == "environment")
+        else if (name.parts()[0] == "environment")
         {
-            return json::Json {environments[name.m_name]};
+            return json::Json {environments[name.parts()[1]]};
         }
         else
         {
-            throw std::runtime_error("Unknown asset name.m_type: " + name.m_type);
+            throw std::runtime_error("Unknown asset name.parts()[0]: " + name.parts()[0]);
         }
     }
 };

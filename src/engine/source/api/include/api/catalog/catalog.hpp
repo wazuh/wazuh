@@ -12,7 +12,7 @@
 #include <name.hpp>
 #include <store/istore.hpp>
 
-namespace catalog
+namespace api::catalog
 {
 
 /**
@@ -123,22 +123,61 @@ constexpr auto typeToString(Type type)
  * @param type String representation of the type
  * @return const auto Type
  */
-static const auto stringToType(const std::string& type)
+constexpr auto stringToType(const char* type)
 {
-    if (type == "decoder")
+    if (type == typeToString(Type::DECODER))
         return Type::DECODER;
-    if (type == "rule")
+    else if (type == typeToString(Type::RULE))
         return Type::RULE;
-    if (type == "output")
+    else if (type == typeToString(Type::OUTPUT))
         return Type::OUTPUT;
-    if (type == "filter")
+    else if (type == typeToString(Type::FILTER))
         return Type::FILTER;
-    if (type == "schema")
+    else if (type == typeToString(Type::SCHEMA))
         return Type::SCHEMA;
-    if (type == "environment")
+    else if (type == typeToString(Type::ENVIRONMENT))
         return Type::ENVIRONMENT;
-    return Type::ERROR_TYPE;
+    else
+        return Type::ERROR_TYPE;
 }
+
+class CatalogName : public base::Name
+{
+public:
+    constexpr static auto MAX_PARTS = 3;
+
+    CatalogName() = default;
+
+    CatalogName(std::string type, std::string name, std::string version)
+        : base::Name({type, name, version})
+    {
+    }
+
+    CatalogName(const std::string& name)
+        : base::Name{name}
+    {
+    }
+
+    CatalogName(const char* name)
+        : base::Name{name}
+    {
+    }
+
+    std::string type() const
+    {
+        return parts()[0];
+    }
+
+    std::string name() const
+    {
+        return parts()[1];
+    }
+
+    std::string version() const
+    {
+        return parts()[2];
+    }
+};
 
 /**
  * @brief Public interface to handle the manipulation of the Assets, Environments and
@@ -187,7 +226,7 @@ public:
      * @return std::variant<std::string, base::Error> Asset in the requested format
      * string, or error
      */
-    std::variant<std::string, base::Error> getAsset(const base::Name& name,
+    std::variant<std::string, base::Error> getAsset(const CatalogName& name,
                                                     Format format) const;
 
     /**
@@ -199,7 +238,7 @@ public:
      * @return std::optional<base::Error> Error if the Asset could not be added
      */
     std::optional<base::Error>
-    addAsset(const base::Name& name, const std::string& content, Format format);
+    addAsset(const CatalogName& name, const std::string& content, Format format);
 
     /**
      * @brief Delete an Asset from the catalog
@@ -207,7 +246,7 @@ public:
      * @param name Name of the Asset
      * @return std::optional<base::Error> Error if the Asset could not be deleted
      */
-    std::optional<base::Error> delAsset(const base::Name& name);
+    std::optional<base::Error> delAsset(const CatalogName& name);
 
     /**
      * @brief Validate an Environment
@@ -226,5 +265,5 @@ public:
     std::optional<base::Error> validateAsset(const json::Json& asset) const;
 };
 
-} // namespace catalog
+} // namespace api::catalog
 #endif // _CATALOG_HPP
