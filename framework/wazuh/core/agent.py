@@ -1385,6 +1385,45 @@ def get_rbac_filters(system_resources: set = None, permitted_resources: list = N
     return {'filters': filters, 'rbac_negate': negate}
 
 
+def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, **kwargs: dict) -> list:
+    """Recursive function used to create the agents upgrade tasks.
+
+    If a task manager communication error is in the response (error with code 4), the chunk size used is split in half.
+
+    Parameters
+    ----------
+    eligible_agents : list
+        List of eligible agents.
+    chunk_size : int
+        Number of agents to be sent to the upgrade socket at the same time.
+    command : str
+        Upgrade command. Values: 'upgrade', 'upgrade_custom', 'upgrade_result'.
+    **kwargs : dict
+        Upgrade procedure extra parameters.
+
+    Returns
+    -------
+    list
+        Upgrade tasks results.
+    """
+    result = list()
+    agents_chunks = [eligible_agents[x:x + chunk_size] for x in range(0, len(eligible_agents), chunk_size)]
+    for chunk in agents_chunks:
+        response = core_upgrade_agents(command=command, agents_chunk=chunk, wpk_repo=kwargs.get('wpk_repo'),
+                                       version=kwargs.get('version'), force=kwargs.get('force'),
+                                       use_http=kwargs.get('use_http'), file_path=kwargs.get('file_path'),
+                                       installer=kwargs.get('installer'), get_result=kwargs.get('get_result'))
+
+        # In case of task manager communication error, try to create the upgrade tasks again with a shorter chunk size
+        # If the chunk size used is 1, return the response with the task manager communication error
+        if any(item['error'] == 4 for item in response['data']) and chunk_size != 1:
+            return create_upgrade_tasks(eligible_agents, chunk_size // 2, command, **kwargs)
+
+        result.append(response)
+
+    return result
+
+
 def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk_repo: str = None, version: str = None,
                         force: bool = False, use_http: bool = False, file_path: str = None, installer: str = None,
                         get_result: bool = False) -> dict:

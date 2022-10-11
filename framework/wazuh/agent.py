@@ -10,7 +10,7 @@ from typing import Union
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
-    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, send_restart_command
+    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -1151,17 +1151,12 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
 
-        agents_result_chunks = [eligible_agents[x:x + UPGRADE_CHUNK_SIZE] for x in
-                                range(0, len(eligible_agents), UPGRADE_CHUNK_SIZE)]
+        tasks_results = create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=UPGRADE_CHUNK_SIZE,
+                                             command='upgrade' if not installer or file_path else 'upgrade_custom',
+                                             wpk_repo=wpk_repo, version=version, force=force, use_http=use_http,
+                                             file_path=file_path, installer=installer)
 
-        agent_results = list()
-        for agents_chunk in agents_result_chunks:
-            agent_results.append(
-                core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
-                                    agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force,
-                                    use_http=use_http, file_path=file_path, installer=installer))
-
-        for agent_result_chunk in agent_results:
+        for agent_result_chunk in tasks_results:
             for agent_result in agent_result_chunk['data']:
                 socket_error = agent_result['error']
                 # Success, return agent and task IDs
@@ -1261,12 +1256,8 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
 
-        agents_result_chunks = [eligible_agents[x:x + UPGRADE_RESULT_CHUNK_SIZE] for x in
-                                range(0, len(eligible_agents), UPGRADE_RESULT_CHUNK_SIZE)]
-
-        task_results = list()
-        for agents_chunk in agents_result_chunks:
-            task_results.append(core_upgrade_agents(agents_chunk=agents_chunk, get_result=True))
+        task_results = create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=UPGRADE_RESULT_CHUNK_SIZE,
+                                            command='upgrade_result', get_result=True)
 
         for task_result_chunk in task_results:
             for task_result in task_result_chunk['data']:
