@@ -524,7 +524,7 @@ checks:
     title: "Ensure permissions on bootloader config are not overridden."
     description: "The permissions on /boot/grub/grub.cfg are changed to 444 when gub.cfg is updated by the update-grub command."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
-    remediation: "Run the following command to update chmod 444 to chmod 400 in /usr/sbin/grub-mkconfig: # sed -ri 's/chmod\\s+[0-7][0-7][0-7]\\s+\\$\\{grub_cfg\\}\\.new/chmod 400 ${grub_cfg}.new/' /usr/sbin/grub-mkconfig Run the following command to remove check on password not being set to before running chmod command: # sed -ri 's/ && ! grep \"\\^password\" \\$\\{grub_cfg\\}.new >\/dev\/null//' /usr/sbin/grub-mkconfig."
+    remediation: "Run the following command to update chmod 444 to chmod 400 in /usr/sbin/grub- mkconfig: # sed -ri 's/chmod\\s+[0-7][0-7][0-7]\\s+\\$\\{grub_cfg\\}\\.new/chmod 400 ${grub_cfg}.new/' /usr/sbin/grub-mkconfig Run the following command to remove check on password not being set to before running chmod command: # sed -ri 's/ && ! grep \"\\^password\" \\$\\{grub_cfg\\}.new >\\/dev\\/null//' /usr/sbin/grub-mkconfig."
     compliance:
       - cis: ["1.4.1"]
       - cis_csc_v7: ["14.6"]
@@ -533,61 +533,13 @@ checks:
       - 'f:/usr/sbin/grub-mkconfig -> r:if [ "x${grub_cfg}" != "x" ]; then'
       - "f:/usr/sbin/grub-mkconfig -> r:chmod 400 ${grub_cfg}.new && r:true"
 
-  - id: 19025
-    title: "Ensure sudo is installed."
-    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
-    rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
-    remediation: "Install sudo using the following command. # apt install sudo OR # apt install sudo-ldap"
-    compliance:
-      - cis: ["5.2.1"]
-      - cis_csc_v7: ["4.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    references:
-      - http://www.sudo.ws/
-    condition: any
-    rules:
-      - "c:dpkg -s sudo -> r:install ok installed"
-      - "c:dpkg -s sudo-ldap -> r:install ok installed"
-
-  - id: 19026
-    title: "Ensure sudo commands use pty."
-    description: "sudo can be configured to run only froma pseudo-pty"
-    rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
-    remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
-    compliance:
-      - cis: ["5.2.2"]
-      - cis_csc_v7: ["4.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: any
-    rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
-
-  - id: 19027
-    title: "Ensure sudo log file exists."
-    description: "sudo can use a custom log file"
-    rationale: "A sudo log file simplifies auditing of sudo commands"
-    remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
-    compliance:
-      - cis: ["5.2.3"]
-      - cis_csc_v7: ["6.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: any
-    rules:
-      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
-
-  - id: 19030
+  # 1.4.2 Ensure bootloader password is set (Automated)
+  - id: 19029
     title: "Ensure bootloader password is set."
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
-    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
-    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub-mkpasswd-pbkdf2     Enter password: <password>      Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF     set superusers="<username>"   password_pbkdf2 <username> <encrypted-password>      EOF     The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS=  Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted" Run the following command to update the grub2 configuration: # update-grub'
+    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
+    impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information: https://help.ubuntu.com/community/Grub2/Passwords'
+    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF. The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted". Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["1.4.2"]
       - cis_csc_v7: ["5.1"]
@@ -599,11 +551,12 @@ checks:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password'
 
-  - id: 19031
+  # 1.4.3 Ensure permissions on bootloader config are configured (Automated)
+  - id: 19030
     title: "Ensure permissions on bootloader config are configured."
-    description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options. The grub configuration is usually grub.cfg stored in /boot/grub."
+    description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
-    remediation: "Run the following commands to set permissions on your grub configuration: chown root:root /boot/grub/grub.cfg, chmod og-rwx /boot/grub/grub.cfg"
+    remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg."
     compliance:
       - cis: ["1.4.3"]
       - cis_csc_v7: ["5.1"]
@@ -612,9 +565,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  - id: 19032
+  # 1.4.4 Ensure authentication required for single user mode (Automated)
+  - id: 19031
     title: "Ensure authentication required for single user mode."
     description: "Single user mode is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
     rationale: "Requiring authentication in single user mode prevents an unauthorized user from rebooting the system into single user to gain root privileges without credentials."
@@ -629,11 +583,12 @@ checks:
     rules:
       - "f:/etc/shadow -> r:^root:*:|^root:!:"
 
-  # 1.6 Additional Process Hardening
+  # 1.5 Additional Process Hardening
 
-  - id: 19033
+  # 1.5.1 Ensure XD/NX support is enabled (Manual)
+  - id: 19032
     title: "Ensure XD/NX support is enabled."
-    description: "Recent processors in the x86 family support the ability to prevent code execution on a per memory page basis. Generically and on AMD processors, this ability is called No Execute (NX), while on Intel processors it is called Execute Disable (XD). This ability can help prevent exploitation of buffer overflow vulnerabilities and should be activated whenever possible. Extra steps must be taken to ensure that this protection is enabled, particularly on 32-bit x86 systems. Other processors, such as Itanium and POWER, have included such support since inception and the standard kernel for those platforms supports the feature."
+    description: "Recent processors in the x86 family support the ability to prevent code execution on a per memory page basis. Generically and on AMD processors, this ability is called No Execute (NX), while on Intel processors it is called Execute Disable (XD). This ability can help prevent exploitation of buffer overflow vulnerabilities and should be activated whenever possible. Extra steps must be taken to ensure that this protection is enabled, particularly on 32-bit x86 systems. Other processors, such as Itanium and POWER, have included such support since inception and the standard kernel for those platforms supports the feature. Note: Ensure your system supports the XD or NX bit and has PAE support before implementing this recommendation as this may prevent it from booting if these are not supported by your hardware."
     rationale: "Enabling any feature that can protect against buffer overflow attacks enhances the security of the system."
     remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios."
     compliance:
@@ -646,53 +601,66 @@ checks:
     rules:
       - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:NX \(Execute Disable\) protection: active'
 
-  - id: 19034
+  # 1.5.2 Ensure address space layout randomization (ASLR) is enabled (Automated)
+  - id: 19033
     title: "Ensure address space layout randomization (ASLR) is enabled."
     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
+    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file ending in .conf: kernel.randomize_va_space = 2 Run the following script to comment out entries that override the default setting of kernel.randomize_va_space: #!/usr/bin/bash for file in /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /run/sysctl.d/*.conf; do if [ -f "$file" ]; then grep -Esq "^\s*kernel\.randomize_va_space\s*=\s*([0-1]|[3-9]|[1-9][0- 9]+)" "$file" && sed -ri ''s/^\s*kernel\.randomize_va_space\s*=\s*([0-1]|[3- 9]|[1-9][0-9]+)/# &/gi'' "$file" fi done Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2'
     compliance:
       - cis: ["1.5.2"]
       - cis_csc_v7: ["8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    references:
+      - http://manpages.ubuntu.com/manpages/focal/man5/sysctl.d.5.html
+    condition: any
     rules:
-      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:\s*\t*2$'
+      - 'd:/usr/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'd:/usr/local/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'd:/run/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2'
 
-  - id: 19035
-    title: "Ensure prelink is disabled."
+  # 1.5.3 Ensure prelink is not installed (Automated)
+  - id: 19034
+    title: "Ensure prelink is not installed."
     description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
-    remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink"
+    remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink."
     compliance:
       - cis: ["1.5.3"]
       - cis_csc_v7: ["14.9"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - "c:dpkg -s prelink -> r:install ok installed"
+      - "c:dpkg -s prelink -> r:package 'prelink' is not installed"
 
-  - id: 19036
+  # 1.5.4 Ensure core dumps are restricted (Automated)
+  - id: 19035
     title: "Ensure core dumps are restricted."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0"
+    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
     compliance:
       - cis: ["1.5.4"]
-      - cis_csc_v7: ["13"]
+      - cis_csc_v7: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sysctl fs.suid_dumpable -> r:=\s*\t*0$'
-      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> !r:^# && r:=\s*\t*0$'
-      - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
+      - "c:sysctl fs.suid_dumpable -> r:=^fs.suid_dumpable = 0"
+      - 'd:/etc/sysctl.d -> r:\. -> r:^\s*fs.suid_dumpable = 0'
+      - 'f:/etc/sysctl.conf -> r:^\s*fs.suid_dumpable = 0'
+      - 'f:/etc/security/limits.conf -> !r:^\s*# && r:hard\s+core\s+0'
+      - 'd:/etc/security/limits.d -> r:\. -> !r:^\s*# && r:hard\s+core\s+0'
+      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
+
+  ########### WIP
 
   # 1.6 Mandatory Access Control
 
@@ -2650,6 +2618,56 @@ checks:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
       - 'c:stat /etc/at.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+
+  - id: 19025
+    title: "Ensure sudo is installed."
+    description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
+    rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
+    remediation: "Install sudo using the following command. # apt install sudo OR # apt install sudo-ldap"
+    compliance:
+      - cis: ["5.2.1"]
+      - cis_csc_v7: ["4.3"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - http://www.sudo.ws/
+    condition: any
+    rules:
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
+
+  - id: 19026
+    title: "Ensure sudo commands use pty."
+    description: "sudo can be configured to run only froma pseudo-pty"
+    rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
+    remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
+    compliance:
+      - cis: ["5.2.2"]
+      - cis_csc_v7: ["4.3"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
+
+  - id: 19027
+    title: "Ensure sudo log file exists."
+    description: "sudo can use a custom log file"
+    rationale: "A sudo log file simplifies auditing of sudo commands"
+    remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
+    compliance:
+      - cis: ["5.2.3"]
+      - cis_csc_v7: ["6.3"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: any
+    rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   ######################################################
   # 5.3 SSH Server Configuration
