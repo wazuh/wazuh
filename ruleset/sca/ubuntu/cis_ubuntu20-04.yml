@@ -508,11 +508,11 @@ checks:
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
-    condition: all
+    condition: any
     rules:
-      - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:^\s*\.+'
-      - 'c: sh -c "grep -Ers ''^([^#]+\s+)?(\/usr\/s?bin\/|^\s*)aide(\.wrapper)?\s(-- check|\$AIDEARGS)\b'' /etc/cron.* /etc/crontab /var/spool/cron/" -> r:^\s*\.+'
-      - "c:crontab -u root -l -> r:aide"
+      - 'd:/var/spool/cron -> r:\. -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
+      - 'd:/etc -> r:cron.* -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
+      - 'f:/etc/crontab -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
 
   - id: 19025
     title: "Ensure sudo is installed."
