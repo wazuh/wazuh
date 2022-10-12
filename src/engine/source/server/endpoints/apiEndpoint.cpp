@@ -32,14 +32,13 @@ using uvw::PipeHandle;
 using uvw::TimerEvent;
 using uvw::TimerHandle;
 
-extern std::shared_ptr<api::Registry> g_registry;
 
 namespace
 {
+constexpr uint32_t CONNECTION_TIMEOUT_MSEC = 5000; // Stream
 
 auto addSecureHeader(std::string_view data)
 {
-
     auto buffer = std::unique_ptr<char[]> {new char[data.size() + sizeof(uint32_t)]};
     auto size {static_cast<uint32_t>(data.size())};
     std::memcpy(buffer.get(), &size, sizeof(uint32_t));
@@ -97,7 +96,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         if (wrequest.isValid())
                         {
                             wresponse =
-                                g_registry->getCallback(wrequest.getCommand().value())(
+                                m_registry->getCallback(wrequest.getCommand().value())(
                                     wrequest.getParameters().value());
                         }
                         else
@@ -156,13 +155,12 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
     client->read();
 }
 
-APIEndpoint::APIEndpoint(const std::string& config, ServerOutput& eventBuffer)
-    : BaseEndpoint {config, eventBuffer}
+APIEndpoint::APIEndpoint(const std::string &config,  std::shared_ptr<api::Registry> registry)
+    : BaseEndpoint {config}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<PipeHandle>()}
+    , m_registry {registry}
 {
-    const auto pos {config.find(":")};
-    m_path = config.substr(0, pos);
 
     m_handle->on<ErrorEvent>(
         [](const ErrorEvent& event, PipeHandle& handle)
@@ -197,23 +195,42 @@ void APIEndpoint::configure()
 
 void APIEndpoint::run()
 {
+    // Check if the endpoint is already running
+    if (m_handle->active())
+    {
+        WAZUH_LOG_INFO("API endpoint already running.");
+        return;
+    } // else
     m_loop->run<Loop::Mode::DEFAULT>();
 }
 
 void APIEndpoint::close()
 {
-    m_loop->stop(); /// Stops the loop
-    m_loop->walk([](uvw::BaseHandle& handle)
-                 { handle.close(); }); /// Triggers every handle's close callback
-    m_loop->run(); /// Runs the loop again, so every handle is able to receive
-                   /// its close callback
-    m_loop->clear();
-    m_loop->close();
+    if (m_loop->alive())
+    {
+        m_loop->stop(); /// Stops the loop
+        m_loop->walk([](uvw::BaseHandle& handle)
+                     { handle.close(); }); /// Triggers every handle's close callback
+        m_loop->run(); /// Runs the loop again, so every handle is able to receive
+                       /// its close callback
+        m_loop->clear();
+        m_loop->close();
+        WAZUH_LOG_INFO("Closed loop.");
+    }
+    else
+    {
+        WAZUH_LOG_INFO("Loop is already closed.");
+    }
 }
 
 APIEndpoint::~APIEndpoint()
 {
     close();
 };
+
+std::shared_ptr<api::Registry> APIEndpoint::getRegistry() const
+{
+    return m_registry;
+}
 
 } // namespace engineserver::endpoints
