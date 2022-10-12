@@ -588,42 +588,40 @@ checks:
     condition: all
     rules:
       - 'f:/etc/shadow -> r:^root:*:|^root:!:'
-    
+
+  # 1.5 Additional Process Hardening
+  # 1.5.1 Ensure address space layout randomization (ASLR) is enabled (Automated) - Not implemented
+  # 1.5.2 Ensure prelink is not installed (Automated)
   - id: 28534
     title: "Ensure prelink is not installed"
     description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
-    impact: ""
     remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink"
-    references: ""
     compliance:
       - cis: ["1.5.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.9"]
+      - cis_csc_v8: ["3.14"]
+      - mitre_techniques: ["T1055","T1055.009","T1065","T1065.001"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_mitigations: ["M1050"]
     condition: all
     rules:
-      - ''    
-    
+      - "not c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' prelink -> r:prelink\s+unknown\s+ok\s+not-installed\s+not-installed"
+
+  #1.5.3 Ensure Automatic Error Reporting is not enabled (Automated)
   - id: 28535
     title: "Ensure Automatic Error Reporting is not enabled"
     description: "The Apport Error Reporting Service automatically generates crash reports for debugging"
     rationale: "Apport collects potentially sensitive data, such as core dumps, stack traces, and log files. They can contain passwords, credit card numbers, serial numbers, and other private material."
-    impact: ""
     remediation: "Edit /etc/default/apport and add or edit the enabled parameter to equal 0: enabled=0 Run the following commands to stop and disable the apport service # systemctl stop apport.service # systemctl --now disable apport.service -- OR -Run the following command to remove the apport package: # apt purge apport Default Value: enabled=1"
-    references: ""
     compliance:
       - cis: ["1.5.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.2"]
+      - cis_csc_v8: ["4.8"]
     condition: all
     rules:
-      - ''    
+      - "c:dpkg-query -s apport > /dev/null 2>&1 && grep -Psi -- '^\h*enabled\h*=\h*[^0]\b' /etc/default/apport"
+      - "not c:systemctl is-active apport.service -> r:active"
     
   - id: 28536
     title: "Ensure core dumps are restricted"
