@@ -1,4 +1,4 @@
-#include <protocolHandler.hpp>
+#include <server/protocolHandler.hpp>
 
 #include <gtest/gtest.h>
 #include <logging/logging.hpp>
