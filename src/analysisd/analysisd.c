@@ -1062,6 +1062,11 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     while (1) {
         sleep(1);
+
+        if (limit_reached(NULL)) {
+            w_inc_eps_seconds_over_limit();
+        }
+
         update_limits();
     }
 }
@@ -1386,7 +1391,10 @@ void * ad_input_main(void * args) {
                         } else {
                             mdebug2("Queues are full and no EPS credits, dropping events.");
                         }
+                        w_inc_eps_events_dropped();
                     }
+                } else {
+                    w_inc_eps_events_dropped();
                 }
             } else {
                 if (reported_eps_drop) {

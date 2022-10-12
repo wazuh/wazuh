@@ -149,7 +149,7 @@ list(APPEND analysisd_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
-                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror")
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror -Wl,--wrap,limit_reached")
 
 list(APPEND analysisd_names "test_asyscom")
 list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \

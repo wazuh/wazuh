@@ -102,6 +102,11 @@ typedef struct _written_t {
     uint32_t stats_written;
 } written_t;
 
+typedef struct _eps_state_t {
+    uint64_t events_dropped;
+    uint64_t seconds_over_limit;
+} eps_state_t;
+
 typedef struct _analysisd_state_t {
     uint64_t uptime;
     uint64_t received_bytes;
@@ -110,6 +115,7 @@ typedef struct _analysisd_state_t {
     events_t events_decoded_breakdown;
     events_t events_dropped_breakdown;
     written_t events_written_breakdown;
+    eps_state_t eps_state_breakdown;
 } analysisd_state_t;
 
 typedef struct _analysisd_agent_state_t {
@@ -457,6 +463,16 @@ void w_inc_fts_written();
  * @brief Increment stats written counter
  */
 void w_inc_stats_written();
+
+/**
+ * @brief Increment events dropped by eps
+ */
+void w_inc_eps_events_dropped();
+
+/**
+ * @brief Increment seconds over eps limit
+ */
+void w_inc_eps_seconds_over_limit();
 
 /**
  * @brief Create a JSON object with all the analysisd state information

@@ -15,6 +15,8 @@
 #include "shared.h"
 #include "analysisd.h"
 #include "state.h"
+#include "config.h"
+#include "limits.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -1368,6 +1370,18 @@ void w_inc_stats_written() {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_inc_eps_events_dropped() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.eps_state_breakdown.events_dropped++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_eps_seconds_over_limit() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.eps_state_breakdown.seconds_over_limit++;
+    w_mutex_unlock(&state_mutex);
+}
+
 cJSON* asys_create_state_json() {
     analysisd_state_t state_cpy;
     queue_status_t queue_cpy;
@@ -1396,6 +1410,19 @@ cJSON* asys_create_state_json() {
     cJSON_AddItemToObject(_metrics, "bytes", _bytes);
 
     cJSON_AddNumberToObject(_bytes, "received", state_cpy.received_bytes);
+
+    if (Config.eps.maximum > 0 && Config.eps.timeframe > 0) {
+        unsigned int available_credits = 0;
+
+        cJSON *_eps = cJSON_CreateObject();
+        cJSON_AddItemToObject(_metrics, "eps", _eps);
+
+        limit_reached(&available_credits);
+
+        cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
+        cJSON_AddNumberToObject(_eps, "events_dropped", state_cpy.eps_state_breakdown.events_dropped);
+        cJSON_AddNumberToObject(_eps, "seconds_over_limit", state_cpy.eps_state_breakdown.seconds_over_limit);
+    }
 
     cJSON *_events = cJSON_CreateObject();
     cJSON_AddItemToObject(_metrics, "events", _events);

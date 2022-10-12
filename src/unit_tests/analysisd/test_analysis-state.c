@@ -16,6 +16,7 @@
 
 #include "analysisd/analysisd.h"
 #include "analysisd/state.h"
+#include "analysisd/config.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/time_wrappers.h"
@@ -38,6 +39,9 @@ void w_analysisd_clean_agents_state();
 /* setup/teardown */
 
 static int test_setup(void ** state) {
+    Config.eps.maximum = 100;
+    Config.eps.timeframe = 30;
+
     analysisd_state.uptime = 123456789;
     analysisd_state.received_bytes = 123654789;
     analysisd_state.events_received = 4589;
@@ -101,6 +105,8 @@ static int test_setup(void ** state) {
     analysisd_state.events_written_breakdown.fts_written = 19;
     analysisd_state.events_written_breakdown.stats_written = 564;
     analysisd_state.events_written_breakdown.archives_written = 4200;
+    analysisd_state.eps_state_breakdown.events_dropped = 552;
+    analysisd_state.eps_state_breakdown.seconds_over_limit = 1254;
 
     decode_queue_syscheck_input = queue_init(4096);
     decode_queue_syscollector_input = queue_init(4096);
@@ -292,6 +298,9 @@ static int test_teardown_empty_hash_table(void ** state) {
 void test_asys_create_state_json(void ** state) {
     will_return(__wrap_time, 123456789);
 
+    will_return(__wrap_limit_reached, 31);
+    will_return(__wrap_limit_reached, false);
+
     cJSON* state_json = asys_create_state_json();
 
     assert_non_null(state_json);
@@ -306,6 +315,18 @@ void test_asys_create_state_json(void ** state) {
 
     assert_non_null(cJSON_GetObjectItem(bytes, "received"));
     assert_int_equal(cJSON_GetObjectItem(bytes, "received")->valueint, 123654789);
+
+    assert_non_null(cJSON_GetObjectItem(metrics, "eps"));
+    cJSON* eps = cJSON_GetObjectItem(metrics, "eps");
+
+    assert_non_null(cJSON_GetObjectItem(eps, "available_credits"));
+    assert_int_equal(cJSON_GetObjectItem(eps, "available_credits")->valueint, 31);
+
+    assert_non_null(cJSON_GetObjectItem(eps, "events_dropped"));
+    assert_int_equal(cJSON_GetObjectItem(eps, "events_dropped")->valueint, 552);
+
+    assert_non_null(cJSON_GetObjectItem(eps, "seconds_over_limit"));
+    assert_int_equal(cJSON_GetObjectItem(eps, "seconds_over_limit")->valueint, 1254);
 
     assert_non_null(cJSON_GetObjectItem(metrics, "events"));
     cJSON* events = cJSON_GetObjectItem(metrics, "events");
