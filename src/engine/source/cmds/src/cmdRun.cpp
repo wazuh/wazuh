@@ -21,7 +21,7 @@
 #include <store/drivers/fileDriver.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
-#include "engineServer.hpp"
+#include "server/engineServer.hpp"
 #include "register.hpp"
 
 std::shared_ptr<engineserver::EngineServer> g_server;

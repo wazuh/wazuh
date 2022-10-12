@@ -12,7 +12,7 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
-#include "protocolHandler.hpp"
+#include "server/protocolHandler.hpp"
 #include "register.hpp"
 
 namespace
