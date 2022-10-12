@@ -513,6 +513,25 @@ checks:
       - 'd:/var/spool/cron -> r:\. -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
       - 'd:/etc -> r:cron.* -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
       - 'f:/etc/crontab -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.enabled -> r:enabled"
+      - "c:systemctl status aidecheck.enabled -> r:Active: active"
+
+  # 1.4 Secure Boot Settings
+
+  # 1.4.1 Ensure permissions on bootloader config are not overridden (Automated)
+  - id: 19028
+    title: "Ensure permissions on bootloader config are not overridden."
+    description: "The permissions on /boot/grub/grub.cfg are changed to 444 when gub.cfg is updated by the update-grub command."
+    rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
+    remediation: "Run the following command to update chmod 444 to chmod 400 in /usr/sbin/grub-mkconfig: # sed -ri 's/chmod\\s+[0-7][0-7][0-7]\\s+\\$\\{grub_cfg\\}\\.new/chmod 400 ${grub_cfg}.new/' /usr/sbin/grub-mkconfig Run the following command to remove check on password not being set to before running chmod command: # sed -ri 's/ && ! grep \"\\^password\" \\$\\{grub_cfg\\}.new >\/dev\/null//' /usr/sbin/grub-mkconfig."
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_csc_v7: ["14.6"]
+    condition: all
+    rules:
+      - 'f:/usr/sbin/grub-mkconfig -> r:if [ "x${grub_cfg}" != "x" ]; then'
+      - "f:/usr/sbin/grub-mkconfig -> r:chmod 400 ${grub_cfg}.new && r:true"
 
   - id: 19025
     title: "Ensure sudo is installed."
@@ -563,8 +582,6 @@ checks:
     rules:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
-
-  # 1.5 Secure Boot Settings
 
   - id: 19030
     title: "Ensure bootloader password is set."
