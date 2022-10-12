@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "protocolHandler.hpp"
+#include "server/protocolHandler.hpp"
 
 #include <iostream>
 #include <optional>

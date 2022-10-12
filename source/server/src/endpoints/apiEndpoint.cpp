@@ -20,7 +20,7 @@
 #include <logging/logging.hpp>
 #include <uvw/timer.hpp>
 
-#include "protocolHandler.hpp"
+#include "server/protocolHandler.hpp"
 
 using uvw::CloseEvent;
 using uvw::DataEvent;
