@@ -15,6 +15,8 @@
 
 #include <blockingconcurrentqueue.h>
 
+#include <api/api.hpp>
+
 #include "endpoints/baseEndpoint.hpp"
 
 /**
@@ -26,6 +28,12 @@ namespace engineserver
 
 constexpr uint32_t DEFAULT_BUFFER_SIZE = 1024;
 
+enum class EndpointType
+{
+    API,
+    EVENT
+};
+
 /**
  * @brief Class that handles all endpoints and exposes Server functionality.
  *
@@ -33,23 +41,7 @@ constexpr uint32_t DEFAULT_BUFFER_SIZE = 1024;
 class EngineServer
 {
 private:
-    std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
-    moodycamel::BlockingConcurrentQueue<std::string> m_eventBuffer;
-    bool m_isConfigured;
-
-    /**
-     * @brief
-     *
-     * @param type Endpoint Type. Eg: tcp, udp, etc.
-     * @param path Path/Address of the endpoint. This can be either a full path
-     * (route) or an ip:port string.
-     * @param eventBuffer Reference to the events buffering queue
-     * @return std::unique_ptr<endpoints::BaseEndpoint>
-     */
-    std::unique_ptr<endpoints::BaseEndpoint> createEndpoint(
-        const std::string &type,
-        const std::string &path,
-        moodycamel::BlockingConcurrentQueue<std::string> &eventBuffer) const;
+    std::unordered_map<EndpointType, std::shared_ptr<endpoints::BaseEndpoint>> m_endpoints;
 
 public:
     /**
@@ -60,8 +52,10 @@ public:
      *
      * @param bufferSize Events queue buffer size.
      */
-    explicit EngineServer(const std::vector<std::string> &config,
-                          size_t bufferSize = DEFAULT_BUFFER_SIZE);
+    explicit EngineServer(const std::string& apiEndpointPath,
+                          std::shared_ptr<api::Registry> registry,
+                          const std::string& eventEndpointPath,
+                          const int bufferSize = DEFAULT_BUFFER_SIZE);
 
     /**
      * @brief Start server.
@@ -76,22 +70,19 @@ public:
     void close(void);
 
     /**
-     * @brief Returns the current configuration state of the server.
-     *
-     * @return true
-     * @return false
-     */
-    bool isConfigured(void) const
-    {
-        return m_isConfigured;
-    };
-
-    /**
      * @brief Get server output queue
      *
-     * @return const moodycamel::BlockingConcurrentQueue&
+     * @return std::shared_ptr<concurrentQueue>
      */
-    moodycamel::BlockingConcurrentQueue<std::string> &output();
+    std::shared_ptr<concurrentQueue>
+    getEventQueue() const;
+
+    /**
+     * @brief Get the API Registry asociated with the server
+     *
+     * @return The shared pointer to the API Registry
+     */
+    std::shared_ptr<api::Registry> getRegistry() const;
 };
 
 } // namespace engineserver

@@ -24,8 +24,6 @@
 #include "engineServer.hpp"
 #include "register.hpp"
 
-// TODO: Delete once server is refactored
-auto g_registry = std::make_shared<api::Registry>();
 std::shared_ptr<engineserver::EngineServer> g_server;
 
 namespace
@@ -36,7 +34,7 @@ void destroy()
 {
     WAZUH_LOG_INFO("Destroying Engine resources");
     KVDBManager::get().clear();
-    g_registry.reset();
+    //g_registry.reset();
     if (g_server)
     {
         g_server->close();
@@ -79,13 +77,14 @@ void run(const std::string& kvdbPath,
 {
 
     // Set Crt+C handler
-    sigset_t sig_empty_mask;
-    sigemptyset(&sig_empty_mask);
-    struct sigaction sigintAction;
-    sigintAction.sa_handler = sigint_handler;
-    sigintAction.sa_mask = sig_empty_mask;
-    sigaction(SIGINT, &sigintAction, NULL);
-
+    {
+        // Set the signal handler for SIGINT
+        struct sigaction sigIntHandler;
+        sigIntHandler.sa_handler = sigint_handler;
+        sigemptyset(&sigIntHandler.sa_mask);
+        sigIntHandler.sa_flags = 0;
+        sigaction(SIGINT, &sigIntHandler, nullptr);
+    }
     // Init logging
     logging::LoggingConfig logConfig;
     auto badLogLevel = false;
@@ -108,9 +107,17 @@ void run(const std::string& kvdbPath,
     std::shared_ptr<store::FileDriver> store;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
+    std::shared_ptr<engineserver::EngineServer> server;
 
     try
     {
+        const auto bufferSize {static_cast<size_t>(queueSize)};
+
+        server = std::make_shared<engineserver::EngineServer>(
+            apiEndpoint, nullptr, eventEndpoint, bufferSize);
+        g_server = server; // TODO Delete this
+        WAZUH_LOG_INFO("Server configured");
+
         KVDBManager::init(kvdbPath);
         WAZUH_LOG_INFO("KVDB initialized");
 
@@ -122,7 +129,7 @@ void run(const std::string& kvdbPath,
 
         api::catalog::Config catalogConfig {store, builder};
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
-        api::catalog::cmds::registerAllCmds(catalog, g_registry);
+        api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_INFO("Catalog initialized");
 
         // server = std::make_shared<engineserver::EngineServer>(
@@ -145,10 +152,6 @@ void run(const std::string& kvdbPath,
         builder::internals::registerBuilders();
         WAZUH_LOG_INFO("Builders registered");
 
-        // Set up endpoints
-        g_server = std::make_shared<engineserver::EngineServer>(
-            std::vector<std::string> {"api:" + apiEndpoint, "event:" + eventEndpoint});
-        WAZUH_LOG_INFO("Server configured");
     }
     catch (const std::exception& e)
     {
@@ -172,17 +175,7 @@ void run(const std::string& kvdbPath,
     }
 
     // Start server
-    try
-    {
-        WAZUH_LOG_INFO("Server starting...");
-        g_server->run();
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Unexpected error: {}", utils::getExceptionStack(e));
-        destroy();
-        exit(1);
-    }
+    server->run();
 
     // engineserver::EngineServer server {
     //     {endpoint, "api:/var/ossec/queue/sockets/analysis"},

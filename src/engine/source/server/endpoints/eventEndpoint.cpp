@@ -101,10 +101,11 @@ static inline int bindUnixDatagramSocket(const char* path)
     return (socketFd);
 }
 
-EventEndpoint::EventEndpoint(const std::string& path, ServerOutput& eventBuffer)
-    : BaseEndpoint {path, eventBuffer}
+EventEndpoint::EventEndpoint(const std::string& path, std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>> eventQueue)
+    : BaseEndpoint {path}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
+    , m_eventQueue {eventQueue}
 {
 
     m_handle->on<ErrorEvent>(
@@ -136,7 +137,7 @@ EventEndpoint::EventEndpoint(const std::string& path, ServerOutput& eventBuffer)
                 });
 
             auto strRequest = std::string {event.data.get(), event.length};
-            while (!m_out.try_enqueue(strRequest))
+            while (!m_eventQueue->try_enqueue(strRequest))
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -175,18 +176,30 @@ void EventEndpoint::run()
 
 void EventEndpoint::close(void)
 {
-    m_loop->stop(); /// Stops the loop
-    m_loop->walk([](uvw::BaseHandle& handle)
-                 { handle.close(); }); /// Triggers every handle's close callback
-    m_loop->run(); /// Runs the loop again, so every handle is able to receive
-                   /// its close callback
-    m_loop->clear();
-    m_loop->close();
+    if (m_loop->alive())
+    {
+        m_loop->stop(); /// Stops the loop
+        m_loop->walk([](uvw::BaseHandle& handle)
+                    { handle.close(); }); /// Triggers every handle's close callback
+        m_loop->run(); /// Runs the loop again, so every handle is able to receive
+                    /// its close callback
+        m_loop->clear();
+        m_loop->close();
+        WAZUH_LOG_INFO("Closed endpoints.");
+    } else {
+        WAZUH_LOG_INFO("Loop is already closed.");
+    }
+    
 }
 
 EventEndpoint::~EventEndpoint()
 {
     close();
+}
+
+std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>> EventEndpoint::getEventQueue() const
+{
+    return m_eventQueue;
 }
 
 } // namespace engineserver::endpoints
