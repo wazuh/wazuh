@@ -1,9 +1,6 @@
 ---
 test_name: GET LISTS RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Show the lists of the system

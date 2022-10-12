@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include <sys/types.h>
 
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
@@ -25,10 +26,10 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
-    
+
     /* Set the name */
     OS_SetName(ARGV0);
-    
+
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
     if (chdir(home_path) == -1) {
@@ -126,7 +127,6 @@ void wm_help()
 
 void wm_setup()
 {
-    gid_t gid;
     struct sigaction action = { .sa_handler = wm_handler };
 
     // Read XML settings and internal options
@@ -142,15 +142,12 @@ void wm_setup()
         nowDaemon();
     }
 
-    // Set group
-
-    if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
+    const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+    if (gid == (gid_t) OS_INVALID) {
         merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
-    }
+    wm_setGroupID(gid);
 
     if (wm_check() < 0) {
         minfo("No configuration defined. Exiting...");

@@ -9,11 +9,10 @@
  * Foundation.
  */
 
+#include "wazuhdb_op.h"
 #include "wdb.h"
 #include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
-
-const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
 
 static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HOTFIXES[1] },
@@ -21,6 +20,7 @@ static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_TEXT, 3, false, true, "hotfix" }, .next = &TABLE_HOTFIXES[3] },
     { .value = {FIELD_TEXT, 4, false, false, "checksum" }, .next = NULL },
 };
+#define HOTFIXES_FIELD_COUNT 3
 
 static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 1,true,false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
@@ -46,7 +46,7 @@ static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 21,false,false,"vm_size" }, .next = &TABLE_PROCESSES[21] },
     { .value = { FIELD_INTEGER, 22,false,false,"resident" }, .next = &TABLE_PROCESSES[22] },
     { .value = { FIELD_INTEGER, 23,false,false,"share" }, .next = &TABLE_PROCESSES[23] },
-    { .value = { FIELD_INTEGER, 24,false,false,"start_time" }, .next = &TABLE_PROCESSES[24] },
+    { .value = { FIELD_INTEGER_LONG, 24,false,false,"start_time" }, .next = &TABLE_PROCESSES[24] },
     { .value = { FIELD_INTEGER, 25,false,false,"pgrp" }, .next = &TABLE_PROCESSES[25] },
     { .value = { FIELD_INTEGER, 26,false,false,"session" }, .next = &TABLE_PROCESSES[26] },
     { .value = { FIELD_INTEGER, 27,false,false,"nlwp" }, .next = &TABLE_PROCESSES[27] },
@@ -55,6 +55,7 @@ static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 30,false,false,"processor"}, .next = &TABLE_PROCESSES[30] },
     { .value = { FIELD_TEXT, 31, false, false, "checksum" }, .next = NULL }
 };
+#define PROCESSES_FIELD_COUNT 30
 
 static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_NETIFACE[1] } ,
@@ -76,6 +77,7 @@ static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_NETIFACE[17] } ,
     { .value = { FIELD_TEXT, 18, false, false, "item_id" }, .next = NULL }
 };
+#define NETIFACE_FIELD_COUNT 17
 
 static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETPROTO[1]},
@@ -87,6 +89,7 @@ static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETPROTO[7]},
     { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL }
 };
+#define NETPROTO_FIELD_COUNT 7
 
 static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETADDR[1]},
@@ -98,6 +101,7 @@ static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETADDR[7]},
     { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL},
 };
+#define NETADDR_FIELD_COUNT 7
 
 static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_PORTS[1]},
@@ -109,16 +113,17 @@ static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER,7, false, false, "remote_port" }, .next = &TABLE_PORTS[7]},
     { .value = { FIELD_INTEGER,8, false, false, "tx_queue" }, .next = &TABLE_PORTS[8]},
     { .value = { FIELD_INTEGER,9, false, false, "rx_queue" }, .next = &TABLE_PORTS[9]},
-    { .value = { FIELD_INTEGER,10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
+    { .value = { FIELD_INTEGER_LONG,10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
     { .value = { FIELD_TEXT,11, false, false, "state" }, .next = &TABLE_PORTS[11]},
     { .value = { FIELD_INTEGER,12, false, false, "PID" }, .next = &TABLE_PORTS[12]},
     { .value = { FIELD_TEXT,13, false, false, "process" }, .next = &TABLE_PORTS[13]},
     { .value = { FIELD_TEXT,14, false, false, "checksum" }, .next = &TABLE_PORTS[14]},
     { .value = { FIELD_TEXT,15, false, false, "item_id" }, .next = NULL},
 };
+#define PORTS_FIELD_COUNT 14
 
 static struct column_list const TABLE_PACKAGES[] = {
-    { .value = { FIELD_INTEGER, 1, true, true, "scan_id" }, .next = &TABLE_PACKAGES[1] },
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_PACKAGES[2] },
     { .value = { FIELD_TEXT, 3, false, false, "format" }, .next = &TABLE_PACKAGES[3] },
     { .value = { FIELD_TEXT, 4, false, true, "name" }, .next = &TABLE_PACKAGES[4] },
@@ -139,6 +144,7 @@ static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = &TABLE_PACKAGES[19] },
     { .value = { FIELD_TEXT, 20, false, false, "item_id" }, .next = NULL },
 };
+#define PACKAGES_FIELD_COUNT 19
 
 static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_OS[1] },
@@ -157,9 +163,12 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 14, false, false, "release" }, .next = &TABLE_OS[14] },
     { .value = { FIELD_TEXT, 15, false, false, "version" }, .next = &TABLE_OS[15] },
     { .value = { FIELD_TEXT, 16, false, false, "os_release" }, .next = &TABLE_OS[16] },
-    { .value = { FIELD_TEXT, 17, false, false, "os_display_version" }, .next = &TABLE_OS[17] },
-    { .value = { FIELD_TEXT, 18, false, false, "checksum" }, .next = NULL }
+    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_OS[17] },
+    { .value = { FIELD_TEXT, 18, false, false, "os_display_version" }, .next = &TABLE_OS[18] },
+    { .value = { FIELD_INTEGER, 19, false, false, "triaged" }, .next = &TABLE_OS[19] },
+    { .value = { FIELD_TEXT, 20, true, false, "reference" }, .next = NULL },
 };
+#define OS_FIELD_COUNT 19
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
@@ -173,18 +182,19 @@ static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 9, false, false, "ram_usage" }, .next = &TABLE_HARDWARE[9] },
     { .value = { FIELD_TEXT, 10, false, false, "checksum" }, .next = NULL }
 };
-
+#define HARDWARE_FIELD_COUNT 9
 
 
 static struct kv_list const TABLE_MAP[] = {
-    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE }, .next = &TABLE_MAP[1]},
-    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO }, .next = &TABLE_MAP[2]},
-    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR }, .next = &TABLE_MAP[3]},
-    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS }, .next = &TABLE_MAP[4]},
-    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
-    { .current = { "ports", "sys_ports", false, TABLE_PORTS }, .next = &TABLE_MAP[6]},
-    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES }, .next = &TABLE_MAP[7]},
-    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES}, .next = NULL},
+    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE, NETIFACE_FIELD_COUNT }, .next = &TABLE_MAP[1]},
+    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO, NETPROTO_FIELD_COUNT }, .next = &TABLE_MAP[2]},
+    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR, NETADDR_FIELD_COUNT }, .next = &TABLE_MAP[3]},
+    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS, OS_FIELD_COUNT }, .next = &TABLE_MAP[4]},
+    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE, HARDWARE_FIELD_COUNT }, .next = &TABLE_MAP[5]},
+    { .current = { "ports", "sys_ports", false, TABLE_PORTS, PORTS_FIELD_COUNT }, .next = &TABLE_MAP[6]},
+    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES, PACKAGES_FIELD_COUNT }, .next = &TABLE_MAP[7]},
+    { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
+    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
 
@@ -253,12 +263,17 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
                 return -1;
             }
+            else if (!wdb_global->enabled) {
+                mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
+                snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
+                wdb_leave(wdb_global);
+                return -1;
+            }
 
             if (wdb_global_agent_exists(wdb_global, agent_id) <= 0) {
                 mdebug2("No agent with id %s found.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Agent not found");
                 wdb_leave(wdb_global);
-
                 return -1;
             }
             wdb_leave(wdb_global);
@@ -438,8 +453,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                if (wdb_parse_dbsync(wdb, next, output)){
-                    mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
+                if (wdb_parse_dbsync(wdb, next, output) != OS_SUCCESS){
+                    mdebug1("Unable to updated based on table deltas for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "ciscat") == 0) {
@@ -573,7 +588,17 @@ int wdb_parse(char * input, char * output, int peer) {
         }
         *next++ = '\0';
 
-        if(strcmp(query, "remove") == 0) {
+        if (strcmp(query, "getconfig") == 0) {
+            data = wdb_parse_get_config(next);
+            out = cJSON_PrintUnformatted(data);
+            cJSON_Delete(data);
+            if (out) {
+                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+                os_free(out);
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "err Failed reading wazuh-db config");
+            }
+        } else if(strcmp(query, "remove") == 0) {
             data = wdb_remove_multiple_agents(next);
             out = cJSON_PrintUnformatted(data);
             snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -647,6 +672,12 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return OS_INVALID;
         }
+        else if (!wdb->enabled) {
+            mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
+            snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
+            wdb_leave(wdb);
+            return OS_INVALID;
+        }
         // Add the current peer to wdb structure
         wdb->peer = peer;
 
@@ -709,15 +740,6 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_get_agent_labels(wdb, next, output);
             }
-        } else if (strcmp(query, "set-labels") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for set-labels.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_set_agent_labels(wdb, next, output);
-            }
         } else if (strcmp(query, "update-keepalive") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for update-keepalive.");
@@ -763,15 +785,6 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_select_agent_group(wdb, next, output);
             }
-        } else if (strcmp(query, "delete-agent-belong") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for delete-agent-belong.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_delete_agent_belong(wdb, next, output);
-            }
         } else if (strcmp(query, "find-agent") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for find-agent.");
@@ -780,15 +793,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_find_agent(wdb, next, output);
-            }
-        } else if (strcmp(query, "update-agent-group") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for update-agent-group.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_update_agent_group(wdb, next, output);
             }
         } else if (strcmp(query, "find-group") == 0) {
             if (!next) {
@@ -808,23 +812,23 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_insert_agent_group(wdb, next, output);
             }
-        } else if (strcmp(query, "insert-agent-belong") == 0) {
+        } else if (strcmp(query, "select-group-belong") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for insert-agent-belong.");
+                mdebug1("Global DB Invalid DB query syntax for select-group-belong.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_insert_agent_belong(wdb, next, output);
+                result = wdb_parse_global_select_group_belong(wdb, next, output);
             }
-        } else if (strcmp(query, "delete-group-belong") == 0) {
+        } else if (strcmp(query, "get-group-agents") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for delete-group-belong.");
+                mdebug1("Global DB Invalid DB query syntax for get-group-agents.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_delete_group_belong(wdb, next, output);
+                result = wdb_parse_global_get_group_agents(wdb, next, output);
             }
         } else if (strcmp(query, "delete-group") == 0) {
             if (!next) {
@@ -837,14 +841,23 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "select-groups") == 0) {
             result = wdb_parse_global_select_groups(wdb, output);
-        } else if (strcmp(query, "select-keepalive") == 0) {
+        } else if (strcmp(query, "sync-agent-groups-get") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for select-keepalive.");
+                mdebug1("Global DB Invalid DB query syntax for sync-agent-groups-get.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
+                result = wdb_parse_global_sync_agent_groups_get(wdb, next, output);
+            }
+        } else if (strcmp(query, "set-agent-groups") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for set-agent-groups.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_set_agent_groups(wdb, next, output);
             }
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
             result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
@@ -857,8 +870,16 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "disconnect-agents") == 0) {
+        } else if (strcmp(query, "get-groups-integrity") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_groups_integrity(wdb, next, output);
+            }
+        } else if (strcmp(query, "disconnect-agents") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for disconnect-agents.");
                 mdebug2("Global DB query error near: %s", query);
@@ -906,6 +927,17 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
+            }
+        }
+        else if (strcmp(query, "backup") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for backup.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                // The "backup restore" command takes the pool_mutex to remove the wdb pointer
+                result = wdb_parse_global_backup(&wdb, next, output);
             }
         }
         else {
@@ -1263,7 +1295,7 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
             size_t unsc_size = strlen(unsc_checksum);
             size_t mark_size = strlen(mark);
             os_realloc(unsc_checksum, unsc_size + mark_size + 1, unsc_checksum);
-            strncpy(unsc_checksum + unsc_size, mark, mark_size);
+            strncpy(unsc_checksum + unsc_size, mark, mark_size + 1);
             unsc_checksum[unsc_size + mark_size] = '\0';
         }
 
@@ -2897,18 +2929,18 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         }
 
         iface = curr;
-		*next++ = '\0';
-		curr = next;
+        *next++ = '\0';
+        curr = next;
 
-		if (next = strchr(curr, '|'), !next) {
-			mdebug1("Invalid netaddr query syntax.");
-			mdebug2("netaddr query: %s", iface);
-			snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
-			return -1;
-		}
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid netaddr query syntax.");
+            mdebug2("netaddr query: %s", iface);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
+            return -1;
+        }
 
-		if (!strcmp(iface, "NULL"))
-			iface = NULL;
+        if (!strcmp(iface, "NULL"))
+            iface = NULL;
 
         proto = strtol(curr,NULL,10);
 
@@ -3861,7 +3893,8 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
     char * next;
     char * scan_id;
     char * scan_time;
-    int pid, ppid, utime, stime, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor;
+    int pid, ppid, utime, stime, priority, nice, size, vm_size, resident, share, pgrp, session, nlwp, tgid, tty, processor;
+    long long start_time;
     char * name;
     char * state;
     char * cmd;
@@ -4230,14 +4263,14 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             start_time = -1;
         else
-            start_time = strtol(curr,NULL,10);
+            start_time = (long long) strtoull(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Process query syntax.");
-            mdebug2("Process query: %d", start_time);
+            mdebug2("Process query: %lld", start_time);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -4721,6 +4754,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
     cJSON *j_labels = NULL;
+    cJSON *j_group_config_status = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -4748,6 +4782,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
         j_labels = cJSON_GetObjectItem(agent_data, "labels");
+        j_group_config_status = cJSON_GetObjectItem(agent_data, "group_config_status");
 
         if (cJSON_IsNumber(j_id)) {
             // Getting each field
@@ -4770,10 +4805,12 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
             char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
             char *labels = cJSON_IsString(j_labels) ? j_labels->valuestring : NULL;
+            char *group_config_status = cJSON_IsString(j_group_config_status) ? j_group_config_status->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                                              merged_sum, manager_host, node_name, agent_ip, connection_status, sync_status)) {
+                                                              merged_sum, manager_host, node_name, agent_ip, connection_status,
+                                                              sync_status, group_config_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -5026,22 +5063,6 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output) {
-    int agent_id = 0;
-
-    agent_id = atoi(input);
-
-    if (OS_SUCCESS != wdb_global_delete_agent_belong(wdb, agent_id)) {
-        mdebug1("Error deleting agent from belongs table in global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error deleting agent from belongs table in global.db.");
-        return OS_INVALID;
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
-
-    return OS_SUCCESS;
-}
-
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
     cJSON *agent_data = NULL;
     const char *error = NULL;
@@ -5088,47 +5109,6 @@ int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output) {
-    cJSON *agent_data = NULL;
-    const char *error = NULL;
-    cJSON *j_id = NULL;
-    cJSON *j_group = NULL;
-
-    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
-    if (!agent_data) {
-        mdebug1("Global DB Invalid JSON syntax when updating agent group.");
-        mdebug2("Global DB JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-        return OS_INVALID;
-    } else {
-        j_id = cJSON_GetObjectItem(agent_data, "id");
-        j_group = cJSON_GetObjectItem(agent_data, "group");
-
-        if (cJSON_IsNumber(j_id)) {
-            // Getting each field
-            int id = j_id->valueint;
-            char *group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
-
-            if (OS_SUCCESS != wdb_global_update_agent_group(wdb, id, group)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agent_data);
-                return OS_INVALID;
-            }
-        } else {
-            mdebug1("Global DB Invalid JSON data when updating agent group.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
-            cJSON_Delete(agent_data);
-            return OS_INVALID;
-        }
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
-    cJSON_Delete(agent_data);
-
-    return OS_SUCCESS;
-}
-
 int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output) {
     char *group_name = NULL;
     cJSON *group_id = NULL;
@@ -5166,59 +5146,71 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output) {
-    cJSON *agent_data = NULL;
-    const char *error = NULL;
-    cJSON *j_id_group = NULL;
-    cJSON *j_id_agent = NULL;
+int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) {
+    int agent_id = atoi(input);
+    cJSON *agent_groups = NULL;
 
-    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
-    if (!agent_data) {
-        mdebug1("Global DB Invalid JSON syntax when inserting agent to belongs table.");
-        mdebug2("Global DB JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+    if (agent_groups = wdb_global_select_group_belong(wdb, agent_id), !agent_groups) {
+        mdebug1("Error getting agent groups information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent groups information from global.db.");
         return OS_INVALID;
-    } else {
-        j_id_group = cJSON_GetObjectItem(agent_data, "id_group");
-        j_id_agent = cJSON_GetObjectItem(agent_data, "id_agent");
-
-        if (cJSON_IsNumber(j_id_group) && cJSON_IsNumber(j_id_agent)) {
-            // Getting each field
-            int id_group = j_id_group->valueint;
-            int id_agent = j_id_agent->valueint;
-
-            if (OS_SUCCESS != wdb_global_insert_agent_belong(wdb, id_group, id_agent)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agent_data);
-                return OS_INVALID;
-            }
-        } else {
-            mdebug1("Global DB Invalid JSON data when inserting agent to belongs table.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
-            cJSON_Delete(agent_data);
-            return OS_INVALID;
-        }
     }
 
-    snprintf(output, OS_MAXSTR + 1, "ok");
-    cJSON_Delete(agent_data);
+    char *out = NULL;
+    out = cJSON_PrintUnformatted(agent_groups);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agent_groups);
 
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_global_get_group_agents(wdb_t* wdb, char* input, char* output) {
+    int last_agent_id = 0;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
     char *group_name = NULL;
 
-    group_name = input;
+    /* Get group name */
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments, group name not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, group name not found.");
+        return OS_INVALID;
+    }
+    group_name = next;
 
-    if (OS_SUCCESS != wdb_global_delete_group_belong(wdb, group_name)) {
-        mdebug1("Error deleting group from belongs table in global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error deleting group from belongs table in global.db.");
+    /* Get last_id */
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL || strcmp(next, "last_id") != 0) {
+        mdebug1("Invalid arguments, 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, 'last_id' not found.");
+        return OS_INVALID;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments, last agent id not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, last agent id not found.");
+        return OS_INVALID;
+    }
+    last_agent_id = atoi(next);
+
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_group_agents(wdb, &status, group_name, last_agent_id);
+    if (!result) {
+        mdebug1("Error getting group agents from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting group agents from global.db.");
         return OS_INVALID;
     }
 
-    snprintf(output, OS_MAXSTR + 1, "ok");
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    cJSON_Delete(result);
+    os_free(out)
 
     return OS_SUCCESS;
 }
@@ -5257,35 +5249,137 @@ int wdb_parse_global_select_groups(wdb_t * wdb, char * output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
-   char *out = NULL;
-   char *next = NULL;
+int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
+    int ret = OS_SUCCESS;
+    const char *error = NULL;
+    cJSON *args = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (args) {
+        cJSON *j_mode = cJSON_GetObjectItem(args, "mode");
+        cJSON *j_sync_status = cJSON_GetObjectItem(args, "sync_status");
+        cJSON *j_groups_data = cJSON_GetObjectItem(args, "data");
 
-   if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
+        // Mandatory fields
+        if (cJSON_IsArray(j_groups_data) && cJSON_IsString(j_mode)) {
+            wdb_groups_set_mode_t mode = WDB_GROUP_INVALID_MODE;
+            char* sync_status = "synced";
+            if (0 == strcmp(j_mode->valuestring, "override")) {
+                mode = WDB_GROUP_OVERRIDE;
+            } else if (0 == strcmp(j_mode->valuestring, "append")) {
+                mode = WDB_GROUP_APPEND;
+            } else if (0 == strcmp(j_mode->valuestring, "empty_only")) {
+                mode = WDB_GROUP_EMPTY_ONLY;
+            } else if (0 == strcmp(j_mode->valuestring, "remove")) {
+                mode = WDB_GROUP_REMOVE;
+            }
+
+            if (WDB_GROUP_INVALID_MODE != mode) {
+                if (cJSON_IsString(j_sync_status)){
+                    sync_status = j_sync_status->valuestring;
+                }
+
+                wdbc_result status = wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
+                if (status == WDBC_OK) {
+                    snprintf(output, OS_MAXSTR + 1, "%s",  WDBC_RESULT[status]);
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "%s An error occurred during the set of the groups",  WDBC_RESULT[status]);
+                    ret = OS_INVALID;
+                }
+            } else {
+                mdebug1("Invalid mode '%s' in set_agent_groups command.", j_mode->valuestring);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid mode '%s' in set_agent_groups command", j_mode->valuestring);
+                ret = OS_INVALID;
+            }
+        } else {
+            mdebug1("Missing mandatory fields in set_agent_groups command.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
+            ret = OS_INVALID;
+        }
+        cJSON_Delete(args);
+    } else {
+        mdebug1("Global DB Invalid JSON syntax when parsing set_agent_groups");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        ret = OS_INVALID;
     }
-    *next++ = '\0';
 
-    char* agent_name = input;
-    char* agent_ip = next;
-    cJSON *keepalive = NULL;
+    return ret;
+}
 
-    keepalive = wdb_global_select_agent_keepalive(wdb, agent_name, agent_ip);
-    if (!keepalive) {
-        mdebug1("Error getting agent keepalive from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent keepalive from global.db.");
-        return OS_INVALID;
+int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output) {
+    int ret = OS_SUCCESS;
+    const char *error = NULL;
+    cJSON *args = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (args) {
+        cJSON *j_sync_condition = cJSON_GetObjectItem(args, "condition");
+        cJSON *j_last_id = cJSON_GetObjectItem(args, "last_id");
+        cJSON *j_set_synced = cJSON_GetObjectItem(args, "set_synced");
+        cJSON *j_get_hash = cJSON_GetObjectItem(args, "get_global_hash");
+        cJSON *j_agent_registration_delta = cJSON_GetObjectItem(args, "agent_registration_delta");
+        // Checking the existence of mandatory parameters
+        if (!cJSON_IsString(j_sync_condition)) {
+            mdebug1("Missing mandatory 'condition' field in sync-agent-groups-get command.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required 'condition' field");
+            ret = OS_INVALID;
+        }
+        // Checking data types of alternative parameters in case they would have been sent in the input JSON.
+        else if ((j_last_id && (!cJSON_IsNumber(j_last_id) || j_last_id->valueint < 0)) ||
+            (j_set_synced && !cJSON_IsBool(j_set_synced)) ||
+            (j_get_hash && !cJSON_IsBool(j_get_hash)) ||
+            (j_agent_registration_delta && (!cJSON_IsNumber(j_agent_registration_delta) || j_agent_registration_delta->valueint < 0))) {
+            mdebug1("Invalid alternative fields data in sync-agent-groups-get command.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, invalid alternative fields data");
+            ret = OS_INVALID;
+        } else {
+            wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
+            int last_id = 0;
+            bool set_synced = false;
+            bool get_hash = false;
+            int agent_registration_delta = 0;
+
+            if (0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
+                condition = WDB_GROUP_SYNC_STATUS;
+            } else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
+                condition = WDB_GROUP_ALL;
+            }
+            if (j_last_id) {
+                last_id = j_last_id->valueint;
+            }
+            if (cJSON_IsTrue(j_set_synced)) {
+                set_synced = true;
+            }
+            if (cJSON_IsTrue(j_get_hash)) {
+                get_hash = true;
+            }
+            if (j_agent_registration_delta) {
+                agent_registration_delta = j_agent_registration_delta->valueint;
+            }
+
+            cJSON* agent_group_sync = NULL;
+            wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, set_synced, get_hash, agent_registration_delta, &agent_group_sync);
+            if (agent_group_sync) {
+                char* response = cJSON_PrintUnformatted(agent_group_sync);
+                cJSON_Delete(agent_group_sync);
+                if (strlen(response) <= WDB_MAX_RESPONSE_SIZE) {
+                    snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], response);
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "err %s", "Invalid response from wdb_global_sync_agent_groups_get");
+                    ret = OS_INVALID;
+                }
+                os_free(response);
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "err %s", "Could not obtain a response from wdb_global_sync_agent_groups_get");
+                ret = OS_INVALID;
+            }
+        }
+        cJSON_Delete(args);
+    } else {
+        mdebug1("Global DB Invalid JSON syntax when parsing sync-agent-groups-get");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        ret = OS_INVALID;
     }
 
-    out = cJSON_PrintUnformatted(keepalive);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(keepalive);
-
-    return OS_SUCCESS;
+    return ret;
 }
 
 int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
@@ -5391,6 +5485,37 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(root);
 
+    return OS_SUCCESS;
+}
+
+int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
+    int input_len = strlen(input);
+    if (input_len < OS_SHA1_HEXDIGEST_SIZE) {
+        mdebug1("Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
+                OS_SHA1_HEXDIGEST_SIZE,
+                input_len);
+        snprintf(output,
+                 OS_MAXSTR + 1,
+                 "err Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
+                 OS_SHA1_HEXDIGEST_SIZE,
+                 input_len);
+        return OS_INVALID;
+    }
+
+    os_sha1 hash = {0};
+    strncpy(hash, input, OS_SHA1_HEXDIGEST_SIZE);
+
+    cJSON *j_result = wdb_global_get_groups_integrity(wdb, hash);
+    if (j_result == NULL) {
+        mdebug1("Error getting groups integrity information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
+        return OS_INVALID;
+    }
+
+    char* out = cJSON_PrintUnformatted(j_result);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(j_result);
     return OS_SUCCESS;
 }
 
@@ -5563,7 +5688,78 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, char *data)
+int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
+    int result = OS_INVALID;
+    char * next;
+    const char delim[] = " ";
+    char *tail = NULL;
+
+    next = strtok_r(input, delim, &tail);
+
+    if (!next){
+        snprintf(output, OS_MAXSTR + 1, "err Missing backup action");
+    }
+    else if (strcmp(next, "create") == 0) {
+        result = wdb_global_create_backup(*wdb, output, NULL);
+        if (OS_SUCCESS != result) {
+            merror("Creating Global DB snapshot on demand failed: %s", output);
+        }
+    }
+    else if (strcmp(next, "get") == 0) {
+        result = wdb_parse_global_get_backup(output);
+    }
+    else if (strcmp(next, "restore") == 0) {
+        // During a restore, the global wdb_t pointer may change. The mutex prevents anyone else from accesing it
+        w_mutex_lock(&pool_mutex);
+        result = wdb_parse_global_restore_backup(wdb, tail, output);
+        w_mutex_unlock(&pool_mutex);
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
+    }
+
+    return result;
+}
+
+int wdb_parse_global_get_backup(char* output) {
+    cJSON* j_backups = wdb_global_get_backups();
+
+    if (j_backups) {
+        char* out = cJSON_PrintUnformatted(j_backups);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        os_free(out);
+        cJSON_Delete(j_backups);
+        return OS_SUCCESS;
+    } else {
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command, unable to open '%s' folder", WDB_BACKUP_FOLDER);
+        return OS_INVALID;
+    }
+}
+
+int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
+    cJSON *j_parameters = NULL;
+    const char *error = NULL;
+    int result = OS_INVALID;
+
+    j_parameters = cJSON_ParseWithOpts(input, &error, TRUE);
+
+    if (!j_parameters && strcmp(input, "")) {
+        mdebug1("Invalid backup JSON syntax when restoring snapshot.");
+        mdebug2("JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
+        cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
+        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : false;
+        result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+    }
+
+    cJSON_Delete(j_parameters);
+    return result;
+}
+
+bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, const char *data, char *output)
 {
     bool ret_val = false;
     if (NULL != kv_value) {
@@ -5573,19 +5769,20 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
             if (strcmp(operation, "INSERTED") == 0) {
                 ret_val = wdb_insert_dbsync(wdb, kv_value, data);
             } else if (strcmp(operation, "MODIFIED") == 0) {
-                ret_val = wdb_modify_dbsync(wdb, kv_value, data);
+                if (ret_val = wdb_modify_dbsync(wdb, kv_value, data), ret_val) {
+                    wdb_select_dbsync(wdb, kv_value, data, output);
+                }
             } else if (strcmp(operation, "DELETED") == 0) {
+                wdb_select_dbsync(wdb, kv_value, data, output);
                 ret_val = wdb_delete_dbsync(wdb, kv_value, data);
             }
         }
     }
-
     return ret_val;
 }
 
-
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     char *next = NULL;
     char *curr = input;
     if (next = strchr(curr, ' '), !next) {
@@ -5607,27 +5804,32 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '\0'), !next) {
+    if (!strlen(curr)) {
         mdebug2("DBSYNC query: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid dbsync query syntax, near '%.32s'", input);
         return ret_val;
     }
 
     char *data = curr;
-
+    char select_output[OS_SIZE_6144 - WDB_RESPONSE_OK_SIZE - 1] = { '\0' };
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
-            ret_val = process_dbsync_data(wdb, &head->current, operation, data);
+            const size_t field_count = os_strcnt(data, *FIELD_SEPARATOR_DBSYNC);
+            if (field_count == head->current.field_count) {
+                ret_val = process_dbsync_data(wdb, &head->current, operation, data, select_output) ? OS_SUCCESS : OS_NOTFOUND;
+            } else {
+                merror(DB_INVALID_DELTA_MSG, data, head->current.field_count, field_count);
+            }
             break;
         }
         head = head->next;
     }
 
-    if (ret_val) {
-        strcat(output, "ok");
+    if (OS_SUCCESS == ret_val) {
+        snprintf(output, OS_SIZE_6144 - 1, "ok %s", select_output);
     } else {
-        strcat(output, "error");
+        strcat(output, "err");
     }
     return ret_val;
 }
@@ -5931,20 +6133,13 @@ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output) {
 
     if (!next){
         snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cves action");
-    }
-    else if (strcmp(next, "insert") == 0) {
+    } else if (strcmp(next, "insert") == 0) {
         result = wdb_parse_agents_insert_vuln_cves(wdb, tail, output);
-    }
-    else if (strcmp(next, "update_status") == 0) {
+    } else if (strcmp(next, "update_status") == 0) {
         result = wdb_parse_agents_update_vuln_cves_status(wdb, tail, output);
-    }
-    else if (strcmp(next, "remove") == 0) {
+    } else if (strcmp(next, "remove") == 0) {
         result = wdb_parse_agents_remove_vuln_cves(wdb, tail, output);
-    }
-    else if (strcmp(next, "clear") == 0) {
-        result = wdb_parse_agents_clear_vuln_cves(wdb, output);
-    }
-    else {
+    } else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves action: %s", next);
     }
 
@@ -6065,10 +6260,7 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     }
     else {
         cJSON* status = cJSON_GetObjectItem(data, "status");
-        cJSON* cve = cJSON_GetObjectItem(data, "cve");
-        cJSON* reference = cJSON_GetObjectItem(data, "reference");
 
-        // Checking whether we should remove by status
         if (cJSON_IsString(status)) {
             char* remove_out_str = NULL;
 
@@ -6076,19 +6268,7 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
             snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], remove_out_str);
             os_free(remove_out_str)
             ret = OS_SUCCESS;
-        }
-        // Checking whether we should remove a specific entry
-        else if (cJSON_IsString(cve) && cJSON_IsString(reference)) {
-            ret = wdb_agents_remove_vuln_cves(wdb, cve->valuestring, reference->valuestring);
-            if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cves remove command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves remove command; SQL err: %s", sqlite3_errmsg(wdb->db));
-            }
-            else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        }
-        else {
+        } else {
             mdebug1("Invalid vuln_cves JSON data to remove vulnerabilities.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data");
         }
@@ -6098,14 +6278,20 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     return ret;
 }
 
-int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output) {
-    int ret = wdb_agents_clear_vuln_cves(wdb);
-    if (OS_SUCCESS != ret) {
-        mdebug1("DB(%s) Cannot execute vuln_cves clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
+cJSON* wdb_parse_get_config(char* config_source) {
+    if (config_source == 0) {
+        return NULL;
     }
-    else {
-        snprintf(output, OS_MAXSTR + 1, "ok");
+
+    cJSON* j_wdb_config = NULL;
+
+    if (strcmp(config_source, "internal") == 0) {
+        j_wdb_config = wdb_get_internal_config();
+    } else if (strcmp(config_source, "wdb") == 0) {
+        j_wdb_config = wdb_get_config();
+    } else {
+        mdebug1("Invalid configuration source for wazuh-db");
     }
-    return ret;
+
+    return j_wdb_config;
 }

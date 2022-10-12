@@ -906,7 +906,7 @@ char* ParseRuleComment(Eventinfo *lf) {
         if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
             return strdup(lf->generated_rule->comment);
 
-        strncpy(&final[n], str, z);
+        strncat(final, str, OS_COMMENT_MAX - n);
         n += z;
 
         if (!(end = strchr(var, ')'))) {
@@ -972,7 +972,7 @@ char* ParseRuleComment(Eventinfo *lf) {
             if (n + (z = strlen(field)) >= OS_COMMENT_MAX)
                 return strdup(lf->generated_rule->comment);
 
-            strncpy(&final[n], field, z);
+            strncat(final, field, OS_COMMENT_MAX - n);
             n += z;
         }
     }
@@ -980,7 +980,7 @@ char* ParseRuleComment(Eventinfo *lf) {
     if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
         return strdup(lf->generated_rule->comment);
 
-    strncpy(&final[n], str, z);
+    strncat(final, str, OS_COMMENT_MAX - n);
     final[n + z] = '\0';
     return strdup(final);
 }

@@ -1,9 +1,6 @@
 ---
 test_name: GET /lists
 
-marks:
-  - base_tests
-
 stages:
 
     # GET /lists

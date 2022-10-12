@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['syscollector:read'], resources=['agent:id:{agent_list}'])
-def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=None, search=None, sort=None, filters=None,
+def get_item_agent(agent_list, offset=0, limit=common.DATABASE_LIMIT, select=None, search=None, sort=None, filters=None,
                    q='', array=True, nested=True, element_type='os'):
     """ Get syscollector information about a list of agents.
 

@@ -19,7 +19,7 @@ if sys.version_info[0] == 3:
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
     msg = str(sqlite3.sqlite_version)
     msg += "\nTry to export the internal SQLite library:"
-    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/lib".format(common.wazuh_path)
+    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/lib".format(common.WAZUH_PATH)
     raise WazuhInternalError(2001, extra_message=msg)
 
 
@@ -28,7 +28,7 @@ class Connection:
     Represents a connection against a database
     """
 
-    def __init__(self, db_path=common.database_path_global, busy_sleep=0.001, max_attempts=50):
+    def __init__(self, db_path=common.DATABASE_PATH_GLOBAL, busy_sleep=0.001, max_attempts=50):
         """
         Constructor
         """

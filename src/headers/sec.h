@@ -52,9 +52,9 @@ typedef struct _keyentry {
     int net_protocol;                   ///< Client current protocol
     time_t time_added;
     pthread_mutex_t mutex;
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     FILE *fp;
-    crypt_method crypto_method;
+    _Atomic (crypt_method) crypto_method;
 
     w_linked_queue_node_t *rids_node;
 } keyentry;

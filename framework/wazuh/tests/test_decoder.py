@@ -45,7 +45,7 @@ decoder_ossec_conf_2 = {
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
-    with patch('wazuh.core.common.wazuh_path', new=test_data_path):
+    with patch('wazuh.core.common.WAZUH_PATH', new=test_data_path):
         with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 
@@ -165,17 +165,10 @@ def test_get_decoder_file_exceptions():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1501
 
     # File permissions
-    filename = 'test2_decoders.xml'
-    old_permissions = stat.S_IMODE(os.lstat(os.path.join(
-        test_data_path, 'tests/data/decoders', filename)).st_mode)
-    try:
-        os.chmod(os.path.join(test_data_path, 'tests/data/decoders', filename), 000)
-        # UUT 3rd call forcing a permissions error opening decoder file
-        result = decoder.get_decoder_file(filename=filename)
+    with patch('builtins.open', side_effect=PermissionError):
+        result = decoder.get_decoder_file(filename='test2_decoders.xml')
         assert not result.affected_items
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
-    finally:
-        os.chmod(os.path.join(test_data_path, 'tests/data/decoders', filename), old_permissions)
 
 
 @pytest.mark.parametrize('file, overwrite', [
@@ -184,11 +177,12 @@ def test_get_decoder_file_exceptions():
 ])
 @patch('wazuh.decoder.delete_decoder_file')
 @patch('wazuh.decoder.upload_file')
-@patch('wazuh.core.utils.copyfile')
+@patch('wazuh.core.utils.full_copy')
 @patch('wazuh.decoder.remove')
 @patch('wazuh.decoder.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file, overwrite):
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_full_copy, mock_xml, mock_delete, file,
+                     overwrite):
     """Test uploading a decoder file.
 
     Parameters

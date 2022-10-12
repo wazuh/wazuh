@@ -416,6 +416,11 @@ UpdateStopOSSEC()
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
+
+    # Deleting groups backup folder if exists
+    if [ -d "$PREINSTALLEDDIR/backup/groups" ]; then
+        rm -rf $PREINSTALLEDDIR/backup/groups > /dev/null 2>&1
+    fi
 }
 
 UpdateOldVersions()

@@ -40,7 +40,7 @@ class DockerListener:
         self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
-        self.client = docker.from_env()
+        self.client = None
         self.send_msg(json.dumps({self.field_debug_name: "Started"}))
         self.thread1 = threading.Thread(target=self.listen)
         self.thread2 = threading.Thread(target=self.listen)
@@ -80,6 +80,7 @@ class DockerListener:
         :return: True if Docker service is active or False if it is inactive.
         """
         try:
+            self.client = docker.from_env()
             self.client.ping()
             return True
         except Exception:

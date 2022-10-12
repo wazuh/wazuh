@@ -394,7 +394,8 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
             *s_name++ = PATH_SEP;
         }
         *(s_name) = '\0';
-        strncpy(s_name, entry->d_name, PATH_MAX - path_size - 2);
+        path_size = strlen(f_name);
+        snprintf(s_name, PATH_MAX + 2 - path_size, "%s", entry->d_name);
 
 #ifdef WIN32
         str_lowercase(f_name);
@@ -841,8 +842,8 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     // We won't calculate hash for symbolic links, empty or large files
     if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && (size_t)statbuf->st_size < syscheck.file_max_size) &&
         (configuration->options & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM))) {
-        if (OS_MD5_SHA1_SHA256_File(file, syscheck.prefilter_cmd, data->hash_md5, data->hash_sha1, data->hash_sha256,
-                                    OS_BINARY, syscheck.file_max_size) < 0) {
+        if (OS_MD5_SHA1_SHA256_File(file, syscheck.prefilter_cmd, data->hash_md5,
+                                    data->hash_sha1, data->hash_sha256, OS_BINARY, syscheck.file_max_size) < 0) {
             mdebug1(FIM_HASHES_FAIL, file);
             free_file_data(data);
             return NULL;

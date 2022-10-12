@@ -17,6 +17,7 @@
 #include "rsync.hpp"
 #include "dbsync.h"
 #include "dbsync.hpp"
+#include "cjsonSmartDeleter.hpp"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto SQL_STMT_INFO
@@ -62,18 +63,6 @@ static void callbackRSyncWrapper(const void* payload, size_t size, void* userDat
     }
 }
 
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
-
 static void logFunction(const char* msg)
 {
     if (msg)
@@ -110,7 +99,7 @@ TEST_F(RSyncTest, startSyncWithInvalidParams)
     {
         R"({"table":"entry_path"})"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
     sync_callback_data_t callbackData { callback, nullptr };
 
     ASSERT_NE(0, rsync_start_sync(nullptr, dbsyncHandle, jsSelect.get(), {}));
@@ -131,7 +120,7 @@ TEST_F(RSyncTest, startSyncWithoutExtraParams)
     {
         R"({"table":"entry_path"})"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
 
     ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), {}));
 }
@@ -171,7 +160,7 @@ TEST_F(RSyncTest, startSyncWithBadSelectQuery)
                }],
             })"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
 
     ASSERT_NE(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), {}));
 }
@@ -194,7 +183,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{")"
+        R"({"component":"test_id","data":{")"
     };
 
     const auto expectedResult2
@@ -221,7 +210,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
                     "order_by_opt":"path DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -235,7 +224,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
                 }
             })"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
 
     const auto checkExpected
     {
@@ -277,7 +266,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2")"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2")"
     };
 
     const auto expectedResult2
@@ -304,7 +293,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
                     "order_by_opt":"path DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -318,7 +307,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
                 }
             })"
     };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
 
     const auto checkExpected
     {
@@ -351,7 +340,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     dbsync_teardown();
 }
-TEST_F(RSyncTest, registerSyncId)
+TEST_F(RSyncTest, registerIncorrectSyncId)
 {
     const auto handle { rsync_create() };
     ASSERT_EQ(-1, rsync_register_sync_id(handle, nullptr, nullptr, nullptr, {}));
@@ -388,44 +377,44 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult5
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult6
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult7
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto registerConfigStmt
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -476,7 +465,7 @@ TEST_F(RSyncTest, RegisterAndPush)
     EXPECT_CALL(wrapper, callbackMock(expectedResult6)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult7)).Times(1);
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
     ASSERT_EQ(0, rsync_register_sync_id(handle_rsync, "test_id", handle_dbsync, spRegisterConfigStmt.get(), callbackData));
 
     std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
@@ -489,6 +478,7 @@ TEST_F(RSyncTest, RegisterAndPush)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
 
     dbsync_teardown();
@@ -506,7 +496,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -550,7 +540,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
 
     sync_callback_data_t callbackData { callback, &wrapper };
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spRegisterConfigStmt{ cJSON_Parse(registerConfigStmt) };
     ASSERT_EQ(0, rsync_register_sync_id(handle_rsync, "test_id", handle_dbsync, spRegisterConfigStmt.get(), callbackData));
 
     std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
@@ -563,12 +553,11 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
 
     dbsync_teardown();
 }
-
-
 
 TEST_F(RSyncTest, RegisterAndPushCPP)
 {
@@ -580,44 +569,44 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult5
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult6
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult7
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto registerConfigStmt
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -685,7 +674,7 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    //sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
 
@@ -708,7 +697,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{")"
+        R"({"component":"test_id","data":{")"
     };
 
     const auto expectedResult2
@@ -735,7 +724,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
                     "order_by_opt":"path DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -814,7 +803,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)
                     "order_by_opt":"inode_id DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"inode_id",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -848,7 +837,6 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(startConfigStmt), callbackData));
 }
 
-
 TEST_F(RSyncTest, constructorWithHandle)
 {
     std::unique_ptr<RemoteSync> remoteSync;
@@ -866,7 +854,6 @@ TEST_F(RSyncTest, teardown)
     EXPECT_NO_THROW(RemoteSync::teardown());
 }
 
-
 TEST_F(RSyncTest, RegisterAndPushCPPByInode)
 {
     std::unique_ptr<DBSync> dbSync;
@@ -877,44 +864,44 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"1","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"1","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"3","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"5","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_id","data":{"begin":"3","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"5","id":1},"type":"integrity_check_right"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult5
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult6
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":4,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":4,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult7
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":5,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":5,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto registerConfigStmt
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"inode_id",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -982,10 +969,9 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     std::string buffer3{R"(test_id no_data {"begin":1,"end":5,"id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
-
 
 TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
 {
@@ -997,17 +983,17 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
     };
 
 
@@ -1015,7 +1001,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"inode_id",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -1072,6 +1058,291 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
     std::string buffer3{R"(test_id no_data {"begin":1,"end":3,"id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
+
+TEST_F(RSyncTest, DoubleRegisterException)
+{
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
+
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    const auto registerConfigStmt
+    {
+        R"({"decoder_type":"JSON_RANGE",
+            "table":"entry_path",
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "no_data_query_json":
+                {
+                    "row_filter":" ",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "count_range_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "count_field_name":"count",
+                    "column_list":["count(*) AS count "],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "row_data_query_json":
+                {
+                    "row_filter":"WHERE path ='?'",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+        })"
+    };
+
+    CallbackMock wrapper;
+    SyncCallbackData callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+    ASSERT_ANY_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+
+    remoteSync.reset();
+}
+
+TEST_F(RSyncTest, RegisterAndPushShutdownCPP)
+{
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
+
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    const auto registerConfigStmt
+    {
+        R"({"decoder_type":"JSON_RANGE",
+            "table":"entry_path",
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "no_data_query_json":
+                {
+                    "row_filter":" ",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "count_range_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "count_field_name":"count",
+                    "column_list":["count(*) AS count "],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "row_data_query_json":
+                {
+                    "row_filter":"WHERE path ='?'",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+        })"
+    };
+
+    CallbackMock wrapper;
+    SyncCallbackData callbackData
+    {
+        [](const std::string&)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    };
+
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
+
+    remoteSync.reset();
+}
+
+TEST_F(RSyncTest, RegisterAndPushWithDoubleHandleDisconnect)
+{
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, SQL_STMT_INFO));
+
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    std::unique_ptr<RemoteSync> remoteSyncToDelete;
+    EXPECT_NO_THROW(remoteSyncToDelete = std::make_unique<RemoteSync>());
+
+    const auto expectedResult1
+    {
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+    };
+
+    const auto expectedResult2
+    {
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
+    };
+
+    const auto expectedResult3
+    {
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
+    };
+
+    const auto expectedResult4
+    {
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
+    };
+
+    const auto expectedResult5
+    {
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
+    };
+
+    const auto registerConfigStmt
+    {
+        R"({"decoder_type":"JSON_RANGE",
+            "table":"entry_path",
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "no_data_query_json":
+                {
+                    "row_filter":" ",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "count_range_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "count_field_name":"count",
+                    "column_list":["count(*) AS count "],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "row_data_query_json":
+                {
+                    "row_filter":"WHERE path ='?'",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+        })"
+    };
+
+    const auto registerConfigStmtToDelete
+    {
+        R"({"decoder_type":"JSON_RANGE",
+            "table":"entry_path",
+            "component":"test_id_to_delete",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "no_data_query_json":
+                {
+                    "row_filter":" ",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "count_range_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "count_field_name":"count",
+                    "column_list":["count(*) AS count "],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "row_data_query_json":
+                {
+                    "row_filter":"WHERE path ='?'",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, inode_id, mode, last_event, entry_type, scanned, options, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+        })"
+    };
+
+    CallbackMock wrapper;
+    SyncCallbackData callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+    EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult2)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult3)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult4)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult5)).Times(1);
+
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+    ASSERT_NO_THROW(remoteSyncToDelete->registerSyncID("test_id_to_delete", dbSync->handle(), nlohmann::json::parse(registerConfigStmtToDelete), callbackData));
+
+    remoteSyncToDelete.reset();
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    remoteSync.reset();
+}
+

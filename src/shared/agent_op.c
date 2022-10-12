@@ -16,6 +16,7 @@
 #include "syscheckd/syscheck.h"
 #include "config/authd-config.h"
 #include "os_auth/auth.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -270,173 +271,6 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     return (1);
 }
 
-#ifndef CLIENT
-/* Read group. Returns 0 on success or -1 on failure. */
-int get_agent_group(const char *id, char *group, size_t size) {
-    char path[PATH_MAX];
-    int result = 0;
-    FILE *fp;
-
-    if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("At get_agent_group(): file path too large for agent '%s'.", id);
-        return -1;
-    }
-
-    if (!(fp = fopen(path, "r"))) {
-        mdebug2("At get_agent_group(): file '%s' not found.", path);
-        return -1;
-    }
-
-    if (fgets(group, size, fp)) {
-        char *endl = strchr(group, '\n');
-
-        if (endl) {
-            *endl = '\0';
-        }
-    } else {
-        mwarn("Empty group for agent ID '%s'.", id);
-        result = -1;
-    }
-
-    fclose(fp);
-    return result;
-}
-
-/* Set agent group. Returns 0 on success or -1 on failure. */
-int set_agent_group(const char * id, const char * group) {
-    char path[PATH_MAX];
-    FILE *fp;
-    mode_t oldmask;
-    int r = 0;
-
-    if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("At set_agent_group(): file path too large for agent '%s'.", id);
-        return -1;
-    }
-
-    oldmask = umask(0006);
-    fp = fopen(path, "w");
-    umask(oldmask);
-
-    if (!fp) {
-        merror("At set_agent_group(): open(%s): %s", path, strerror(errno));
-        return -1;
-    }
-
-    if (fchmod(fileno(fp), 0660) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-    }
-
-    if (fprintf(fp, "%s\n", group) < 0) {
-        merror(FWRITE_ERROR, path, errno, strerror(errno));
-        r = -1;
-    }
-
-    if (fclose(fp) != 0) {
-        merror(FCLOSE_ERROR, path, errno, strerror(errno));
-        r = -1;
-    }
-
-    if (r == -1) {
-        unlink(path);
-    }
-
-    return r;
-}
-
-int set_agent_multigroup(char * group) {
-    int oldmask;
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-
-    if (!multigroup) {
-        return 0;
-    }
-
-    char *endl = strchr(group, '\n');
-
-    if (endl) {
-        *endl = '\0';
-    }
-
-    /* Remove multigroup if it's not used on any other agent */
-    w_remove_multigroup(group);
-
-    /* Check if the multigroup dir is created */
-    os_sha256 multi_group_hash;
-    char multigroup_path[PATH_MAX + 1] = {0};
-    OS_SHA256_String(group,multi_group_hash);
-    char _hash[9] = {0};
-
-    strncpy(_hash,multi_group_hash,8);
-    snprintf(multigroup_path, PATH_MAX, "%s/%s" , MULTIGROUPS_DIR, _hash);
-    DIR *dp;
-    dp = opendir(multigroup_path);
-
-    if (!dp) {
-        if (errno == ENOENT) {
-            oldmask = umask(0002);
-            int retval = mkdir(multigroup_path, 0770);
-            umask(oldmask);
-
-            if (retval == -1) {
-                mdebug1("At read_controlmsg(): couldn't create directory '%s'", multigroup_path);
-                return -1;
-            }
-        } else {
-            mwarn("Could not create directory '%s': %s (%d)", multigroup_path, strerror(errno), errno);
-        }
-    } else {
-        closedir(dp);
-    }
-
-    return 0;
-}
-
-/* Create multigroup dir. Returns 0 on success or -1 on failure. */
-int create_multigroup_dir(const char * multigroup) {
-    char path[PATH_MAX];
-    DIR *dp;
-    char *has_multigroup =  strchr(multigroup,MULTIGROUP_SEPARATOR);
-
-    if (!has_multigroup) {
-        return 0;
-    }
-    mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
-
-    if (snprintf(path, PATH_MAX, MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
-        merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
-        return -1;
-    }
-
-    dp = opendir(path);
-
-    /* Multigroup doesnt exists, create the directory */
-    if (!dp) {
-       if (mkdir(path, 0770) == -1) {
-            merror("At create_multigroup_dir(): couldn't create directory '%s'", path);
-            return -1;
-        }
-
-        if (chmod(path,0770) < 0) {
-            merror("At create_multigroup_dir(): Error in chmod setting permissions for path: %s",path);
-        }
-
-        uid_t uid = Privsep_GetUser(USER);
-        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-
-        if (chown(path, uid, gid) == -1) {
-            merror(CHOWN_ERROR, path, errno, strerror(errno));
-            return -1;
-        }
-        mdebug1("Multigroup dir created: '%s'",multigroup);
-    } else {
-        closedir(dp);
-    }
-
-    return 0;
-}
-#endif
-
 int w_validate_group_name(const char *group, char *response) {
 
     unsigned int i = 0;
@@ -557,35 +391,6 @@ int w_validate_group_name(const char *group, char *response) {
     free(multi_group_cpy);
     return 0;
 }
-
-#ifndef CLIENT
-void w_remove_multigroup(const char *group) {
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char path[PATH_MAX + 1] = {0};
-
-    if (multigroup) {
-        sprintf(path, "%s", GROUPS_DIR);
-
-        if (wstr_find_in_folder(path,group,1) < 0) {
-            /* Remove the DIR */
-            os_sha256 multi_group_hash;
-            OS_SHA256_String(group,multi_group_hash);
-            char _hash[9] = {0};
-
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
-
-            strncpy(_hash,multi_group_hash,8);
-
-            sprintf(path, "%s/%s", MULTIGROUPS_DIR, _hash);
-
-            if (rmdir_ex(path) != 0) {
-                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
-            }
-        }
-    }
-}
-#endif
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect() {
@@ -866,7 +671,7 @@ int w_request_agent_add_clustered(char *err_response,
     cJSON* message;
 
     if (agent_id){
-        // Create key polling request
+        // Create agent key request
         message = w_create_agent_add_payload(name, ip, groups, NULL, key_hash, agent_id, force_options);
     } else {
         // Create dispatching request

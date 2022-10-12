@@ -25,8 +25,10 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
+    char loc_buff[OS_SIZE_8192 + OS_SIZE_256 + 3] = {0};
     size_t loglen;
     char *pieces;
+    char *msg_cpy;
     struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
@@ -37,17 +39,21 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Ignore the id of the message in here */
     msg += 2;
 
-    /* Set pieces as the message */
-    pieces = strchr(msg, ':');
-    if (!pieces) {
+    /* Look for the first non scape ":" */
+    msg_cpy = msg;
+    if (pieces = wstr_chr_escape(msg_cpy, ':', '|'), pieces == NULL) {
+        merror(FORMAT_ERROR);
+        return (-1);
+    }
+    *pieces = '\0';
+    pieces++;
+
+    if (OS_INVALID == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '|')) {
         merror(FORMAT_ERROR);
         return (-1);
     }
 
-    *pieces = '\0';
-    pieces++;
-
-    os_strdup(msg, lf->location);
+    os_strdup(loc_buff, lf->location);
 
     /* Get the log length */
     loglen = strlen(pieces) + 1;

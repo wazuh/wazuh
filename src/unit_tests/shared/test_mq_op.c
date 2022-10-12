@@ -19,6 +19,7 @@
 #include "../headers/shared.h"
 
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
 /* Define values may be changed */
 
@@ -32,15 +33,7 @@ int __wrap_OS_getsocketsize(int ossock) {
     return SOCKET_SIZE;
 }
 
-void __wrap_sleep(unsigned int seconds){};
-
-int __wrap_OS_BindUnixDomain(const char * path, int type, int max_msg_size){
-    return (int) mock();
-}
-
-int __wrap_OS_ConnectUnixDomain(const char * path, int type, int max_msg_size){
-    return (int) mock();
-}
+void __wrap_sleep(unsigned int seconds) { };
 
 bool ptr_function_value = false;
 
@@ -60,7 +53,13 @@ void test_start_mq_read_success(void ** state){
 
     int ret = 0;
 
-    will_return(__wrap_OS_BindUnixDomain, 0);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, path);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR + 512);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+    will_return(__wrap_OS_BindUnixDomainWithPerms, 0);
 
     ret = StartMQ(path, type, n_attempts);
     assert_false(ret);
@@ -76,7 +75,13 @@ void test_start_mq_read_fail(void ** state){
 
     int ret = 0;
 
-    will_return(__wrap_OS_BindUnixDomain, -1);
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, path);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR + 512);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+    will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
 
     ret = StartMQ(path, type, n_attempts);
     assert_int_equal(ret, -1);
@@ -94,6 +99,9 @@ void test_start_mq_write_simple_success(void ** state){
     int ret = 0;
     char messages[2][OS_SIZE_64];
 
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
     snprintf(messages[0], OS_SIZE_64,"Connected succesfully to '%s' after %d attempts", path, 0);
@@ -117,6 +125,9 @@ void test_start_mq_write_simple_fail(void ** state){
     int ret = 0;
     errno = ERRNO;
 
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Can't connect to '/test': Socket operation on non-socket (88). Attempt: 1");
 
@@ -138,10 +149,16 @@ void test_start_mq_write_multiple_success(void ** state){
     errno = ERRNO;
 
     for (int i = 0; i < n_attempts - 1; i++) {
+        expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
         will_return(__wrap_OS_ConnectUnixDomain, -1);
         snprintf(messages[i], OS_SIZE_1024, "Can't connect to '/test': Socket operation on non-socket (88). Attempt: %d", i + 1);
         expect_string(__wrap__mdebug1, formatted_msg, messages[i]);
     }
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
     snprintf(messages[n_attempts - 1], OS_SIZE_1024,"Connected succesfully to '%s' after %d attempts", path, n_attempts - 1);
@@ -166,6 +183,9 @@ void test_start_mq_write_multiple_fail(void ** state){
     char messages[n_attempts][OS_SIZE_1024];
 
     for (int i = 0; i <= n_attempts - 1; i++) {
+        expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
         will_return(__wrap_OS_ConnectUnixDomain, -1);
         snprintf(messages[i], OS_SIZE_1024, "Can't connect to '/test': Socket operation on non-socket (88). Attempt: %d", i + 1);
         expect_string(__wrap__mdebug1, formatted_msg, messages[i]);
@@ -187,10 +207,16 @@ void test_start_mq_write_inf_success(void ** state){
     char messages[MAX_ATTEMPTS + 1][OS_SIZE_1024];
 
     for (int i = 0; i < MAX_ATTEMPTS - 1; i++) {
+        expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
         will_return(__wrap_OS_ConnectUnixDomain, -1);
         sprintf(messages[i], "Can't connect to '/test': Socket operation on non-socket (88). Attempt: %d", i + 1);
         expect_string(__wrap__mdebug1, formatted_msg, messages[i]);
     }
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
     snprintf(messages[MAX_ATTEMPTS - 1], OS_SIZE_1024,"Connected succesfully to '%s' after %d attempts", path, MAX_ATTEMPTS - 1);
@@ -215,11 +241,17 @@ void test_start_mq_write_inf_fail(void ** state){
     char messages[MAX_ATTEMPTS][OS_SIZE_1024];
 
     for (int i = 0; i <= MAX_ATTEMPTS - 1; i++) {
+        expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
         will_return(__wrap_OS_ConnectUnixDomain, -1);
         snprintf(messages[i], OS_SIZE_1024, "Can't connect to '/test': Socket operation on non-socket (88). Attempt: %d", i + 1);
         expect_string(__wrap__mdebug1, formatted_msg, messages[i]);
     }
     /* Breaking the infinite loop */
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
     /* Ignoring output */
     expect_any_count(__wrap__mdebug1, formatted_msg, -1);
@@ -236,6 +268,9 @@ void test_reconnect_mq_simple_success(void ** state){
     int ret = 0;
     char messages[2][OS_SIZE_64];
 
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
     snprintf(messages[0], OS_SIZE_64, SUCCESSFULLY_RECONNECTED_SOCKET, path);
@@ -256,6 +291,9 @@ void test_reconnect_mq_simple_fail(void ** state){
 
     int ret = 0;
 
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, -1);
 
     ret = MQReconnectPredicated(path, &ptr_function);
@@ -274,7 +312,14 @@ void test_reconnect_mq_complex_true(void ** state){
     char expected_str[OS_SIZE_128];
     char messages[2][OS_SIZE_128];
 
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
     snprintf(expected_str, OS_SIZE_128, UNABLE_TO_RECONNECT, path, error_message, error_message_id);
@@ -290,6 +335,93 @@ void test_reconnect_mq_complex_true(void ** state){
     assert_int_equal(ret, 0);
 }
 
+void test_SendMSGAction_format_error(void ** state){
+    (void)state;
+
+    expect_string(__wrap__merror, formatted_msg, "(1106): String not correctly formatted.");
+
+    int ret = SendMSG(0, "message", "location", SECURE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendMSGAction_queue_not_available(void ** state){
+    (void)state;
+
+    int ret = SendMSG(-1, "message", "location", SYSLOG_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendMSGAction_socket_error(void ** state){
+    (void)state;
+    int queue = 0;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_string(__wrap__merror, formatted_msg, "socketerr (not available).");
+
+    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendMSGAction_socket_busy(void ** state){
+    (void)state;
+    int queue = 0;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, OS_INVALID);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Socket busy, discarding message.");
+    expect_string(__wrap__mwarn, formatted_msg, "Socket busy, discarding message.");
+
+    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendMSGAction_non_secure_msg(void ** state){
+    (void)state;
+    int queue = 0;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendMSGAction_secure_msg(void ** state){
+    (void)state;
+    int queue = 0;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_string(__wrap_OS_SendUnix, msg, "4:location->message:");
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    int ret = SendMSG(queue, "4:message:", "location", SECURE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendMSGAction_secure_msg_keepalive(void ** state){
+    (void)state;
+    int ret = SendMSG(0, "4:keepalive", "location", SECURE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+
 // Main test function
 
 int main(void){
@@ -304,7 +436,15 @@ int main(void){
        cmocka_unit_test(test_start_mq_write_inf_fail),
        cmocka_unit_test(test_reconnect_mq_simple_fail),
        cmocka_unit_test(test_reconnect_mq_complex_true),
-       cmocka_unit_test(test_reconnect_mq_simple_success)
+       cmocka_unit_test(test_reconnect_mq_simple_success),
+       // Test test_SendMSGAction
+       cmocka_unit_test(test_SendMSGAction_format_error),
+       cmocka_unit_test(test_SendMSGAction_queue_not_available),
+       cmocka_unit_test(test_SendMSGAction_socket_error),
+       cmocka_unit_test(test_SendMSGAction_socket_busy),
+       cmocka_unit_test(test_SendMSGAction_non_secure_msg),
+       cmocka_unit_test(test_SendMSGAction_secure_msg),
+       cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
        };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

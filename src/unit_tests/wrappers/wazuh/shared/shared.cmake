@@ -28,3 +28,14 @@ set(DEBUG_OP_WRAPPERS "-Wl,--wrap,_mdebug1 \
                        -Wl,--wrap,_mtinfo \
                        -Wl,--wrap,_mtwarn \
                        -Wl,--wrap,_mwarn")
+
+set(STDIO_OP_WRAPPERS "-Wl,--wrap,fclose \
+                       -Wl,--wrap,fflush \
+                       -Wl,--wrap,fgets \
+                       -Wl,--wrap,fgetpos \
+                       -Wl,--wrap,fopen \
+                       -Wl,--wrap,fread \
+                       -Wl,--wrap,fseek \
+                       -Wl,--wrap,fwrite \
+                       -Wl,--wrap,remove \
+                       -Wl,--wrap,fgetc")

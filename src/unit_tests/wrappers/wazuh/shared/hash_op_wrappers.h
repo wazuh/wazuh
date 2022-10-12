@@ -27,6 +27,7 @@ int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data);
 void *__real_OSHash_Begin(const OSHash *self, unsigned int *i);
 void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i);
 
+void *__real_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void *__wrap_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 
 OSHash *__wrap_OSHash_Create();
@@ -57,5 +58,7 @@ int __wrap_OSHash_Update(OSHash *self, const char *key, void *data);
 extern int OSHash_Add_ex_check_data;
 
 int __wrap_OSHash_Get_Elem_ex(OSHash *self);
+
+int __wrap_OSHash_Set(OSHash *self, const char *key, void *data);
 
 #endif
