@@ -80,6 +80,7 @@ void *__wrap_OSHash_Begin(const OSHash *self, __attribute__((unused)) unsigned i
     return mock_type(OSHashNode*);
 }
 
+void *__real_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void *__wrap_OSHash_Clean(__attribute__((unused)) OSHash *self,
                           __attribute__((unused)) void (*cleaner)(void*)) {
     return mock_type(void *);
@@ -190,5 +191,12 @@ int __wrap_OSHash_Update_ex(__attribute__((unused)) OSHash *self,
 
 int __wrap_OSHash_Get_Elem_ex(OSHash *self) {
     check_expected_ptr(self);
+    return mock();
+}
+
+int __wrap_OSHash_Set(OSHash *self, const char *key, void *data) {
+    check_expected_ptr(self);
+    check_expected_ptr(key);
+    check_expected_ptr(data);
     return mock();
 }

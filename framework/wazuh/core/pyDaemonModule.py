@@ -59,7 +59,7 @@ def pyDaemon():
 
 
 def create_pid(name, pid):
-    filename = path.join(common.wazuh_path, common.os_pidfile, f'{name}-{pid}.pid')
+    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     with open(filename, 'a') as fp:
         try:
@@ -70,7 +70,7 @@ def create_pid(name, pid):
 
 
 def delete_pid(name, pid):
-    filename = path.join(common.wazuh_path, common.os_pidfile, f'{name}-{pid}.pid')
+    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     try:
         if path.exists(filename):
@@ -79,14 +79,16 @@ def delete_pid(name, pid):
         pass
 
 
-def delete_child_pids(name, ppid):
-    filenames = glob.glob(path.join(common.wazuh_path, common.os_pidfile, f'{name}*.pid'))
+def delete_child_pids(name, ppid, logger):
+    filenames = glob.glob(path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}*.pid'))
 
     for process in psutil.Process(ppid).children(recursive=True):
         try:
             process.kill()
         except psutil.Error:
-            pass
+            logger.error(f'Error while trying to terminate the process with ID {process.pid}.')
+        except Exception as exc:
+            logger.error(f'Unhandled exception while trying to terminate the process with ID {process.pid}: {exc}')
         for filename in filenames[:]:
             if str(process.pid) in filename:
                 try:

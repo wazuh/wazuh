@@ -34,6 +34,7 @@
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
 #define CLOGTEST      020000000
+#define WAZUHDB       040000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -45,6 +46,8 @@ typedef enum needed_tags {
 } NeededTags;
 
 #include "os_xml/os_xml.h"
+#include "config/wazuh_db-config.h"
+#include "time.h"
 
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
@@ -96,6 +99,12 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
 int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+#ifndef CLIENT
+// Current key-request module
+int authd_read_key_request(xml_node **nodes, void *config);
+// Deprecated agent-key-polling module
+int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) void *module);
+#endif
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);

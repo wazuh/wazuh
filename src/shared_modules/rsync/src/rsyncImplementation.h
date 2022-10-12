@@ -17,22 +17,11 @@
 #include <functional>
 #include "commonDefs.h"
 #include "json.hpp"
+#include "registrationController.hpp"
 #include "msgDispatcher.h"
 #include "syncDecoder.h"
 #include "dbsyncWrapper.h"
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
-
+#include "cjsonSmartDeleter.hpp"
 
 namespace RSync
 {
@@ -113,6 +102,8 @@ namespace RSync
             void push(const RSYNC_HANDLE handle,
                       const std::vector<unsigned char>& data);
 
+            bool isComponentRegistered(const std::string& component);
+
 
         private:
 
@@ -160,6 +151,7 @@ namespace RSync
             RSyncImplementation& operator=(const RSyncImplementation&) = delete;
             std::map<RSYNC_HANDLE, std::shared_ptr<RSyncContext>> m_remoteSyncContexts;
             std::mutex m_mutex;
+            RegistrationController m_registrationController;
     };
 }// namespace RSync
 

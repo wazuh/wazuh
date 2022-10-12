@@ -66,4 +66,6 @@ namespace PackageLinuxHelper
 
 };
 
+#pragma GCC diagnostic pop
+
 #endif // _PACKAGE_LINUX_PARSER_HELPER_EXTRA_H

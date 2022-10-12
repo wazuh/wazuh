@@ -19,6 +19,24 @@ def test_WazuhQueue__init__(mock_conn):
     mock_conn.assert_called_once_with()
 
 
+@patch('wazuh.core.wazuh_queue.WazuhQueue.close')
+@patch('wazuh.core.wazuh_queue.socket.socket.connect')
+def test_WazuhQueue__enter__(mock_conn, mock_close):
+    """Test WazuhQueue.__enter__ function."""
+    with WazuhQueue('test_path') as wq:
+        assert isinstance(wq, WazuhQueue)
+
+
+@patch('wazuh.core.wazuh_queue.WazuhQueue.close')
+@patch('wazuh.core.wazuh_queue.socket.socket.connect')
+def test_WazuhQueue__exit__(mock_connect, mock_close):
+    """Test WazuhQueue.__exit__ function."""
+    with WazuhQueue('test_path'):
+        pass
+
+    mock_close.assert_called_once()
+
+
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.socket.socket.setsockopt')
 def test_WazuhQueue_protected_connect(mock_set, mock_conn):
@@ -89,9 +107,8 @@ def test_WazuhQueue_protected_send_ko(mock_send, mock_conn):
 def test_WazuhQueue_close(mock_close, mock_conn):
     """Test WazuhQueue.close function."""
 
-    queue = WazuhQueue('test_path')
-
-    queue.close()
+    with WazuhQueue('test_path'):
+        pass
 
     mock_conn.assert_called_once_with('test_path')
     mock_close.assert_called_once_with()

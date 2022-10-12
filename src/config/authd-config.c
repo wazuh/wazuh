@@ -25,6 +25,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     /* XML Definitions */
     static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
+    static const char *xml_ipv6 = "ipv6";
     static const char *xml_use_source_ip = "use_source_ip";
     static const char *xml_force_insert = "force_insert";       // Deprecated since 4.3.0
     static const char *xml_force_time = "force_time";           // Deprecated since 4.3.0
@@ -39,6 +40,9 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
+#ifndef CLIENT
+    static const char *xml_key_request = "key_request";
+#endif
 
     authd_config_t *config = (authd_config_t *)d1;
     int i;
@@ -93,6 +97,15 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             config->port = (unsigned short)atoi(node[i]->content);
 
             if (!config->port) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, xml_ipv6)) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                config->ipv6 = true;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                config->ipv6 = false;
+            } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
@@ -155,6 +168,18 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.remote_enrollment = b;
+#ifndef CLIENT
+        } else if (!strcmp(node[i]->element, xml_key_request)) {
+            XML_NODE children = OS_GetElementsbyNode(xml, node[i]);
+
+            if (children == NULL) {
+                continue;
+            }
+
+            authd_read_key_request(children, config);
+            config->key_request.compatibility_flag = 1;
+            OS_ClearNode(children);
+#endif
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {
             mdebug1("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
         } else if (!strcmp(node[i]->element, xml_ciphers)) {

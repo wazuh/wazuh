@@ -428,7 +428,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
                 if (!(csv_output || json_output)) {
                     printf("\nChanges for %s:\n", read_day);
                 }
-                strncpy(saved_read_day, read_day, 23);
+                snprintf(saved_read_day, sizeof(saved_read_day), "%s", read_day);
             }
             strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 
@@ -596,8 +596,11 @@ void delete_sqlite(const char *id, const char *name)
 /* Delete diff folders */
 void delete_diff(const char *name)
 {
-    char tmp_folder[513];
-    tmp_folder[512] = '\0';
+    if (NULL == name || *name == '\0') {
+        return;
+    }
+
+    char tmp_folder[513] = {0};
     snprintf(tmp_folder, 512, "%s/%s",
              DIFF_DIR,
              name);

@@ -21,7 +21,14 @@
 #include "labels.h"
 #include "exec.h"
 
-static const char *get_ip(const Eventinfo *lf);
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC const char *get_ip(const Eventinfo *lf);
 int conn_error_sent = 0;
 
 void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_response *ar) {
@@ -277,7 +284,7 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
  * @param[in] lf Event information.
  * @return const char* on success or NULL on failure.
  */
-static const char* get_ip(const Eventinfo *lf)
+STATIC const char* get_ip(const Eventinfo *lf)
 {
     const char *ip;
 
