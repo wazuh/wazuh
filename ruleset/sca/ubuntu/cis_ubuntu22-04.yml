@@ -498,122 +498,52 @@ checks:
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nosuid'
-    
+
+  # 1.1.9 Disable Automounting (Automated)
   - id: 28525
     title: "Disable Automounting"
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
     remediation: "If there are no other packages that depends on autofs, remove the package with: # apt purge autofs OR if there are dependencies on the autofs package: Run the following commands to mask autofs: # systemctl stop autofs # systemctl mask autofs Additional Information: This control should align with the tolerance of the use of portable drives and optical media in the organization. On a server requiring an admin to manually mount media can be part of defense-in-depth to reduce the risk of unapproved software or information being introduced or proprietary software or information being exfiltrated. If admins commonly use flash drives and Server access has sufficient physical controls, requiring manual mounting may not increase security."
-    references: ""
     compliance:
       - cis: ["1.1.9"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["8.5"]
+      - cis_csc_v8: ["10.3"]
+      - mitre_techniques: ["T1068","T1203","T1211","T1212"]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28526
-    title: "Disable USB Storage"
-    description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
-    rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
-    impact: ""
-    remediation: "Run the following script to disable usb-storage: #!/usr/bin/env bash { l_mname="usb-storage" # set module name if ! modprobe -n -v "$l_mname" | grep -P -- '^\h*install \/bin\/(true|false)'; then echo -e " - setting module: \"$l_mname\" to be not loadable" echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf fi if lsmod | grep "$l_mname" > /dev/null 2>&1; then echo -e " - unloading module \"$l_mname\"" modprobe -r "$l_mname" fi if ! grep -Pq -- "^\h*blacklist\h+$l_mname\b" /etc/modprobe.d/*; then echo -e " - deny listing \"$l_mname\"" echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf fi } Additional Information: An alternative solution to disabling the usb-storage module may be found in USBGuard. Use of USBGuard and construction of USB device policies should be done in alignment with site policy."
-    references: ""
-    compliance:
-      - cis: ["1.1.10"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28527
-    title: "Ensure package manager repositories are configured (Manual)"
-    description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
-    rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
-    impact: ""
-    remediation: "Configure your package manager repositories according to site policy."
-    references: ""
-    compliance:
-      - cis: ["1.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28528
-    title: "Ensure GPG keys are configured (Manual)"
-    description: "Most packages managers implement GPG key signing to verify package integrity during installation."
-    rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system."
-    impact: ""
-    remediation: "Update your package manager GPG keys in accordance with site policy."
-    references: ""
-    compliance:
-      - cis: ["1.2.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs\.service|disabled'
+
+  # 1.1.10 Disable USB Storage (Automated) - Not implemented
+  # 1.2 Configure Software Updates
+  # 1.2.1 Ensure package manager repositories are configured (Manual) - Not implemented
+  # 1.2.2 Ensure GPG keys are configured (Manual) - Not implemented
+  # 1.3 Filesystem Integrity Checking
+  # 1.3.1 Ensure AIDE is installed (Automated)
   - id: 28529
     title: "Ensure AIDE is installed"
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
-    impact: ""
     remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db Additional Information: The prelinking feature can interfere with AIDE because it alters binaries to speed up their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus avoiding false positives from AIDE."
-    references: ""
     compliance:
       - cis: ["1.3.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.9"]
+      - cis_csc_v8: ["3.14"]
+      - mitre_techniques: ["T1036","T1036.002","T1036.003","T1036.004","T1036.005","T1565","T1565.001"]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28530
-    title: "Ensure filesystem integrity is regularly checked"
-    description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
-    rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
-    impact: ""
-    remediation: "If cron will be used to schedule and run aide check: Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check OR If aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check [Install] WantedBy=multi-user.target Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
-    references: "1. https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service 2. https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer Additional Information: The checking in this recommendation occurs every day at 5am. Alter the frequency and time of the checks in compliance with site policy systemd timers, timer file aidecheck.timer and service file aidecheck.service, have been included as an optional alternative to using cron Ubuntu advises using /usr/bin/aide.wrapper rather than calling /usr/bin/aide directly in order to protect the database and prevent conflicts"
-    compliance:
-      - cis: ["1.3.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' aide aide-common -> r:aide\s+install ok && r:aide-common\s+install ok "
+
+  # 1.3.2 Ensure filesystem integrity is regularly checked (Automated) - Not implemented
+  # 1.4 Secure Boot Settings
+  # 1.4.1 Ensure bootloader password is set (Automated)
   - id: 28531
     title: "Ensure bootloader password is set"
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters"
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off AppArmor at boot time)."
-    impact: "If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information: https://help.ubuntu.com/community/Grub2/Passwords"
-    remediation: "Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted" Run the following command to update the grub2 configuration: # update-grub Default Value: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment."
-    references: ""
+    impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem You can add --unrestricted to the menu entries to allow the system to boot without entering a password. Password will still be required to edit menu items. More Information: https://help.ubuntu.com/community/Grub2/Passwords'
+    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted" Run the following command to update the grub2 configuration: # update-grub Default Value: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment.'
     compliance:
       - cis: ["1.4.1"]
       - cis_csc_v7: [""]
