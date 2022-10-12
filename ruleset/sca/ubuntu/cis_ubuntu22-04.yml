@@ -546,50 +546,48 @@ checks:
     remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS= Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted" Run the following command to update the grub2 configuration: # update-grub Default Value: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment.'
     compliance:
       - cis: ["1.4.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["4.4"]
+      - cis_csc_v8: ["5.2"]
+      - mitre_techniques: ["T1542"]
+      - mitre_tactics: ["T1542"]
+      - mitre_mitigations: ["M1046"]
     condition: all
     rules:
-      - ''    
-    
+      - 'f:/boot/grub/grub.cfg -> r:set superusers && r:password_pbkdf2'
+
+  #1.4.2 Ensure permissions on bootloader config are configured (Automated)
   - id: 28532
     title: "Ensure permissions on bootloader config are configured"
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
-    impact: ""
     remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg Additional Information: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/grub.cfg with the appropriate grub configuration file for your environment"
-    references: ""
     compliance:
       - cis: ["1.4.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1542"]
+      - mitre_tactics: ["TA0005","TA0007"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:stat /boot/grub/grub.cfg -> r:Uid:\s+\(\s*0/\s*root\)\s*Gid:\s+\(\s*0/\s*root\)'
+
+  # 1.4.3 Ensure authentication required for single user mode (Automated)
   - id: 28533
     title: "Ensure authentication required for single user mode"
     description: "Single user mode is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
     rationale: "Requiring authentication in single user mode prevents an unauthorized user from rebooting the system into single user to gain root privileges without credentials."
-    impact: ""
     remediation: "Run the following command and follow the prompts to set a password for the root user: # passwd root"
-    references: ""
     compliance:
       - cis: ["1.4.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["4.4"]
+      - cis_csc_v8: ["5.2"]
+      - mitre_techniques: ["T1548"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - ''    
+      - 'f:/etc/shadow -> r:^root:*:|^root:!:'
     
   - id: 28534
     title: "Ensure prelink is not installed"
