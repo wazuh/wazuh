@@ -1,4 +1,5 @@
-set(ENGINE_SERVER_SOURCE_DIR ${ENGINE_SOURCE_DIR}/server)
+set(ENGINE_SERVER_SOURCE_DIR ${ENGINE_SOURCE_DIR}/server/src)
+set(ENGINE_SERVER_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/server/include)
 
 ####################################################################################################
 # Dependencies
@@ -44,9 +45,9 @@ target_link_libraries(server base uv_a api)
 
 target_include_directories(server
     PUBLIC
-    ${ENGINE_SERVER_SOURCE_DIR}
-    PRIVATE
+    ${ENGINE_SERVER_INCLUDE_DIR}
     ${CameronQueue_SOURCE_DIR}
+    PRIVATE
     ${ENGINE_SOURCE_DIR}/json
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/

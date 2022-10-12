@@ -17,7 +17,7 @@
 
 #include <api/api.hpp>
 
-#include "endpoints/baseEndpoint.hpp"
+#include "../../src/endpoints/baseEndpoint.hpp"
 
 /**
  * @brief Defines all related server functionality.
@@ -74,7 +74,7 @@ public:
      *
      * @return std::shared_ptr<concurrentQueue>
      */
-    std::shared_ptr<concurrentQueue>
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::string>>
     getEventQueue() const;
 
     /**
