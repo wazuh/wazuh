@@ -26,12 +26,14 @@ class EventEndpoint : public BaseEndpoint
 protected:
     using DatagramSocketEvent = uvw::UDPDataEvent;
     using DatagramSocketHandle = uvw::UDPHandle;
+    using concurrentQueue = moodycamel::BlockingConcurrentQueue<std::string>;
 
 private:
     int m_socketFd;
 
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<DatagramSocketHandle> m_handle;
+    std::shared_ptr<concurrentQueue> m_eventQueue;
 
 public:
     /**
@@ -40,8 +42,10 @@ public:
      * @param path (std::string) Absolute path to the datagram socket.
      * @param eventBuffer (ServerOutput) Reference to the event queue.
      */
-    explicit EventEndpoint(const std::string &path,
-                                    ServerOutput &eventBuffer);
+    explicit EventEndpoint(
+        const std::string& path,
+        std::shared_ptr<concurrentQueue> eventQueue);
+
     ~EventEndpoint();
 
     void run(void);
@@ -49,6 +53,8 @@ public:
     void configure() override;
 
     void close(void);
+
+    std::shared_ptr<concurrentQueue> getEventQueue() const;
 };
 
 } // namespace engineserver::endpoints

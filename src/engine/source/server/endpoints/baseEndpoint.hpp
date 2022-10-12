@@ -21,8 +21,6 @@
 namespace engineserver::endpoints
 {
 
-constexpr uint32_t CONNECTION_TIMEOUT_MSEC = 5000; // Stream
-
 /**
  * @brief Endpoint base interfaz that exposes functionality required by
  * EngineServer
@@ -31,17 +29,10 @@ constexpr uint32_t CONNECTION_TIMEOUT_MSEC = 5000; // Stream
 class BaseEndpoint
 {
 protected:
-    // TODO: here the responsabilities are compromised. Endpoints should not
-    // know what is the server's output
-    // TODO: maybe we should embbed a queue on each endpoint
-    using ServerOutput = moodycamel::BlockingConcurrentQueue<std::string>;
-
     std::string m_path;
-    ServerOutput &m_out;
 
-    BaseEndpoint(const std::string &path, ServerOutput &out)
-        : m_path {path}
-        , m_out {out} {};
+    BaseEndpoint(const std::string &path)
+        : m_path {path}{};
 
 public:
     /**
@@ -50,16 +41,6 @@ public:
      *
      */
     virtual ~BaseEndpoint() {};
-
-    /**
-     * @brief Get the Observable object
-     *
-     * @return auto Observable object
-     */
-    const ServerOutput &output(void) const
-    {
-        return this->m_out;
-    };
 
     /**
      * @brief Start endpoint.
@@ -78,6 +59,13 @@ public:
      *
      */
     virtual void close(void) = 0;
+
+    /**
+     * @brief Get the Path object
+     *
+     * @return const std::string&
+     */
+    const std::string &getPath() const { return m_path; }
 };
 
 } // namespace engineserver::endpoints
