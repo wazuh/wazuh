@@ -377,6 +377,7 @@ class WazuhException(Exception):
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
+        2010: {'message': 'The requested read operation did not complete fully'},
 
         # Cluster
         3000: 'Cluster',

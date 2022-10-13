@@ -18,8 +18,8 @@ logger = logging.getLogger('wazuh-api')
 
 async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
                         name: str = None, description: str = None, references: str = None, offset: int = 0,
-                        limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
-                        q: str = None) -> web.Response:
+                        limit: int = DATABASE_LIMIT, sort: str = None, search: str = None, select: str = None,
+                        q: str = None, distinct: bool = False) -> web.Response:
     """Get security configuration assessment (SCA) database of an agent.
 
     Parameters
@@ -46,9 +46,13 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
         or descending order.
     search : str
         Looks for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
     q : str
         Query to filter results by. This is specially useful to filter by total checks passed, failed or total score
         (fields pass, fail, score).
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -64,7 +68,9 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
+                'select': select,
                 'q': q,
+                'distinct': distinct,
                 'filters': filters}
     dapi = DistributedAPI(f=sca.get_sca_list,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -80,13 +86,12 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
 
 
 async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                         policy_id: str = None, title: str = None,
-                         description: str = None, rationale: str = None, remediation: str = None, command: str = None,
-                         status: str = None, reason: str = None,
+                         policy_id: str = None, title: str = None, description: str = None, rationale: str = None,
+                         remediation: str = None, command: str = None, status: str = None, reason: str = None,
                          file: str = None, process: str = None, directory: str = None, registry: str = None,
-                         references: str = None, result: str = None,
-                         condition: str = None, offset: int = 0, limit: int = DATABASE_LIMIT, sort: str = None,
-                         search: str = None, q: str = None) -> web.Response:
+                         references: str = None, result: str = None, condition: str = None, offset: int = 0,
+                         limit: int = DATABASE_LIMIT, sort: str = None, search: str = None, select: str = None,
+                         q: str = None, distinct: bool = False) -> web.Response:
     """Get policy monitoring alerts for a given policy.
 
     Parameters
@@ -137,9 +142,13 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
         or descending order.
     search : str
         Looks for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
     q : str
         Query to filter results by. This is specially useful to filter by total checks passed, failed or total score
         (fields pass, fail, score).
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -167,7 +176,9 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
+                'select': select,
                 'q': q,
+                'distinct': distinct,
                 'filters': filters}
 
     dapi = DistributedAPI(f=sca.get_sca_checks,

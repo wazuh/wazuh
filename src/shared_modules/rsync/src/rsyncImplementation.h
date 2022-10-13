@@ -21,19 +21,7 @@
 #include "msgDispatcher.h"
 #include "syncDecoder.h"
 #include "dbsyncWrapper.h"
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
-
+#include "cjsonSmartDeleter.hpp"
 
 namespace RSync
 {

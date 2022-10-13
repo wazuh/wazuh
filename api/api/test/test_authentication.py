@@ -2,6 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import hashlib
+import json
 import os
 import sys
 from copy import deepcopy
@@ -42,12 +44,12 @@ decoded_payload = {
 }
 
 original_payload = {
-    "iss": 'wazuh',
-    "aud": 'Wazuh API REST',
+    "iss": "wazuh",
+    "aud": "Wazuh API REST",
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
-    "sub": '001',
-    'run_as': False,
+    "sub": "001",
+    "run_as": False,
     "rbac_roles": [1],
     "rbac_mode": security_conf['rbac_mode']
 }
@@ -124,6 +126,7 @@ def test_get_security_conf():
     assert all(x in result.keys() for x in ('auth_token_exp_timeout', 'rbac_mode'))
 
 
+@pytest.mark.parametrize('auth_context', [{'name': 'initial_auth'}, None])
 @patch('api.authentication.jwt.encode', return_value='test_token')
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
@@ -132,7 +135,7 @@ def test_get_security_conf():
 @patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
 def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_keypair,
-                        mock_encode):
+                        mock_encode, auth_context):
     """Verify if result is as expected"""
 
     class NewDatetime:
@@ -141,7 +144,7 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
 
     mock_raise_if_exc.return_value = security_conf
     with patch('api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
-        result = authentication.generate_token('001', {'roles': [1]})
+        result = authentication.generate_token(user_id='001', data={'roles': [1]}, auth_context=auth_context)
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
@@ -150,7 +153,10 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
     mock_generate_keypair.assert_called_once()
-    mock_encode.assert_called_once_with(original_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES512')
+    expected_payload = original_payload | (
+        {"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(),
+                                              digest_size=16).hexdigest(), "run_as": True} if auth_context is not None else {})
+    mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES512')
 
 
 @patch('api.authentication.TokenManager')

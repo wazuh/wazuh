@@ -1554,7 +1554,7 @@ class SyncWazuhdb(SyncTask):
             get_chunks_start_time = perf_counter()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
-                result = self.data_retriever(command=command)
+                result = await self.data_retriever(command=command)
                 status = result[0]
                 if result[1] not in ['[]', '[{"data":[]}]']:
                     chunks.append(result[1])
@@ -1565,7 +1565,7 @@ class SyncWazuhdb(SyncTask):
                     except (IndexError, KeyError):
                         pass
         except exception.WazuhException as e:
-            self.logger.error(f"Error obtaining data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
             return []
 
         self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(perf_counter() - get_chunks_start_time):.3f}s.")

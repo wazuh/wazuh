@@ -35,7 +35,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.common as cluster_common
         import wazuh.core.results as wresults
         from wazuh.core import common
-        from wazuh.core.wdb import WazuhDBConnection
+        from wazuh.core.wdb import AsyncWazuhDBConnection
 
 # Globals
 
@@ -1405,7 +1405,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         else:
             return 'ok', {'id': counter}
 
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     logger = logging.getLogger("wazuh")
     handler = cluster_common.Handler(fernet_key, cluster_items)
     sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
@@ -1435,7 +1435,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_information() == []
             logger_error_mock.assert_called_with(
-                'Error obtaining data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
 
 
 @pytest.mark.asyncio
