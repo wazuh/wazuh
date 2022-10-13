@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _PROTOCOL_HANDLER_H
-#define _PROTOCOL_HANDLER_H
+#ifndef _WAZUH_STREAM_PROTOCOL_H
+#define _WAZUH_STREAM_PROTOCOL_H
 
 #include <optional>
 
@@ -17,19 +17,12 @@
 namespace engineserver
 {
 
-constexpr char EVENT_AGENT_ID[] {"/agent/id"};
-constexpr char EVENT_AGENT_NAME[] {"/agent/name"};
-constexpr char EVENT_LOG[] {"/event/original"};
-constexpr char EVENT_QUEUE_ID[] {"/wazuh/queue"};
-constexpr char EVENT_REGISTERED_IP[] {"/agent/registeredIP"};
-constexpr char EVENT_ORIGIN[] {"/wazuh/origin"};
-
 /**
  * @brief A handler which knows how to parse messages from the network
  * data chunks and send them to a subscriber.
  *
  */
-class ProtocolHandler
+class WazuhStreamProtocol
 {
 private:
     std::vector<char> m_buff;
@@ -46,12 +39,6 @@ private:
     bool hasHeader();
 
 public:
-    /**
-     * @brief generate a json::Document from internal state
-     *
-     * @return json::Document
-     */
-    static base::Event parse(const std::string& event);
 
     /**
      * @brief process the chunk of data and send messages to dst when. Return
@@ -70,4 +57,4 @@ public:
 
 } // namespace engineserver
 
-#endif // _PROTOCOL_HANDLER_H
+#endif // _WAZUH_STREAM_PROTOCOL_H

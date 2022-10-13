@@ -20,7 +20,7 @@
 #include <logging/logging.hpp>
 #include <uvw/timer.hpp>
 
-#include "server/protocolHandler.hpp"
+#include "server/wazuhStreamProtocol.hpp"
 
 using uvw::CloseEvent;
 using uvw::DataEvent;
@@ -57,7 +57,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
     auto client = handle.loop().resource<PipeHandle>();
     auto timer = client->loop().resource<TimerHandle>();
 
-    auto protocolHandler = std::make_shared<ProtocolHandler>();
+    auto protocolHandler = std::make_shared<WazuhStreamProtocol>();
 
     timer->on<TimerEvent>(
         [client](const auto&, auto& handler)
