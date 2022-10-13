@@ -48,11 +48,11 @@ custom_api_configuration = {
     "upload_configuration": {
         "remote_commands": {
             "localfile": {
-                "enabled": True,
+                "allow": True,
                 "exceptions": []
             },
             "wodle_command": {
-                "enabled": True,
+                "allow": True,
                 "exceptions": []
             }
         }
