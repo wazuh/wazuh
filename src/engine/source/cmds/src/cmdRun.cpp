@@ -175,7 +175,16 @@ void run(const std::string& kvdbPath,
     }
 
     // Start server
-    server->run();
+    try
+    {
+        server->run();
+    }
+    catch (const std::exception& e)
+    {
+        WAZUH_LOG_ERROR("Unexpected error: {}", utils::getExceptionStack(e));
+        destroy();
+        exit(1);
+    }
 
     // engineserver::EngineServer server {
     //     {endpoint, "api:/var/ossec/queue/sockets/analysis"},
@@ -223,7 +232,7 @@ void run(const std::string& kvdbPath,
     //                     try
     //                     {
     //                         auto result = base::result::makeSuccess(
-    //                             engineserver::ProtocolHandler::parse(event));
+    //                             engineserver::base::parseEvent::parseOssecEvent(event));
     //                         controller.ingestEvent(
     //                             std::make_shared<base::result::Result<base::Event>>(
     //                                 std::move(result)));
