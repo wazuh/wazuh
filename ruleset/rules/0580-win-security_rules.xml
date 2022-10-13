@@ -1014,7 +1014,7 @@
 
   <rule id="60193" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.targetSid">^%{S-1-5-32\S*-574}$|^S-1-5-32\S*-574$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-574}$|^S-1-5-32-574$</field>
     <options>no_full_log</options>
     <description>Certificate service DCOM access group changed.</description>
     <mitre>
