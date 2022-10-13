@@ -67,7 +67,8 @@ checks:
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
-    references: "1. See the fstab(5) manual page for more information."
+    references: 
+      - See the fstab(5) manual page for more information
     compliance:
       - cis: ["1.1.2.2"]
       - cis_csc_v7: ["14.6"]
