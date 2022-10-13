@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import contextlib
 import itertools
 import json
 import logging
@@ -694,18 +695,13 @@ class APIRequestQueue(WazuhRequestQueue):
                 task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 self.logger.error(f"Error in distributed API: {e}", exc_info=True)
-                task_id = b'Error in distributed API: ' + str(e).encode()
-
-            if task_id.startswith(b'Error'):
-                self.logger.error(task_id.decode(), exc_info=False)
-                result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
+                with contextlib.suppress(WazuhException):
+                    await node.send_request(b"dapi_err", f"{name_2}{str(e)}".encode())
             else:
-                result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
-            if not isinstance(result, WazuhException):
-                if result.startswith(b'Error'):
-                    self.logger.error(result.decode(), exc_info=False)
-            else:
-                self.logger.error(result.message, exc_info=False)
+                try:
+                    await node.send_request(b"dapi_res", name_2.encode() + task_id)
+                except WazuhException as e:
+                    self.logger.error(e.message, exc_info=False)
 
 
 class SendSyncRequestQueue(WazuhRequestQueue):
@@ -740,12 +736,11 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
             except Exception as e:
-                task_id = f'Error in SendSync (parameters {request}): {str(e)}'.encode()
-
-            if task_id.startswith(b'Error'):
-                self.logger.error(task_id.decode(), exc_info=False)
-                result = await node.send_request(b'sendsyn_err', name_2.encode() + task_id)
+                self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
+                with contextlib.suppress(WazuhException):
+                    await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
             else:
-                result = await node.send_request(b'sendsyn_res', name_2.encode() + task_id)
-            if isinstance(result, WazuhException):
-                self.logger.error(result.message)
+                try:
+                    await node.send_request(b"sendsyn_res", name_2.encode() + task_id)
+                except WazuhException as e:
+                    self.logger.error(e.message, exc_info=False)

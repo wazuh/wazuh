@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import contextlib
 import errno
 import json
 import logging
@@ -15,7 +16,6 @@ from typing import Union
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.exception import WazuhClusterError
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
@@ -228,19 +228,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            try:
-                asyncio.create_task(
-                    self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
-            except WazuhClusterError:
-                raise WazuhClusterError(3025)
+            asyncio.create_task(self.log_exceptions(
+                self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg)))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'sendsyn_err':
             sendsync_client, error_msg = data.split(b' ', 1)
-            try:
-                asyncio.create_task(
-                    self.server.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg))
-            except WazuhClusterError:
-                raise WazuhClusterError(3025)
+            asyncio.create_task(self.log_exceptions(
+                self.server.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg)))
             return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':
             self.server.dapi.add_request(b'master*' + data)
@@ -277,12 +271,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         if sync_type == b'syn_g_m_w':
             sync_function = ReceiveAgentGroupsTask
+            logger_tag = 'Agent-groups recv'
         elif sync_type == b'syn_g_m_w_c':
             sync_function = ReceiveEntireAgentGroupsTask
+            logger_tag = 'Agent-groups recv full'
         else:
             sync_function = None
+            logger_tag = ''
 
-        return super().setup_receive_file(sync_function, data)
+        return super().setup_receive_file(receive_task_class=sync_function, data=data, logger_tag=logger_tag)
 
     def setup_receive_files_from_master(self):
         """Set up a task to wait until integrity information has been received from the master and process it.
@@ -299,7 +296,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync required.")
         self.check_integrity_free = False
-        return super().setup_receive_file(ReceiveIntegrityTask)
+        return super().setup_receive_file(receive_task_class=ReceiveIntegrityTask, logger_tag='Integrity sync')
 
     def end_receiving_integrity(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         """Notify to the corresponding task that information has been received.
@@ -319,14 +316,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        return super().end_receiving_file(task_and_file_names)
+        return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity sync')
 
-    def error_receiving_integrity(self, taskname_and_error_details: str) -> Tuple[bytes, bytes]:
+    def error_receiving_integrity(self, data: str) -> Tuple[bytes, bytes]:
         """Notify to the corresponding task that an error has occurred during the process.
 
         Parameters
         ----------
-        taskname_and_error_details : str
+        data : str
             Task ID and error formatted as WazuhJSONEncoder.
 
         Returns
@@ -336,7 +333,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        return super().error_receiving_file(taskname_and_error_details)
+        return super().error_receiving_file(task_id_and_error_details=data, logger_tag='Integrity sync')
 
     def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
         """Function called when the master sends the "syn_m_c_ok" command.
@@ -549,15 +546,15 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                    metadata_len=len(self.server.integrity_control),
                                                    task_pool=self.server.task_pool)
             # If exception is raised during sync process, notify the master so it removes the file if received.
-            except exception.WazuhException as e:
-                logger.error(f"Error synchronizing integrity: {e}")
-                await self.send_request(command=b'syn_i_w_m_r',
-                                        data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 logger.error(f"Error synchronizing integrity: {e}")
-                exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                      cls=c_common.WazuhJSONEncoder)
-                await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
+                if isinstance(e, exception.WazuhException):
+                    exc = json.dumps(e, cls=c_common.WazuhJSONEncoder)
+                else:
+                    exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
+                                     cls=c_common.WazuhJSONEncoder)
+                with contextlib.suppress(Exception):
+                    await self.send_request(command=b'syn_i_w_m_r', data=f"None {exc}".encode())
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
@@ -661,15 +658,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger.info(f"Finished in {(get_utc_now().timestamp() - self.integrity_sync_status['date_start']):.3f}s.")
 
         # If exception is raised during sync process, notify the master, so it removes the file if received.
-        except exception.WazuhException as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
-            await self.send_request(command=b'syn_i_w_m_r',
-                                    data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=c_common.WazuhJSONEncoder)
-            await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
+            if isinstance(e, exception.WazuhException):
+                exc = json.dumps(e, cls=c_common.WazuhJSONEncoder)
+            else:
+                exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=c_common.WazuhJSONEncoder)
+            with contextlib.suppress(Exception):
+                await self.send_request(command=b'syn_i_w_m_r', data=f"None {exc}".encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
         """Perform relevant actions for each file according to its status.
@@ -693,8 +689,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if isinstance(received_filename, Exception):
             exc_info = json.dumps(exception.WazuhClusterError(
                 1000, extra_message=str(self.sync_tasks[name].filename)), cls=c_common.WazuhJSONEncoder)
-            await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
-            raise self.sync_tasks[name].filename
+            with contextlib.suppress(Exception):
+                await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
+            raise received_filename
 
         zip_path = ""
 
@@ -722,16 +719,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: End.")
 
             logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
-
-        except exception.WazuhException as e:
-            logger.error(f"Error synchronizing files: {e}")
-            await self.send_request(command=b'syn_i_w_m_r',
-                                    data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             logger.error(f"Error synchronizing files: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=c_common.WazuhJSONEncoder)
-            await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
+            if isinstance(e, exception.WazuhException):
+                exc = json.dumps(e, cls=c_common.WazuhJSONEncoder)
+            else:
+                exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=c_common.WazuhJSONEncoder)
+            with contextlib.suppress(Exception):
+                await self.send_request(command=b'syn_i_w_m_r', data=f"None {exc}".encode())
         finally:
             zip_path and shutil.rmtree(zip_path)
 

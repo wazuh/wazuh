@@ -3,6 +3,7 @@
 
 import asyncio
 import base64
+import contextlib
 import datetime
 import hashlib
 import json
@@ -15,7 +16,7 @@ import time
 import traceback
 from importlib import import_module
 from time import perf_counter
-from typing import Tuple, Dict, Callable, List, Iterable
+from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from uuid import uuid4
 
 import cryptography.fernet
@@ -138,7 +139,7 @@ class SendStringTask:
         wazuh_common : WazuhCommon object
             Instance of WazuhCommon.
         logger : Logger object
-            Logger to use during the receive process.
+            Logger to use during the reception process.
         """
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
@@ -243,7 +244,7 @@ class ReceiveFileTask:
         wazuh_common : WazuhCommon object
             Instance of WazuhCommon.
         logger : Logger object
-            Logger to use during the receive process.
+            Logger to use during the reception process.
         task_id : bytes
             Pre-defined task_id to identify this object. If not specified, a random task_id will be used.
         """
@@ -495,7 +496,7 @@ class Handler(asyncio.Protocol):
                 break
             parsed = self.msg_parse()
 
-    async def send_request(self, command: bytes, data: bytes) -> bytes:
+    async def send_request(self, command: bytes, data: bytes) -> Union[exception.WazuhClusterError, Any]:
         """Send a request to peer and wait for the response to be received and processed.
 
         Parameters
@@ -530,7 +531,7 @@ class Handler(asyncio.Protocol):
             del self.box[msg_counter]
         except asyncio.TimeoutError:
             self.box[msg_counter] = None
-            return b'Error sending request: timeout expired.'
+            raise exception.WazuhClusterError(3020, extra_message=command.decode())
         return response_data
 
     async def get_chunks_in_task_id(self, task_id: bytes, error_command: bytes) -> dict:
@@ -553,13 +554,15 @@ class Handler(asyncio.Protocol):
             received_string = self.in_str[task_id].payload
             data = json.loads(received_string.decode())
         except KeyError as e:
-            print(str(e))
-            await self.send_request(command=error_command,
-                                    data=f'error while trying to access string under task_id {str(e)}.'.encode())
-            raise exception.WazuhClusterError(3035,
-                                              extra_message=f"it should be under task_id {str(e)}, but it's empty.")
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(command=error_command,
+                                        data=f'error while trying to access string under task_id {str(e)}.'.encode())
+            raise exception.WazuhClusterError(3035, extra_message=f"it should be under task_id {str(e)}, "
+                                                                  f"but it's empty.")
         except ValueError as e:
-            await self.send_request(command=error_command, data=f'error while trying to load JSON: {str(e)}'.encode())
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(command=error_command,
+                                        data=f'error while trying to load JSON: {str(e)}'.encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         return data
@@ -591,8 +594,9 @@ class Handler(asyncio.Protocol):
                                                timeout, info_type=info_type)
         except Exception as e:
             print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
-            await self.send_request(command=error_command,
-                                    data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(command=error_command,
+                                        data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
             raise exception.WazuhClusterError(3037, extra_message=str(e))
 
         # Log information about the results
@@ -625,7 +629,10 @@ class Handler(asyncio.Protocol):
         response : bytes
             Response from the receiving node to the sender node of the task.
         """
-        response = await self.send_request(command=command, data=json.dumps(result).encode())
+        try:
+            response = await self.send_request(command=command, data=json.dumps(result).encode())
+        except Exception as e:
+            response = str(e)
 
         return response
 
@@ -695,21 +702,34 @@ class Handler(asyncio.Protocol):
         filename = filename.encode()
         relative_path = filename.replace(common.WAZUH_PATH.encode(), b'')
 
-        # Tell to the destination node where (inside wazuh_path) the file has to be written.
-        await self.send_request(command=b'new_file', data=relative_path)
+        try:
+            # Tell to the destination node where (inside wazuh_path) the file has to be written.
+            await self.send_request(command=b'new_file', data=relative_path)
+        except exception.WazuhClusterError as e:
+            if e.code != 3020:
+                raise e
 
         # Send each chunk so it is updated in the destination.
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
-                await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
+                try:
+                    await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
+                except exception.WazuhClusterError as e:
+                    self.logger.info(f'e.code: {e.code}')
+                    if e.code != 3020:
+                        raise e
                 file_hash.update(chunk)
                 sent_size += len(chunk)
                 if task_id in self.interrupted_tasks:
                     break
 
-        # Close the destination file descriptor so the file in memory is dumped to disk.
-        await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
+        try:
+            # Close the destination file descriptor so the file in memory is dumped to disk.
+            await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
+        except exception.WazuhClusterError as e:
+            if e.code != 3020:
+                raise e
 
         return sent_size
 
@@ -728,16 +748,19 @@ class Handler(asyncio.Protocol):
         """
         # Reserve space in destination node and obtain ID to send this string to.
         total = len(my_str)
-        task_id = await self.send_request(command=b'new_str', data=str(total).encode())
-
-        if task_id.startswith(b'Error'):
+        try:
+            task_id = await self.send_request(command=b'new_str', data=str(total).encode())
+        except exception.WazuhException as e:
+            task_id = str(e)
             self.logger.error(f'There was an error while trying to send a string: {task_id}', exc_info=False)
-            await self.send_request(command=b'err_str', data=str(total).encode())
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(command=b'err_str', data=str(total).encode())
         else:
             # Send chunks of the string to the destination node, indicating the ID of the string.
             local_req_chunk = self.request_chunk - len(task_id) - 1
             for c in range(0, total, local_req_chunk):
-                await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
+                with contextlib.suppress(exception.WazuhClusterError):
+                    await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
 
         return task_id
 
@@ -763,15 +786,15 @@ class Handler(asyncio.Protocol):
         client = client.decode()
         try:
             res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
-            res = await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res)
-        except exception.WazuhException as e:
-            self.logger.error(f"Error sending API response to local client: {e}")
-            res = await self.send_request(b'dapi_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
+            await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res)
         except Exception as e:
             self.logger.error(f"Error sending API response to local client: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=WazuhJSONEncoder).encode()
-            res = await self.send_request(b'dapi_err', exc_info)
+            if isinstance(e, exception.WazuhException):
+                exc = json.dumps(e, cls=WazuhJSONEncoder)
+            else:
+                exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(b'dapi_err', exc.encode())
         finally:
             # Remove the string after using it
             self.in_str.pop(string_id, None)
@@ -788,14 +811,14 @@ class Handler(asyncio.Protocol):
         client = client.decode()
         try:
             await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
-        except exception.WazuhException as e:
-            self.logger.error(f"Error sending send sync response to local client: {e}")
-            await self.send_request(b'sendsyn_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
         except Exception as e:
-            self.logger.error(f"Error sending send sync response to local client: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=WazuhJSONEncoder).encode()
-            await self.send_request(b'sendsync_err', exc_info)
+            self.logger.error(f"Error sending sendsync response to local client: {e}")
+            if isinstance(e, exception.WazuhException):
+                exc = json.dumps(e, cls=WazuhJSONEncoder)
+            else:
+                exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(b'sendsync_err', exc.encode())
         finally:
             # Remove the string after using it
             self.in_str.pop(string_id, None)
@@ -1182,9 +1205,23 @@ class Handler(asyncio.Protocol):
             else:
                 exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
-            await self.send_request(command=b"cancel_task",
-                                    data=f"{task_id} {json.dumps(exc, cls=WazuhJSONEncoder)}".encode())
+            with contextlib.suppress(exception.WazuhClusterError):
+                await self.send_request(command=b"cancel_task",
+                                        data=f"{task_id} {json.dumps(exc, cls=WazuhJSONEncoder)}".encode())
             raise exc
+
+    async def log_exceptions(self, f):
+        """Catch and log any exception raised while calling 'f'.
+
+        Parameters
+        ----------
+        f : Coroutine
+            Function to run.
+        """
+        try:
+            return await f
+        except Exception as e:
+            self.logger.error(str(e))
 
 
 class WazuhCommon:
@@ -1195,7 +1232,6 @@ class WazuhCommon:
     def __init__(self):
         """Class constructor."""
         self.sync_tasks = {}
-        self.logger_tag = ''
 
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
         """Get a logger object.
@@ -1212,15 +1248,17 @@ class WazuhCommon:
         """
         raise NotImplementedError
 
-    def setup_send_info(self, SendTaskClass: Callable, data: bytes = b''):
+    def setup_send_info(self, send_task_class: Callable, data: bytes = b'', logger_tag: str = ''):
         """Create SendTaskClass object.
 
         Parameters
         ----------
-        SendTaskClass : Callable
+        send_task_class : Callable
             Class used to create an object.
         data : bytes
             Information used to create the object.
+        logger_tag : str
+            Logger task to use. If empty, it will use main class logger.
 
         Returns
         -------
@@ -1229,18 +1267,20 @@ class WazuhCommon:
         bytes
             Task ID.
         """
-        my_task = SendTaskClass(self, self.get_logger(self.logger_tag))
+        my_task = send_task_class(self, self.get_logger(logger_tag))
         return b'ok', str(my_task).encode()
 
-    def setup_receive_file(self, ReceiveTaskClass: Callable, data: bytes = b''):
+    def setup_receive_file(self, receive_task_class: Callable, data: bytes = b'', logger_tag: str = ''):
         """Create ReceiveTaskClass object and add it to sync_tasks dict.
 
         Parameters
         ----------
-        ReceiveTaskClass : Callable
+        receive_task_class : Callable
             Class used to create an object.
         data : bytes
             Information used to create the object.
+        logger_tag : str
+            Logger task to use. If empty, it will use main class logger.
 
         Returns
         -------
@@ -1249,17 +1289,19 @@ class WazuhCommon:
         bytes
             Task ID.
         """
-        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag), data)
+        my_task = receive_task_class(self, self.get_logger(logger_tag), data)
         self.sync_tasks[my_task.task_id] = my_task
         return b'ok', str(my_task).encode()
 
-    def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+    def end_receiving_file(self, task_and_file_names: str, logger_tag: str = '') -> Tuple[bytes, bytes]:
         """Store full path to the received file in task_id and notify its availability.
 
         Parameters
         ----------
         task_and_file_names : str
             String containing task ID and relative filepath separated by ' '.
+        logger_tag : str
+            Logger task to use. If empty, it will use main class logger.
 
         Returns
         -------
@@ -1270,12 +1312,12 @@ class WazuhCommon:
         """
         task_id, filename = task_and_file_names.split(' ', 1)
         if task_id not in self.sync_tasks:
-            # Remove filename if task_id does not exists, before raising exception.
+            # Remove filename if task_id does not exist, before raising exception.
             if os.path.exists(os.path.join(common.WAZUH_PATH, filename)):
                 try:
                     os.remove(os.path.join(common.WAZUH_PATH, filename))
                 except Exception as e:
-                    self.get_logger(self.logger_tag).error(
+                    self.get_logger(logger_tag).error(
                         f"Attempt to delete file {os.path.join(common.WAZUH_PATH, filename)} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
@@ -1284,7 +1326,7 @@ class WazuhCommon:
         self.sync_tasks[task_id].received_information.set()
         return b'ok', b'File correctly received'
 
-    def error_receiving_file(self, task_id_and_error_details: str) -> Tuple[bytes, bytes]:
+    def error_receiving_file(self, task_id_and_error_details: str, logger_tag: str = '') -> Tuple[bytes, bytes]:
         """Handle reported error by peer in the send file process.
 
         Remove received file if taskname was specified. Replace filepath with the received error details and notify
@@ -1294,6 +1336,8 @@ class WazuhCommon:
         ----------
         task_id_and_error_details : str
              WazuhJSONEncoded object with the exception details.
+        logger_tag : str
+            Logger task to use. If empty, it will use main class logger.
 
         Returns
         -------
@@ -1310,12 +1354,12 @@ class WazuhCommon:
                 try:
                     os.remove(self.sync_tasks[task_id].filename)
                 except Exception as e:
-                    self.get_logger(self.logger_tag).error(f"Attempt to delete file {self.sync_tasks[task_id].filename}"
-                                                           f" failed: {e}")
+                    self.get_logger(logger_tag).error(f"Attempt to delete file {self.sync_tasks[task_id].filename} "
+                                                      f"failed: {e}")
             self.sync_tasks[task_id].filename = error_details_json
             self.sync_tasks[task_id].received_information.set()
         else:
-            self.get_logger(self.logger_tag).error(f"Error in synchronization process: {error_details_json}")
+            self.get_logger(logger_tag).error(f"Error in synchronization process: {error_details_json}")
         return b'ok', b'Error received'
 
     def get_node(self):
@@ -1358,15 +1402,16 @@ class SyncTask:
         bool
             Whether permission is granted.
         """
-        result = await self.server.send_request(command=self.cmd + b'_p', data=b'')
-
-        if isinstance(result, Exception):
-            self.logger.error(f"Error asking for permission: {result}")
-        elif result == b'True':
-            self.logger.debug("Permission to synchronize granted.")
-            return True
+        try:
+            result = await self.server.send_request(command=self.cmd + b'_p', data=b'')
+        except Exception as e:
+            self.logger.error(f"Error asking for permission: {e}")
         else:
-            self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
+            if result == b'True':
+                self.logger.debug("Permission to synchronize granted.")
+                return True
+            else:
+                self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
 
         return False
 
@@ -1430,13 +1475,12 @@ class SyncFiles(SyncTask):
                                                     self.server.name, files, files_metadata, zip_limit)
 
         try:
-            # Start the synchronization process with other node and get a taskID.
-            task_id = await self.server.send_request(command=self.cmd, data=b'')
-            if isinstance(task_id, Exception) or task_id.startswith(b'Error'):
-                exc_info = task_id if isinstance(task_id, Exception) else \
-                    exception.WazuhClusterError(3016, extra_message=str(task_id))
+            # Start the synchronization process with peer node and get a taskID.
+            try:
+                task_id = await self.server.send_request(command=self.cmd, data=b'')
+            except Exception:
                 task_id = b'None'
-                raise exc_info
+                raise
 
             # Send zip file to the master into chunks.
             self.logger.debug("Sending zip file.")
@@ -1446,27 +1490,19 @@ class SyncFiles(SyncTask):
             self.logger.debug("Zip file sent.")
 
             # Notify what is the zip path for the current taskID.
-            result = await self.server.send_request(
+            await self.server.send_request(
                 command=self.cmd + b'_e',
                 data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_PATH).encode()
             )
-
-            if isinstance(result, Exception):
-                raise result
-            elif result.startswith(b'Error'):
-                raise exception.WazuhClusterError(3016, extra_message=result.decode())
-            return True
-        except exception.WazuhException as e:
-            # Notify error to master and delete its received file.
-            self.logger.error(f"Error sending zip file: {e}")
-            await self.server.send_request(command=self.cmd + b'_r',
-                                           data=task_id + b' ' + json.dumps(e, cls=WazuhJSONEncoder).encode())
         except Exception as e:
-            # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=WazuhJSONEncoder).encode()
-            await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
+            if isinstance(e, exception.WazuhException):
+                exc = json.dumps(e, cls=WazuhJSONEncoder).encode()
+            else:
+                exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder).encode()
+            with contextlib.suppress(exception.WazuhClusterError):
+                # Notify error to master and delete its received file.
+                await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc)
         finally:
             try:
                 # Decrease max zip size if task was interrupted (otherwise, KeyError exception raised).

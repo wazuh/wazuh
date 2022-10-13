@@ -893,12 +893,12 @@ async def test_handler_forward_sendsync_response_ko():
                     with patch('json.dumps', return_value="some value"):
                         await handler.forward_sendsync_response(b"client string_id")
                         assert handler.in_str == {b'other_string': 'some value'}
-                        logger_mock.assert_called_once_with(f"Error sending send sync response to local client: "
+                        logger_mock.assert_called_once_with(f"Error sending sendsync response to local client: "
                                                             f"{exception.WazuhException(1001)}")
 
                         send_request_mock.side_effect = Exception
                         await handler.forward_sendsync_response(b"client string_id")
-                        logger_mock.assert_called_with("Error sending send sync response to local client: "
+                        logger_mock.assert_called_with("Error sending sendsync response to local client: "
                                                        "b'string_id'")
 
 
