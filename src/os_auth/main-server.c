@@ -163,12 +163,12 @@ int main(int argc, char **argv)
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
-        const char *cert_val = NULL;
-        const char *cert_key_bits = NULL;
-        const char *cert_key_path = NULL;
-        const char *cert_path = NULL;
-        const char *cert_subj = NULL;
-        bool generate_certifacate = false;
+        char cert_val[OS_SIZE_1024] = "\0";
+        char cert_key_bits[OS_SIZE_1024] = "\0";
+        char cert_key_path[PATH_MAX] = "\0";
+        char cert_path[PATH_MAX] = "\0";
+        char cert_subj[OS_MAXSTR] = "\0";
+        bool generate_certificate = false;
         unsigned short port = 0;
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
@@ -277,57 +277,57 @@ int main(int argc, char **argv)
                     break;
 
                 case 'C':
-                    generate_certifacate = true;
-
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    os_strdup(optarg, cert_val);
+
+                    generate_certificate = true;
+                    snprintf(cert_val, OS_SIZE_1024, "%s", optarg);
                     break;
 
                 case 'B':
-                    generate_certifacate = true;
-
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    os_strdup(optarg, cert_key_bits);
+
+                    generate_certificate = true;
+                    snprintf(cert_key_bits, OS_SIZE_1024, "%s", optarg);
                     break;
 
                 case 'K':
-                    generate_certifacate = true;
-
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    os_strdup(optarg, cert_key_path);
+
+                    generate_certificate = true;
+                    snprintf(cert_key_path, PATH_MAX, "%s", optarg);
                     break;
 
                 case 'X':
-                    generate_certifacate = true;
-
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    os_strdup(optarg, cert_path);
+
+                    generate_certificate = true;
+                    snprintf(cert_path, PATH_MAX, "%s", optarg);
                     break;
 
                 case 'S':
-                    generate_certifacate = true;
-
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    os_strdup(optarg, cert_subj);
+
+                    generate_certificate = true;
+                    snprintf(cert_subj, OS_MAXSTR, "%s", optarg);
                     break;
+
                 default:
                     help_authd(home_path);
                     break;
             }
         }
 
-        if (generate_certifacate) {
-
+        if (generate_certificate) {
             // Sanitize parameters
             if (cert_val == NULL) {
                 merror_exit("Certificate expiration time not defined.");
