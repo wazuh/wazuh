@@ -647,26 +647,27 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
         if (protocol == REMOTED_NET_PROTOCOL_TCP) {
-            if (message->counter > rem_getCounter(message->sock)) {
+            if (strncmp(tmp_msg, HC_STARTUP, sizeof(HC_STARTUP)) == 0) {
                 keys.keyentries[agentid]->sock = message->sock;
-            }
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
 
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+                r = OS_AddSocket(&keys, agentid, message->sock);
 
-            r = OS_AddSocket(&keys, agentid, message->sock);
-
-            switch (r) {
-            case OS_ADDSOCKET_ERROR:
-                merror("Couldn't add TCP socket to keystore.");
-                break;
-            case OS_ADDSOCKET_KEY_UPDATED:
-                mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
-                break;
-            case OS_ADDSOCKET_KEY_ADDED:
-                mdebug2("TCP socket %d added to keystore.", message->sock);
-                break;
-            default:
-                ;
+                switch (r) {
+                case OS_ADDSOCKET_ERROR:
+                    merror("Couldn't add TCP socket to keystore.");
+                    break;
+                case OS_ADDSOCKET_KEY_UPDATED:
+                    mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
+                    break;
+                case OS_ADDSOCKET_KEY_ADDED:
+                    mdebug2("TCP socket %d added to keystore.", message->sock);
+                    break;
+                default:
+                    ;
+                }
+            } else {
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
         } else {
             keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
