@@ -11,8 +11,9 @@
 #include <store/drivers/fileDriver.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
+#include "base/parseEvent.hpp"
 #include "builder.hpp"
-#include "server/protocolHandler.hpp"
+#include "server/wazuhStreamProtocol.hpp"
 #include "register.hpp"
 
 namespace
@@ -239,7 +240,7 @@ void test(const std::string& kvdbPath,
             // Send event
             auto event = fmt::format("{}:{}:{}", protocolQueue, protocolLocation, line);
             auto result =
-                base::result::makeSuccess(engineserver::ProtocolHandler::parse(event));
+                base::result::makeSuccess(base::parseEvent::parseOssecEvent(event));
             controller.ingestEvent(
                 std::make_shared<base::result::Result<base::Event>>(std::move(result)));
 

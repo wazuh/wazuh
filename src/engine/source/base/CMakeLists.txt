@@ -86,6 +86,8 @@ add_library(base STATIC
     baseTypes.hpp
     expression.cpp
     error.hpp
+    parseEvent.cpp
+    parseEvent.hpp
     name.hpp
     )
 
