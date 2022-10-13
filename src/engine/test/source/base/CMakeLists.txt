@@ -56,3 +56,10 @@ add_executable(name_test
 )
 target_link_libraries(name_test gtest_main base)
 gtest_discover_tests(name_test)
+
+add_executable(parseEvent_test
+  parseEvent_test.cpp
+)
+target_link_libraries(parseEvent_test gtest_main base)
+gtest_discover_tests(parseEvent_test)
+
