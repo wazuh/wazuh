@@ -704,7 +704,6 @@ checks:
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
       - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
 
-  ######### WIP
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 28535
     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
@@ -713,69 +712,129 @@ checks:
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:apparmor_status -> r:profiles are loaded'
+      - 'c:apparmor_status -> r:0 processes are unconfined'
+
+  # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
   - id: 28536
-    title: "Ensure all AppArmor Profiles are enforcing"
+    title: "Ensure all AppArmor Profiles are enforcing."
     description: "AppArmor profiles define what resources applications are able to access."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-    impact: ""
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted"
-    references: ""
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1068","T1565","T1565.001","T1565.003"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:apparmor_status -> r:0 profiles are in complain mode'
+      - 'c:apparmor_status -> r:0 processes are unconfined'
+
+  # 1.7 Command Line Warning Banners
+  # 1.7.1 Ensure message of the day is configured properly (Automated)
   - id: 28537
-    title: "Ensure message of the day is configured properly"
-    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in."
-    impact: ""
-    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd MITRE ATT&CK Mappings: Techniques / Subtechniques Tactics Mitigations T1082, T1082.000, T1592, T1592.004 TA0007 1.7.2 Ensure local login warning banner is configured properly Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version - or the operating system's name Rationale: Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in. Audit: Run the following command and verify that the contents match site policy: # cat /etc/issue Run the following command and verify no results are returned: # grep -E -i "(\\\v|\\\r|\\\m|\\\s|$(grep '^ID=' /etc/os-release | cut -d= f2 | sed -e 's/"//g'))" /etc/issue Remediation: Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue MITRE ATT&CK Mappings: Techniques / Subtechniques Tactics Mitigations T1082, T1082.000, T1592, T1592.004 TA0007 1.7.3 Ensure remote login warning banner is configured properly Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version Rationale: Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in. Audit: Run the following command and verify that the contents match site policy: # cat /etc/issue.net Run the following command and verify no results are returned: # grep -E -i "(\\\v|\\\r|\\\m|\\\s|$(grep '^ID=' /etc/os-release | cut -d= f2 | sed -e 's/"//g'))" /etc/issue.net Remediation: Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue.net MITRE ATT&CK Mappings: Techniques / Subtechniques Tactics Mitigations T1018, T1018.000, T1082, T1082.000, T1592, T1592.004 TA0007 1.7.4 Ensure permissions on /etc/motd are configured Profile Applicability: Level 1 - Server Level 1 - Workstation Description: The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Rationale: If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information. Audit: Run the following command and verify: Uid and Gid are both 0/root and Access is 644, or the file doesn't exist. # stat -L /etc/motd Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root) OR stat: cannot stat '/etc/motd': No such file or directory Remediation: Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd Default Value: File doesn't exist Additional Information: If Message of the day is not needing, this file can be removed."
-    references: ""
+    title: "Ensure message of the day is configured properly."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.7.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - mitre_techniques: ["T1082","T1592","T1592.004"]
+      - mitre_tactics: ["TA0007"]
+    condition: any
     rules:
-      - ''    
-    
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - "not f:/etc/motd"
+
+  #1.7.2 Ensure local login warning banner is configured properly (Automated)
   - id: 28538
-    title: "Ensure permissions on /etc/issue are configured"
+    title: "Ensure local login warning banner is configured properly."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version - or the operating system's name."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: 'Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue.'
+    compliance:
+      - cis: ["1.7.2"]
+      - mitre_techniques: ["T1082","T1592","T1592.004"]
+      - mitre_tactics: ["TA0007"]
+    condition: none
+    rules:
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+
+  # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
+  - id: 28538
+    title: "Ensure remote login warning banner is configured properly."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \m - machine architecture \r - operating system release \s - operating system name \v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: 'Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue'
+    compliance:
+      - cis: ["1.7.3"]
+      - mitre_techniques: ["T1018","T1082","T1592","T1592.004" ]
+      - mitre_tactics: ["TA0007"]
+    condition: none
+    rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+
+  # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
+  - id: 28538
+      title: "Ensure permissions on /etc/motd are configured."
+      description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
+      rationale: 'If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information.'
+      remediation: 'Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd'
+      compliance:
+        - cis: ["1.7.4"]
+        - cis_csc_v7: ["14.6"]
+        - cis_csc_v8: ["3.3"]
+        - mitre_techniques: ["T1222","T1222.002"]
+        - mitre_tactics: ["TA0005"]
+        - mitre_mitigations: ["M1022"]
+      condition: any
+      rules:
+        - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+        - 'not f:/etc/motd'
+
+  # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
+  - id: 28538
+    title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    impact: ""
-    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue) Default Value: Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
-    references: ""
+    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue) Default Value: Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)."
     compliance:
       - cis: ["1.7.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["14.6"]
+      - cis_csc_v8: ["3.3"]
+      - mitre_techniques: ["T1222","T1222.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+  # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
+  - id: 28538
+    title: "Ensure permissions on /etc/issue.net are configured."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
+    rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)"
+    compliance:
+      - cis: ["1.7.6"]
+      - cis_csc_v7: [ "14.6" ]
+      - cis_csc_v8: [ "3.3" ]
+      - mitre_techniques: [ "T1222","T1222.002" ]
+      - mitre_tactics: [ "TA0005" ]
+      - mitre_mitigations: [ "M1022" ]
+    condition: all
+    rules:
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+
+
+  ############ WIP
   - id: 28539
     title: "Ensure GNOME Display Manager is removed"
     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
