@@ -154,7 +154,6 @@ checks:
     title: "Ensure nosuid option set on /var partition"
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var."
-    impact: ""
     remediation: "IF the /var partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var"
     references: "1. See the fstab(5) manual page for more information."
     compliance:
@@ -419,11 +418,11 @@ checks:
     references: "1. See the fstab(5) manual page for more information."
     compliance:
       - cis: ["1.1.7.2"]
-      - cis_csc_v7: [""]
+      - cis_csc_v7: ["14.6"]
       - cis_csc_v8: ["3.3"]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - mitre_techniques: ["T1200"]
+      - mitre_tactics: ["T1200"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nodev'
