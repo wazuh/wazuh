@@ -1,0 +1,68 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+    if Vagrant.has_plugin?("vagrant-vbguest")
+      config.vbguest.auto_update = false # don't auto-update the guest additions
+    end
+
+    config.vm.provider "virtualbox" do |v|
+      v.customize ["modifyvm", :id, "--memory", 1024]
+    end
+
+    config.vm.define :engine do |engine|
+        engine.vm.box = "msi/ubuntu-jammy"
+        engine.vm.network :private_network, ip: "10.0.0.28"
+        engine.vm.hostname = "vm-engine"
+        engine.ssh.username = 'vagrant'
+        engine.ssh.password = 'vagrant'
+        engine.ssh.insert_key = 'true'
+        engine.vm.synced_folder "./engine", "/vagrant"
+        engine.vm.provider "virtualbox" do |pmv|
+        pmv.memory = 6144
+        pmv.cpus   = 6
+        engine.vm.provision "shell", inline: <<-SHELL
+        #Dependencias
+        sudo apt-get update
+        sudo apt-get install python gcc g++ make libc6-dev curl policycoreutils automake autoconf libtool libssl-dev -y
+
+        #CMake 3.18 installation from sources
+        sudo apt-get install libssl-dev libcurl4-gnutls-dev
+        curl -OL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2.tar.gz && tar -zxf cmake-3.24.2.tar.gz && cd cmake-3.24.2 && ./bootstrap --no-system-curl && make -j$(nproc) && make install
+        cd .. && rm -rf cmake-*
+
+        #Download the Wazuh installation assistant.
+        curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
+        curl -sO https://packages.wazuh.com/4.3/config.yml
+        sed -E -i 's/ ip: <indexer-node-ip>/ ip: 10.0.0.28/gm' config.yml
+        sed -E -i 's/ ip: <wazuh-manager-ip>/ ip: 10.0.0.28/gm' config.yml
+        sed -E -i 's/ ip: <dashboard-node-ip>/ ip: 10.0.0.28/gm' config.yml
+        sudo bash wazuh-install.sh --generate-config-files
+
+        #Install Wazuh
+        sudo bash wazuh-install.sh --wazuh-server wazuh-1
+
+        #Download engine
+        mkdir engine &&	cd engine
+        git clone https://github.com/wazuh/wazuh.git
+        cd wazuh && git checkout 11334-dev-new-wazuh-engine
+        cd src/engine && mkdir build
+        cmake -S . -B build/
+        /usr/local/bin/cmake --build build/ --config Debug --target main -j 2
+
+        #Remplace engine for analysisd
+        sed -E -i 's/ path: \/tmp\/filepath.txt/ path: \/var\/ossec\/logs\/alerts\/alerts.json/gm' test/assets/outputs/file-output.yml #Change fileoutput to alerts.json
+        cd build
+        ./main kvdb -p /tmp/ -n win-security-categorization -i ../test/kvdb_input_files/windows/win-security-categorization.json -t json #Create KVDB
+        rm /var/ossec/queue/sockets/queue #Remove queue
+        ./main run -f ../test/assets/ -e tcp:localhost:5054 -t 1 -k /tmp/ --environment demo-environment </dev/null &>/dev/null & #Launch engine
+        sudo chown wazuh /var/ossec/queue/
+        sudo chmod 777 /var/ossec/queue/
+        sudo pkill -e analysisd #Kill analysisd
+
+        SHELL
+        end
+    end
+
+  end
