@@ -5,6 +5,7 @@ add_library(cmds STATIC
     src/cmdKvdb.cpp
     src/apiclnt/cmdApiCatalog.cpp
     src/apiclnt/connection.cpp
+    src/stackExecutor.cpp
 )
 
 target_link_libraries(cmds PRIVATE
