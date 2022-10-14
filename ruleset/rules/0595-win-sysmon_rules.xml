@@ -46,7 +46,7 @@
   <rule id="61604" level="0">
     <if_sid>61600</if_sid>
     <field name="win.system.eventID">^2$</field>
-    <description>Sysmon - Event 2: $(win.eventdata.sourceImage) changed file $(win.eventdata.targetFilename) creation time </description>
+    <description>Sysmon - Event 2: $(win.eventdata.image) changed file $(win.eventdata.targetFilename) creation time </description>
     <options>no_full_log</options>
     <group>sysmon_event2,</group>
   </rule>
@@ -102,7 +102,7 @@
   <rule id="61611" level="0">
     <if_sid>61600</if_sid>
     <field name="win.system.eventID">^9$</field>
-    <description>Sysmon - Event 9: RawAccessRead by $(win.eventdata.sourceImage)</description>
+    <description>Sysmon - Event 9: RawAccessRead by $(win.eventdata.image)</description>
     <options>no_full_log</options>
     <group>sysmon_event9,</group>
   </rule>
@@ -240,6 +240,14 @@
     <description>Sysmon - Event 26: File deleted</description>
     <options>no_full_log</options>
     <group>sysmon_event_26,</group>
+  </rule>
+
+  <rule id="61655" level="0">
+    <if_sid>61600</if_sid>
+    <field name="win.system.eventID">^255$</field>
+    <description>Sysmon - Event 255: Sysmon error</description>
+    <options>no_full_log</options>
+    <group>sysmon_event_255,</group>
   </rule>
 
 </group>
