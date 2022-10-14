@@ -19,28 +19,18 @@
 #include <logging/logging.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
+#include <server/engineServer.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
-#include "server/engineServer.hpp"
+#include "stackExecutor.hpp"
 #include "register.hpp"
 
-std::shared_ptr<engineserver::EngineServer> g_server;
+cmd::StackExecutor g_exitHanlder {};
 
 namespace
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-void destroy()
-{
-    WAZUH_LOG_INFO("Destroying Engine resources");
-    KVDBManager::get().clear();
-    //g_registry.reset();
-    if (g_server)
-    {
-        g_server->close();
-    }
-    logging::loggingTerm();
-}
 
 // variables for handling threads
 std::atomic<bool> gs_doRun = true;
@@ -56,8 +46,7 @@ void sigint_handler(const int signum)
         t.join();
     };
 
-    // Destroy all data
-    destroy();
+    g_exitHanlder.execute();
 
     // TODO: this should not be necessary, but server threads are not terminating.
     exit(0);
@@ -97,6 +86,7 @@ void run(const std::string& kvdbPath,
         default: badLogLevel = true; logging::LogLevel::Error;
     }
     logging::loggingInit(logConfig);
+    g_exitHanlder.add([]() { logging::loggingTerm(); });
     if (badLogLevel)
     {
         WAZUH_LOG_WARN("Invalid log level [{}]: Log level setted to [Error]", logLevel);
@@ -115,11 +105,18 @@ void run(const std::string& kvdbPath,
 
         server = std::make_shared<engineserver::EngineServer>(
             apiEndpoint, nullptr, eventEndpoint, bufferSize);
-        g_server = server; // TODO Delete this
+        g_exitHanlder.add([server]() { server->close(); });
+
         WAZUH_LOG_INFO("Server configured");
 
         KVDBManager::init(kvdbPath);
         WAZUH_LOG_INFO("KVDB initialized");
+        g_exitHanlder.add(
+            []()
+            {
+                WAZUH_LOG_INFO("KVDB terminated");
+                KVDBManager::get().clear();
+            });
 
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Store initialized");
@@ -141,7 +138,7 @@ void run(const std::string& kvdbPath,
                             "from store: {}",
                             std::get<base::Error>(hlpParsers).message);
 
-            destroy();
+            g_exitHanlder.execute();
             exit(1);
         }
         // TODO because builders don't have access to the catalog we are configuring
@@ -156,7 +153,7 @@ void run(const std::string& kvdbPath,
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Error initializing modules: {}", utils::getExceptionStack(e));
-        destroy();
+        g_exitHanlder.execute();
         exit(1);
     }
 
@@ -182,7 +179,7 @@ void run(const std::string& kvdbPath,
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Unexpected error: {}", utils::getExceptionStack(e));
-        destroy();
+        g_exitHanlder.execute();
         exit(1);
     }
 
@@ -254,6 +251,6 @@ void run(const std::string& kvdbPath,
     // }
 
     // server.run();
-    destroy();
+    g_exitHanlder.execute();
 }
 } // namespace cmd
