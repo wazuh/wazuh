@@ -163,11 +163,11 @@ int main(int argc, char **argv)
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
-        char cert_val[OS_SIZE_1024] = "\0";
-        char cert_key_bits[OS_SIZE_1024] = "\0";
-        char cert_key_path[PATH_MAX] = "\0";
-        char cert_path[PATH_MAX] = "\0";
-        char cert_subj[OS_MAXSTR] = "\0";
+        char cert_val[OS_SIZE_32 + 1] = "\0";
+        char cert_key_bits[OS_SIZE_32 + 1] = "\0";
+        char cert_key_path[PATH_MAX + 1] = "\0";
+        char cert_path[PATH_MAX + 1] = "\0";
+        char cert_subj[OS_MAXSTR + 1] = "\0";
         bool generate_certificate = false;
         unsigned short port = 0;
         unsigned long days_val = 0;
@@ -282,7 +282,9 @@ int main(int argc, char **argv)
                     }
 
                     generate_certificate = true;
-                    snprintf(cert_val, OS_SIZE_1024, "%s", optarg);
+                    if (snprintf(cert_val, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate validity info truncated", c, OS_SIZE_32);
+                    }
                     break;
 
                 case 'B':
@@ -291,7 +293,9 @@ int main(int argc, char **argv)
                     }
 
                     generate_certificate = true;
-                    snprintf(cert_key_bits, OS_SIZE_1024, "%s", optarg);
+                    if (snprintf(cert_key_bits, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate key size info truncated", c, OS_SIZE_32);
+                    }
                     break;
 
                 case 'K':
@@ -300,7 +304,9 @@ int main(int argc, char **argv)
                     }
 
                     generate_certificate = true;
-                    snprintf(cert_key_path, PATH_MAX, "%s", optarg);
+                    if (snprintf(cert_key_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate key path info truncated", c, PATH_MAX);
+                    }
                     break;
 
                 case 'X':
@@ -309,7 +315,9 @@ int main(int argc, char **argv)
                     }
 
                     generate_certificate = true;
-                    snprintf(cert_path, PATH_MAX, "%s", optarg);
+                    if (snprintf(cert_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate path info truncated", c, PATH_MAX);
+                    }
                     break;
 
                 case 'S':
@@ -318,7 +326,9 @@ int main(int argc, char **argv)
                     }
 
                     generate_certificate = true;
-                    snprintf(cert_subj, OS_MAXSTR, "%s", optarg);
+                    if (snprintf(cert_subj, OS_MAXSTR + 1, "%s", optarg) > OS_MAXSTR) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate subject info truncated", c, OS_MAXSTR);
+                    }
                     break;
 
                 default:
@@ -329,23 +339,23 @@ int main(int argc, char **argv)
 
         if (generate_certificate) {
             // Sanitize parameters
-            if (cert_val == NULL) {
+            if (strlen(cert_val) == 0) {
                 merror_exit("Certificate expiration time not defined.");
             }
 
-            if (cert_key_bits == NULL) {
+            if (strlen(cert_key_bits) == 0) {
                 merror_exit("Certificate key size not defined.");
             }
 
-            if (cert_key_path == NULL) {
-                merror_exit("Key path not not defined.");
+            if (strlen(cert_key_path) == 0) {
+                merror_exit("Key path not defined.");
             }
 
-            if (cert_path == NULL) {
+            if (strlen(cert_path) == 0) {
                 merror_exit("Certificate path not defined.");
             }
 
-            if (cert_subj == NULL) {
+            if (strlen(cert_subj) == 0) {
                 merror_exit("Certificate subject not defined.");
             }
 
