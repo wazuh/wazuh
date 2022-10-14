@@ -14,7 +14,6 @@
 #define DEVPF       ("/dev/pf")
 #define PFCTL_RULES ("/etc/pf.conf")
 #define PFCTL_TABLE ("wazuh_fwtable")
-#define RCCONF      ("/etc/rc.conf")
 
 static int checking_if_its_configured(const char *path, const char *table);
 static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
@@ -92,7 +91,6 @@ int main (int argc, char **argv) {
 
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
-            // Checking if wazuh table is configured in pf.conf
             if (action == ADD_COMMAND) {
                 const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL };
                 memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
@@ -104,11 +102,15 @@ int main (int argc, char **argv) {
                 memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
             }
 
+            // Checking if pf is running
             if (access(DEVPF, F_OK) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "The pfctl '%s' is not accessible", DEVPF);
+                snprintf(log_msg, OS_MAXSTR - 1, "The file '%s' is not accessible", DEVPF);
                 write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                return OS_SUCCESS;
             } else {
+                // Checking if wazuh table is configured in pf.conf
                 if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) != 0) {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR - 1, "Table '%s' does not exist", PFCTL_TABLE);
@@ -116,8 +118,8 @@ int main (int argc, char **argv) {
 
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR - 1, "table <%s> persist #%s\nblock in quick from <%s> to any\nblock out quick from any to <%s>", PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE, PFCTL_TABLE);
-                    int retVal = write_cmd_to_file(PFCTL_RULES, log_msg);
-                    if (0 == retVal) {
+
+                    if (0 == write_cmd_to_file(PFCTL_RULES, log_msg)) {
                         memset(log_msg, '\0', OS_MAXSTR);
                         snprintf(log_msg, OS_MAXSTR - 1, "Error opening file '%s' : %s", PFCTL_RULES, strerror(errno));
                         write_debug_file(argv[0], log_msg);
@@ -229,14 +231,14 @@ static int checking_if_its_configured(const char *path, const char *table) {
  * @param output_buf buffer where search
  * @param str_pattern_1 pattern to match
  * @param str_pattern_2 pattern to match
- * @return 1 or 0 
+ * @return 1 or 0
  * @example output_buf -> "... Status:    Disabled ..."
- *          retVal = isEnabledFromPattern(output_buf, "Status: ", "Enabled");
- *          if it matches pattern 1 look for pattern 2 and if found, it returns 1
- * 
- *          retVal = isEnabledFromPattern(output_buf, "Status: ", NULL)  find only by "Status"
+ *          isEnabledFromPattern(output_buf, "Status: ", "Enabled")
+ *            if it matches pattern 1 look for pattern 2 and if found, it returns 1
+ *          isEnabledFromPattern(output_buf, "Status: ", NULL)
+ *            find only by "Status"
 */
-static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2){
+static int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2) {
     int retVal = 0;
     const char *pos = NULL;
     if (str_pattern_1 != NULL) {
@@ -266,7 +268,7 @@ static int isEnabledFromPattern(const char * output_buf, const char * str_patter
  * @brief write to file path
  * @param path path to file
  * @param cmd command or text to write inside file
- * @return 1 or 0 
+ * @return 1 or 0
 */
 static int write_cmd_to_file(const char *path, const char *cmd) {
     int retVal = 0;
