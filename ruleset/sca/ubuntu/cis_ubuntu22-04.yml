@@ -55,6 +55,12 @@ checks:
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:\s*/tmp\s'
@@ -75,6 +81,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:nodev'
@@ -94,6 +106,12 @@ checks:
       - mitre_techniques: ["T1204","T1204.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:noexec'
@@ -113,6 +131,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:nosuid'
@@ -133,6 +157,12 @@ checks:
       - cis_csc_v8: ["3.3"]
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0006"]
+      - cmmc_v2: [ "AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)" ]
+      - pci_321: [ "7.1"," 7.1.1"," 7.1.2"," 7.1.3" ]
+      - pci_4: [ "1.3.1"," 7.1" ]
+      - nist_853: [ "AC-5"," AC-6" ]
+      - soc_2: [ "CC5.2"," CC6.1" ]
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:\s*/var\s'
@@ -152,6 +182,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
+      - cmmc_v2: [ "AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)" ]
+      - pci_321: [ "7.1"," 7.1.1"," 7.1.2"," 7.1.3" ]
+      - pci_4: [ "1.3.1"," 7.1" ]
+      - nist_853: [ "AC-5"," AC-6" ]
+      - soc_2: [ "CC5.2"," CC6.1" ]
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:nodev'
@@ -171,6 +207,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
+      - cmmc_v2: [ "AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)" ]
+      - pci_321: [ "7.1"," 7.1.1"," 7.1.2"," 7.1.3" ]
+      - pci_4: [ "1.3.1"," 7.1" ]
+      - nist_853: [ "AC-5"," AC-6" ]
+      - soc_2: [ "CC5.2"," CC6.1" ]
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:nosuid'
@@ -192,6 +234,12 @@ checks:
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: [ "AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)" ]
+      - pci_321: [ "7.1"," 7.1.1"," 7.1.2"," 7.1.3" ]
+      - pci_4: [ "1.3.1"," 7.1" ]
+      - nist_853: [ "AC-5"," AC-6" ]
+      - soc_2: [ "CC5.2"," CC6.1" ]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:\s*/var/tmp\s'
@@ -208,9 +256,15 @@ checks:
       - cis: ["1.1.4.2"]
       - cis_csc_v7: ["14.6"]
       - cis_csc_v8: ["3.3"]
-      - mitre_techniques: [ "T1204","T1204.002" ]
-      - mitre_tactics: [ "TA0005" ]
-      - mitre_mitigations: [ "M1022" ]
+      - mitre_techniques: ["T1204","T1204.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+      - cmmc_v2: [ "AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2" ]
+      - hipaa: [ "164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)" ]
+      - pci_321: [ "7.1"," 7.1.1"," 7.1.2"," 7.1.3" ]
+      - pci_4: [ "1.3.1"," 7.1" ]
+      - nist_853: [ "AC-5"," AC-6" ]
+      - soc_2: [ "CC5.2"," CC6.1" ]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:noexec'
@@ -230,6 +284,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:nosuid'
@@ -249,6 +309,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:nodev'
@@ -270,6 +336,8 @@ checks:
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - pci_321: ["10.7"]
+      - soc_2: ["A1.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s'
@@ -289,6 +357,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:nodev'
@@ -308,6 +382,12 @@ checks:
       - mitre_techniques: ["T1204","T1204.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:noexec'
@@ -327,6 +407,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:nosuid'
@@ -348,6 +434,8 @@ checks:
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - pci_321: ["10.7"]
+      - soc_2: ["A1.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s'
@@ -367,6 +455,12 @@ checks:
       - mitre_techniques: ["T1204","T1204.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:noexec'
@@ -386,6 +480,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:nodev'
@@ -405,6 +505,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:nosuid'
@@ -426,6 +532,12 @@ checks:
       - mitre_techniques: ["T1499","T1499.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s'
@@ -445,6 +557,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["T1200"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nodev'
@@ -464,6 +582,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nosuid'
@@ -482,6 +606,12 @@ checks:
       - mitre_techniques: ["T1200"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nodev'
@@ -501,6 +631,12 @@ checks:
       - mitre_techniques: ["T1204","T1204.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:noexec'
@@ -518,6 +654,12 @@ checks:
       - mitre_techniques: ["T1548","T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nosuid'
@@ -534,6 +676,8 @@ checks:
       - cis_csc_v7: ["8.5"]
       - cis_csc_v8: ["10.3"]
       - mitre_techniques: ["T1068","T1203","T1211","T1212"]
+      - cmmc_v2: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
     condition: all
     rules:
       - 'c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs\.service|disabled'
@@ -554,6 +698,12 @@ checks:
       - cis_csc_v7: ["14.9"]
       - cis_csc_v8: ["3.14"]
       - mitre_techniques: ["T1036","T1036.002","T1036.003","T1036.004","T1036.005","T1565","T1565.001"]
+      - cmmc_v2: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)"," 164.312(c)(1)"," 164.312(c)(2)"]
+      - pci_321: ["10.2.1"," 11.5"]
+      - pci_4: ["10.2.1"," 10.2.1.1"]
+      - nist_853: ["AC-6(9)"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' aide aide-common -> r:aide\s+install ok && r:aide-common\s+install ok "
@@ -574,6 +724,9 @@ checks:
       - mitre_techniques: ["T1542"]
       - mitre_tactics: ["T1542"]
       - mitre_mitigations: ["M1046"]
+      - cmmc_v2: ["IA.L2-3.5.7"]
+      - pci_4: ["2.2.2"," 8.3.5"," 8.3.6"," 8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> r:set superusers'
@@ -592,6 +745,12 @@ checks:
       - mitre_techniques: ["T1542"]
       - mitre_tactics: ["TA0005","TA0007"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:stat /boot/grub/grub.cfg -> r:Uid:\s+\(\s*0/\s*root\)\s*Gid:\s+\(\s*0/\s*root\)'
@@ -609,6 +768,9 @@ checks:
       - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["IA.L2-3.5.7"]
+      - pci_4: ["2.2.2"," 8.3.5"," 8.3.6"," 8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'f:/etc/shadow -> r:^root:*:|^root:!:'
@@ -628,6 +790,12 @@ checks:
       - mitre_techniques: ["T1055","T1055.009","T1065","T1065.001"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
+      - cmmc_v2: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)"," 164.312(c)(1)"," 164.312(c)(2)"]
+      - pci_321: ["10.2.1"," 11.5"]
+      - pci_4: ["10.2.1"," 10.2.1.1"]
+      - nist_853: ["AC-6(9)"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - "not c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' prelink -> r:prelink\s+unknown\s+ok\s+not-installed\s+not-installed"
@@ -642,6 +810,10 @@ checks:
       - cis: ["1.5.3"]
       - cis_csc_v7: ["9.2"]
       - cis_csc_v8: ["4.8"]
+      - cmmc_v2: ["CM.L2-3.4.7"," CM.L2-3.4.8"," SC.L2-3.13.6"]
+      - pci_321: ["1.1.6"," 1.2.1"," 2.2.2"," 2.2.5"]
+      - pci_4: ["1.2.5"," 2.2.4"," 6.4.1"]
+      - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
       - "c:dpkg-query -s apport > /dev/null 2>&1 && grep -Psi -- '^\h*enabled\h*=\h*[^0]\b' /etc/default/apport"
@@ -681,6 +853,12 @@ checks:
       - mitre_techniques: [ "T1068","T1565","T1565.001","T1565.003" ]
       - mitre_tactics: [ "TA0003" ]
       - mitre_mitigations: [ "M1026" ]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - "dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' apparmor -> r:install\s+ok\s+installed"
@@ -698,6 +876,12 @@ checks:
       - mitre_techniques: ["T1068","T1565","T1565.001","T1565.003"]
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1026"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
@@ -715,6 +899,12 @@ checks:
       - cis_csc_v7: ["14.6"]
       - cis_csc_v8: ["3.3"]
       - mitre_tactics: ["TA0005"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:apparmor_status -> r:profiles are loaded'
@@ -732,6 +922,12 @@ checks:
       - cis_csc_v8: ["3.3"]
       - mitre_techniques: ["T1068","T1565","T1565.001","T1565.003"]
       - mitre_tactics: ["TA0005"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:apparmor_status -> r:0 profiles are in complain mode'
@@ -794,6 +990,12 @@ checks:
         - mitre_techniques: ["T1222","T1222.002"]
         - mitre_tactics: ["TA0005"]
         - mitre_mitigations: ["M1022"]
+        - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+        - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+        - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+        - pci_4: ["1.3.1"," 7.1"]
+        - nist_853: ["AC-5"," AC-6"]
+        - soc_2: ["CC5.2"," CC6.1"]
       condition: any
       rules:
         - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
@@ -812,6 +1014,12 @@ checks:
       - mitre_techniques: ["T1222","T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
@@ -829,6 +1037,12 @@ checks:
       - mitre_techniques: [ "T1222","T1222.002" ]
       - mitre_tactics: [ "TA0005" ]
       - mitre_mitigations: [ "M1022" ]
+      - cmmc_v2: ["AC.L1-3.1.1"," AC.L1-3.1.2"," AC.L2-3.1.5"," AC.L2-3.1.3"," MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)"," 164.308(a)(3)(ii)(A)"," 164.312(a)(1)"]
+      - pci_321: ["7.1"," 7.1.1"," 7.1.2"," 7.1.3"]
+      - pci_4: ["1.3.1"," 7.1"]
+      - nist_853: ["AC-5"," AC-6"]
+      - soc_2: ["CC5.2"," CC6.1"]
     condition: all
     rules:
       - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
@@ -847,6 +1061,10 @@ checks:
       - cis_csc_v8: ["4.8"]
       - mitre_techniques: ["T1543","T1543.002"]
       - mitre_tactics: ["TA0002"]
+      - cmmc_v2: ["CM.L2-3.4.7"," CM.L2-3.4.8"," SC.L2-3.13.6"]
+      - pci_321: ["1.1.6"," 1.2.1"," 2.2.2"," 2.2.5"]
+      - pci_4: ["1.2.5"," 2.2.4"," 6.4.1"]
+      - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\n' gdm3 -> r:gdm3\s+unknown\s+ok\s+not-installed"
@@ -872,6 +1090,10 @@ checks:
       - mitre_techniques: ["T1040","T1056","T1056.001","T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
+      - cmmc_v2: ["CM.L2-3.4.7"," CM.L2-3.4.8"," SC.L2-3.13.6"]
+      - pci_321: ["1.1.6"," 1.2.1"," 2.2.2"," 2.2.5"]
+      - pci_4: ["1.2.5"," 2.2.4"," 6.4.1"]
+      - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
       - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
