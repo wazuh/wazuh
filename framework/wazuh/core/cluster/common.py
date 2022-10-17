@@ -15,7 +15,6 @@ import struct
 import time
 import traceback
 from importlib import import_module
-from time import perf_counter
 from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from uuid import uuid4
 
@@ -716,7 +715,6 @@ class Handler(asyncio.Protocol):
                 try:
                     await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                 except exception.WazuhClusterError as e:
-                    self.logger.info(f'e.code: {e.code}')
                     if e.code != 3020:
                         raise e
                 file_hash.update(chunk)
@@ -751,8 +749,8 @@ class Handler(asyncio.Protocol):
         try:
             task_id = await self.send_request(command=b'new_str', data=str(total).encode())
         except exception.WazuhException as e:
-            task_id = str(e)
-            self.logger.error(f'There was an error while trying to send a string: {task_id}', exc_info=False)
+            task_id = str(e).encode()
+            self.logger.error(f'There was an error while trying to send a string: {str(e)}', exc_info=False)
             with contextlib.suppress(exception.WazuhClusterError):
                 await self.send_request(command=b'err_str', data=str(total).encode())
         else:
@@ -1587,7 +1585,7 @@ class SyncWazuhdb(SyncTask):
 
         try:
             # Retrieve information from local wazuh-db
-            get_chunks_start_time = perf_counter()
+            start_time = time.perf_counter()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
                 result = await self.data_retriever(command=command)
@@ -1604,7 +1602,7 @@ class SyncWazuhdb(SyncTask):
             self.logger.error(f"Could not obtain data from wazuh-db: {e}")
             return []
 
-        self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(perf_counter() - get_chunks_start_time):.3f}s.")
+        self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(time.perf_counter() - start_time):.3f}s.")
         return chunks
 
     async def sync(self, start_time: float, chunks: List):
@@ -1713,7 +1711,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     wdb_conn = WazuhDBConnection()
-    before = perf_counter()
+    before = time.perf_counter()
 
     try:
         with utils.Timeout(timeout):
@@ -1737,7 +1735,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     except Exception as e:
         result['error_messages']['others'].append(f'Error while processing {info_type} chunks: {e}')
 
-    result['time_spent'] = perf_counter() - before
+    result['time_spent'] = time.perf_counter() - before
     wdb_conn.close()
     return result
 
