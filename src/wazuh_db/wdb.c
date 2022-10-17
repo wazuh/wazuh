@@ -39,12 +39,13 @@ const char* WDBC_RESULT[] = {
     [WDBC_UNKNOWN] = "unk"
 };
 
-static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE s(rowid INTEGER PRIMARY KEY, pageno INT);";
+static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
+static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
 static const char *SQL_INSERT_INTO_TEMP_TABLE = "INSERT INTO s(pageno) SELECT pageno FROM dbstat ORDER BY path;";
 static const char *SQL_SELECT_TEMP_TABLE = "SELECT sum(s1.pageno+1==s2.pageno)*1.0/count(*) FROM s AS s1, s AS s2 WHERE s1.rowid+1=s2.rowid;";
-static const char *SQL_DROP_TEMP_TABLE = "DROP TABLE s;";
-static const char *SQL_DROP_TEMP_TABLE_IF_EXISTS = "DROP TABLE IF EXISTS s;";
 static const char *SQL_VACUUM = "VACUUM;";
+static const char *SQL_METADATA_UPDATE_FRAGMENTATION_DATA = "UPDATE metadata SET last_vacuum_time = ?, last_fragmentation_value = ?;";
+static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT last_vacuum_time, last_fragmentation_value FROM metadata;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
@@ -278,6 +279,12 @@ STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query);
 
 /* Select from temp table */
 STATIC int wdb_select_from_temp_table(sqlite3 *db);
+
+/* Get the fragmentation data of the last vacuum stored in the metadata table. */
+STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
+
+/* Store the fragmentation data of the last vacuum in the metadata table. */
+STATIC int wdb_update_last_vacuum_data(wdb_t* wdb, int last_vacuum_time, int last_vacuum_value);
 
 wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -802,13 +809,13 @@ int wdb_vacuum(sqlite3 *db) {
 int wdb_get_db_state(wdb_t * wdb) {
     int result = OS_INVALID;
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_DROP_TEMP_TABLE_IF_EXISTS) == OS_INVALID) {
-        mdebug1("Error, temporary table was previously created and it was not possible to drop it.");
+    if (wdb_execute_non_select_query(wdb->db, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
+        mdebug1("Error creating temporary table.");
         return OS_INVALID;
     }
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
-        mdebug1("Error creating temporary table.");
+    if (wdb_execute_non_select_query(wdb->db, SQL_TRUNCATE_TEMP_TABLE) == OS_INVALID) {
+        mdebug1("Error truncate temporary table.");
         return OS_INVALID;
     }
 
@@ -819,10 +826,6 @@ int wdb_get_db_state(wdb_t * wdb) {
     } else {
         mdebug1("Error inserting into temporary table.");
         result = OS_INVALID;
-    }
-
-    if (wdb_execute_non_select_query(wdb->db, SQL_DROP_TEMP_TABLE) == OS_INVALID) {
-        mdebug1("Error dropping temporary table.");
     }
 
     return result;
@@ -1040,6 +1043,127 @@ void wdb_commit_old() {
         w_mutex_unlock(&node->mutex);
         w_mutex_unlock(&pool_mutex);
     }
+}
+
+void wdb_check_fragmentation() {
+    wdb_t * node;
+    wdb_t * next;
+
+    w_mutex_lock(&pool_mutex);
+    wdb_t *copy = wdb_pool_copy();
+    w_mutex_unlock(&pool_mutex);
+
+    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
+        next = i->next;
+
+        w_mutex_lock(&pool_mutex);
+        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+
+        if (node == NULL) {
+            w_mutex_unlock(&pool_mutex);
+            continue;
+        }
+
+        w_mutex_lock(&node->mutex);
+        if ((strcmp(node->id, "tasks") != 0) && (strcmp(node->id, "mitre") != 0)) {
+            int last_vacuum_time;
+            int last_vacuum_value;
+            int current_fragmentation;
+            int fragmentation_after_vacuum;
+
+            if (current_fragmentation = wdb_get_db_state(node), current_fragmentation == OS_INVALID) {
+                merror("Couldn't get current fragmentation for the database '%s'", node->id);
+            } else {
+                if (wdb_get_last_vacuum_data(node, &last_vacuum_time, &last_vacuum_value) != OS_SUCCESS) {
+                    merror("Couldn't get last vacuum info for the database '%s'", node->id);
+                } else {
+                    if ((last_vacuum_time == 0 && current_fragmentation > wconfig.max_fragmentation) ||
+                        (last_vacuum_time > 0 && current_fragmentation > wconfig.max_fragmentation && current_fragmentation > last_vacuum_value)) {
+                        struct timespec ts_start, ts_end;
+
+                        if (wdb_commit2(node) < 0) {
+                            merror("Couldn't execute commit statement, before vacuum, for the database %s", node->id);
+                            w_mutex_unlock(&node->mutex);
+                            w_mutex_unlock(&pool_mutex);
+                            continue;
+                        }
+
+                        wdb_finalize_all_statements(node);
+
+                        gettime(&ts_start);
+                        if (wdb_vacuum(node->db) < 0) {
+                            merror("Couldn't execute vacuum for the database %s", node->id);
+                            w_mutex_unlock(&node->mutex);
+                            w_mutex_unlock(&pool_mutex);
+                            continue;
+                        }
+                        gettime(&ts_end);
+                        mdebug2("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
+
+                        // save fragmentation after vacuum
+                        if (fragmentation_after_vacuum = wdb_get_db_state(node), fragmentation_after_vacuum == OS_INVALID) {
+                            merror("Couldn't get fragmentation after vacuum for the database %s", node->id);
+                        } else {
+                            if (wdb_update_last_vacuum_data(node, time(0), fragmentation_after_vacuum) != OS_SUCCESS) {
+                                merror("Couldn't update last vacuum info for the database %s", node->id);
+                            }
+                            // check after vacuum
+                            if (fragmentation_after_vacuum >= current_fragmentation) {
+                                mwarn("After vacuum, the database '%s' has become just as fragmented or worse", node->id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        w_mutex_unlock(&node->mutex);
+        w_mutex_unlock(&pool_mutex);
+    }
+}
+
+STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value) {
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_INVALID;
+
+    if (sqlite3_prepare_v2(wdb->db, SQL_METADATA_GET_FRAGMENTATION_DATA, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
+        return OS_INVALID;
+    }
+
+    *last_vacuum_time = sqlite3_column_int(stmt, 0);
+    *last_vacuum_value = sqlite3_column_int(stmt, 1);
+
+    sqlite3_finalize(stmt);
+    return OS_SUCCESS;
+}
+
+STATIC int wdb_update_last_vacuum_data(wdb_t* wdb, int last_vacuum_time, int last_vacuum_value) {
+    sqlite3_stmt *stmt = NULL;
+    int result = OS_INVALID;
+
+    if (sqlite3_prepare_v2(wdb->db, SQL_METADATA_UPDATE_FRAGMENTATION_DATA, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, last_vacuum_time);
+    sqlite3_bind_int(stmt, 2, last_vacuum_value);
+
+    if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+        merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
+        return OS_INVALID;
+    }
+
+    sqlite3_finalize(stmt);
+    return OS_SUCCESS;
 }
 
 void wdb_close_old() {
@@ -1635,6 +1759,8 @@ cJSON* wdb_get_internal_config() {
     cJSON_AddNumberToObject(wazuh_db_config, "commit_time_min", wconfig.commit_time_min);
     cJSON_AddNumberToObject(wazuh_db_config, "open_db_limit", wconfig.open_db_limit);
     cJSON_AddNumberToObject(wazuh_db_config, "worker_pool_size", wconfig.worker_pool_size);
+    cJSON_AddNumberToObject(wazuh_db_config, "max_fragmentation", wconfig.max_fragmentation);
+    cJSON_AddNumberToObject(wazuh_db_config, "check_fragmentation_interval", wconfig.check_fragmentation_interval);
 
     cJSON_AddItemToObject(root, "wazuh_db", wazuh_db_config);
 

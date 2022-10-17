@@ -32,7 +32,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_prepare_v2 \
                         -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,sqlite3_column_text \
                         -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_bind_int64\
-                        -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config \
+                        -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config -Wl,--wrap,wdb_finalize_all_statements \
                         -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state\
                         ${DEBUG_OP_WRAPPERS}")
 
@@ -74,7 +74,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_agent_get_agent_info -Wl,--wrap,w_inc_global_agent_get_agent_info_time -Wl,--wrap,w_inc_global_agent_reset_agents_connection \
                              -Wl,--wrap,w_inc_global_agent_reset_agents_connection_time -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status \
                              -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status_time -Wl,--wrap,w_inc_global_backup -Wl,--wrap,w_inc_global_backup_time \
-                             -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state \
+                             -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state -Wl,--wrap,wdb_finalize_all_statements \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
@@ -123,7 +123,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,sqlite3_column_count -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_column_name -Wl,--wrap,sqlite3_column_double \
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_reset \
                              -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_sql -Wl,--wrap,OS_SendSecureTCP  \
-                             -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_int ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \

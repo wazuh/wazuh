@@ -3529,6 +3529,8 @@ void test_wdb_parse_global_vacuum_commit_error(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_INVALID);
 
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot end transaction.");
 
     result = wdb_parse(query, data->output, 0);
@@ -3552,6 +3554,8 @@ void test_wdb_parse_global_vacuum_vacuum_error(void **state) {
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
 
     will_return(__wrap_wdb_vacuum, OS_INVALID);
 
@@ -3578,6 +3582,8 @@ void test_wdb_parse_global_vacuum_success(void **state) {
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
 
     will_return(__wrap_wdb_vacuum, OS_SUCCESS);
 

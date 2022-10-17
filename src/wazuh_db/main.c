@@ -94,6 +94,9 @@ int main(int argc, char ** argv)
     wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
+    wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
+    wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 525600);
+
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
@@ -419,9 +422,18 @@ void * run_worker(__attribute__((unused)) void * args) {
 }
 
 void * run_gc(__attribute__((unused)) void * args) {
+    int fragmentation_interval = wconfig.check_fragmentation_interval * 60;
     while (running) {
         wdb_commit_old();
         wdb_close_old();
+
+        if (fragmentation_interval == 0) {
+            wdb_check_fragmentation();
+            fragmentation_interval = wconfig.check_fragmentation_interval * 60;
+        } else {
+            fragmentation_interval--;
+        }
+
         sleep(1);
     }
 

@@ -366,6 +366,8 @@ typedef struct wdb_config {
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
+    int max_fragmentation;
+    int check_fragmentation_interval;
     wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
@@ -811,6 +813,8 @@ void wdb_commit_old();
 void wdb_close_old();
 
 int wdb_remove_database(const char * agent_id);
+
+void wdb_check_fragmentation();
 
 /**
  * @brief Function to execute one row of an SQL statement and save the result in a JSON array.

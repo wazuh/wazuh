@@ -32,6 +32,8 @@
 
 int wdb_execute_non_select_query(sqlite3 *db, const char *query);
 int wdb_select_from_temp_table(sqlite3 *db);
+int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
+int wdb_update_last_vacuum_data(wdb_t* wdb, int last_vacuum_time, int last_vacuum_value);
 
 typedef struct test_struct {
     wdb_t *wdb;
@@ -1116,36 +1118,9 @@ void test_wdb_select_from_temp_table_success_100(void **state) {
     os_free(db);
 }
 
-void test_wdb_get_db_state_initial_drop_error(void **state) {
-    wdb_t *wdb = calloc(1, sizeof(wdb_t));
-    wdb->db = calloc(1, sizeof(sqlite3 *));
-
-    // drop table fail
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
-
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Error, temporary table was previously created and it was not possible to drop it.");
-
-    assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
-
-    os_free(wdb->db);
-    os_free(wdb);
-}
-
 void test_wdb_get_db_state_create_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
-
-    // drop table success
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // create temp table fail
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -1164,15 +1139,9 @@ void test_wdb_get_db_state_create_error(void **state) {
     os_free(wdb);
 }
 
-void test_wdb_get_db_state_insert_error_drop_error(void **state) {
+void test_wdb_get_db_state_truncate_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
-
-    // drop table success
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // create temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -1180,25 +1149,16 @@ void test_wdb_get_db_state_insert_error_drop_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // insert temp table fail
+    // truncate table fail
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Error inserting into temporary table.");
-
-    // dropp temp table fail
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Error dropping temporary table.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Error truncate temporary table.");
 
     assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
 
@@ -1206,17 +1166,17 @@ void test_wdb_get_db_state_insert_error_drop_error(void **state) {
     os_free(wdb);
 }
 
-void test_wdb_get_db_state_insert_error_drop_success(void **state) {
+void test_wdb_get_db_state_insert_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
 
-    // drop table success
+    // create table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // create temp table success
+    // truncate temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1231,12 +1191,6 @@ void test_wdb_get_db_state_insert_error_drop_success(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error inserting into temporary table.");
-
-    // dropp temp table success
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
 
@@ -1248,13 +1202,13 @@ void test_wdb_get_db_state_select_error(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
 
-    // drop table success
+    // create table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // create temp table success
+    // truncate temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1276,12 +1230,6 @@ void test_wdb_get_db_state_select_error(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error in select from temporary table.");
 
-    // dropp temp table success
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
-
     assert_int_equal(OS_INVALID, wdb_get_db_state(wdb));
 
     os_free(wdb->db);
@@ -1292,13 +1240,13 @@ void test_wdb_get_db_state_success_0(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
 
-    // drop table success
+    // create table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // create temp table success
+    // truncate temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1318,12 +1266,6 @@ void test_wdb_get_db_state_success_0(void **state) {
     will_return(__wrap_sqlite3_column_double, 1);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // dropp temp table success
-    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
-
     assert_int_equal(0, wdb_get_db_state(wdb));
 
     os_free(wdb->db);
@@ -1334,13 +1276,13 @@ void test_wdb_get_db_state_success_100(void **state) {
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->db = calloc(1, sizeof(sqlite3 *));
 
-    // drop table success
+    // create table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // create temp table success
+    // truncate temp table success
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1360,13 +1302,163 @@ void test_wdb_get_db_state_success_100(void **state) {
     will_return(__wrap_sqlite3_column_double, 0);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    // dropp temp table success
+    assert_int_equal(100, wdb_get_db_state(wdb));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_last_vacuum_data_prepare_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time;
+    int last_vacuum_value;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    assert_int_equal(-1, wdb_get_last_vacuum_data(wdb, &last_vacuum_time, &last_vacuum_value));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_last_vacuum_data_step_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time;
+    int last_vacuum_value;
+
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
     will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
+
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    assert_int_equal(100, wdb_get_db_state(wdb));
+    assert_int_equal(-1, wdb_get_last_vacuum_data(wdb, &last_vacuum_time, &last_vacuum_value));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_get_last_vacuum_data_ok(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time;
+    int last_vacuum_value;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1655555); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 85); // last_vacuum_value
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(0, wdb_get_last_vacuum_data(wdb, &last_vacuum_time, &last_vacuum_value));
+    assert_int_equal(last_vacuum_time, 1655555);
+    assert_int_equal(last_vacuum_value, 85);
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_update_last_vacuum_data_prepare_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time = 166555;
+    int last_vacuum_value = 85;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    assert_int_equal(-1, wdb_update_last_vacuum_data(wdb, last_vacuum_time, last_vacuum_value));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_update_last_vacuum_data_step_error(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time = 166555;
+    int last_vacuum_value = 85;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_time);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_value);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(-1, wdb_update_last_vacuum_data(wdb, last_vacuum_time, last_vacuum_value));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_update_last_vacuum_data_ok_done(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time = 166555;
+    int last_vacuum_value = 85;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_time);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_value);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(0, wdb_update_last_vacuum_data(wdb, last_vacuum_time, last_vacuum_value));
+
+    os_free(wdb->db);
+    os_free(wdb);
+}
+
+void test_wdb_update_last_vacuum_data_ok_constraint(void **state) {
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->db = calloc(1, sizeof(sqlite3 *));
+    int last_vacuum_time = 166555;
+    int last_vacuum_value = 85;
+
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_time);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_vacuum_value);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    assert_int_equal(0, wdb_update_last_vacuum_data(wdb, last_vacuum_time, last_vacuum_value));
 
     os_free(wdb->db);
     os_free(wdb);
@@ -1444,13 +1536,21 @@ int main() {
         cmocka_unit_test(test_wdb_select_from_temp_table_success_0),
         cmocka_unit_test(test_wdb_select_from_temp_table_success_100),
         // wdb_get_db_state
-        cmocka_unit_test(test_wdb_get_db_state_initial_drop_error),
         cmocka_unit_test(test_wdb_get_db_state_create_error),
-        cmocka_unit_test(test_wdb_get_db_state_insert_error_drop_error),
-        cmocka_unit_test(test_wdb_get_db_state_insert_error_drop_success),
+        cmocka_unit_test(test_wdb_get_db_state_truncate_error),
+        cmocka_unit_test(test_wdb_get_db_state_insert_error),
         cmocka_unit_test(test_wdb_get_db_state_select_error),
         cmocka_unit_test(test_wdb_get_db_state_success_0),
         cmocka_unit_test(test_wdb_get_db_state_success_100),
+        // wdb_get_last_vacuum_data
+        cmocka_unit_test(test_wdb_get_last_vacuum_data_prepare_error),
+        cmocka_unit_test(test_wdb_get_last_vacuum_data_step_error),
+        cmocka_unit_test(test_wdb_get_last_vacuum_data_ok),
+        // wdb_update_last_vacuum_data
+        cmocka_unit_test(test_wdb_update_last_vacuum_data_prepare_error),
+        cmocka_unit_test(test_wdb_update_last_vacuum_data_step_error),
+        cmocka_unit_test(test_wdb_update_last_vacuum_data_ok_done),
+        cmocka_unit_test(test_wdb_update_last_vacuum_data_ok_constraint),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
