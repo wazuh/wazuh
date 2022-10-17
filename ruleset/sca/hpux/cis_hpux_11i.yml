@@ -24,14 +24,13 @@ requirements:
   description: "Requirements for running the SCA scan against HPUX family."
   condition: all
   rules:
-    - 'c:swlist HPUX*OE* -> r:HPUX11i'
-    - 'not d:/opt/sec_mgmt/bastille/'
+    - "c:swlist HPUX*OE* -> r:HPUX11i"
+    - "not d:/opt/sec_mgmt/bastille/"
 
 checks:
-
-#################################################################
-# 1.1  Install patches and supplementary software
-#################################################################
+  #################################################################
+  # 1.1  Install patches and supplementary software
+  #################################################################
 
   - id: 21001
     title: "Install and configure HP-UX Secure Shell."
@@ -46,19 +45,19 @@ checks:
       - http://h20392.www2.hp.com/portal/swdepot/displayProductInfo.do?productNumber=T1471AA
     condition: all
     rules:
-    - 'c:swlist –l bundle SecureShell -> r:HP-UX Secure Shell'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Protocol 2'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*X11Forwarding yes'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*IgnoreRhosts yes'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsAuthentication no'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsRSAAuthentication no'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitRootLogin no'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitEmptyPasswords no'
-    - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Banner /\.+'
+      - "c:swlist -l bundle SecureShell -> r:HP-UX Secure Shell"
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Protocol 2'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*X11Forwarding yes'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*IgnoreRhosts yes'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsAuthentication no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsRSAAuthentication no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitRootLogin no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitEmptyPasswords no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Banner /\.+'
 
-#################################################################
-# 1.2 Minimize inetd network services
-#################################################################
+  #################################################################
+  # 1.2 Minimize inetd network services
+  #################################################################
 
   - id: 21003
     title: "Disable Standard Services."
@@ -72,54 +71,54 @@ checks:
       - http://docs.hp.com/en/B2355-60130/inetd.conf.4.html
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*echo'
-    - 'not f:/etc/inetd.conf -> r:^\s*discard'
-    - 'not f:/etc/inetd.conf -> r:^\s*daytime'
-    - 'not f:/etc/inetd.conf -> r:^\s*chargen'
-    - 'not f:/etc/inetd.conf -> r:^\s*dtspc'
-    - 'not f:/etc/inetd.conf -> r:^\s*exec'
-    - 'not f:/etc/inetd.conf -> r:^\s*ntalk'
-    - 'not f:/etc/inetd.conf -> r:^\s*rpc\.*rpc.rwalld'
-    - 'not f:/etc/inetd.conf -> r:^\s*rpc\.*rpc.sprayd'
-    - 'not f:/etc/inetd.conf -> r:^\s*rpc\.*rpc.cmsd'
-    - 'not f:/etc/inetd.conf -> r:^\s*kcms_server'
-    - 'not f:/etc/inetd.conf -> r:^\s*printer'
-    - 'not f:/etc/inetd.conf -> r:^\s*shell'
-    - 'not f:/etc/inetd.conf -> r:^\s*login'
+      - 'not f:/etc/inetd.conf -> r:^\s*echo'
+      - 'not f:/etc/inetd.conf -> r:^\s*discard'
+      - 'not f:/etc/inetd.conf -> r:^\s*daytime'
+      - 'not f:/etc/inetd.conf -> r:^\s*chargen'
+      - 'not f:/etc/inetd.conf -> r:^\s*dtspc'
+      - 'not f:/etc/inetd.conf -> r:^\s*exec'
+      - 'not f:/etc/inetd.conf -> r:^\s*ntalk'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.*rpc.rwalld'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.*rpc.sprayd'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.*rpc.cmsd'
+      - 'not f:/etc/inetd.conf -> r:^\s*kcms_server'
+      - 'not f:/etc/inetd.conf -> r:^\s*printer'
+      - 'not f:/etc/inetd.conf -> r:^\s*shell'
+      - 'not f:/etc/inetd.conf -> r:^\s*login'
 
   - id: 21004
     title: "Only enable telnet if absolutely necessary."
     description: "Re-enable telnet. Telnet uses an unencrypted network protocol, which means data from the login session (such as passwords and all other data transmitted during the session) can be stolen by eavesdroppers on the network, and also that the session can be hijacked by outsiders to gain access to the remote system.  HP-UX Secure Shell (OpenSSH) provides an encrypted alternative to telnet (and other utilities) and should be used instead."
     rationale: "There is a mission-critical reason that requires users to access the system via telnet instead of the more secure SSH protocol."
-    remediation: "Perform the following to re-enable telnet: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the telnet service definition. 3. Add –b /etc/issue to the end of the telnet service definition. This will cause telnet to display the contents of /etc/issue to users attempting to access the system via telnet. 4. Save /etc/inetd.conf."
+    remediation: "Perform the following to re-enable telnet: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the telnet service definition. 3. Add -b /etc/issue to the end of the telnet service definition. This will cause telnet to display the contents of /etc/issue to users attempting to access the system via telnet. 4. Save /etc/inetd.conf."
     compliance:
       - cis: ["1.2.2"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*telnet'
+      - 'not f:/etc/inetd.conf -> r:^\s*telnet'
 
   - id: 21005
     title: "Only enable FTP if absolutely necessary."
-    description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP.  Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users onthe system to transfer files via SSH-based protocols.  For further information on restricting FTP access to the system, see item 1.6.2.  Sites may also consider augmenting the “ftpd -l” below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file – see the ftpd(1M) man page on your systems for details."
+    description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP.  Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users onthe system to transfer files via SSH-based protocols.  For further information on restricting FTP access to the system, see item 1.6.2.  Sites may also consider augmenting the “ftpd -l” below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file - see the ftpd(1M) man page on your systems for details."
     rationale: "This machine serves as an (anonymous) FTP server or other mission-critical role where data must be transferred via FTP instead of the more secure alternatives."
     remediation: "Perform the following to re-enable FTP:  1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the ftp service definition. 3. Save /etc/inetd.conf."
     compliance:
       - cis: ["1.2.3"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*ftp'
+      - 'not f:/etc/inetd.conf -> r:^\s*ftp'
 
   - id: 21006
     title: "Only enable rlogin/remsh/rcp if absolutely necessary."
-    description: "SSH was designed to be a drop-in replacement for these protocols.  Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH (again, see item 1.2.1 – Install SSH)."
+    description: "SSH was designed to be a drop-in replacement for these protocols.  Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH (again, see item 1.2.1 - Install SSH)."
     rationale: "There is a mission-critical reason to use rlogin/remsh/rcp instead of the more secure ssh/scp."
     remediation: "Perform the following to re-enable rlogin/remsh/rcp: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the shell and login service definitions. 3. Save /etc/inetd.conf."
     compliance:
       - cis: ["1.2.4"]
     condition: any
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*shell'
-    - 'not f:/etc/inetd.conf -> r:^\s*login'
+      - 'not f:/etc/inetd.conf -> r:^\s*shell'
+      - 'not f:/etc/inetd.conf -> r:^\s*login'
 
   - id: 21007
     title: "Only enable TFTP if absolutely necessary."
@@ -130,7 +129,7 @@ checks:
       - cis: ["1.2.5"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*TFTP'
+      - 'not f:/etc/inetd.conf -> r:^\s*TFTP'
 
   - id: 21008
     title: "Only enable printer service if absolutely necessary."
@@ -141,7 +140,7 @@ checks:
       - cis: ["1.2.6"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*printer'
+      - 'not f:/etc/inetd.conf -> r:^\s*printer'
 
   - id: 21009
     title: "Only enable rquotad if absolutely necessary."
@@ -152,7 +151,7 @@ checks:
       - cis: ["1.2.7"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*rquotad'
+      - 'not f:/etc/inetd.conf -> r:^\s*rquotad'
 
   - id: 21010
     title: "Only enable CDE-related daemons if absolutely necessary."
@@ -163,7 +162,7 @@ checks:
       - cis: ["1.2.8"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
 
   - id: 21011
     title: "Only enable Kerberos-related daemons if absolutely necessary."
@@ -174,8 +173,8 @@ checks:
       - cis: ["1.2.9"]
     condition: any
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*klogin'
-    - 'not f:/etc/inetd.conf -> r:^\s*kshell'
+      - 'not f:/etc/inetd.conf -> r:^\s*klogin'
+      - 'not f:/etc/inetd.conf -> r:^\s*kshell'
 
   - id: 21012
     title: "Only enable BOOTP/DHCP daemon if absolutely necessary."
@@ -186,11 +185,11 @@ checks:
       - cis: ["1.2.10"]
     condition: all
     rules:
-    - 'not f:/etc/inetd.conf -> r:^\s*bootps'
+      - 'not f:/etc/inetd.conf -> r:^\s*bootps'
 
-#################################################################
-# 1.3 Minimize boot services
-#################################################################
+  #################################################################
+  # 1.3 Minimize boot services
+  #################################################################
 
   - id: 21013
     title: "Disable login: prompts on serial ports."
@@ -202,7 +201,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'not f:/etc/inittab -> !r:^# && r:getty'
+      - "not f:/etc/inittab -> !r:^# && r:getty"
 
   - id: 21014
     title: "Disable NIS/NIS+ related processes, if possible."
@@ -214,10 +213,10 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/namesvrs -> r:^NIS_MASTER_SERVER=0'
-    - 'f:/etc/rc.config.d/namesvrs -> r:^NIS_CLIENT=0'
-    - 'f:/etc/rc.config.d/namesvrs -> r:^NIS_SLAVE_SERVER=0'
-    
+      - "f:/etc/rc.config.d/namesvrs -> r:^NIS_MASTER_SERVER=0"
+      - "f:/etc/rc.config.d/namesvrs -> r:^NIS_CLIENT=0"
+      - "f:/etc/rc.config.d/namesvrs -> r:^NIS_SLAVE_SERVER=0"
+
   - id: 21015
     title: "Disable printer daemons, if possible."
     description: "Disable printer daemons. The Technical Print Service (TPS) is a printer service used in the X-Windows and/or CDE environment.  It is recommended that this service be disabled if the hosting system does not participate in print services The administrator may wish to consider converting to the LPRng print system (see http://www.lprng.org/) which was designed with security in mind and is widely portable across many different Unix platforms.  Note, however, that LPRng is notsupported by Hewlett-Packard."
@@ -228,7 +227,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/lp -> r:^LP=0'
+      - "f:/etc/rc.config.d/lp -> r:^LP=0"
 
   - id: 21115
     title: "Disable printer daemons, if possible."
@@ -240,8 +239,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/tps'
-    - 'f:/etc/rc.config.d/tps -> r:^XPRINTSERVERS=""'
+      - "f:/etc/rc.config.d/tps"
+      - 'f:/etc/rc.config.d/tps -> r:^XPRINTSERVERS=""'
 
   - id: 21016
     title: "Disable the CDE GUI login, if possible."
@@ -253,12 +252,12 @@ checks:
       - cis_level: ["1"]
     condition: any
     rules:
-    - 'not f:/etc/rc.config.d/desktop'
-    - 'f:/etc/rc.config.d/desktop -> r:DESKTOP=$'
+      - "not f:/etc/rc.config.d/desktop"
+      - "f:/etc/rc.config.d/desktop -> r:DESKTOP=$"
 
   - id: 21017
     title: "Disable email server, if possible."
-    description: "Disable the sendmail daemon to avoid processing incoming email.  It is possible to run a Unix system with the Sendmail daemon disabled and still allow users on that system to send email out from that machine.  Running Sendmail in daemon mode (with the -bd command-line option) is only required on machines that act as mail servers, receiving and processing email from other hosts on the network.  The remediation below will result in a machine that can send email but not receiveit.  Note that after disabling the –bd option on the local mail server on systems running Sendmail v8.12 or later (8.13 is currently shipped as part of HP-UX 11iv3), it is also necessary to modify the /etc/mail/submit.cf file.  Find the line that reads 'D{MTAHost}localhost' and change localhost to the name of some other local mail server for the organization.  This will cause email generated on the local system to be relayed to that mail server for further processing and delivery.  Note that if the system is an email server, the administrator is encouraged to search the Web for additional documentation on Sendmail security issues."
+    description: "Disable the sendmail daemon to avoid processing incoming email.  It is possible to run a Unix system with the Sendmail daemon disabled and still allow users on that system to send email out from that machine.  Running Sendmail in daemon mode (with the -bd command-line option) is only required on machines that act as mail servers, receiving and processing email from other hosts on the network.  The remediation below will result in a machine that can send email but not receiveit.  Note that after disabling the -bd option on the local mail server on systems running Sendmail v8.12 or later (8.13 is currently shipped as part of HP-UX 11iv3), it is also necessary to modify the /etc/mail/submit.cf file.  Find the line that reads 'D{MTAHost}localhost' and change localhost to the name of some other local mail server for the organization.  This will cause email generated on the local system to be relayed to that mail server for further processing and delivery.  Note that if the system is an email server, the administrator is encouraged to search the Web for additional documentation on Sendmail security issues."
     rationale: "Avoid potential vulnerabilities in the sendmail server if incoming email service is not used."
     remediation: "Perform the following to disable the sendmail serve-> r: 1. Set the SENDMAIL_SERVER parameter to zero in the mailservs system configuration file. 2. Setup a cron job to run sendmail at regular intervals (e.g. every hour) in order to process queued, outgoing mail. "
     compliance:
@@ -269,59 +268,59 @@ checks:
       - http://www.sendmail.org/
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/mailservs -> r:SENDMAIL_SERVER=0'
+      - "f:/etc/rc.config.d/mailservs -> r:SENDMAIL_SERVER=0"
 
   - id: 21018
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed.."
     description: "Disable SNMP and OpenView agents if they are not needed. Note: If SNMP is used, it is recommended to change the default SNMP community string by modifying the get-community and set-community parameters in the SNMP configuration file /etc/SnmpAgent.d/snmpd.conf"
     rationale: "If SNMP and OpenView agents are not needed, avoid potential security vulnerabilities in these programs by disabling them."
-    remediation: "Perform the following to disable the SNMP and OpenView Agents:  cd /sbin/rc2.d mv -f S570SnmpFddi .NOS570SnmpFddi      ch_rc -a -p SNMP_HPUNIX_START=0 \   /etc/rc.config.d/SnmpHpunix ch_rc -a -p SNMP_MASTER_START=0 \   /etc/rc.config.d/SnmpMaster ch_rc -a -p SNMP_MIB2_START=0 \  /etc/rc.config.d/SnmpMib2 ch_rc -a -p SNMP_TRAPDEST_START=0 \   /etc/rc.config.d/SnmpTrpDst ch_rc –a –p OSPFMIB=0 \   /etc/rc.config.d/netdaemons ch_rc –a –p OPCAGT=0 \   /etc/rc.config.d/opcagt"
+    remediation: "Perform the following to disable the SNMP and OpenView Agents:  cd /sbin/rc2.d mv -f S570SnmpFddi .NOS570SnmpFddi      ch_rc -a -p SNMP_HPUNIX_START=0 \   /etc/rc.config.d/SnmpHpunix ch_rc -a -p SNMP_MASTER_START=0 \   /etc/rc.config.d/SnmpMaster ch_rc -a -p SNMP_MIB2_START=0 \  /etc/rc.config.d/SnmpMib2 ch_rc -a -p SNMP_TRAPDEST_START=0 \   /etc/rc.config.d/SnmpTrpDst ch_rc -a -p OSPFMIB=0 \   /etc/rc.config.d/netdaemons ch_rc -a -p OPCAGT=0 \   /etc/rc.config.d/opcagt"
     compliance:
       - cis: ["1.3.6"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'not f:/sbin/rc2.d/S570SnmpFddi'
-    - 'f:/etc/rc.config.d/SnmpHpunix -> r:SNMP_HPUNIX_START=0'
-    - 'f:/etc/rc.config.d/SnmpMaster -> r:SNMP_MASTER_START=0'
-    - 'f:/etc/rc.config.d/SnmpMib2 -> r:SNMP_MIB2_START=0'
-    - 'f:/etc/rc.config.d/SnmpTrpDst -> r:SNMP_TRAPDEST_START=0'
-    - 'f:/etc/rc.config.d/netdaemons -> r:OSPFMIB=0'
-    - 'f:/etc/rc.config.d/opcagt -> r:OPCAGT=0'
-  
+      - "not f:/sbin/rc2.d/S570SnmpFddi"
+      - "f:/etc/rc.config.d/SnmpHpunix -> r:SNMP_HPUNIX_START=0"
+      - "f:/etc/rc.config.d/SnmpMaster -> r:SNMP_MASTER_START=0"
+      - "f:/etc/rc.config.d/SnmpMib2 -> r:SNMP_MIB2_START=0"
+      - "f:/etc/rc.config.d/SnmpTrpDst -> r:SNMP_TRAPDEST_START=0"
+      - "f:/etc/rc.config.d/netdaemons -> r:OSPFMIB=0"
+      - "f:/etc/rc.config.d/opcagt -> r:OPCAGT=0"
+
   - id: 21019
     title: "Disable rarely used standard boot services."
-    description: "Setting these variables in the /etc/rc.config.d configuration files will effectively disable a wide variety of infrequently used subsystems.  Variables are merely set (rather than renaming or removing startup scripts) so that the local administrator can easily 'restore' any of these services if they discover a mission-critical need to have it.  Additionally, HP-UX patches tend to supply fresh copies of the startup scripts, so they may get inadvertently re-enabled, whereassetting configuration variables usually survives patch installs.  Finally, setting configuration variables is the method recommended and supported by HP. Note that not all of the configuration files listed above will exist on all systems (some are only valid for certain releases, others only exist if certain OEM vendor software is installed). The rest of the actions in this section give the administrator the option of re-enabling certain services – in particular, the services thataredisabled in the second block of the remediation section below.  Rather than disabling and then re-enabling these services, experienced administrators may wish to simply disable only those services that they know are unnecessary for their systems."
+    description: "Setting these variables in the /etc/rc.config.d configuration files will effectively disable a wide variety of infrequently used subsystems.  Variables are merely set (rather than renaming or removing startup scripts) so that the local administrator can easily 'restore' any of these services if they discover a mission-critical need to have it.  Additionally, HP-UX patches tend to supply fresh copies of the startup scripts, so they may get inadvertently re-enabled, whereassetting configuration variables usually survives patch installs.  Finally, setting configuration variables is the method recommended and supported by HP. Note that not all of the configuration files listed above will exist on all systems (some are only valid for certain releases, others only exist if certain OEM vendor software is installed). The rest of the actions in this section give the administrator the option of re-enabling certain services - in particular, the services thataredisabled in the second block of the remediation section below.  Rather than disabling and then re-enabling these services, experienced administrators may wish to simply disable only those services that they know are unnecessary for their systems."
     rationale: "Avoid potential security vulnerabilities in infrequently used subsystems by disabling them."
-    remediation: "Perform the following:   ch_rc -a -p START_SNAPLUS=0 -p START_SNANODE=0 \   -p START_SNAINETD=0 /etc/rc.config.d/snaplus2 ch_rc -a -p MROUTED=0 -p RWHOD=0 -p DDFA=0 \   -p START_RBOOTD=0 /etc/rc.config.d/netdaemons ch_rc -a -p RARPD=0 -p RDPD=0 /etc/rc.config.d/netconf ch_rc -a -p PTYDAEMON_START=0 /etc/rc.config.d/ptydaemon ch_rc -a -p VTDAEMON_START=0 /etc/rc.config.d/vt ch_rc -a -p NAMED=0 /etc/rc.config.d/namesvrs ch_rc -a -p START_I4LMD=0 /etc/rc.config.d/i4lmd ch_rc -a p RUN_X_FONT_SERVER=0 /etc/rc.config.d/xfs ch_rc -a -p AUDIO_SERVER=0 /etc/rc.config.d/audio ch_rc -a -p SLSD_DAEMON=0 /etc/rc.config.d/slsd ch_rc -a -p RUN_SAMBA=0 /etc/rc.config.d/samba ch_rc -a -p RUN_CIFSCLIENT=0 \   /etc/rc.config.d/cifsclient ch_rc -a -p NFS_SERVER=0 \   -p NFS_CLIENT=0 /etc/rc.config.d/nfsconf ch_rc -a -p HPWS_APACHE_START=0 /etc/rc.config.d/hpws_apacheconf ch_rc –a –p NFS_CORE=0 /etc/rc.config.d/nfsconf"
+    remediation: "Perform the following:   ch_rc -a -p START_SNAPLUS=0 -p START_SNANODE=0 \   -p START_SNAINETD=0 /etc/rc.config.d/snaplus2 ch_rc -a -p MROUTED=0 -p RWHOD=0 -p DDFA=0 \   -p START_RBOOTD=0 /etc/rc.config.d/netdaemons ch_rc -a -p RARPD=0 -p RDPD=0 /etc/rc.config.d/netconf ch_rc -a -p PTYDAEMON_START=0 /etc/rc.config.d/ptydaemon ch_rc -a -p VTDAEMON_START=0 /etc/rc.config.d/vt ch_rc -a -p NAMED=0 /etc/rc.config.d/namesvrs ch_rc -a -p START_I4LMD=0 /etc/rc.config.d/i4lmd ch_rc -a p RUN_X_FONT_SERVER=0 /etc/rc.config.d/xfs ch_rc -a -p AUDIO_SERVER=0 /etc/rc.config.d/audio ch_rc -a -p SLSD_DAEMON=0 /etc/rc.config.d/slsd ch_rc -a -p RUN_SAMBA=0 /etc/rc.config.d/samba ch_rc -a -p RUN_CIFSCLIENT=0 \   /etc/rc.config.d/cifsclient ch_rc -a -p NFS_SERVER=0 \   -p NFS_CLIENT=0 /etc/rc.config.d/nfsconf ch_rc -a -p HPWS_APACHE_START=0 /etc/rc.config.d/hpws_apacheconf ch_rc -a -p NFS_CORE=0 /etc/rc.config.d/nfsconf"
     compliance:
       - cis: ["1.3.7"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/snaplus2 -> r:START_SNAPLUS=0'
-    - 'f:/etc/rc.config.d/snaplus2 -> r:START_SNANODE=0'
-    - 'f:/etc/rc.config.d/snaplus2 -> r:START_SNAINETD=0'
-    - 'f:/etc/rc.config.d/netdaemons -> r:MROUTED=0'
-    - 'f:/etc/rc.config.d/netdaemons -> r:RWHOD=0'
-    - 'f:/etc/rc.config.d/netdaemons -> r:DDFA=0'
-    - 'f:/etc/rc.config.d/netdaemons -> r:START_RBOOTD=0'
-    - 'f:/etc/rc.config.d/netconf -> r:RARPD=0'
-    - 'f:/etc/rc.config.d/netconf -> r:RDPD=0'
-    - 'f:/etc/rc.config.d/ptydaemon -> r:PTYDAEMON_START=0'
-    - 'f:/etc/rc.config.d/vt -> r:VTDAEMON_START=0'
-    - 'f:/etc/rc.config.d/namesvrs -> r:NAMED=0'
-    - 'f:/etc/rc.config.d/i4lmd -> r:START_I4LMD=0'
-    - 'f:/etc/rc.config.d/xfs -> r:RUN_X_FONT_SERVER=0'
-    - 'f:/etc/rc.config.d/audio -> r:AUDIO_SERVER=0'
-    - 'f:/etc/rc.config.d/slsd -> r:SLSD_DAEMON=0'
-    - 'f:/etc/rc.config.d/samba -> r:RUN_SAMBA=0'
-    - 'f:/etc/rc.config.d/cifsclient -> r:RUN_CIFSCLIENT=0'
-    - 'f:/etc/rc.config.d/nfsconf -> r:NFS_SERVER=0'
-    - 'f:/etc/rc.config.d/nfsconf -> r:NFS_CLIENT=0'
-    - 'f:/etc/rc.config.d/hpws_apacheconf -> r:HPWS_APACHE_START=0'
-    - 'f:/etc/rc.config.d/hpws_nfsconf -> r:NFS_CORE=0'
-    
+      - "f:/etc/rc.config.d/snaplus2 -> r:START_SNAPLUS=0"
+      - "f:/etc/rc.config.d/snaplus2 -> r:START_SNANODE=0"
+      - "f:/etc/rc.config.d/snaplus2 -> r:START_SNAINETD=0"
+      - "f:/etc/rc.config.d/netdaemons -> r:MROUTED=0"
+      - "f:/etc/rc.config.d/netdaemons -> r:RWHOD=0"
+      - "f:/etc/rc.config.d/netdaemons -> r:DDFA=0"
+      - "f:/etc/rc.config.d/netdaemons -> r:START_RBOOTD=0"
+      - "f:/etc/rc.config.d/netconf -> r:RARPD=0"
+      - "f:/etc/rc.config.d/netconf -> r:RDPD=0"
+      - "f:/etc/rc.config.d/ptydaemon -> r:PTYDAEMON_START=0"
+      - "f:/etc/rc.config.d/vt -> r:VTDAEMON_START=0"
+      - "f:/etc/rc.config.d/namesvrs -> r:NAMED=0"
+      - "f:/etc/rc.config.d/i4lmd -> r:START_I4LMD=0"
+      - "f:/etc/rc.config.d/xfs -> r:RUN_X_FONT_SERVER=0"
+      - "f:/etc/rc.config.d/audio -> r:AUDIO_SERVER=0"
+      - "f:/etc/rc.config.d/slsd -> r:SLSD_DAEMON=0"
+      - "f:/etc/rc.config.d/samba -> r:RUN_SAMBA=0"
+      - "f:/etc/rc.config.d/cifsclient -> r:RUN_CIFSCLIENT=0"
+      - "f:/etc/rc.config.d/nfsconf -> r:NFS_SERVER=0"
+      - "f:/etc/rc.config.d/nfsconf -> r:NFS_CLIENT=0"
+      - "f:/etc/rc.config.d/hpws_apacheconf -> r:HPWS_APACHE_START=0"
+      - "f:/etc/rc.config.d/hpws_nfsconf -> r:NFS_CORE=0"
+
   - id: 21020
     title: "Only enable Windows-compatibility server processes if absolutely necessary."
     description: "HP-UX 11i includes the popular Open Source Samba server (HP-UX CIFS Server) for providing file and print services to Windows-based systems.  This allows an HP-UX system to act as a file or print server on a Windows network, and even act as a Domain Controller (authentication server) to older Windows operating systems.  However, if this functionality is not required by the site, this service should be disabled."
@@ -331,7 +330,7 @@ checks:
       - cis: ["1.3.8"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/samba -> r:RUN_SAMBA=0'
+      - "f:/etc/rc.config.d/samba -> r:RUN_SAMBA=0"
 
   - id: 21021
     title: "Only enable Windows-compatibility client processes if absolutely necessary."
@@ -342,7 +341,7 @@ checks:
       - cis: ["1.3.9"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/cifsclient -> r:RUN_CIFSCLIENT=0'
+      - "f:/etc/rc.config.d/cifsclient -> r:RUN_CIFSCLIENT=0"
 
   - id: 21022
     title: "Only enable NFS server processes if absolutely necessary."
@@ -353,7 +352,7 @@ checks:
       - cis: ["1.3.10"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/nfsconf -> r:NFS_SERVER=0'
+      - "f:/etc/rc.config.d/nfsconf -> r:NFS_SERVER=0"
 
   - id: 21023
     title: "Only enable NFS client processes if absolutely necessary."
@@ -364,7 +363,7 @@ checks:
       - cis: ["1.3.11"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/nfsconf -> r:NFS_CLIENT=0'
+      - "f:/etc/rc.config.d/nfsconf -> r:NFS_CLIENT=0"
 
   - id: 21024
     title: "Only enable RPC-based services if absolutely necessary."
@@ -375,7 +374,7 @@ checks:
       - cis: ["1.3.12"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/nfsconf -> r:NFS_CORE=0'
+      - "f:/etc/rc.config.d/nfsconf -> r:NFS_CORE=0"
 
   - id: 21025
     title: "Only enable Web server if absolutely necessary."
@@ -386,11 +385,11 @@ checks:
       - cis: ["1.3.13"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/apacheconf -> r:APACHE_START=0'
-    - 'f:/etc/rc.config.d/hpws_apache32conf -> r:HPWS_APACHE32_START=0'
-    - 'f:/etc/rc.config.d/hpws_tomcatconf -> r:HPWS_TOMCAT_START=0'
-    - 'f:/etc/rc.config.d/ns-ftrack -> r:NS_FTRACK=0'
-    - 'f:/etc/rc.config.d/hpws_webminconf -> r:HPWS_WEBMIN_START=0'
+      - "f:/etc/rc.config.d/apacheconf -> r:APACHE_START=0"
+      - "f:/etc/rc.config.d/hpws_apache32conf -> r:HPWS_APACHE32_START=0"
+      - "f:/etc/rc.config.d/hpws_tomcatconf -> r:HPWS_TOMCAT_START=0"
+      - "f:/etc/rc.config.d/ns-ftrack -> r:NS_FTRACK=0"
+      - "f:/etc/rc.config.d/hpws_webminconf -> r:HPWS_WEBMIN_START=0"
 
   - id: 21026
     title: "Only enable BIND DNS server if absolutely necessary."
@@ -401,11 +400,11 @@ checks:
       - cis: ["1.3.14"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/namesvrs_dns -> r:NAMED=0'
+      - "f:/etc/rc.config.d/namesvrs_dns -> r:NAMED=0"
 
-#################################################################
-# 1.4 Kernel Tuning
-#################################################################
+  #################################################################
+  # 1.4 Kernel Tuning
+  #################################################################
 
   - id: 21027
     title: "Enable stack protection."
@@ -417,7 +416,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c:sh -c "kctune | grep executable_stack" -> r:executable_stack\s+0'
+      - 'c:sh -c "kctune | grep executable_stack" -> r:executable_stack\s+0'
 
   - id: 21028
     title: "Network parameter modifications."
@@ -429,26 +428,26 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c:ndd -get /dev/tcp tcp_syn_rcvd_max -> r:4096'
-    - 'c:ndd -get /dev/arp arp_cleanup_interval -> r:60000' 
-    - 'c:ndd -get /dev/ip ip_forward_src_routed -> r:0'
-    - 'c:ndd -get /dev/ip ip_forward_directed_broadcasts -> r:0' 
-    - 'c:ndd -get /dev/ip ip_respond_to_timestamp -> r:0'
-    - 'c:ndd -get /dev/ip ip_respond_to_timestamp_broadcast -> r:0' 
-    - 'c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:0'
-    - 'c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:0'
+      - "c:ndd -get /dev/tcp tcp_syn_rcvd_max -> r:4096"
+      - "c:ndd -get /dev/arp arp_cleanup_interval -> r:60000"
+      - "c:ndd -get /dev/ip ip_forward_src_routed -> r:0"
+      - "c:ndd -get /dev/ip ip_forward_directed_broadcasts -> r:0"
+      - "c:ndd -get /dev/ip ip_respond_to_timestamp -> r:0"
+      - "c:ndd -get /dev/ip ip_respond_to_timestamp_broadcast -> r:0"
+      - "c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:0"
+      - "c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:0"
 
   - id: 21029
     title: "Use more random TCP sequence numbers."
     description: "Generate initial TCP sequence numbers that comply with RFC1948. Note: In HP-UX 11i v1 and later,  an algorithm largely compliant with RFC1948 is already used.  However, setting the isn passphrase closes the small remaining gap, and adds entropy to the seed."
     rationale: "Makes remote off-net session hijacking attacks more difficult."
-    remediation: "Perform the following to use more random TCP sequence numbers upon system startup: 1.  Create/open the file /sbin/rc2.d/S999tcpisn 2. Add the following line:  ndd –set /dev/tcp tcp_isn_passphrase=<random string> replacing <random string> with a string of random characters. 3. Save the file.  4. Set root as the owner and bin as the group owner of the file. 5. Restrict write access to the file. 6. Set the execution bit for the file."
+    remediation: "Perform the following to use more random TCP sequence numbers upon system startup: 1.  Create/open the file /sbin/rc2.d/S999tcpisn 2. Add the following line:  ndd -set /dev/tcp tcp_isn_passphrase=<random string> replacing <random string> with a string of random characters. 3. Save the file.  4. Set root as the owner and bin as the group owner of the file. 5. Restrict write access to the file. 6. Set the execution bit for the file."
     compliance:
       - cis: ["1.4.3"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c:ndd -get /dev/tcp tcp_isn_passphrase -> r:1'
+      - "c:ndd -get /dev/tcp tcp_isn_passphrase -> r:1"
 
   - id: 21030
     title: "Additional network parameter modifications."
@@ -460,54 +459,54 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c:ndd -get /dev/ip ip_forwarding -> r:0'
-    - 'c:ndd -get /dev/ip ip_send_redirects -> r:0' 
+      - "c:ndd -get /dev/ip ip_forwarding -> r:0"
+      - "c:ndd -get /dev/ip ip_send_redirects -> r:0"
 
-#################################################################
-# 1.5 File/Directory Permissions/Access
-#################################################################
+  #################################################################
+  # 1.5 File/Directory Permissions/Access
+  #################################################################
 
-# List of find folders command may need to be configured to work in a customized HP-UX deployment
+  # List of find folders command may need to be configured to work in a customized HP-UX deployment
   - id: 21133
     title: "Resolve “unowned” files and directories."
     description: "Evaluate ownership of any files that are not owned by a locally defined user, and consider reassignment to an active user."
     rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended.   It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user onthe system (in this example, 'bin') as appropriate"
-    remediation: "Perform the following to identify 'unowned' files and directories,  and consider resetting ownership to a default owner and restricting access permissions: 1. Locate all local files that are owned by users or groups not listed in the system configuration files. find / ( -nouser –o -nogroup ) 2. Consider resetting user and group ownership of these files to a default active user (e.g. bin) chown bin:bin  <filename> 3. Consider restricting world-write permissions, and removingany SUID/SGID bits on these files. chmod ug-s,o-w <filename>"
+    remediation: "Perform the following to identify 'unowned' files and directories,  and consider resetting ownership to a default owner and restricting access permissions: 1. Locate all local files that are owned by users or groups not listed in the system configuration files. find / ( -nouser -o -nogroup ) 2. Consider resetting user and group ownership of these files to a default active user (e.g. bin) chown bin:bin  <filename> 3. Consider restricting world-write permissions, and removingany SUID/SGID bits on these files. chmod ug-s,o-w <filename>"
     compliance:
       - cis: ["1.5.3"]
       - cis_level: ["1"]
     condition: none
     rules:
-    - 'c:find /bin \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /diskaldata \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /lib \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /opt \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /tmp \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /core \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /etc \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /sbin \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /usr \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /dev \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /home \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /net \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /stand \( -nouser -o -nogroup \) -> r:\w'
-    - 'c:find /var \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /bin \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /diskaldata \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /lib \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /opt \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /tmp \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /core \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /etc \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /sbin \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /usr \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /dev \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /home \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /net \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /stand \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /var \( -nouser -o -nogroup \) -> r:\w'
 
-#################################################################
-# 1.6 System Access, Authentication, and Authorization
-#################################################################
+  #################################################################
+  # 1.6 System Access, Authentication, and Authorization
+  #################################################################
 
   - id: 21034
     title: "Enable Hidden Passwords."
     description: "Enable hidden passwords by converting the system to a Trusted System or to use Shadow Passwords. Note: do not perform this if the system runs applications that read the encrypted password entries in /etc/passwd directly."
     rationale: "Without hidden passwords, an intruder could use any user’s account to obtain hashed passwords and use crack or similar utilities to find easily guessed passwords.  Password aging (covered in item 1.8.3) ensures that users change their passwords on a regular basis and helps stop the use of stolen passwords."
-    remediation: "Perform one of the following to convert the system to trusted mode or shadowed mode: A. Use the system management program smh or sam to convert to a trusted system –or- B. Use the command pwconv to convert to shadowed passwords."
+    remediation: "Perform one of the following to convert the system to trusted mode or shadowed mode: A. Use the system management program smh or sam to convert to a trusted system -or- B. Use the command pwconv to convert to shadowed passwords."
     compliance:
       - cis: ["1.6.1"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/shadow'
+      - "f:/etc/shadow"
 
   - id: 21035
     title: "Restrict users who can access to FTP."
@@ -519,8 +518,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/ftpd/ftpusers'
-    - 'f:/etc/initd.conf -> r:^ftp'
+      - "f:/etc/ftpd/ftpusers"
+      - "f:/etc/initd.conf -> r:^ftp"
 
   - id: 21036
     title: "Prevent Syslog from accepting messages from the network."
@@ -532,7 +531,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/syslogd -> r:^SYSLOGD_OPTS && r:-N'
+      - "f:/etc/rc.config.d/syslogd -> r:^SYSLOGD_OPTS && r:-N"
 
   - id: 21037
     title: "Disable XDMCP port."
@@ -544,21 +543,21 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/dt/config/Xconfig'
-    - 'f:/etc/dt/config/Xconfig -> r:Dtlogin.requestPort:\s*0'
+      - "f:/etc/dt/config/Xconfig"
+      - 'f:/etc/dt/config/Xconfig -> r:Dtlogin.requestPort:\s*0'
 
   - id: 21039
     title: "Configure IPFilter to allow only select communication."
     description: "HP-UX IPFilter (B9901AA) is a stateful system firewall that controls IP packet flow in or out of a machine.  It is installed by default on HP-UX 11iv2 (11.23) and later.  On older systems, IPFilter can be obtained from http://www.hp.com/go/ipfilter.  The rules below will work in an otherwise-empty ipf.conf file, or, if there are rules already present, it will block all that were not passed earlier in the ruleset.  This is less likely to break things, but will allow more traffic through.  Alternatively, you can instead take the pass lines below  (not using the block rule), and change them into 'block in quick' rules, and place those at the top of the file.  This will error on the side of blocking traffic.  See ipf(5) for detail.  Your ruleset can be tested using ipftest(1). Bastille note: if using to change and monitor the IPFilter firewall, ensure that rules are added to /etc/opt/sec_mgmt/bastille/ipf.customrules, and that Bastille is rerun with the last config file, so they will not be overwritten in a subsequent lockdown."
     rationale: "Restricting incoming network traffic to explicitly allowed hosts will help prevent unauthorized access the system."
-    remediation: "Perform the following to add enable ipfilter and install a default ruleset to block unauthorized incoming connections: 1. Enable ipfilte-> r: ipfilter –e 2. Append the following lines to /etc/opt/ipf/ipf.conf : block in all pass in from <allowed net>/<mask> pass in from <allowed net>/<mask> replacing each <allowed net>/<mask> with an authorized IP address and mask. 3. Flush the old rules and read in the updated rules: ipf –Fa –f /etc/opt/ipf/ipf.conf"
+    remediation: "Perform the following to add enable ipfilter and install a default ruleset to block unauthorized incoming connections: 1. Enable ipfilte-> r: ipfilter -e 2. Append the following lines to /etc/opt/ipf/ipf.conf : block in all pass in from <allowed net>/<mask> pass in from <allowed net>/<mask> replacing each <allowed net>/<mask> with an authorized IP address and mask. 3. Flush the old rules and read in the updated rules: ipf -Fa -f /etc/opt/ipf/ipf.conf"
     compliance:
       - cis: ["1.6.6"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c:ipfilter -e -> r:IPFilter Enabled'
-    - 'c:ipfstat -io -> r:block in from any to any'
+      - "c:ipfilter -e -> r:IPFilter Enabled"
+      - "c:ipfstat -io -> r:block in from any to any"
 
   - id: 21040
     title: "Restrict at/cron to authorized users."
@@ -570,12 +569,12 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'not f:/var/adm/cron/cron.deny'
-    - 'not f:/var/adm/cron/at.deny'
-    - 'f:/var/adm/cron/cron.allow'
-    - 'f:/var/adm/cron/at.allow'
-    - 'f:/var/adm/cron/cron.allow -> r:root'
-    - 'f:/var/adm/cron/at.allow -> r:root' 
+      - "not f:/var/adm/cron/cron.deny"
+      - "not f:/var/adm/cron/at.deny"
+      - "f:/var/adm/cron/cron.allow"
+      - "f:/var/adm/cron/at.allow"
+      - "f:/var/adm/cron/cron.allow -> r:root"
+      - "f:/var/adm/cron/at.allow -> r:root"
 
   - id: 21041
     title: "Restrict crontab file permissions."
@@ -587,7 +586,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c: sh -c "ls -la /var/spool/cron/crontabs | grep -v  -e ^-.*root.*sys | grep -v -e ^d | grep -v total" -> r:^$' 
+      - 'c: sh -c "ls -la /var/spool/cron/crontabs | grep -v  -e ^-.*root.*sys | grep -v -e ^d | grep -v total" -> r:^$'
 
   - id: 21042
     title: "Restrict root logins to system console."
@@ -599,10 +598,10 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/securetty'
-    - 'f:/etc/securetty -> r:console'
-    - 'c: sh -c "ls -la /etc/securetty | grep  -e ^-.*root.*sys | grep -v total" -> r:/etc/securetty' 
-    
+      - "f:/etc/securetty"
+      - "f:/etc/securetty -> r:console"
+      - 'c: sh -c "ls -la /etc/securetty | grep  -e ^-.*root.*sys | grep -v total" -> r:/etc/securetty'
+
   - id: 21044
     title: "Disable nobody access for secure RPC."
     description: "The keyserv process stores user keys that are utilized with the ONC secure RPC mechanism.  The action below prevents keyserv from using default keys for the 'nobody' user, effectively stopping this user from accessing information via secure RPC."
@@ -613,11 +612,11 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/namesvrs -> r:KEYSERV_OPTIONS= && r:-d'
+      - "f:/etc/rc.config.d/namesvrs -> r:KEYSERV_OPTIONS= && r:-d"
 
-#################################################################
-# 1.7 Logging
-#################################################################
+  #################################################################
+  # 1.7 Logging
+  #################################################################
 
   - id: 21046
     title: "Enable logging from inetd."
@@ -629,7 +628,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/rc.config.d/netdaemons -> r:INETD_ARGS=-l'
+      - "f:/etc/rc.config.d/netdaemons -> r:INETD_ARGS=-l"
 
   - id: 21146
     title: "Turn on additional logging for FTP daemon."
@@ -641,63 +640,63 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/inetd.conf -> r:^ftpd && r:-l'
-    - 'f:/etc/inetd.conf -> r:^ftpd && r:-L'
+      - "f:/etc/inetd.conf -> r:^ftpd && r:-l"
+      - "f:/etc/inetd.conf -> r:^ftpd && r:-L"
 
-#################################################################
-# 1.8 User Accounts and Environment
-#################################################################
+  #################################################################
+  # 1.8 User Accounts and Environment
+  #################################################################
 
   - id: 21048
     title: "Block system accounts."
     description: "Accounts that are not being used by regular users should be locked.  Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use.  The other listed accounts should never require direct access.  The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
     rationale: "System accounts are not used by regular users, and almost never require direct access; thus, they should be locked to prevent accidental or malicious usage."
-    remediation: "Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm  1. Lock the account:  passwd –l <user> 2. Set the login shell to an invalid program:  /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock:  /usr/lbin/modprpw –m alock=YES <user>"
+    remediation: "Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm  1. Lock the account:  passwd -l <user> 2. Set the login shell to an invalid program:  /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock:  /usr/lbin/modprpw -m alock=YES <user>"
     compliance:
       - cis: ["1.8.1"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/passwd -> r:^www && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^sys && r:/bin/false'
-    - 'f:/etc/passwd -> r:^smbnull && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^iwww && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^owww && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^sshd && r:/bin/false'
-    - 'f:/etc/passwd -> r:^hpsmh && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^named && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^uucp && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^nuucp && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^adm && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^daemon && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^bin && r:/bin/false' 
-    - 'f:/etc/passwd -> r:^lp && r:/bin/false'
+      - "f:/etc/passwd -> r:^www && r:/bin/false"
+      - "f:/etc/passwd -> r:^sys && r:/bin/false"
+      - "f:/etc/passwd -> r:^smbnull && r:/bin/false"
+      - "f:/etc/passwd -> r:^iwww && r:/bin/false"
+      - "f:/etc/passwd -> r:^owww && r:/bin/false"
+      - "f:/etc/passwd -> r:^sshd && r:/bin/false"
+      - "f:/etc/passwd -> r:^hpsmh && r:/bin/false"
+      - "f:/etc/passwd -> r:^named && r:/bin/false"
+      - "f:/etc/passwd -> r:^uucp && r:/bin/false"
+      - "f:/etc/passwd -> r:^nuucp && r:/bin/false"
+      - "f:/etc/passwd -> r:^adm && r:/bin/false"
+      - "f:/etc/passwd -> r:^daemon && r:/bin/false"
+      - "f:/etc/passwd -> r:^bin && r:/bin/false"
+      - "f:/etc/passwd -> r:^lp && r:/bin/false"
 
   - id: 21049
     title: "Verify that there are no accounts with empty password fields."
     description: "An account with an empty password field means that anybody may log in as that user without providing a password at all.  All accounts should have strong passwords or should be locked by using a password string like '*', 'NP', or '*LOCKED*' "
     rationale: "User accounts should have passwords, or be locked."
-    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field:  logins –p 2. Lock each account:  passwd –l <user> 3. If a trusted system, set the administrator lock:  /usr/lbin/modprpw –m alock=YES <user>"
+    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field:  logins -p 2. Lock each account:  passwd -l <user> 3. If a trusted system, set the administrator lock:  /usr/lbin/modprpw -m alock=YES <user>"
     compliance:
       - cis: ["1.8.2"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'c:logins -p -> r:^$'
+      - "c:logins -p -> r:^$"
 
   - id: 21050
     title: "Set account expiration parameters on active accounts."
     description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter.  Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires.  Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
     rationale: "It is a good idea to force users to change passwords on a regular basis."
-    remediation: "Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd –x 91 –n 7 –w 28 <logname>    for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname>  3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a.  PASSWORD_MAXDAYS=91 b.  PASSWORD_MINDAYS=7 c.  PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30"
+    remediation: "Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd -x 91 -n 7 -w 28 <logname>    for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname>  3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a.  PASSWORD_MAXDAYS=91 b.  PASSWORD_MINDAYS=7 c.  PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30"
     compliance:
       - cis: ["1.8.3"]
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_MAXDAYS='    
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_WARNDAYS='    
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_MINDAYS='    
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MAXDAYS='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_WARNDAYS='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MINDAYS='
 
   - id: 21051
     title: "Set strong password enforcement policies."
@@ -709,12 +708,12 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/default/security -> r:^\s*MIN_PASSORD_LENGTH='
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_HISTORY_DEPTH='
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_UPPER_CASE_CHARS='
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_DIGIT_CHARS='
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_SPECIAL_CHARS='
-    - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_LOWER_CASE_CHARS='
+      - 'f:/etc/default/security -> r:^\s*MIN_PASSORD_LENGTH='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_HISTORY_DEPTH='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_UPPER_CASE_CHARS='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_DIGIT_CHARS='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_SPECIAL_CHARS='
+      - 'f:/etc/default/security -> r:^\s*PASSWORD_MIN_LOWER_CASE_CHARS='
 
   - id: 21052
     title: "Verify no legacy '+' entries exist in passwd and group files."
@@ -726,8 +725,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'not f:/etc/passwd -> r:^+'
-    - 'not f:/etc/group -> r:^+'
+      - "not f:/etc/passwd -> r:^+"
+      - "not f:/etc/group -> r:^+"
 
   - id: 21057
     title: "Set default umask for users."
@@ -739,7 +738,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/default/security -> r:^\s*UMASK=077'
+      - 'f:/etc/default/security -> r:^\s*UMASK=077'
 
   - id: 21058
     title: "Set 'mesg n' as default for all users."
@@ -751,14 +750,14 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/profile -> r:^\s*mesg n'
-    - 'f:/etc/csh.login -> r:^\s*mesg n'
-    - 'f:/etc/d.profile -> r:^\s*mesg n'
-    - 'f:/etc/d.login -> r:^\s*mesg n'
+      - 'f:/etc/profile -> r:^\s*mesg n'
+      - 'f:/etc/csh.login -> r:^\s*mesg n'
+      - 'f:/etc/d.profile -> r:^\s*mesg n'
+      - 'f:/etc/d.login -> r:^\s*mesg n'
 
-#################################################################
-# 1.9 Warning Banners
-#################################################################
+  #################################################################
+  # 1.9 Warning Banners
+  #################################################################
 
   - id: 21059
     title: "Create warning banners for terminal-session logins."
@@ -770,8 +769,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/motd'
-    - 'f:/etc/issue'
+      - "f:/etc/motd"
+      - "f:/etc/issue"
 
   - id: 21061
     title: "Create warning banners for FTP daemon."
@@ -783,7 +782,6 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/etc/ftpd'
-    - 'c: sh -c "ls -la /etc/ftpd | grep  -e ^-.*root.*sys | grep -v total" -> r:ftpd' 
-    - 'c: sh -c "ls -la /etc/ftpd/ftpaccess | grep  -e ^-.*root.*sys | grep -v total" -> r:ftpaccess' 
-    
+      - "f:/etc/ftpd"
+      - 'c: sh -c "ls -la /etc/ftpd | grep  -e ^-.*root.*sys | grep -v total" -> r:ftpd'
+      - 'c: sh -c "ls -la /etc/ftpd/ftpaccess | grep  -e ^-.*root.*sys | grep -v total" -> r:ftpaccess'
