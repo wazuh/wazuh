@@ -82,12 +82,12 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
                     formatted_list = formatted_list & "    <server>" & vbCrLf
                     formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                     formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                    if UBound(ip_list) >= i then
+                    if UBound(protocol_list) >= i then
                         if protocol_list(i) <> "" then
                             formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list(i)) & "</protocol>" & vbCrLf
-                        Else
-                            formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                         End If
+                    Else
+                        formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                     End If
                     if i = UBound(ip_list) then
                         formatted_list = formatted_list & "    </server>"
