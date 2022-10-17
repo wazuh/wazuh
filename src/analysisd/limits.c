@@ -81,6 +81,24 @@ void get_eps_credit(void) {
     }
 }
 
+bool limit_reached(unsigned int *value) {
+    if (limits.enabled) {
+        int credits = 0;
+
+        sem_getvalue(&credits_eps_semaphore, &credits);
+
+        if (value) {
+            *value = credits >= 0 ? (unsigned int)credits : 0;
+        }
+
+        if (credits <= 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 STATIC void generate_eps_credits(unsigned int credits) {
     for(unsigned int i = 0; i < credits; i++) {
         sem_post(&credits_eps_semaphore);

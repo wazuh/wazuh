@@ -40,4 +40,11 @@ void update_limits(void);
  */
 void get_eps_credit(void);
 
+/**
+ * @brief Check if the limit has been reached
+ * @param value store the current available credits
+ * @return true if limit reached, false otherwise
+ */
+bool limit_reached(unsigned int *value);
+
 #endif /* LIMITS_H */

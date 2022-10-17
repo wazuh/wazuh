@@ -78,6 +78,64 @@ void test_increase_event_counter_ok(void ** state)
     assert_int_equal(1, limits.circ_buf[limits.current_cell]);
 }
 
+// limit_reached
+void test_limit_reached_disabled(void ** state)
+{
+    limits.enabled = false;
+
+    bool result = limit_reached(NULL);
+
+    assert_false(result);
+}
+
+void test_limit_reached_enabled_non_zero(void ** state)
+{
+    limits.enabled = true;
+    sem_init(&credits_eps_semaphore, 0, 5);
+
+    bool result = limit_reached(NULL);
+
+    assert_false(result);
+    sem_destroy(&credits_eps_semaphore);
+}
+
+void test_limit_reached_enabled_non_zero_value(void ** state)
+{
+    int credits = 0;
+    limits.enabled = true;
+    sem_init(&credits_eps_semaphore, 0, 5);
+
+    bool result = limit_reached(&credits);
+
+    assert_false(result);
+    assert_int_equal(credits, 5);
+    sem_destroy(&credits_eps_semaphore);
+}
+
+void test_limit_reached_enabled_zero(void ** state)
+{
+    limits.enabled = true;
+    sem_init(&credits_eps_semaphore, 0, 0);
+
+    bool result = limit_reached(NULL);
+
+    assert_true(result);
+    sem_destroy(&credits_eps_semaphore);
+}
+
+void test_limit_reached_enabled_zero_value(void ** state)
+{
+    int credits = 0;
+    limits.enabled = true;
+    sem_init(&credits_eps_semaphore, 0, 0);
+
+    bool result = limit_reached(&credits);
+
+    assert_true(result);
+    assert_int_equal(credits, 0);
+    sem_destroy(&credits_eps_semaphore);
+}
+
 // get_eps_credit
 void test_get_eps_credit_ok(void ** state)
 {
@@ -179,6 +237,12 @@ int main(void)
         cmocka_unit_test(test_generate_eps_credits_ok_zero),
         // Test increase_event_counter
         cmocka_unit_test_setup_teardown(test_increase_event_counter_ok, test_setup, test_teardown),
+        // Test limit_reached
+        cmocka_unit_test(test_limit_reached_disabled),
+        cmocka_unit_test(test_limit_reached_enabled_non_zero),
+        cmocka_unit_test(test_limit_reached_enabled_non_zero_value),
+        cmocka_unit_test(test_limit_reached_enabled_zero),
+        cmocka_unit_test(test_limit_reached_enabled_zero_value),
         // Test get_eps_credit
         cmocka_unit_test_setup_teardown(test_get_eps_credit_ok, test_setup, test_teardown),
         // Test load_limits
