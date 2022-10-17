@@ -11,6 +11,7 @@
 #include "sysInfo_test.h"
 #include "sysInfo.hpp"
 #include "sysInfo.h"
+#include "cjsonSmartDeleter.hpp"
 
 void SysInfoTest::SetUp() {};
 
@@ -93,20 +94,12 @@ class CallbackMock
         MOCK_METHOD(void, callbackMock, (nlohmann::json&), ());
 };
 
-struct CJsonDeleter final
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-};
-
 static void callback(const ReturnTypeCallback type,
                      const cJSON* json,
                      void* ctx)
 {
     CallbackMock* wrapper { reinterpret_cast<CallbackMock*>(ctx)};
-    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(json) };
+    const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(json) };
     wrapper->callbackMock(type, std::string(spJsonBytes.get()));
 }
 

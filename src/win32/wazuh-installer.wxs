@@ -184,6 +184,9 @@
                     <Component Id="LIBGCC_S_DW2_1.DLL" DiskId="1" Guid="EB7C893F-E5C8-4038-8FBA-EF33F8B72CB6">
                         <File Id="LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" Source="libgcc_s_dw2-1.dll" />
                     </Component>
+                    <Component Id="LIBSTDCPP_6.DLL" DiskId="1" Guid="23EDBF99-6824-4128-8571-D77967B2980E">
+                        <File Id="LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" Source="libstdc++-6.dll" />
+                    </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
                     </Component>
@@ -235,6 +238,7 @@
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" On="install" />
+                        <RemoveFile Id="NSIS_LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
@@ -367,9 +371,6 @@
                         <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
                             <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
                                 <RemoveFile Id="remove_policies" Name="*" On="install"/>
-                            </Component>
-                            <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
-                                <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
                             </Component>
                             <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
                                 <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
@@ -579,6 +580,7 @@
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
             <ComponentRef Id="LIBGCC_S_DW2_1.DLL" />
+            <ComponentRef Id="LIBSTDCPP_6.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
@@ -608,7 +610,6 @@
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
-            <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="SCA_WIN10" />
             <ComponentRef Id="SCA_WIN11" />
             <ComponentRef Id="SCA_WIN2012R2" />

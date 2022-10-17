@@ -1122,20 +1122,19 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
 
-    def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
+    def __init__(self, agent_id=None, query_format='agent', request_slice=500):
         if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
             raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
                                                  "Please check if the agent has connected to the manager")
 
         self.agent_id = agent_id
         self.query_format = query_format
-        self.max_size = max_size
         self.request_slice = request_slice
 
         super().__init__()
 
     def connect_to_db(self):
-        return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
+        return WazuhDBConnection(request_slice=self.request_slice)
 
     def close_connection(self):
         self.conn.close()

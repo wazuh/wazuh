@@ -136,18 +136,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
-      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
+      LINK_FLAGS "-Wl,--add-stdcall-alias"
       POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-    set_target_properties(sysinfo PROPERTIES
-      LINK_FLAGS "-static-libstdc++")
-  else()
-    set_target_properties(sysinfo PROPERTIES
-      LINK_FLAGS "-static-libgcc -static-libstdc++")
-  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()

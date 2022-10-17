@@ -28,7 +28,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate win32 tests
 list(APPEND win32_names "test_win_utils")
-list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
+list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize -Wl,--wrap,send_msg \
                         -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time \
                         ${DEBUG_OP_WRAPPERS}")
 

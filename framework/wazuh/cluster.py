@@ -3,8 +3,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh.core import common
 from wazuh.core.cluster import local_client
-from wazuh.core.cluster.cluster import get_node, get_node_ruleset_integrity
-from wazuh.core.cluster.control import get_health, get_nodes
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.control import get_health, get_nodes, get_node_ruleset_integrity
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult

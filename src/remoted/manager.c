@@ -486,12 +486,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     }
                 }
 
-                w_mutex_unlock(&files_mutex);
-
                 if (aux && aux->f_sum && aux->f_sum[0] && *(aux->f_sum[0]->sum)) {
                     // Copy sum before unlock mutex
                     memcpy(data->merged_sum, aux->f_sum[0]->sum, sizeof(os_md5));
                 }
+
+                w_mutex_unlock(&files_mutex);
             } else {
                 merror("Error getting group for agent '%s'", key->id);
             }

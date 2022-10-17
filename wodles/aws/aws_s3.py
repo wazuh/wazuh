@@ -63,6 +63,7 @@ if sys.version_info[0] == 3:
 ################################################################################
 
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
+RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
 
@@ -789,7 +790,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_account_ids" request was denied due to request throttling. ', 2)
+                debug('Error: The "find_account_ids" request was denied due to request throttling. If the problem '
+                      'persists check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -816,7 +819,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_regions" request was denied due to request throttling. ', 2)
+                debug('Error: The "find_regions" request was denied due to request throttling. If the problem persists '
+                      'check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -1104,7 +1109,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "iter_files_in_bucket" request was denied due to request throttling. ', 2)
+                debug('Error: The "iter_files_in_bucket" request was denied due to request throttling. If the problem '
+                      'persists check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
@@ -1131,7 +1138,9 @@ class AWSBucket(WazuhIntegration):
                 exit(14)
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "check_bucket" request was denied due to request throttling. ', 2)
+                debug('Error: The "check_bucket" request was denied due to request throttling. If the problem persists '
+                      'check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 print("ERROR: Invalid credentials to access S3 Bucket")

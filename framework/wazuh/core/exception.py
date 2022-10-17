@@ -379,6 +379,7 @@ class WazuhException(Exception):
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
+        2010: {'message': 'The requested read operation did not complete fully'},
 
         # Cluster
         3000: 'Cluster',
@@ -446,6 +447,7 @@ class WazuhException(Exception):
         3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
+        3040: "Error while waiting to receive a file",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
