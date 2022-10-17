@@ -650,6 +650,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = -1;
             }
 
+            wdb_finalize_all_statements(wdb);
+
             if (result != -1) {
                 if (wdb_vacuum(wdb->db) < 0) {
                     mdebug1("DB(%s) Cannot vacuum database.", sagent_id);
@@ -1227,6 +1229,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
                 result = -1;
             }
+
+            wdb_finalize_all_statements(wdb);
 
             if (result != -1) {
                 if (wdb_vacuum(wdb->db) < 0) {

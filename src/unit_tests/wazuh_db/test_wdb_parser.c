@@ -3691,6 +3691,8 @@ void test_wdb_parse_agent_vacuum_commit_error(void **state) {
 
     will_return(__wrap_wdb_commit2, OS_INVALID);
 
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot end transaction.");
 
     result = wdb_parse(query, data->output, 0);
@@ -3712,6 +3714,8 @@ void test_wdb_parse_agent_vacuum_vacuum_error(void **state) {
     will_return(__wrap_wdb_open_agent2, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
 
     will_return(__wrap_wdb_vacuum, OS_INVALID);
 
@@ -3736,6 +3740,8 @@ void test_wdb_parse_agent_vacuum_success(void **state) {
     will_return(__wrap_wdb_open_agent2, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vacuum");
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_finalize_all_statements);
 
     will_return(__wrap_wdb_vacuum, OS_SUCCESS);
 
