@@ -15,6 +15,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
+#include <ntsecapi.h>
 #include <sddl.h>
 #include <winevt.h>
 
@@ -33,6 +34,7 @@
 #include "wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "wrappers/windows/winevt_wrappers.h"
+#include "wrappers/windows/ntsecapi_wrappers.h"
 
 
 #include "syscheckd/syscheck.h"
@@ -65,7 +67,7 @@ extern int whodata_get_event_id(const PEVT_VARIANT raw_data, short *event_id);
 extern int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64 *handle_id);
 extern int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long *mask);
 extern int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data);
-int policy_check(const char *guid);
+int policy_check();
 void win_whodata_release_resources(whodata *wdata);
 
 extern char sys_64;
@@ -82,6 +84,14 @@ int SIZE_EVENTS;
 
 const PWCHAR WCS_TEST_PATH = L"C:\\Windows\\a\\path";
 const char *STR_TEST_PATH = "c:\\windows\\a\\path";
+
+typedef struct PolicyInfo {
+    GUID *category_guid;
+    GUID *subcategory_guid1;
+    GUID *subcategory_guid2;
+    PPOLICY_AUDIT_EVENTS_INFO audit_event_info;
+    AUDIT_POLICY_INFORMATION *paudit_policy;
+} policy_info;
 
 /**************************************************************************/
 /*******************Helper functions*************************************/
@@ -107,31 +117,41 @@ static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_d
     will_return(wrap_EvtRender, 1);
 }
 
-void expect_policy_check_match_call(const char *fgets_output, wfd_t * wfd) {
-    will_return(__wrap_wpopenv, wfd);
+void expect_policy_check_match_call(NTSTATUS status1,
+                                    PPOLICY_AUDIT_EVENTS_INFO audit_event_info, NTSTATUS status2,
+                                    GUID *category_guid, BOOLEAN ret1,
+                                    ULONG subcategory_count, BOOLEAN ret2,
+                                    AUDIT_POLICY_INFORMATION *paudit_policy, BOOLEAN ret3) {
 
-    expect_value(wrap_fgets, __stream, wfd->file_out);
-    will_return(wrap_fgets, "ignored line");
+    will_return(wrap_LsaOpenPolicy, status1);
 
-    expect_value(wrap_fgets, __stream, wfd->file_out);
-    will_return(wrap_fgets, fgets_output);
+    if (status1 == (NTSTATUS)0){
+        will_return(wrap_LsaQueryInformationPolicy, audit_event_info);
+        will_return(wrap_LsaQueryInformationPolicy, status2);
 
-    will_return(__wrap_wpclose, 0);
-}
+        if (status2 == (NTSTATUS)0){
+            will_return(wrap_AuditLookupCategoryGuidFromCategoryId, category_guid);
+            will_return(wrap_AuditLookupCategoryGuidFromCategoryId, ret1);
 
-void expect_policy_check_not_match_call(const char *fgets_output, wfd_t * wfd) {
-    will_return(__wrap_wpopenv, wfd);
+            if (ret1 == true){
+                will_return(wrap_AuditEnumerateSubCategories, subcategory_count);
+                will_return(wrap_AuditEnumerateSubCategories, ret2);
 
-    expect_value(wrap_fgets, __stream, wfd->file_out);
-    will_return(wrap_fgets, "ignored line");
+                if (ret2 == true){
+                    will_return(wrap_AuditQuerySystemPolicy, paudit_policy);
+                    will_return(wrap_AuditQuerySystemPolicy, ret3);
 
-    expect_value(wrap_fgets, __stream, wfd->file_out);
-    will_return(wrap_fgets, fgets_output);
+                    if (ret3 == true){
+                        return;
+                    }
+                }
+            }
+        }
+    }
 
-    expect_value(wrap_fgets, __stream, wfd->file_out);
-    will_return(wrap_fgets, NULL);
-
-    will_return(__wrap_wpclose, 0);
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
+    will_return(wrap_FormatMessage, "Access is denied");
+    expect_string(__wrap__mwarn, formatted_msg, "(6950): Unable to check the necessary policies for whodata: Access is denied (5).");
 }
 
 /**************************************************************************/
@@ -266,16 +286,60 @@ static int teardown_whodata_callback_group(void ** state) {
 }
 
 static int setup_policy_check(void ** state) {
-    wfd_t * wfd = calloc(1, sizeof(wfd_t));
-    wfd->file_out = (FILE*) 1234;
-    *state = wfd;
+    policy_info *pol_data = NULL;
+    os_calloc(1, sizeof(policy_info), pol_data);
+
+    AUDIT_POLICY_INFORMATION *audit_pol_array;
+    os_calloc(2, sizeof(AUDIT_POLICY_INFORMATION), audit_pol_array);
+    AUDIT_POLICY_INFORMATION file_system_policy;
+    AUDIT_POLICY_INFORMATION handle_policy;
+
+    PPOLICY_AUDIT_EVENTS_INFO AuditEvents;
+    os_calloc(1, sizeof(PPOLICY_AUDIT_EVENTS_INFO), AuditEvents);
+
+    AuditEvents->AuditingMode = true;
+    AuditEvents->MaximumAuditEventCount = 1;
+
+    GUID *guid_ObjectAccess;
+    os_calloc(1, sizeof(GUID), guid_ObjectAccess);
+    GUID *guid_FileSystem;
+    os_calloc(1, sizeof(GUID), guid_FileSystem);
+    GUID *guid_Handle;
+    os_calloc(1, sizeof(GUID), guid_Handle);
+
+    CLSIDFromString(OLESTR("{6997984a-797a-11d9-bed3-505054503030}"), guid_ObjectAccess);
+    CLSIDFromString(OLESTR("{0CCE921D-69AE-11D9-BED3-505054503030}"), guid_FileSystem);
+    CLSIDFromString(OLESTR("{0CCE9223-69AE-11D9-BED3-505054503030}"), guid_Handle);
+
+    file_system_policy.AuditSubCategoryGuid = *guid_FileSystem;
+    file_system_policy.AuditingInformation = POLICY_AUDIT_EVENT_SUCCESS;
+    handle_policy.AuditSubCategoryGuid = *guid_Handle;
+    handle_policy.AuditingInformation = POLICY_AUDIT_EVENT_SUCCESS;
+
+    audit_pol_array[0] = file_system_policy;
+    audit_pol_array[1] = handle_policy;
+
+    pol_data->category_guid = guid_ObjectAccess;
+    pol_data->audit_event_info = AuditEvents;
+    pol_data->paudit_policy = audit_pol_array;
+    pol_data->subcategory_guid1 = guid_FileSystem;
+    pol_data->subcategory_guid2 = guid_Handle;
+
+    *state = pol_data;
 
     return 0;
 }
 
 static int teardown_policy_check(void ** state) {
-    wfd_t * wfd = *state;
-    free(wfd);
+    policy_info *pol_data = *state;
+
+    os_free(pol_data->category_guid);
+    os_free(pol_data->subcategory_guid1);
+    os_free(pol_data->subcategory_guid2);
+    os_free(pol_data->audit_event_info);
+    os_free(pol_data->paudit_policy);
+
+    os_free(pol_data);
 
     return 0;
 }
@@ -6416,10 +6480,6 @@ void test_run_whodata_scan_error_event_channel(void **state) {
     expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
     will_return(wrap_fprintf, 0);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Audit Policy Change,{0CCE922F-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
-
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 0);
 
@@ -6523,10 +6583,6 @@ void test_run_whodata_scan_success(void **state) {
 
     expect_value(wrap_fprintf, __stream, 2345);
     expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
-
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Audit Policy Change,{0CCE922F-69AE-11D9-BED3-505054503030},,,1\n");
     will_return(wrap_fprintf, 0);
 
     expect_value(__wrap_fclose, _File, (FILE*)2345);
@@ -6719,10 +6775,6 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
     will_return(wrap_fprintf, 0);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Audit Policy Change,{0CCE922F-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
-
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 0);
 
@@ -6779,10 +6831,6 @@ void test_set_policies_success(void **state) {
     expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
     will_return(wrap_fprintf, 0);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Audit Policy Change,{0CCE922F-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
-
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 0);
 
@@ -6801,7 +6849,7 @@ void test_set_policies_success(void **state) {
 }
 
 void test_state_checker_no_files_to_check(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
 
@@ -6816,11 +6864,11 @@ void test_state_checker_no_files_to_check(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_not_match_call("testing line not match, success", wfd);
-
-    expect_string(__wrap__mwarn, formatted_msg, "The 'Audit Policy Change' policy has been disabled. Changes in the configured policies are not detected.");
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -6833,7 +6881,7 @@ void test_state_checker_no_files_to_check(void **state) {
 }
 
 void test_state_checker_file_not_whodata(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
 
@@ -6851,9 +6899,11 @@ void test_state_checker_file_not_whodata(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -6866,7 +6916,7 @@ void test_state_checker_file_not_whodata(void **state) {
 }
 
 void test_state_checker_file_does_not_exist(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
     SYSTEMTIME st;
@@ -6887,9 +6937,11 @@ void test_state_checker_file_does_not_exist(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -6913,7 +6965,7 @@ void test_state_checker_file_does_not_exist(void **state) {
 }
 
 void test_state_checker_file_with_invalid_sacl(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
     ACL acl;
@@ -6932,9 +6984,11 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7024,7 +7078,7 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 }
 
 void test_state_checker_file_with_valid_sacl(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
     SYSTEMTIME st;
@@ -7048,9 +7102,11 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7138,7 +7194,7 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 }
 
 void test_state_checker_dir_readded_error(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
     char debug_msg[OS_MAXSTR];
@@ -7156,9 +7212,11 @@ void test_state_checker_dir_readded_error(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7197,7 +7255,7 @@ void test_state_checker_dir_readded_error(void **state) {
 }
 
 void test_state_checker_dir_readded_succesful(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
     ACL acl;
@@ -7228,9 +7286,11 @@ void test_state_checker_dir_readded_succesful(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7354,7 +7414,7 @@ void test_state_checker_dir_readded_succesful(void **state) {
 }
 
 void test_state_checker_not_match_policy(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     void *input = NULL;
 
@@ -7369,17 +7429,24 @@ void test_state_checker_not_match_policy(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_not_match_call("line not matched, success", wfd);
+    pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
-    expect_string(__wrap__merror, formatted_msg, "(6681): Audit policy change detected. Switching directories to realtime.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6951): Audit policy change detected. Switching directories to realtime.");
 
     ret = state_checker(input);
+
+    pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_SUCCESS;
 
     assert_int_equal(ret, 0);
 }
 
 void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -7390,9 +7457,11 @@ void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7406,7 +7475,7 @@ void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
 }
 
 void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     whodata_directory * w_dir;
     FILETIME current_time;
@@ -7419,9 +7488,11 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7447,7 +7518,7 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
 }
 
 void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     whodata_directory * w_dir;
 
@@ -7459,9 +7530,11 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7491,7 +7564,7 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
 }
 
 void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     FILETIME current_time;
     int i;
@@ -7504,9 +7577,11 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7541,7 +7616,7 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
 }
 
 void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     FILETIME current_time;
     int i;
@@ -7554,9 +7629,11 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7605,7 +7682,7 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
 }
 
 void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
     int i;
 
@@ -7617,9 +7694,11 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE9223-69AE-11D9-BED3-505054503030}, success", wfd);
-    expect_policy_check_match_call("{0CCE922F-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7741,34 +7820,109 @@ void test_whodata_audit_start_success(void **state) {
 }
 
 void test_policy_check_match(void **state) {
-    wfd_t * wfd = *state;
+    policy_info *pol_data = *state;
     int ret;
 
-    expect_policy_check_match_call("{0CCE921D-69AE-11D9-BED3-505054503030}, success", wfd);
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
-    ret = policy_check("{0CCE921D-69AE-11D9-BED3-505054503030}");
-
-    assert_int_equal(ret, 1);
-}
-
-void test_policy_check_not_match(void **state) {
-    wfd_t * wfd = *state;
-    int ret;
-
-    expect_policy_check_not_match_call("{guid test not found}, success", wfd);
-
-    ret = policy_check("{0CCE921D-69AE-11D9-BED3-505054503030}");
+    ret = policy_check();
 
     assert_int_equal(ret, 0);
 }
 
-void test_policy_check_wpopenv_fail(void **state) {
+void test_policy_check_not_match(void **state) {
+    policy_info *pol_data = *state;
     int ret;
 
-    will_return(__wrap_wpopenv, NULL);
-    expect_string(__wrap__merror, formatted_msg, "Cannot execute commmand: auditpol /get /Subcategory:\"{0CCE921D-69AE-11D9-BED3-505054503030}\" /r");
+    pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
 
-    ret = policy_check("{0CCE921D-69AE-11D9-BED3-505054503030}");
+    ret = policy_check();
+
+    pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_SUCCESS;
+
+    assert_int_equal(ret, 1);
+}
+
+void test_policy_check_LsaOpenPolicy_fail(void **state) {
+    policy_info *pol_data = *state;
+    int ret;
+
+    expect_policy_check_match_call((NTSTATUS)1,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
+
+    ret = policy_check();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_policy_check_LsaQueryInformationPolicy_fail(void **state) {
+    policy_info *pol_data = *state;
+    int ret;
+
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)1,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
+
+    ret = policy_check();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail(void **state) {
+    policy_info *pol_data = *state;
+    int ret;
+
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, FALSE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, TRUE);
+
+    ret = policy_check();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_policy_check_AuditEnumerateSubCategories_fail(void **state) {
+    policy_info *pol_data = *state;
+    int ret;
+
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, FALSE,
+                                   pol_data->paudit_policy, TRUE);
+
+    ret = policy_check();
+
+    assert_int_equal(ret, -1);
+}
+
+void test_policy_check_AuditQuerySystemPolicy_fail(void **state) {
+    policy_info *pol_data = *state;
+    int ret;
+
+    expect_policy_check_match_call((NTSTATUS)0,
+                                   pol_data->audit_event_info, (NTSTATUS)0,
+                                   pol_data->category_guid, TRUE,
+                                   2, TRUE,
+                                   pol_data->paudit_policy, FALSE);
+
+    ret = policy_check();
 
     assert_int_equal(ret, -1);
 }
@@ -7951,8 +8105,12 @@ int main(void) {
         /* policy_check */
         cmocka_unit_test_setup_teardown(test_policy_check_match, setup_policy_check, teardown_policy_check),
         cmocka_unit_test_setup_teardown(test_policy_check_not_match, setup_policy_check, teardown_policy_check),
-        cmocka_unit_test(test_policy_check_wpopenv_fail),
-        /* policy_check */
+        cmocka_unit_test_setup_teardown(test_policy_check_LsaOpenPolicy_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(test_policy_check_LsaQueryInformationPolicy_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(test_policy_check_AuditEnumerateSubCategories_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(test_policy_check_AuditQuerySystemPolicy_fail, setup_policy_check, teardown_policy_check),
+        /* win_whodata_release_resources */
         cmocka_unit_test(test_win_whodata_release_resources),
     };
     const struct CMUnitTest whodata_callback_tests[] = {

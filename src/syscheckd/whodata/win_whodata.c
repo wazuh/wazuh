@@ -1004,11 +1004,9 @@ int policy_check() {
     BOOL open_policy = FALSE;
     NTSTATUS Status;
     DWORD err_code;
-    char err_msg[OS_SIZE_1024 + 1];
-    err_msg[OS_SIZE_1024] = '\0';
+    LPSTR err_msg = NULL;
 
     ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
-
     Status = LsaOpenPolicy(NULL, &ObjectAttributes, POLICY_VIEW_AUDIT_INFORMATION, &PolicyHandle);
 
     if(!Status) {
