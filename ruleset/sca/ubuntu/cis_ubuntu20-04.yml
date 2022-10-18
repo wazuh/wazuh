@@ -2645,12 +2645,14 @@ checks:
     title: "Ensure AIDE is installed."
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
-    remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # dpkg -s aide | grep -E '(Status:|not installed)' Status: install ok installed # dpkg -s aide-common | grep -E '(Status:|not installed)' Status: install ok installed # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db"
+    remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Run the following commands to initialize AIDE: # aideinit # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db"
     compliance:
       - cis: ["1.3.1"]
       - cis_csc_v7: ["14.9"]
-      - pci_dss: ["11.5"]
-      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
       - "c:dpkg -s aide -> r:install ok installed"
@@ -2665,8 +2667,10 @@ checks:
     compliance:
       - cis: ["1.3.2"]
       - cis_csc_v7: ["14.9"]
-      - pci_dss: ["11.5"]
-      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
@@ -2676,8 +2680,8 @@ checks:
       - 'd:/etc -> r:cron.* -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
       - 'f:/etc/crontab -> !r:^\s*# && r:aide && r:--check|\$AIDEARGS'
       - "c:systemctl is-enabled aidecheck.service -> r:enabled"
-      - "c:systemctl is-enabled aidecheck.enabled -> r:enabled"
-      - "c:systemctl status aidecheck.enabled -> r:Active: active"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - "c:systemctl status aidecheck.timer -> r:Active: active"
 
   # 1.4 Secure Boot Settings
 
@@ -2690,6 +2694,73 @@ checks:
     compliance:
       - cis: ["1.4.1"]
       - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques:
+          [
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1156",
+            "T1146",
+            "T1196",
+            "T1081",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1145",
+            "T1494",
+            "T1035",
+            "T1489",
+            "T1198",
+            "T1184",
+            "T1165",
+            "T1492",
+            "T1169",
+            "T1501",
+            "T1080",
+            "T1209",
+            "T1134",
+            "T1197",
+            "T1538",
+            "T1213",
+            "T1044",
+            "T1484",
+            "T1159",
+            "T1160",
+            "T1152",
+            "T1168",
+            "T1162",
+            "T1185",
+            "T1031",
+            "T1050",
+            "T1075",
+            "T1097",
+            "T1163",
+            "T1021",
+            "T1053",
+            "T1023",
+            "T1528",
+            "T1072",
+            "T1537",
+            "T1078",
+            "T1047",
+            "T1084",
+            "T1004",
+          ]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'f:/usr/sbin/grub-mkconfig -> r:if [ "x${grub_cfg}" != "x" ]; then'
@@ -2705,9 +2776,123 @@ checks:
     compliance:
       - cis: ["1.4.2"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
@@ -2722,9 +2907,123 @@ checks:
     compliance:
       - cis: ["1.4.3"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: all
     rules:
       - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -2738,9 +3037,123 @@ checks:
     compliance:
       - cis: ["1.4.4"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: none
     rules:
       - "f:/etc/shadow -> r:^root:*:|^root:!:"
@@ -2756,9 +3169,23 @@ checks:
     compliance:
       - cis: ["1.5.1"]
       - cis_csc_v7: ["8.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - mitre_techniques:
+          [
+            "T1189",
+            "T1190",
+            "T1203",
+            "T1212",
+            "T1211",
+            "T1068",
+            "T1210",
+            "T1117",
+            "T1085",
+            "T1080",
+            "T1131",
+            "T1003",
+            "T1101",
+          ]
+      - nist_sp_800-53: ["SC-39", "SI-16"]
     condition: all
     rules:
       - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:NX \(Execute Disable\) protection: active'
@@ -2772,18 +3199,33 @@ checks:
     compliance:
       - cis: ["1.5.2"]
       - cis_csc_v7: ["8.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - mitre_techniques:
+          [
+            "T1189",
+            "T1190",
+            "T1203",
+            "T1212",
+            "T1211",
+            "T1068",
+            "T1210",
+            "T1117",
+            "T1085",
+            "T1080",
+            "T1131",
+            "T1003",
+            "T1101",
+          ]
+      - nist_sp_800-53: ["SC-39", "SI-16"]
     references:
       - http://manpages.ubuntu.com/manpages/focal/man5/sysctl.d.5.html
-    condition: any
+    condition: all
     rules:
-      - 'd:/usr/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
-      - 'd:/usr/local/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
-      - 'd:/run/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
-      - 'd:/etc/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
-      - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2'
+      - 'not d:/usr/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'not d:/usr/local/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'not d:/run/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'not d:/etc/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'not f:/etc/sysctl.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
+      - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2$'
 
   # 1.5.3 Ensure prelink is not installed (Automated)
   - id: 19034
@@ -2794,9 +3236,10 @@ checks:
     compliance:
       - cis: ["1.5.3"]
       - cis_csc_v7: ["14.9"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AU.3.050"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
       - "c:dpkg -s prelink -> r:package 'prelink' is not installed"
@@ -2810,10 +3253,124 @@ checks:
     compliance:
       - cis: ["1.5.4"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: any
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
+    condition: all
     rules:
       - "c:sysctl fs.suid_dumpable -> r:=^fs.suid_dumpable = 0"
       - 'd:/etc/sysctl.d -> r:\. -> r:^\s*fs.suid_dumpable = 0'
