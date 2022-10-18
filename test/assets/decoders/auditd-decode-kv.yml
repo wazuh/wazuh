@@ -1,5 +1,5 @@
 ---
-name: auditd-decode-kv
+name: decoder/auditd-decode-kv/0
 
 metadata:
   description: Decoder for parsing the msg field of Linux auditd logs
@@ -8,7 +8,7 @@ metadata:
   product.name: auditd
 
 parents:
-  - auditd
+  - decoder/auditd/0
 
 check:
   - _kv_msg: +exists

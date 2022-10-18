@@ -1,8 +1,8 @@
 ---
-name: ciscat
+name: decoder/ciscat/0
 
 parents:
-  - json
+  - decoder/json/0
 
 metadata:
   description: Decoder for Wazuh's integration with CIS-CAT logs

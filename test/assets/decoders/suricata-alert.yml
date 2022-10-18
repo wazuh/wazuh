@@ -1,7 +1,7 @@
-name: suricata-alert
+name: decoder/suricata-alert/0
 
 parents:
-  - suricata
+  - decoder/suricata/0
 
 metadata:
   description: suricata-alert

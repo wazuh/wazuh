@@ -1,8 +1,8 @@
 ---
-name: sca
+name: decoder/sca/0
 
 parents:
-  - json
+  - decoder/json/0
 
 check:
   - wazuh.queue: 112

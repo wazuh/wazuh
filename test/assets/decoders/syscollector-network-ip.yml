@@ -1,7 +1,7 @@
-name: syscollector-network-ip
+name: decoder/syscollector-network-ip/0
 
 parents:
-  - syscollector-network
+  - decoder/syscollector-network/0
 
 check:
   - _query_response: +is_true
