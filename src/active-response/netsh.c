@@ -71,6 +71,7 @@ int main (int argc, char **argv) {
     }
 
     char name[OS_MAXSTR -1];
+    char description[OS_MAXSTR -1];
     char remoteip[OS_MAXSTR -1];
 
     snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
@@ -80,12 +81,13 @@ int main (int argc, char **argv) {
     char *exec_args_delete[8] = { NETSH, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
     
     wfd_t *wfd = NULL;
-    if (1 == checkVista()) {
-        if ((action == ADD_COMMAND)) {    
-            if(getAllProfilesStatus(&data_common) == OS_INVALID) {
-                return OS_INVALID;
-            }
+    if ((action == ADD_COMMAND)) {
+        if(getAllProfilesStatus(&data_common) == OS_INVALID) {
+            return OS_INVALID;
         }
+    }
+
+    if (1 == checkVista()) {
         wfd = wpopenv(NETSH, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
         if (!wfd) {
             memset(log_msg, '\0', OS_MAXSTR);
@@ -96,7 +98,61 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
     } else {
-        //minor that windows vista
+        snprintf(description, OS_MAXSTR -1, "description=\"%s\"", RULE_NAME);
+        snprintf(remoteip, OS_MAXSTR -1, "srcaddr=\"%s\"", srcip);
+
+        char *exec_args_delete[12] = { NETSH, "ipsec", "static", "delete", "filter", "filterlist=\"wazuh_filter\"", "srcmask=\"255.255.255.255\"", remoteip, "dstaddr=Me", "protocol=\"any\"", "mirrored=yes", NULL };
+        char *exec_args_filter[13] = { NETSH, "ipsec", "static", "add", "filter", "filterlist=\"wazuh_filter\"", "srcmask=\"255.255.255.255\"", remoteip, "dstaddr=Me", "protocol=\"any\"", "srcport=\"0\"", "dstport=\"0\"", NULL };
+        char *exec_args_faction[8] = { NETSH, "ipsec", "static", "add", "filteraction", "name=\"wazuh_action\"", "action=block", NULL };
+        char *exec_args_policy[9]  = { NETSH, "ipsec", "static", "add", "policy", "name=\"wazuh_policy\"", "assign=yes", description, NULL };
+        char *exec_args_rule[10]   = { NETSH, "ipsec", "static", "add", "rule", "name=wazuh_rule", "policy=wazuh_policy", "filterlist=wazuh_filter", "filteraction=wazuh_action", NULL };
+
+        if (action == ADD_COMMAND){
+            wfd = wpopenv(NETSH, exec_args_filter , W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_filter'");
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
+
+            wfd = wpopenv(NETSH, exec_args_faction, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_action'");
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
+
+            wfd = wpopenv(NETSH, exec_args_policy, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_policy'");
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
+
+            wfd = wpopenv(NETSH, exec_args_rule, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_rule'");
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
+        } else {
+            wfd = wpopenv(NETSH, exec_args_delete, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: '%s', rule: 'wazuh_rule'", (action == ADD_COMMAND) ? "ADD" : "DELETE");
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
+        }
     }
 
     write_debug_file(argv[0], "Ended");
@@ -124,7 +180,7 @@ static int getAllProfilesStatus(data_common_t *data_common){
     bool globalfirewallStatus = true;
     char aux_buf[OS_MAXSTR] = {0};
     char output_buf[OS_MAXSTR];
-    const char *firewallProfileStr[FIREWALL_PROFILES_MAX] = {"FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC", "FIREWALL_DEFAULT" };
+    const char *firewallProfileStr[FIREWALL_PROFILES_MAX + 1] = {"FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC", "FIREWALL_DEFAULT" };
     firewallData_t firewallData = FIREWALL_DATA_INITIALIZE;
     wfd_t *wfd = NULL;
 
