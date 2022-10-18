@@ -17,39 +17,24 @@
 #include <hlp/hlp.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
+#include <router/environmentManager.hpp>
 #include <rxbk/rxFactory.hpp>
-#include <store/drivers/fileDriver.hpp>
 #include <server/engineServer.hpp>
+#include <store/drivers/fileDriver.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
-#include "stackExecutor.hpp"
 #include "register.hpp"
+#include "stackExecutor.hpp"
 
 cmd::StackExecutor g_exitHanlder {};
 
 namespace
 {
-constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
-
-
-// variables for handling threads
-std::atomic<bool> gs_doRun = true;
-std::vector<std::thread> gs_threadList;
 
 void sigint_handler(const int signum)
 {
-    // Inform threads that they must exit
-    gs_doRun = false;
-
-    for (auto& t : gs_threadList)
-    {
-        t.join();
-    };
-
     g_exitHanlder.execute();
-
-    // TODO: this should not be necessary, but server threads are not terminating.
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 } // namespace
 
@@ -98,6 +83,7 @@ void run(const std::string& kvdbPath,
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<engineserver::EngineServer> server;
+    std::shared_ptr<router::EnvironmentManager> envManager;
 
     try
     {
@@ -106,7 +92,6 @@ void run(const std::string& kvdbPath,
         server = std::make_shared<engineserver::EngineServer>(
             apiEndpoint, nullptr, eventEndpoint, bufferSize);
         g_exitHanlder.add([server]() { server->close(); });
-
         WAZUH_LOG_INFO("Server configured");
 
         KVDBManager::init(kvdbPath);
@@ -148,7 +133,7 @@ void run(const std::string& kvdbPath,
                             std::get<base::Error>(hlpParsers).message);
 
             g_exitHanlder.execute();
-            exit(1);
+            return;
         }
         // TODO because builders don't have access to the catalog we are configuring
         // the parser mappings on start up for now
@@ -157,26 +142,20 @@ void run(const std::string& kvdbPath,
 
         builder::internals::registerBuilders();
         WAZUH_LOG_INFO("Builders registered");
+
+        envManager = std::make_shared<router::EnvironmentManager>(
+            builder, server->getEventQueue(), threads);
+        g_exitHanlder.add([envManager]() { envManager->delAllEnvironments(); });
+
+        WAZUH_LOG_INFO("Environment manager initialized");
+        // Register the API command
+        server->getRegistry()->registerCommand("env", envManager->apiCallback());
     }
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Error initializing modules: {}", utils::getExceptionStack(e));
         g_exitHanlder.execute();
-        exit(1);
-    }
-
-    // Set up environment
-    try
-    {
-        WAZUH_LOG_INFO("Setting up environment [{}]...", environment);
-        auto env = builder->buildEnvironment({environment});
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_WARN("Error building environment [{}]: {}",
-                       environment,
-                       utils::getExceptionStack(e));
-        WAZUH_LOG_WARN("Engine running without environment");
+        return;
     }
 
     // Start server
@@ -188,77 +167,8 @@ void run(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Unexpected error: {}", utils::getExceptionStack(e));
         g_exitHanlder.execute();
-        exit(1);
+        return;
     }
-
-    // engineserver::EngineServer server {
-    //     {endpoint, "api:/var/ossec/queue/sockets/analysis"},
-    //     static_cast<size_t>(queueSize)};
-    // if (!server.isConfigured())
-    // {
-    //     WAZUH_LOG_ERROR("Could not configure server for endpoint [{}], engine "
-    //                     "inizialization aborted.",
-    //                     endpoint);
-    //     destroy();
-    //     return;
-    // }
-
-    // // Processing Workers (Router), Router is replicated in each thread
-    // // TODO: handle hot modification of routes
-    // for (auto i = 0; i < threads; ++i)
-    // {
-    //     std::thread t {
-    //         [=, &eventBuffer = server.output()]()
-    //         {
-    //             // TODO: Handle errors on construction
-    //             builder::Builder _builder(store);
-    //             decltype(_builder.buildEnvironment(environment)) env;
-    //             try
-    //             {
-    //                 env = _builder.buildEnvironment(environment);
-    //             }
-    //             catch (const std::exception& e)
-    //             {
-    //                 WAZUH_LOG_ERROR("Exception while building environment: [{}]",
-    //                                 utils::getExceptionStack(e));
-    //                 destroy();
-    //                 return -1;
-    //             }
-    //             auto controller = rxbk::buildRxPipeline(env);
-
-    //             // Thread loop
-    //             while (gs_doRun)
-    //             {
-    //                 std::string event;
-
-    //                 if (eventBuffer.wait_dequeue_timed(event,
-    //                 WAIT_DEQUEUE_TIMEOUT_USEC))
-    //                 {
-    //                     try
-    //                     {
-    //                         auto result = base::result::makeSuccess(
-    //                             engineserver::base::parseEvent::parseOssecEvent(event));
-    //                         controller.ingestEvent(
-    //                             std::make_shared<base::result::Result<base::Event>>(
-    //                                 std::move(result)));
-    //                     }
-    //                     catch (const std::exception& e)
-    //                     {
-    //                         WAZUH_LOG_ERROR(
-    //                             "An error ocurred while parsing a message: [{}]",
-    //                             e.what());
-    //                     }
-    //                 }
-    //             }
-
-    //             controller.complete();
-    //             return 0;
-    //         }};
-
-    //     gs_threadList.push_back(std::move(t));
-    // }
-
-    // server.run();
     g_exitHanlder.execute();
 }
 } // namespace cmd

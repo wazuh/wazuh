@@ -14,6 +14,7 @@ target_link_libraries(cmds PRIVATE
     builders
     rxbk
     server
+    router
     store::fileDriver
     api
     uv_a
