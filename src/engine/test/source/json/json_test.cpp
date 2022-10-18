@@ -740,6 +740,29 @@ TEST(JsonQueryTest, Type)
     // field not found
     ASSERT_THROW(nestedObjectObj.type("/invalid"), std::runtime_error);
 }
+
+TEST(JsonQueryTest, validate)
+{
+    // Schema
+    Json validSchema {R"({"type": "object"})"};
+    Json invalidSchema {R"({"type": "invalid"})"};
+
+    // Valid
+    Json validObj {"{\"key\": \"value\"}"};
+    Json invalidObj {"[\"key\"]"};
+
+    std::optional<base::Error> error;
+    ASSERT_NO_THROW(error = validObj.validate(validSchema));
+    ASSERT_FALSE(error.has_value());
+
+    ASSERT_NO_THROW(error = invalidObj.validate(validSchema));
+    ASSERT_TRUE(error.has_value());
+
+    // Invalid schema
+    ASSERT_NO_THROW(error = validObj.validate(invalidSchema));
+    ASSERT_TRUE(error.has_value());
+}
+
 /****************************************************************************************/
 // GETTERS
 /****************************************************************************************/
@@ -1723,7 +1746,8 @@ TEST(JsonSettersTest, MergeRefFailCases)
 }
 
 // json getJson test
-TEST(getJsonTest, getObjectOk) {
+TEST(getJsonTest, getObjectOk)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1739,7 +1763,8 @@ TEST(getJsonTest, getObjectOk) {
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getArrayOk) {
+TEST(getJsonTest, getArrayOk)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1753,7 +1778,8 @@ TEST(getJsonTest, getArrayOk) {
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getIntOk) {
+TEST(getJsonTest, getIntOk)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1767,7 +1793,8 @@ TEST(getJsonTest, getIntOk) {
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getStringOk) {
+TEST(getJsonTest, getStringOk)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1781,7 +1808,8 @@ TEST(getJsonTest, getStringOk) {
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getBoolOk) {
+TEST(getJsonTest, getBoolOk)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1795,7 +1823,8 @@ TEST(getJsonTest, getBoolOk) {
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getNullOk) {
+TEST(getJsonTest, getNullOk)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1809,7 +1838,8 @@ TEST(getJsonTest, getNullOk) {
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, pathNotFound) {
+TEST(getJsonTest, pathNotFound)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1819,7 +1849,8 @@ TEST(getJsonTest, pathNotFound) {
     ASSERT_EQ(j.getJson("/key4"), std::optional<Json>());
 }
 
-TEST(getJsonTest, invalidPath) {
+TEST(getJsonTest, invalidPath)
+{
     Json j {R"({
         "key1": "value1",
         "key2": "value2",
@@ -1828,4 +1859,3 @@ TEST(getJsonTest, invalidPath) {
 
     ASSERT_THROW(j.getJson("key3~"), std::runtime_error);
 }
-

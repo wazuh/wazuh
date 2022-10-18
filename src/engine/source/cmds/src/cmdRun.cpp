@@ -124,14 +124,23 @@ void run(const std::string& kvdbPath,
         builder = std::make_shared<builder::Builder>(store);
         WAZUH_LOG_INFO("Builder initialized");
 
-        api::catalog::Config catalogConfig {store, builder};
+        api::catalog::Config catalogConfig {store,
+                                            builder,
+                                            fmt::format("schema{}wazuh-asset{}0",
+                                                        base::Name::SEPARATOR_S,
+                                                        base::Name::SEPARATOR_S),
+                                            fmt::format("schema{}wazuh-environment{}0",
+                                                        base::Name::SEPARATOR_S,
+                                                        base::Name::SEPARATOR_S)};
+
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         api::catalog::cmds::registerAllCmds(catalog, server->getRegistry());
         WAZUH_LOG_INFO("Catalog initialized");
 
         // server = std::make_shared<engineserver::EngineServer>(
         //     std::vector<std::string> {"api:"+apiEndpoint});
-        auto hlpParsers = store->get({"schema.wazuh-logql-types.v0"});
+        base::Name hlpConfigFileName ({"schema", "wazuh-logql-types", "v0"});
+        auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
             WAZUH_LOG_ERROR("[HLP] Error retreiving schema.wazuh-logql-types.v0 "
@@ -148,7 +157,6 @@ void run(const std::string& kvdbPath,
 
         builder::internals::registerBuilders();
         WAZUH_LOG_INFO("Builders registered");
-
     }
     catch (const std::exception& e)
     {
