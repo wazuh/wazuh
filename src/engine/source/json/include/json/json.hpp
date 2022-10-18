@@ -498,6 +498,13 @@ public:
      */
     std::optional<base::Error> validate(const Json& schema) const;
 
+    /**
+     * @brief Check if the Json has duplicate keys.
+     *
+     * @return std::optional<base::Error> If the Json has duplicate keys, return the error
+     */
+    std::optional<base::Error> checkDuplicateKeys() const;
+
     /************************************************************************************/
     // Setters
     /************************************************************************************/

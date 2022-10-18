@@ -1,5 +1,5 @@
 ---
-name: auditd
+name: decoder/auditd/0
 
 metadata:
   description: Decoder for Linux auditd logs

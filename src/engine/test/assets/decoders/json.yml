@@ -1,5 +1,5 @@
 ---
-name: json
+name: decoder/json/0
 
 check:
   - event.original: +s_starts/{

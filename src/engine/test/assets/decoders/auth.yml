@@ -1,7 +1,7 @@
-name: auth
+name: decoder/auth/0
 
 parents:
-  - syslog
+  - decoder/syslog/0
 
 check: >-
   process.name==sshd

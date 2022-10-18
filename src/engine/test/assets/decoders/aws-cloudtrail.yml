@@ -1,5 +1,5 @@
 ---
-name: aws-cloudtrail
+name: decoder/aws-cloudtrail/0
 
 metadata:
   description: Decoder for AWS CloudTrail Logs
@@ -43,7 +43,7 @@ metadata:
 # }
 
 parents:
-  - aws
+  - decoder/aws/0
 
 check:
   - wazuh.modules.aws.source: +s_eq/cloudtrail
