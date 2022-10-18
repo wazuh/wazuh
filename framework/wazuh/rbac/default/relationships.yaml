@@ -29,6 +29,7 @@ relationships:
         - logtest_all
         - task_status
         - vulnerability_read
+        - vulnerability_run
       rule_ids:
         - wui_elastic_admin
         - wui_opendistro_admin
@@ -47,6 +48,7 @@ relationships:
         - syscheck_read
         - syscollector_read
         - vulnerability_read
+        - vulnerability_run
       rule_ids: []
 
     users_admin:
