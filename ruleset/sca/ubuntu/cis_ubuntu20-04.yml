@@ -159,7 +159,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:modprobe -n -v cramfs -> r:^install /bin/true|^install /bin/false"
@@ -290,7 +290,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:/sbin/modprobe -n -v freevxfs -> r:^install /bin/true|^install /bin/false"
@@ -421,7 +421,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:/sbin/modprobe -n -v jffs2 -> r:^install /bin/true|^install /bin/false"
@@ -552,7 +552,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:/sbin/modprobe -n -v hfs -> r:^install /bin/true|^install /bin/false"
@@ -683,7 +683,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:/sbin/modprobe -n -v hfsplus -> r:^install /bin/true|^install /bin/false"
@@ -815,7 +815,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:/sbin/modprobe -n -v squashfs -> r:^install /bin/true|^install /bin/false"
@@ -946,7 +946,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:/sbin/modprobe -n -v udf -> r:^install /bin/true|^install /bin/false"
@@ -962,9 +962,123 @@ checks:
     compliance:
       - cis: ["1.1.2"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
@@ -1097,7 +1211,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /tmp -> r:\s*/tmp\s && r:nodev'
@@ -1227,7 +1341,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /tmp -> r:\s*/tmp\s && r:nosuid'
@@ -1400,7 +1514,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s'
@@ -1530,7 +1644,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s && r:nodev'
@@ -1660,7 +1774,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /dev/shm -> r:\s*/dev/shm\s && r:nosuid'
@@ -1713,7 +1827,8 @@ checks:
     title: "Ensure separate partition exists for /var."
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
-    remediation: "For new installations, during installatio ncreate a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.10"]
       - cis_csc_v7: ["5.1"]
@@ -1833,7 +1948,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -1965,7 +2080,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /var/tmp -> r:\s*/var/tmp\s'
@@ -1975,6 +2090,7 @@ checks:
     title: "Ensure /var/tmp partition includes the nodev option."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid,nodev,noexec /var/tmp."
     compliance:
       - cis: ["1.1.12"]
@@ -2095,7 +2211,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c: findmnt -n /var/tmp -> r:\s*/var/tmp\s && r:nodev'
@@ -2225,7 +2341,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /var/tmp -> r:\s*/var/tmp\s && r:nosuid'
@@ -2278,13 +2394,14 @@ checks:
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data."
     rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.15"]
       - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
       - nist_sp_800-53: ["AU-4"]
-      - pci_dss_v3.2.1: ["10,7"]
+      - pci_dss_v3.2.1: ["10.7"]
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -2296,13 +2413,14 @@ checks:
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
     rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog) consume space in the same partition as auditd, it may not perform as desired."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.16"]
       - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
       - nist_sp_800-53: ["AU-4"]
-      - pci_dss_v3.2.1: ["10,7"]
+      - pci_dss_v3.2.1: ["10.7"]
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -2435,7 +2553,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -2567,7 +2685,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -n /home -> r:\s*/home\s && r:nodev'
@@ -2892,7 +3010,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
@@ -3023,7 +3141,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -3153,7 +3271,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
       - "f:/etc/shadow -> r:^root:*:|^root:!:"
@@ -3369,7 +3487,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:sysctl fs.suid_dumpable -> r:=^fs.suid_dumpable = 0"
@@ -3834,7 +3952,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
@@ -3965,7 +4083,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
@@ -4095,7 +4213,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
@@ -4225,7 +4343,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
       - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4356,7 +4474,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4486,7 +4604,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -4660,7 +4778,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
@@ -4792,7 +4910,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^\s*disable-user-list\s*=\s*true'
