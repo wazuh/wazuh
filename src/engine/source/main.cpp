@@ -8,6 +8,7 @@
 #include <CLI/CLI.hpp>
 
 #include <cmds/cmdApiCatalog.hpp>
+#include <cmds/cmdApiEnvironment.hpp>
 #include <cmds/cmdGraph.hpp>
 #include <cmds/cmdKvdb.hpp>
 #include <cmds/cmdRun.hpp>
@@ -25,6 +26,7 @@ constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
 constexpr auto SUBCOMMAND_CATALOG = "catalog";
+constexpr auto SUBCOMMAND_ENVIRONMENT = "env";
 
 // Graph file names
 constexpr auto ENV_DEF_DIR = ".";
@@ -56,6 +58,8 @@ std::string catalogName;
 bool catalogJsonFormat;
 bool catalogYmlFormat;
 std::string catalogContent;
+std::string environmentAction;
+std::string environmentTarget;
 
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 {
@@ -68,14 +72,14 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
                     "Endpoint configuration string. Specifies the endpoint where the "
                     "engine module will be listening for incoming connections. "
                     "PROTOCOL_STRING = <unix_socket_path>")
-        ->option_text("TEXT:PROTOCOL_STRING REQUIRED")
+        ->option_text("PATH_STRING REQUIRED")
         ->required();
     run->add_option("-a, --api_endpoint",
                     args::apiEndpoint,
                     "Endpoint configuration string. Specifies the endpoint where the "
                     "engine module will be listening for api calls. "
                     "PROTOCOL_STRING = <unix_socket_path>")
-        ->option_text("TEXT:PROTOCOL_STRING REQUIRED")
+        ->option_text("PATH_STRING REQUIRED")
         ->required();
 
     // Threads
@@ -273,6 +277,31 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
         ->default_val("");
 }
 
+void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
+{
+    CLI::App* environment = app->add_subcommand(
+        args::SUBCOMMAND_ENVIRONMENT, "Run the Wazuh Environment integrated client.");
+
+    // Endpoint
+    environment
+        ->add_option("-e, --engine", args::apiEndpoint, "engine api address")
+        //->default_val("$WAZUH/socket");
+        ->default_val("/var/ossec/queue/sockets/analysis");
+
+    // Method
+    environment->add_option("action", args::environmentAction, "Environment action")
+        ->required()
+        ->check(CLI::IsMember({"get", "set"}))
+        ->description(
+            "get: Get the active environment.\n"
+            "set /env/<environment>/<version>: Run an environment. ");
+
+    // environment Info
+    environment->add_option("environment", args::environmentTarget, "Environment Involved.")
+        ->default_val("")
+        ->take_last();
+}
+
 std::shared_ptr<CLI::App> configureCliApp()
 {
     auto app = std::make_shared<CLI::App>(
@@ -285,6 +314,7 @@ std::shared_ptr<CLI::App> configureCliApp()
     configureSubcommandGraph(app);
     configureSubcommandKvdb(app);
     configureSubCommandCatalog(app);
+    configureSubCommandEnvironment(app);
 
     return app;
 }
@@ -390,6 +420,12 @@ int main(int argc, char* argv[])
                      args::catalogName,
                      formatString,
                      args::catalogContent);
+    }
+    else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
+    {
+        cmd::environment(args::apiEndpoint,
+                         args::environmentAction,
+                         args::environmentTarget);
     }
     else
     {
