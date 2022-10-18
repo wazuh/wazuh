@@ -1,7 +1,7 @@
-name: syscollector-program-del
+name: decoder/syscollector-program-del/0
 
 parents:
-  - syscollector-program
+  - decoder/syscollector-program/0
 
 check:
   - _json.program: +not_exists

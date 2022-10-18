@@ -1,4 +1,4 @@
-name: nginx-error
+name: decoder/nginx-error/0
 
 metadata:
   description: Nginx error log decoder

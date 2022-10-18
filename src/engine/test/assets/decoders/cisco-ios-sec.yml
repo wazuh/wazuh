@@ -1,8 +1,8 @@
 ---
-name: cisco-ios-sec
+name: decoder/cisco-ios-sec/0
 
 parents:
-  - cisco
+  - decoder/cisco/0
 
 metadata:
   description: "Cisco IOS, Facility Code: SEC [IP security]"

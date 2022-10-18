@@ -94,6 +94,14 @@ std::optional<base::Error> FileDriver::add(const base::Name& name,
     std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
 
+    auto duplicateError = content.checkDuplicateKeys();
+    if (duplicateError)
+    {
+        error = base::Error {fmt::format("[FileDriver::add] [{}] has duplicate keys: {}",
+                                         name.fullName(),
+                                         duplicateError.value().message)};
+    }
+
     if (std::filesystem::exists(path))
     {
         error = base::Error {
@@ -185,7 +193,15 @@ std::optional<base::Error> FileDriver::update(const base::Name& name,
     std::optional<base::Error> error = std::nullopt;
     auto path = nameToPath(name);
 
-    if (!std::filesystem::exists(path))
+    auto duplicateError = content.checkDuplicateKeys();
+    if (duplicateError)
+    {
+        error =
+            base::Error {fmt::format("[FileDriver::update] [{}] has duplicate keys: {}",
+                                     name.fullName(),
+                                     duplicateError.value().message)};
+    }
+    else if (!std::filesystem::exists(path))
     {
         error = base::Error {
             fmt::format("[FileDriver::update] File [{}] does not exist", path.string())};

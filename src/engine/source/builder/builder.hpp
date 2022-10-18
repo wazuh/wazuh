@@ -10,6 +10,7 @@
 #include <json/json.hpp>
 #include <name.hpp>
 #include <store/istore.hpp>
+#include <utils/getExceptionStack.hpp>
 
 #include "asset.hpp"
 #include "environment.hpp"
@@ -51,8 +52,7 @@ public:
                 std::get<base::Error>(envJson).message));
         }
 
-        auto environment =
-            Environment {std::get<json::Json>(envJson), m_storeRead};
+        auto environment = Environment {std::get<json::Json>(envJson), m_storeRead};
 
         return environment;
     }
@@ -66,7 +66,7 @@ public:
         }
         catch (const std::exception& e)
         {
-            return base::Error {e.what()};
+            return base::Error {utils::getExceptionStack(e)};
         }
 
         return std::nullopt;
@@ -82,7 +82,7 @@ public:
         }
         catch (const std::exception& e)
         {
-            return base::Error {e.what()};
+            return base::Error {utils::getExceptionStack(e)};
         }
 
         return std::nullopt;
