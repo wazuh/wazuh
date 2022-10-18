@@ -1,10 +1,10 @@
-name: windows-base
+name: decoder/windows-base/0
 
 metadata:
   description: "Windows base decoder"
 
 parents:
-  - json
+  - decoder/json/0
 
 check:
   - _json.Message: +exists

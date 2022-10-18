@@ -1,12 +1,12 @@
 ---
-name: aws
+name: decoder/aws/0
 
 metadata:
   description: Decoder for AWS Logs
   product.name: AWS
 
 parents:
-  - json
+  - decoder/json/0
 
 check:
   - _json.integration: +s_starts/aws

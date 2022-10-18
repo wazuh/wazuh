@@ -1,8 +1,8 @@
 ---
-name: fim-event
+name: decoder/fim-event/0
 
 parents:
-  - fim
+  - decoder/fim/0
 
 check:
   - _json.type: +s_eq/event

@@ -1,7 +1,7 @@
-name: syscollector-netinfo
+name: decoder/syscollector-netinfo/0
 
 parents:
-  - syscollector-base
+  - decoder/syscollector-base/0
 
 check:
   - _json.type: +s_starts/network

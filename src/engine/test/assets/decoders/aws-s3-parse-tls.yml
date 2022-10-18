@@ -1,5 +1,5 @@
 ---
-name: aws-s3-parse-tls
+name: decoder/aws-s3-parse-tls/0
 
 metadata:
   description: Decoder for extracting TLS protocol and version from Amazon S3
@@ -9,7 +9,7 @@ metadata:
   product.name: Amazon S3 server access
 
 parents:
-  - aws-s3-parse-region
+  - decoder/aws-s3-parse-region/0
 
 check:
   - wazuh.modules.aws.source: +s_eq/s3_server_access

@@ -1,5 +1,5 @@
 ---
-name: aws-s3
+name: decoder/aws-s3/0
 
 metadata:
   description: Decoder for Amazon S3 server access logs
@@ -8,7 +8,7 @@ metadata:
   product.name: Amazon S3 server access
 
 parents:
-  - aws
+  - decoder/aws/0
 
 # Example of Wazuh's integration with AWS S3 server access log:
 # {

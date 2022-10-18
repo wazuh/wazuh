@@ -1,78 +1,81 @@
+name: environment/wazuh/0
+
 decoders:
-  - apache-access
-  - apache-error
-  - auditd
-  - auditd-decode-kv
-  - auth
-  - aws
-  - aws-cloudtrail
-  - aws-elb
-  - aws-s3
-  - aws-s3-parse-region
-  - aws-s3-parse-tls
-  - ciscat
-  - cisco
-  - cisco-asa
-  - cisco-ios-grandchild
-  - cisco-ios-sec
-  - cisco-ios-sec-login
-  - dbsync
-  - fim
-  - fim-event
-  - fim-scan
-  - json
-  - nginx-access
-  - nginx-error
-  - postgresql-csv
-  - postgresql-csv-msg-parse
-  - rootcheck
-  - sca
-  - suricata
-  - suricata-alert
-  - suricata-flow
-  - suricata-http
-  - suricata-stats
-  - syscollector-base
-  - syscollector-dbsync-network-protocol
-  - syscollector-dbsync-osinfo
-  - syscollector-dbsync-osinfo-inserted
-  - syscollector-dbsync-ports
-  - syscollector-dbsync-ports-inserted
-  - syscollector-dbsync-processes
-  - syscollector-dbsync-processes-inserted
-  - syscollector-dbsync-base
-  - syscollector-dbsync-hotfixes
-  - syscollector-dbsync-hotfixes-inserted
-  - syscollector-dbsync-hwinfo
-  - syscollector-dbsync-hwinfo-inserted
-  - syscollector-dbsync-network-address
-  - syscollector-dbsync-network-address-inserted
-  - syscollector-dbsync-network-iface
-  - syscollector-dbsync-network-iface-inserted
-  - syscollector-dbsync-network-protocol-inserted
-  - syscollector-dbsync-packages
-  - syscollector-dbsync-packages-inserted
-  - syscollector-hardware
-  - syscollector-hotfix
-  - syscollector-netinfo
-  - syscollector-network
-  - syscollector-network-end
-  - syscollector-network-ip
-  - syscollector-OS
-  - syscollector-port
-  - syscollector-port-del
-  - syscollector-port-save
-  - syscollector-process
-  - syscollector-process-del
-  - syscollector-process-save
-  - syscollector-program
-  - syscollector-program-del
-  - syscollector-program-save
-  - syscollector-queue
-  - syslog
-  - syslog-queue
-  - windows-base
-  - windows-security
+  - decoder/apache-access/0
+  - decoder/apache-error/0
+  - decoder/auditd/0
+  - decoder/auditd-decode-kv/0
+  - decoder/auth/0
+  - decoder/aws/0
+  - decoder/aws-cloudtrail/0
+  - decoder/aws-elb/0
+  - decoder/aws-s3/0
+  - decoder/aws-s3-parse-region/0
+  - decoder/aws-s3-parse-tls/0
+  - decoder/ciscat/0
+  - decoder/cisco/0
+  - decoder/cisco-asa/0
+  - decoder/cisco-ios-grandchild/0
+  - decoder/cisco-ios-sec/0
+  - decoder/cisco-ios-sec-login/0
+  - decoder/dbsync/0
+  - decoder/fim/0
+  - decoder/fim-event/0
+  - decoder/fim-scan/0
+  - decoder/json/0
+  - decoder/nginx-access/0
+  - decoder/nginx-error/0
+  - decoder/postgresql-csv/0
+  - decoder/postgresql-csv-msg-parse/0
+  - decoder/rootcheck/0
+  - decoder/sca/0
+  - decoder/suricata/0
+  - decoder/suricata-alert/0
+  - decoder/suricata-flow/0
+  - decoder/suricata-http/0
+  - decoder/suricata-stats/0
+  - decoder/syscollector-base/0
+  # TODO: Add to environment once the duplicated keys are fixed
+  # - decoder/syscollector-dbsync-network-protocol/0
+  # - decoder/syscollector-dbsync-osinfo/0
+  # - decoder/syscollector-dbsync-osinfo-inserted/0
+  # - decoder/syscollector-dbsync-ports/0
+  # - decoder/syscollector-dbsync-ports-inserted/0
+  # - decoder/syscollector-dbsync-processes/0
+  # - decoder/syscollector-dbsync-processes-inserted/0
+  - decoder/syscollector-dbsync-base/0
+  # - decoder/syscollector-dbsync-hotfixes/0
+  # - decoder/syscollector-dbsync-hotfixes-inserted/0
+  # - decoder/syscollector-dbsync-hwinfo/0
+  # - decoder/syscollector-dbsync-hwinfo-inserted/0
+  # - decoder/syscollector-dbsync-network-address/0
+  # - decoder/syscollector-dbsync-network-address-inserted/0
+  # - decoder/syscollector-dbsync-network-iface/0
+  # - decoder/syscollector-dbsync-network-iface-inserted/0
+  # - decoder/syscollector-dbsync-network-protocol-inserted/0
+  # - decoder/syscollector-dbsync-packages/0
+  # - decoder/syscollector-dbsync-packages-inserted/0
+  - decoder/syscollector-hardware/0
+  - decoder/syscollector-hotfix/0
+  - decoder/syscollector-netinfo/0
+  - decoder/syscollector-network/0
+  - decoder/syscollector-network-end/0
+  - decoder/syscollector-network-ip/0
+  - decoder/syscollector-osinfo/0
+  - decoder/syscollector-port/0
+  - decoder/syscollector-port-del/0
+  - decoder/syscollector-port-save/0
+  - decoder/syscollector-process/0
+  - decoder/syscollector-process-del/0
+  - decoder/syscollector-process-save/0
+  - decoder/syscollector-program/0
+  - decoder/syscollector-program-del/0
+  - decoder/syscollector-program-save/0
+  - decoder/syscollector-queue/0
+  - decoder/syslog/0
+  - decoder/syslog-queue/0
+  - decoder/windows-base/0
+  - decoder/windows-security/0
 
 outputs:
-  - file-output
+  - output/file-output/0
