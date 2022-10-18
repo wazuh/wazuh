@@ -1082,7 +1082,7 @@ void wdb_check_fragmentation() {
                         struct timespec ts_start, ts_end;
 
                         if (wdb_commit2(node) < 0) {
-                            merror("Couldn't execute commit statement, before vacuum, for the database %s", node->id);
+                            merror("Couldn't execute commit statement, before vacuum, for the database '%s'", node->id);
                             w_mutex_unlock(&node->mutex);
                             w_mutex_unlock(&pool_mutex);
                             continue;
@@ -1092,7 +1092,7 @@ void wdb_check_fragmentation() {
 
                         gettime(&ts_start);
                         if (wdb_vacuum(node->db) < 0) {
-                            merror("Couldn't execute vacuum for the database %s", node->id);
+                            merror("Couldn't execute vacuum for the database '%s'", node->id);
                             w_mutex_unlock(&node->mutex);
                             w_mutex_unlock(&pool_mutex);
                             continue;
@@ -1102,10 +1102,10 @@ void wdb_check_fragmentation() {
 
                         // save fragmentation after vacuum
                         if (fragmentation_after_vacuum = wdb_get_db_state(node), fragmentation_after_vacuum == OS_INVALID) {
-                            merror("Couldn't get fragmentation after vacuum for the database %s", node->id);
+                            merror("Couldn't get fragmentation after vacuum for the database '%s'", node->id);
                         } else {
                             if (wdb_update_last_vacuum_data(node, time(0), fragmentation_after_vacuum) != OS_SUCCESS) {
-                                merror("Couldn't update last vacuum info for the database %s", node->id);
+                                merror("Couldn't update last vacuum info for the database '%s'", node->id);
                             }
                             // check after vacuum
                             if (fragmentation_after_vacuum >= current_fragmentation) {

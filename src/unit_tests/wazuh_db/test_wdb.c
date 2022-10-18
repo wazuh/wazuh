@@ -35,6 +35,8 @@ int wdb_select_from_temp_table(sqlite3 *db);
 int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 int wdb_update_last_vacuum_data(wdb_t* wdb, int last_vacuum_time, int last_vacuum_value);
 
+extern wdb_t * db_pool_begin;
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -1464,6 +1466,687 @@ void test_wdb_update_last_vacuum_data_ok_constraint(void **state) {
     os_free(wdb);
 }
 
+void test_wdb_check_fragmentation_node_null(void **state)
+{
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_get_state_error(void **state)
+{
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating temporary table.");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't get current fragmentation for the database '000'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_tasks_db(void **state)
+{
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("tasks",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "tasks");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_mitre_db(void **state)
+{
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("mitre",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "mitre");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_get_last_vacuum_data_error(void **state)
+{
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't get last vacuum info for the database '000'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_commit_error(void **state)
+{
+    wconfig.max_fragmentation = 80;
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
+    db_pool_begin->transaction = 1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_commit2
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't execute commit statement, before vacuum, for the database '000'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_vacuum_error(void **state)
+{
+    wconfig.max_fragmentation = 80;
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->transaction = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_vacuum
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't execute vacuum for the database '000'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error(void **state)
+{
+    wconfig.max_fragmentation = 80;
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->transaction = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_vacuum
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time_diff, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating temporary table.");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't get fragmentation after vacuum for the database '000'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_update_last_vacuum_data_error(void **state)
+{
+    wconfig.max_fragmentation = 80;
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->transaction = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_vacuum
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time_diff, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time, 0);
+
+    // wdb_update_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't update last vacuum info for the database '000'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_success_with_warning(void **state)
+{
+    wconfig.max_fragmentation = 80;
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->transaction = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_vacuum
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time_diff, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time, 12);
+
+    // wdb_update_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 12);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 100);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap__mwarn, formatted_msg, "After vacuum, the database '000' has become just as fragmented or worse");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
+void test_wdb_check_fragmentation_success(void **state)
+{
+    wconfig.max_fragmentation = 80;
+    os_calloc(1,sizeof(wdb_t),db_pool_begin);
+    os_strdup("000",db_pool_begin->id);
+    os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
+    db_pool_begin->transaction = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "000");
+    will_return(__wrap_OSHash_Get, db_pool_begin);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 0);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_get_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_time
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 0); // last_vacuum_value
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    // wdb_vacuum
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time_diff, 2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+
+    // wdb_get_db_state
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_value(__wrap_sqlite3_column_double, iCol, 0);
+    will_return(__wrap_sqlite3_column_double, 1);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    will_return(__wrap_time, 12);
+
+    // wdb_update_last_vacuum_data
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 12);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_check_fragmentation();
+
+    os_free(db_pool_begin->id);
+    os_free(db_pool_begin->db);
+    os_free(db_pool_begin);
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         // wdb_open_tasks
@@ -1551,6 +2234,18 @@ int main() {
         cmocka_unit_test(test_wdb_update_last_vacuum_data_step_error),
         cmocka_unit_test(test_wdb_update_last_vacuum_data_ok_done),
         cmocka_unit_test(test_wdb_update_last_vacuum_data_ok_constraint),
+        // wdb_check_fragmentation
+        cmocka_unit_test(test_wdb_check_fragmentation_node_null),
+        cmocka_unit_test(test_wdb_check_fragmentation_get_state_error),
+        cmocka_unit_test(test_wdb_check_fragmentation_tasks_db),
+        cmocka_unit_test(test_wdb_check_fragmentation_mitre_db),
+        cmocka_unit_test(test_wdb_check_fragmentation_get_last_vacuum_data_error),
+        cmocka_unit_test(test_wdb_check_fragmentation_commit_error),
+        cmocka_unit_test(test_wdb_check_fragmentation_vacuum_error),
+        cmocka_unit_test(test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error),
+        cmocka_unit_test(test_wdb_check_fragmentation_update_last_vacuum_data_error),
+        cmocka_unit_test(test_wdb_check_fragmentation_success_with_warning),
+        cmocka_unit_test(test_wdb_check_fragmentation_success),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
