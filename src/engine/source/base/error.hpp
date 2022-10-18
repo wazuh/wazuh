@@ -15,7 +15,7 @@ namespace base
  */
 struct Error
 {
-    std::string message;
+    std::string message; ///< Error message
 };
 
 } // namespace base
