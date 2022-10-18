@@ -19,7 +19,7 @@ add_library(json STATIC
     ${CMAKE_CURRENT_LIST_DIR}/src/json.cpp
 )
 
-target_link_libraries(json fmt)
+target_link_libraries(json fmt base)
 
 target_include_directories(json PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
