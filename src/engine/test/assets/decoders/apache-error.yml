@@ -1,5 +1,5 @@
 ---
-name: apache-error
+name: decoder/apache-error/0
 
 metadata:
   description: Parses Apache HTTPD errors logs in its Common Log Format

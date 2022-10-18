@@ -1,6 +1,6 @@
-name: suricata-http
+name: decoder/suricata-http/0
 parents:
-  - suricata
+  - decoder/suricata/0
 
 metadata:
   description: suricata-http

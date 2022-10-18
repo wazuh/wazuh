@@ -1,8 +1,8 @@
 ---
-name: cisco-asa
+name: decoder/cisco-asa/0
 
 parents:
-  - cisco
+  - decoder/cisco/0
 
 metadata:
   description: "Cisco Secure Firewall ASA Series, Facility Code: ASA"

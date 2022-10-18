@@ -1,6 +1,6 @@
-name: suricata-stats
+name: decoder/suricata-stats/0
 parents:
-  - suricata
+  - decoder/suricata/0
 
 metadata:
   description: suricata-stats

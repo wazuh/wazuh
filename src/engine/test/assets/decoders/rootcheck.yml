@@ -1,4 +1,4 @@
-name: rootcheck
+name: decoder/rootcheck/0
 
 check:
   - wazuh.queue: 57 # ROOTCHECK_MQ '9'

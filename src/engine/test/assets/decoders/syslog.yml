@@ -1,5 +1,8 @@
 ---
-name: syslog
+name: decoder/syslog/0
+
+parents:
+  - decoder/syslog-queue/0
 
 metadata:
   description: Syslog header

@@ -1,7 +1,7 @@
-name: windows-security
+name: decoder/windows-security/0
 
 parents:
-  - windows-base
+  - decoder/windows-base/0
 
 metadata:
   description: Windows Server 2019 is the operating system that bridges on-premises environments, ad

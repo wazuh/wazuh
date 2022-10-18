@@ -1,7 +1,7 @@
-name: suricata-flow
+name: decoder/suricata-flow/0
 
 parents:
-  - suricata
+  - decoder/suricata/0
 
 metadata:
   description: suricata-flow

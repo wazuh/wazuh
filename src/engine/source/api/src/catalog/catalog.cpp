@@ -360,24 +360,26 @@ std::optional<base::Error> Catalog::validate(const Resource& item,
     }
 
     // Validate against the schema first
-    auto schemaIt = m_schemas.find(item.m_type);
+    // TODO: Implement when we support a v7+ validator
+    // auto schemaIt = m_schemas.find(item.m_type);
 
-    if (schemaIt == m_schemas.end())
-    {
-        return base::Error {
-            fmt::format("[Catalog] Schema validator not found for type [{}]",
-                        Resource::typeToStr(item.m_type))};
-    }
+    // if (schemaIt == m_schemas.end())
+    // {
+    //     return base::Error {
+    //         fmt::format("[Catalog] Schema validator not found for type [{}]",
+    //                     Resource::typeToStr(item.m_type))};
+    // }
 
-    auto validationError = content.validate(schemaIt->second);
-    if (validationError)
-    {
-        return base::Error {fmt::format("[Catalog] Schema validation failed for [{}], {}",
-                                        item.m_name.fullName(),
-                                        validationError.value().message)};
-    }
+    // auto validationError = content.validate(schemaIt->second);
+    // if (validationError)
+    // {
+    //     return base::Error {fmt::format("[Catalog] Schema validation failed for [{}], {}",
+    //                                     item.m_name.fullName(),
+    //                                     validationError.value().message)};
+    // }
 
     // Builder validator
+    std::optional<base::Error> validationError;
     if (item.m_type == Resource::Type::DECODER
         || item.m_type == Resource::Type::RULE
         || item.m_type == Resource::Type::FILTER

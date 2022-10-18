@@ -1,5 +1,5 @@
 ---
-name: apache-access
+name: decoder/apache-access/0
 
 metadata:
   description: Parses Apache HTTPD access logs in its Common Log Format

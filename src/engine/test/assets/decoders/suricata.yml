@@ -1,7 +1,7 @@
-name: suricata
+name: decoder/suricata/0
 
 parents:
-  - json
+  - decoder/json/0
 
 metadata:
   description: This decoder is the parent decoder for the suricata decoders

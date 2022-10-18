@@ -1,4 +1,4 @@
-name: aws-elb
+name: decoder/aws-elb/0
 
 definitions:
   ELBTIMESTAMP: <timestamp/ISO8601_Z>
