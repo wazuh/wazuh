@@ -21,6 +21,12 @@ class WazuhSocket:
         self.path = path
         self._connect()
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __enter__(self):
+        return self
+
     def _connect(self):
         try:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
