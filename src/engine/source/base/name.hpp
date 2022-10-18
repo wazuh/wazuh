@@ -30,8 +30,8 @@ namespace base
 class Name
 {
 public:
-    constexpr static auto SEPARATOR_S = ".";
-    constexpr static auto SEPARATOR_C = '.';
+    constexpr static auto SEPARATOR_S = "/";
+    constexpr static auto SEPARATOR_C = '/';
     constexpr static auto MAX_PARTS = 10;
 
 private:

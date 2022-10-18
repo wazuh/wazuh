@@ -87,12 +87,29 @@ public:
      * @param catalog Injected catalog.
      * @throws std::runtime_error if the environment cannot be built.
      */
-    Environment(std::string name,
-                const json::Json& jsonDefinition,
+    Environment(const json::Json& jsonDefinition,
                 std::shared_ptr<const store::IStoreRead> storeRead)
-        : m_name {name}
+
     {
         auto envObj = jsonDefinition.getObject().value();
+
+        // Get name
+        auto nameIt =
+            std::find_if(envObj.begin(),
+                         envObj.end(),
+                         [](const auto& tuple) { return std::get<0>(tuple) == "name"; });
+        if (nameIt == envObj.end())
+        {
+            throw std::runtime_error("Environment has no name");
+        }
+        auto nameOpt = std::get<1>(*nameIt).getString();
+        if (!nameOpt)
+        {
+            throw std::runtime_error("Environment name is not a string");
+        }
+        m_name = nameOpt.value();
+
+        envObj.erase(nameIt);
 
         // Filters are not graphs, its treated as a special case.
         // We just add them to the asset map and then inject them into each
@@ -132,9 +149,9 @@ public:
         if (envObj.empty())
         {
             throw std::runtime_error(
-                fmt::format("[Environment(name, json, catalog)] environment [{}] needs "
+                fmt::format("[Environment(json, catalog)] environment [{}] needs "
                             "atleast one graph",
-                            name));
+                            m_name));
         }
         for (auto& [name, json] : envObj)
         {

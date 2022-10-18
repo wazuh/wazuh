@@ -39,7 +39,7 @@ std::filesystem::path FileDriver::nameToPath(const base::Name& name) const
     {
         path /= part;
     }
-    path.replace_extension(".json");
+
     return path;
 }
 
@@ -57,13 +57,32 @@ std::optional<base::Error> FileDriver::del(const base::Name& name)
     {
 
         std::error_code ec;
-        if (!std::filesystem::remove(path, ec))
+        if (!std::filesystem::remove_all(path, ec))
         {
             error = base::Error {fmt::format(
                 "[FileDriver::erase] Could not remove file [{}] due to [{}:{}]",
                 path.string(),
                 ec.value(),
                 ec.message())};
+        }
+
+        // Remove empty parent directories
+        bool next = true;
+        for (path = path.parent_path();
+             next && path != m_path && std::filesystem::is_empty(path);
+             path = path.parent_path())
+        {
+            if (!std::filesystem::remove(path, ec))
+            {
+                error = base::Error {
+                    fmt::format("[FileDriver::erase] [{}] Was successfully removed "
+                                "bu could not remove parent dir [{}] due to [{}:{}]",
+                                name.fullName(),
+                                path.string(),
+                                ec.value(),
+                                ec.message())};
+                next = false;
+            }
         }
     }
     return error;
@@ -117,21 +136,38 @@ std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) co
 
     if (std::filesystem::exists(path))
     {
-        std::ifstream file(path);
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        std::string content{buffer.str()};
-        file.close();
-        try
+        if (std::filesystem::is_directory(path))
         {
-            result = json::Json {content.c_str()};
+            json::Json list;
+            list.setArray();
+            for (const auto& entry : std::filesystem::directory_iterator(path))
+            {
+                list.appendString(fmt::format("{}{}{}",
+                                              name.fullName(),
+                                              base::Name::SEPARATOR_S,
+                                              entry.path().filename().string()));
+            }
+
+            result = std::move(list);
         }
-        catch (const std::exception& e)
+        else
         {
-            result = base::Error {
-                fmt::format("[FileDriver] Could not parse file [{}] due to [{}]",
-                            path.string(),
-                            e.what())};
+            std::ifstream file(path);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            std::string content {buffer.str()};
+            file.close();
+            try
+            {
+                result = json::Json {content.c_str()};
+            }
+            catch (const std::exception& e)
+            {
+                result = base::Error {
+                    fmt::format("[FileDriver] Could not parse file [{}] due to [{}]",
+                                path.string(),
+                                e.what())};
+            }
         }
     }
     else
@@ -143,4 +179,32 @@ std::variant<json::Json, base::Error> FileDriver::get(const base::Name& name) co
     return result;
 }
 
-} // namespace store::fileDriver
+std::optional<base::Error> FileDriver::update(const base::Name& name,
+                                              const json::Json& content)
+{
+    std::optional<base::Error> error = std::nullopt;
+    auto path = nameToPath(name);
+
+    if (!std::filesystem::exists(path))
+    {
+        error = base::Error {
+            fmt::format("[FileDriver::update] File [{}] does not exist", path.string())};
+    }
+    else
+    {
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            error = base::Error {
+                fmt::format("[FileDriver::update] Could not open file [{}] for writing",
+                            path.string())};
+        }
+        else
+        {
+            file << content.str();
+        }
+    }
+    return error;
+}
+
+} // namespace store

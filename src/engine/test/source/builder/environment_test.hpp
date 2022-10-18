@@ -16,9 +16,9 @@ constexpr auto outputPath = "/tmp/file";
 std::map<std::string, const char*> decoders =
 {
     {
-        "decoder.decoder1.version",
+        "decoder/decoder1/version",
         R"({
-            "name": "decoder.decoder1.version",
+            "name": "decoder/decoder1/version",
             "check": [
                 {"decoder": 1}
             ],
@@ -32,10 +32,10 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder.decoder1_1.version",
+        "decoder/decoder1_1/version",
         R"({
-            "name": "decoder.decoder1_1.version",
-            "parents": ["decoder.decoder1.version"],
+            "name": "decoder/decoder1_1/version",
+            "parents": ["decoder/decoder1/version"],
             "check": [
                 {"child": 1}
             ],
@@ -49,10 +49,10 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder.decoder1_2.version",
+        "decoder/decoder1_2/version",
         R"({
-            "name": "decoder.decoder1_2.version",
-            "parents": ["decoder.decoder1.version"],
+            "name": "decoder/decoder1_2/version",
+            "parents": ["decoder/decoder1/version"],
             "check": [
                 {"child": 2}
             ],
@@ -66,9 +66,9 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder.decoder2.version",
+        "decoder/decoder2/version",
         R"({
-            "name": "decoder.decoder2.version",
+            "name": "decoder/decoder2/version",
             "check": [
                 {"decoder": 2}
             ],
@@ -82,9 +82,9 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder.decoder3.version",
+        "decoder/decoder3/version",
         R"({
-            "name": "decoder.decoder3.version",
+            "name": "decoder/decoder3/version",
             "check": [
                 {"decoder": 3}
             ],
@@ -98,10 +98,10 @@ std::map<std::string, const char*> decoders =
         })"
     },
     {
-        "decoder.decoder23_1.version",
+        "decoder/decoder23_1/version",
         R"({
-            "name": "decoder.decoder23_1.version",
-            "parents": ["decoder.decoder2.version", "decoder.decoder3.version"],
+            "name": "decoder/decoder23_1/version",
+            "parents": ["decoder/decoder2/version", "decoder/decoder3/version"],
             "check": [
                 {"child": 1}
             ],
@@ -118,16 +118,16 @@ std::map<std::string, const char*> decoders =
 std::map<std::string, const char*> rules =
 {
     {
-        "rule.rule1.version",
+        "rule/rule1/version",
         R"({
-            "name": "rule.rule1.version",
+            "name": "rule/rule1/version",
             "check": [
                 {"rule": 1}
             ],
             "normalize": [
                 {
                     "map": {
-                        "alerted.name": "rule.rule1.version"
+                        "alerted.name": "rule/rule1/version"
                     }
                 }
             ]
@@ -135,33 +135,33 @@ std::map<std::string, const char*> rules =
     }
     ,
     {
-        "rule.rule1_1.version",
+        "rule/rule1_1/version",
         R"({
-            "name": "rule.rule1_1.version",
-            "parents": ["rule.rule1.version"],
+            "name": "rule/rule1_1/version",
+            "parents": ["rule/rule1/version"],
             "check": [
                 {"child": 1}
             ],
             "normalize": [
                 {
                     "map": {
-                        "alerted.name": "rule.rule1_1.version"
+                        "alerted/name": "rule/rule1_1/version"
                     }
                 }
             ]
         })"
     },
     {
-        "rule.rule2.version",
+        "rule/rule2/version",
         R"({
-            "name": "rule.rule2.version",
+            "name": "rule/rule2/version",
             "check": [
                 {"rule": 2}
             ],
             "normalize": [
                 {
                     "map": {
-                        "alerted.name": "rule.rule2.version"
+                        "alerted.name": "rule/rule2/version"
                     }
                 }
             ]
@@ -171,11 +171,11 @@ std::map<std::string, const char*> rules =
 std::map<std::string, const char*> filters =
 {
     {
-        "filter.filter1.version",
+        "filter/filter1/version",
         R"({
-            "name": "filter.filter1.version",
+            "name": "filter/filter1/version",
             "after": [
-                "decoder.decoder1.version"
+                "decoder/decoder1/version"
             ],
             "check": [
                 {"filter": 1}
@@ -186,9 +186,9 @@ std::map<std::string, const char*> filters =
 std::map<std::string, const char*> outputs =
 {
     {
-        "output.output1.version",
+        "output/output1/version",
         R"({
-            "name": "output.output1.version",
+            "name": "output/output1/version",
             "check": [
                 {"output": 1}
             ],
@@ -206,75 +206,82 @@ std::map<std::string, const char*> environments =
 {
     {"oneDecEnv",
 R"({
+"name": "environment/oneDecEnv/version",
 "decoders": [
-  "decoder.decoder1.version"
+  "decoder/decoder1/version"
 ]
 })"},
     {"oneRuleEnv",
 R"({
+"name": "environment/oneRuleEnv/version",
 "rules": [
-  "rule.rule1.version"
+  "rule/rule1/version"
 ]
 })"},
     {"oneFilEnv",
 R"({
+"name": "environment/oneFilEnv/version",
 "filters": [
-  "filter.filter1.version"
+  "filter/filter1/version"
 ]
 })"},
     {"oneOutEnv",
 R"({
+"name": "environment/oneOutEnv/version",
 "outputs": [
-  "output.output1.version"
+  "output/output1/version"
 ]
 })"},
     {"orphanAssetEnv",
 R"({
+    "name": "environment/orphanAssetEnv/version",
     "decoders": [
-        "decoder.decoder1_1.version"
+        "decoder/decoder1_1/version"
     ],
     "rules": [
-        "rule.rule1.version"
+        "rule/rule1/version"
     ],
     "filters": [
-        "filter.filter1.version"
+        "filter/filter1/version"
     ],
     "outputs": [
-        "output.output1.version"
+        "output/output1/version"
     ]
 })"},
     {"orphanFilterEnv",
 R"({
+    "name": "environment/orphanFilterEnv/version",
     "rules": [
-        "rule.rule1.version"
+        "rule/rule1/version"
     ],
     "filters": [
-        "filter.filter1.version"
+        "filter/filter1/version"
     ],
     "outputs": [
-        "output.output1.version"
+        "output/output1/version"
     ]
 })"},
     {"completeEnv",
 R"({
+    "name": "environment/completeEnv/version",
     "decoders": [
-        "decoder.decoder1.version",
-        "decoder.decoder1_1.version",
-        "decoder.decoder1_2.version",
-        "decoder.decoder2.version",
-        "decoder.decoder3.version",
-        "decoder.decoder23_1.version"
+        "decoder/decoder1/version",
+        "decoder/decoder1_1/version",
+        "decoder/decoder1_2/version",
+        "decoder/decoder2/version",
+        "decoder/decoder3/version",
+        "decoder/decoder23_1/version"
     ],
     "rules": [
-        "rule.rule1.version",
-        "rule.rule1_1.version",
-        "rule.rule2.version"
+        "rule/rule1/version",
+        "rule/rule1_1/version",
+        "rule/rule2/version"
     ],
     "filters": [
-        "filter.filter1.version"
+        "filter/filter1/version"
     ],
     "outputs": [
-        "output.output1.version"
+        "output/output1/version"
     ]
 })"}
 };
