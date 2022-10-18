@@ -3,7 +3,7 @@ add_library(cmds STATIC
     src/cmdRun.cpp
     src/cmdTest.cpp
     src/cmdKvdb.cpp
-    src/apiclnt/cmdApiCatalog.cpp
+    src/cmdApiCatalog.cpp
     src/apiclnt/connection.cpp
     src/stackExecutor.cpp
 )

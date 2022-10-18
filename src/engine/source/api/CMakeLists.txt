@@ -34,4 +34,4 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}/catalog
 )
 
-target_link_libraries(api PRIVATE base json builder::ivalidator store::istore yaml-cpp)
+target_link_libraries(api base json builder::ivalidator store::istore yaml-cpp fmt)

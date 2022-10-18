@@ -64,6 +64,16 @@ public:
      * @return std::optional<base::Error> An error if the operation failed.
      */
     virtual std::optional<base::Error> del(const base::Name& name) = 0;
+
+    /**
+     * @brief Update a json in the store.
+     *
+     * @param name base::Name of the json to update.
+     * @param content Json to update.
+     * @return std::optional<base::Error> An error if the operation failed.
+     */
+    virtual std::optional<base::Error> update(const base::Name& name,
+                                              const json::Json& content) = 0;
 };
 
 } // namespace store

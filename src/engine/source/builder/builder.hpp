@@ -52,7 +52,7 @@ public:
         }
 
         auto environment =
-            Environment {name.fullName(), std::get<json::Json>(envJson), m_storeRead};
+            Environment {std::get<json::Json>(envJson), m_storeRead};
 
         return environment;
     }
@@ -61,7 +61,7 @@ public:
     {
         try
         {
-            Environment env {"", json, m_storeRead};
+            Environment env {json, m_storeRead};
             env.getExpression();
         }
         catch (const std::exception& e)

@@ -1,16 +1,22 @@
 #ifndef _CATALOG_HPP
 #define _CATALOG_HPP
 
+#include <cstring>
+#include <exception>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <unordered_map>
 #include <variant>
 
+#include <fmt/format.h>
+
 #include <builder/ivalidator.hpp>
 #include <error.hpp>
 #include <name.hpp>
 #include <store/istore.hpp>
+
+#include "api/catalog/resource.hpp"
 
 namespace api::catalog
 {
@@ -25,158 +31,16 @@ struct Config
     std::shared_ptr<store::IStore> store;
     /* Validator interface to validate the Asset, Environment and Schema files */
     std::shared_ptr<builder::IValidator> validator;
+    /* Name of the schema to validate assets */
+    std::string assetSchema;
+    /* Name of the schema to validate environments */
+    std::string environmentSchema;
 
     /**
      * @brief Assert that the configuration is valid.
      *
      */
     void validate() const;
-};
-
-/**
- * @brief Supported formats by the catalog
- *
- */
-enum class Format
-{
-    JSON,
-    YAML,
-    ERROR_FORMAT
-};
-
-/**
- * @brief Get string representation of the Format
- *
- * @param format Format to convert
- * @return constexpr auto String representation of the format
- */
-constexpr auto formatToString(Format format)
-{
-    switch (format)
-    {
-        case Format::JSON: return "json";
-        case Format::YAML: return "yaml";
-        default: return "error_format";
-    }
-}
-
-/**
- * @brief Get Format from string representation
- *
- * @param format String representation of the format
- * @return Format
- */
-static const auto stringToFormat(const std::string& format)
-{
-    if (format == "json")
-    {
-        return Format::JSON;
-    }
-    else if (format == "yaml")
-    {
-        return Format::YAML;
-    }
-    else
-    {
-        return Format::ERROR_FORMAT;
-    }
-}
-
-/**
- * @brief Type of the resources handled by the catalog
- *
- */
-enum class Type
-{
-    DECODER,
-    RULE,
-    OUTPUT,
-    FILTER,
-    SCHEMA,
-    ENVIRONMENT,
-    ERROR_TYPE
-};
-
-/**
- * @brief Get string representation of the Type
- *
- * @param type Type to convert
- * @return constexpr auto String representation of the type
- */
-constexpr auto typeToString(Type type)
-{
-    switch (type)
-    {
-        case Type::DECODER: return "decoder";
-        case Type::RULE: return "rule";
-        case Type::OUTPUT: return "output";
-        case Type::FILTER: return "filter";
-        case Type::SCHEMA: return "schema";
-        case Type::ENVIRONMENT: return "environment";
-        default: return "error_type";
-    }
-}
-
-/**
- * @brief Get the Type from the string representation
- *
- * @param type String representation of the type
- * @return const auto Type
- */
-constexpr auto stringToType(const char* type)
-{
-    if (type == typeToString(Type::DECODER))
-        return Type::DECODER;
-    else if (type == typeToString(Type::RULE))
-        return Type::RULE;
-    else if (type == typeToString(Type::OUTPUT))
-        return Type::OUTPUT;
-    else if (type == typeToString(Type::FILTER))
-        return Type::FILTER;
-    else if (type == typeToString(Type::SCHEMA))
-        return Type::SCHEMA;
-    else if (type == typeToString(Type::ENVIRONMENT))
-        return Type::ENVIRONMENT;
-    else
-        return Type::ERROR_TYPE;
-}
-
-class CatalogName : public base::Name
-{
-public:
-    constexpr static auto MAX_PARTS = 3;
-
-    CatalogName() = default;
-
-    CatalogName(std::string type, std::string name, std::string version)
-        : base::Name({type, name, version})
-    {
-    }
-
-    CatalogName(const std::string& name)
-        : base::Name{name}
-    {
-    }
-
-    CatalogName(const char* name)
-        : base::Name{name}
-    {
-    }
-
-    std::string type() const
-    {
-        return parts()[0];
-    }
-
-    std::string name() const
-    {
-        return parts()[1];
-    }
-
-    std::string version() const
-    {
-        return parts()[2];
-    }
 };
 
 /**
@@ -197,13 +61,18 @@ private:
     std::shared_ptr<builder::IValidator> m_validator;
 
     std::unordered_map<
-        Format,
+        Resource::Format,
         std::function<std::variant<std::string, base::Error>(const json::Json&)>>
         m_outFormat;
     std::unordered_map<
-        Format,
+        Resource::Format,
         std::function<std::variant<json::Json, base::Error>(const std::string&)>>
         m_inFormat;
+
+    std::unordered_map<Resource::Type, json::Json> m_schemas;
+
+    std::optional<base::Error> validate(const Resource& item,
+                                        const json::Json& content) const;
 
 public:
     /**
@@ -219,50 +88,63 @@ public:
     Catalog& operator=(const Catalog&) = delete;
 
     /**
-     * @brief Get the Asset object
+     * @brief Add and item to the specified collection
      *
-     * @param name Name of the Asset
-     * @param format Output format of the Asset
-     * @return std::variant<std::string, base::Error> Asset in the requested format
-     * string, or error
+     * @param collection Resource identifying the collection, the name must be the same as
+     * the type of the name content and the content must be a string in the same format as
+     * the collection.m_format
+     * @param content String with the resource to add to the collection.
+     * @return std::optional<base::Error> Error if the operation failed
      */
-    std::variant<std::string, base::Error> getAsset(const CatalogName& name,
-                                                    Format format) const;
+    std::optional<base::Error> postResource(const Resource& collection,
+                                            const std::string& content);
 
     /**
-     * @brief Add an Asset to the catalog
+     * @brief Update an item
      *
-     * @param name Name of the Asset
-     * @param content Asset as string, in the format specified
-     * @param format Format of the Asset
-     * @return std::optional<base::Error> Error if the Asset could not be added
+     * @param resource Resource identifying the item to update, the name must be the same
+     * as the content name and the content must be a string in the same format as the
+     * resource.m_format
+     * @param content String with the resource to update the item.
+     * @return std::optional<base::Error>
      */
-    std::optional<base::Error>
-    addAsset(const CatalogName& name, const std::string& content, Format format);
+    std::optional<base::Error> putResource(const Resource& item,
+                                           const std::string& content);
 
     /**
-     * @brief Delete an Asset from the catalog
+     * @brief Get a resource
      *
-     * @param name Name of the Asset
-     * @return std::optional<base::Error> Error if the Asset could not be deleted
+     * If the resource is a collection, the content will be a list of the items.
+     * If the resource is an item, the content will be the item.
+     *
+     * In both cases the content will be a string formatted in the same format as the
+     * resource.m_format
+     *
+     * @param resource Resource identifying the item or collection to get
+     * @return std::variant<std::string, base::Error> Error if the operation failed or the
+     * content of the resource
      */
-    std::optional<base::Error> delAsset(const CatalogName& name);
+    std::variant<std::string, base::Error> getResource(const Resource& resource) const;
 
     /**
-     * @brief Validate an Environment
+     * @brief Delete a resource
      *
-     * @param environment Environment to validate
-     * @return std::optional<base::Error> Error if the Environment is not valid
+     * @param resource Resource identifying the item or collection to delete
+     * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> validateEnvironment(const json::Json& environment) const;
+    std::optional<base::Error> deleteResource(const Resource& resource);
 
     /**
-     * @brief Validate an Asset
+     * @brief Validate an Asset or Environment.
      *
-     * @param asset Asset to validate
-     * @return std::optional<base::Error> Error if the Asset is not valid
+     * Performs schema validation and builder validation
+     *
+     * @param item Resource identifying an Asset or Environment
+     * @param content Content of the Asset or Environment
+     * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> validateAsset(const json::Json& asset) const;
+    std::optional<base::Error> validateResource(const Resource& item,
+                                                const std::string& content) const;
 };
 
 } // namespace api::catalog

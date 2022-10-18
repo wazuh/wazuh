@@ -6,3 +6,5 @@ add_executable(api_test
 
 target_link_libraries(api_test gtest_main base api)
 gtest_discover_tests(api_test)
+
+add_subdirectory(catalog)
