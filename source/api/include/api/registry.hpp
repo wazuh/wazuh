@@ -34,8 +34,7 @@ class Registry
 {
 
     std::map<std::string, CommandFn> m_commands; ///< Map of commands and callbacks
-    std::shared_mutex
-        m_mutex; ///< A mutex for thread safety (read/write, protect m_commands)
+    std::shared_mutex m_mutex; ///< A mutex for thread safety (protect m_commands)
 
 public:
     // Constructors
