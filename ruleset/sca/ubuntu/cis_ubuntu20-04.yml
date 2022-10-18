@@ -3379,13 +3379,12 @@ checks:
       - 'd:/etc/security/limits.d -> r:\. -> !r:^\s*# && r:hard\s+core\s+0'
       - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
 
-  ########### WIP
-
   # 1.6 Mandatory Access Control
 
   # 1.6.1 Configure AppArmor
 
-  - id: 19037
+  # 1.6.1.1 Ensure AppArmor is installed (Automated)
+  - id: 19036
     title: "Ensure AppArmor is installed."
     description: "AppArmor provides Mandatory Access Controls."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
@@ -3393,64 +3392,325 @@ checks:
     compliance:
       - cis: ["1.6.1.1"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques:
+          [
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1156",
+            "T1146",
+            "T1196",
+            "T1081",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1145",
+            "T1494",
+            "T1035",
+            "T1489",
+            "T1198",
+            "T1184",
+            "T1165",
+            "T1492",
+            "T1169",
+            "T1501",
+            "T1080",
+            "T1209",
+            "T1134",
+            "T1197",
+            "T1538",
+            "T1213",
+            "T1044",
+            "T1484",
+            "T1159",
+            "T1160",
+            "T1152",
+            "T1168",
+            "T1162",
+            "T1185",
+            "T1031",
+            "T1050",
+            "T1075",
+            "T1097",
+            "T1163",
+            "T1021",
+            "T1053",
+            "T1023",
+            "T1528",
+            "T1072",
+            "T1537",
+            "T1078",
+            "T1047",
+            "T1084",
+            "T1004",
+          ]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: any
     rules:
       - "c:dpkg -s apparmor -> r:install ok installed"
 
-  - id: 19038
+  # 1.6.1.2 Ensure AppArmor is enabled in the bootloader configuration (Automated)
+  - id: 19037
     title: "Ensure AppArmor is enabled in the bootloader configuration."
-    description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwrittenby the bootloader boot parameters."
-    rationale: "AppArmor must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
-    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line   GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor"      Run the following command to update the grub2 configuration # update-grub    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
+    description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
+    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["1.6.1.2"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques:
+          [
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1156",
+            "T1146",
+            "T1196",
+            "T1081",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1145",
+            "T1494",
+            "T1035",
+            "T1489",
+            "T1198",
+            "T1184",
+            "T1165",
+            "T1492",
+            "T1169",
+            "T1501",
+            "T1080",
+            "T1209",
+            "T1134",
+            "T1197",
+            "T1538",
+            "T1213",
+            "T1044",
+            "T1484",
+            "T1159",
+            "T1160",
+            "T1152",
+            "T1168",
+            "T1162",
+            "T1185",
+            "T1031",
+            "T1050",
+            "T1075",
+            "T1097",
+            "T1163",
+            "T1021",
+            "T1053",
+            "T1023",
+            "T1528",
+            "T1072",
+            "T1537",
+            "T1078",
+            "T1047",
+            "T1084",
+            "T1004",
+          ]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1 && !r:/boot/memtest86+.bin'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor && !r:/boot/memtest86+.bin'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
 
-  - id: 19039
+  # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
+  - id: 19038
     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
     description: "AppArmor profiles define what resources applicatons are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated.."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/*   OR   Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.3"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques:
+          [
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1156",
+            "T1146",
+            "T1196",
+            "T1081",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1145",
+            "T1494",
+            "T1035",
+            "T1489",
+            "T1198",
+            "T1184",
+            "T1165",
+            "T1492",
+            "T1169",
+            "T1501",
+            "T1080",
+            "T1209",
+            "T1134",
+            "T1197",
+            "T1538",
+            "T1213",
+            "T1044",
+            "T1484",
+            "T1159",
+            "T1160",
+            "T1152",
+            "T1168",
+            "T1162",
+            "T1185",
+            "T1031",
+            "T1050",
+            "T1075",
+            "T1097",
+            "T1163",
+            "T1021",
+            "T1053",
+            "T1023",
+            "T1528",
+            "T1072",
+            "T1537",
+            "T1078",
+            "T1047",
+            "T1084",
+            "T1004",
+          ]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - "c:apparmor_status -> r:0 processes are unconfined"
 
-  - id: 19040
+  # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
+  - id: 19039
     title: "Ensure all AppArmor Profiles are enforcing."
     description: "AppArmor profiles define what resources applicatons are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated.."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.4"]
       - cis_csc_v7: ["14.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques:
+          [
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1156",
+            "T1146",
+            "T1196",
+            "T1081",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1145",
+            "T1494",
+            "T1035",
+            "T1489",
+            "T1198",
+            "T1184",
+            "T1165",
+            "T1492",
+            "T1169",
+            "T1501",
+            "T1080",
+            "T1209",
+            "T1134",
+            "T1197",
+            "T1538",
+            "T1213",
+            "T1044",
+            "T1484",
+            "T1159",
+            "T1160",
+            "T1152",
+            "T1168",
+            "T1162",
+            "T1185",
+            "T1031",
+            "T1050",
+            "T1075",
+            "T1097",
+            "T1163",
+            "T1021",
+            "T1053",
+            "T1023",
+            "T1528",
+            "T1072",
+            "T1537",
+            "T1078",
+            "T1047",
+            "T1084",
+            "T1004",
+          ]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
-      - 'c:apparmor_status -> n:^(\d+)\s*profiles are loaded compare > 0'
-      - 'c:apparmor_status -> r:^0\s*profiles are in complain mode'
-      - 'c:apparmor_status -> r:^0\s*processes are unconfined'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.7 Command Line Warning Banners
 
-  - id: 19041
+  # 1.7.1 Ensure message of the day is configured properly (Automated)
+  - id: 19040
     title: "Ensure message of the day is configured properly."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -3458,28 +3718,260 @@ checks:
     compliance:
       - cis: ["1.7.1"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["7.1"]
-      - tsc: ["CC6.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: any
     rules:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
       - "not f:/etc/motd"
 
-  - id: 19042
+  # 1.7.2 Ensure local login warning banner is configured properly (Automated)
+  - id: 19041
     title: "Ensure local login warning banner is configured properly."
-    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
-    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo 'Authorized uses only. All activity may be monitored and reported.' > /etc/issue"
     compliance:
       - cis: ["1.7.2"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["7.1"]
-      - tsc: ["CC6.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
-  - id: 19043
+  # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
+  - id: 19042
     title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
@@ -3487,31 +3979,260 @@ checks:
     compliance:
       - cis: ["1.7.3"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["7.1"]
-      - tsc: ["CC6.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
-  - id: 19044
+  # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
+  - id: 19043
     title: "Ensure permissions on /etc/motd are configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd"
+    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
     compliance:
       - cis: ["1.7.4"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
-    condition: all
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
+    condition: any
     rules:
       - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - "not f:/etc/motd"
 
-  - id: 19045
+  # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
+  - id: 19044
     title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
@@ -3519,68 +4240,642 @@ checks:
     compliance:
       - cis: ["1.7.5"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: all
     rules:
       - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  - id: 19046
+  # 1.7.6 Ensure permissions on /etc/issue.net are configured (Automated)
+  - id: 19045
     title: "Ensure permissions on /etc/issue.net are configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net"
+    remediation: "Run the following commands to set permissions on /etc/issue.net:  # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)"
     compliance:
       - cis: ["1.7.6"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["10.2.5"]
-      - hipaa: ["164.312.b"]
-      - nist_800_53: ["AU.14", "AC.7"]
-      - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7", "32.2"]
-      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: all
     rules:
       - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  - id: 19047
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. Notes: Site policy may mandate a testing period before install onto production systems for available updates."
+  # 1.8.1 Ensure GNOME Display Manager is removed (Manual)
+  - id: 19046
+    title: "Ensure GNOME Display Manager is removed."
+    description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
+    rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
+    Impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
+    remediation: "Run the following command to uninstall gdm3: # apt purge gdm3"
     compliance:
-      - cis: ["1.9"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - pci_dss: ["5.2"]
-      - nist_800_53: ["AU.6", "SI.4"]
-      - gpg_13: ["4.2"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["A1.2"]
-    condition: none
+      - cis: ["1.8.1"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques:
+          [
+            "T1191",
+            "T1092",
+            "T1175",
+            "T1173",
+            "T1519",
+            "T1052",
+            "T1210",
+            "T1133",
+            "T1118",
+            "T1171",
+            "T1170",
+            "T1046",
+            "T1137",
+            "T1086",
+            "T1164",
+            "T1121",
+            "T1076",
+            "T1091",
+            "T1180",
+            "T1064",
+            "T1184",
+            "T1221",
+            "T1127",
+            "T1028",
+          ]
+      - nist_sp_800-53: ["CM-11"]
+    condition: all
     rules:
-      - "c:apt -s upgrade -> r:^The following packages will be upgraded"
+      - "c:dpkg -s gdm3 -> r: package 'gdm3' is not installed"
 
-  - id: 19048
+  # 1.8.2 Ensure GDM login banner is configured (Automated)
+  - id: 19047
     title: "Ensure GDM login banner is configured."
     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-    remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and add: [org/gnome/login-screen], banner-message-enable=true, banner-message-text='Authorized uses only. All activity may be monitored and reported.'"
+    remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and add the following: [org/gnome/login-screen] banner-message-enable=true banner-message-text='<banner message>' disable-user-list=true Example banner message: 'Authorized uses only. All activity may be monitored and reported.' Run the following command to re-load GDM on the next login or reboot: # dpkg-reconfigure gdm3"
     compliance:
       - cis: ["1.8.2"]
       - cis_csc_v7: ["5.1"]
-      - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
     condition: all
     rules:
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-enable=true"
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-text=\.+'
+
+  # 1.8.3 Ensure disable-user-list is enabled (Automated)
+  - id: 19048
+    title: "Ensure disable-user-list is enabled."
+    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls is a list of users is displayed on the login screen."
+    rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
+    remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and edit or add the following: [org/gnome/login-screen] banner-message-enable=true banner-message-text='<banner message>' disable-user-list=true Run the following command to re-load GDM on the next login or reboot: # dpkg-reconfigure gdm3"
+    compliance:
+      - cis: ["1.8.3"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques:
+          [
+            "T1110",
+            "T1003",
+            "T1081",
+            "T1097",
+            "T1178",
+            "T1072",
+            "T1067",
+            "T1495",
+            "T1019",
+            "T1177",
+            "T1485",
+            "T1486",
+            "T1491",
+            "T1488",
+            "T1487",
+            "T1490",
+            "T1146",
+            "T1148",
+            "T1015",
+            "T1133",
+            "T1200",
+            "T1076",
+            "T1051",
+            "T1176",
+            "T1501",
+            "T1087",
+            "T1098",
+            "T1139",
+            "T1197",
+            "T1092",
+            "T1136",
+            "T1011",
+            "T1147",
+            "T1130",
+            "T1174",
+            "T1053",
+            "T1166",
+            "T1206",
+            "T1503",
+            "T1214",
+            "T1187",
+            "T1208",
+            "T1142",
+            "T1075",
+            "T1201",
+            "T1145",
+            "T1184",
+            "T1537",
+            "T1078",
+            "T1077",
+            "T1134",
+            "T1017",
+            "T1088",
+            "T1175",
+            "T1190",
+            "T1210",
+            "T1525",
+            "T1215",
+            "T1086",
+            "T1055",
+            "T1505",
+            "T1035",
+            "T1218",
+            "T1169",
+            "T1100",
+            "T1047",
+            "T1084",
+            "T1028",
+            "T1156",
+            "T1196",
+            "T1530",
+            "T1089",
+            "T1073",
+            "T1157",
+            "T1054",
+            "T1070",
+            "T1037",
+            "T1036",
+            "T1096",
+            "T1034",
+            "T1150",
+            "T1504",
+            "T1494",
+            "T1489",
+            "T1198",
+            "T1165",
+            "T1492",
+            "T1080",
+            "T1209",
+            "T1112",
+            "T1058",
+            "T1173",
+            "T1137",
+            "T1539",
+            "T1535",
+            "T1506",
+            "T1138",
+            "T1044",
+            "T1199",
+          ]
+      - nist_sp_800-53:
+          [
+            "AU-2",
+            "CM-1",
+            "CM-2",
+            "CM-6",
+            "CM-7",
+            "IA-5",
+            "IA-6",
+            "SC-20",
+            "SC-21",
+          ]
+      - pci_dss_v3.2.1: ["2,2"]
+    condition: all
+    rules:
+      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^\s*disable-user-list\s*=\s*true'
+
+  # 1.8.4 Ensure XDCMP is not enabled (Automated)
+  - id: 19049
+    title: "Ensure XDCMP is not enabled."
+    description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
+    rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user. - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
+    remediation: "Edit the file /etc/gdm3/custom.conf and remove the line: Enable=true"
+    compliance:
+      - cis: ["1.8.4"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
+    condition: all
+    rules:
+      - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
+
+  # 1.9 Ensure updates, patches, and additional security software are installed (Manual)
+  - id: 19050
+    title: "Ensure updates, patches, and additional security software are installed."
+    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
+    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
+    remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade"
+    compliance:
+      - cis: ["1.9"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["MA.2.111"]
+      - mitre_techniques:
+          [
+            "T1103",
+            "T1017",
+            "T1138",
+            "T1073",
+            "T1189",
+            "T1190",
+            "T1212",
+            "T1211",
+            "T1068",
+            "T1210",
+            "T1495",
+            "T1137",
+            "T1075",
+            "T1195",
+            "T1019",
+            "T1072",
+            "T1100",
+            "T1527",
+            "T1176",
+            "T1088",
+            "T1081",
+            "T1214",
+            "T1530",
+            "T1213",
+            "T1038",
+            "T1073",
+            "T1482",
+            "T1114",
+            "T1044",
+            "T1484",
+            "T1525",
+            "T1161",
+            "T1031",
+            "T1034",
+            "T1145",
+            "T1076",
+            "T1053",
+            "T1505",
+            "T1528",
+            "T1078",
+            "T1103",
+            "T1017",
+            "T1138",
+          ]
+    condition: all
+    rules:
+      - "apt -s upgrade -> r:0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded"
+
+  ########### WIP
 
   ############################################################
   # 2 Services
