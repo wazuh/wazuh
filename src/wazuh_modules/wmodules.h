@@ -31,7 +31,7 @@
 #define WM_HEADER_SIZE  OS_SIZE_2048
 #define VU_WM_NAME "vulnerability-detector"
 #define AZ_WM_NAME "azure-logs"
-#define KEY_WM_NAME "agent-key-polling"
+#define KEY_WM_NAME "agent-key-polling"             // Deprecated key-polling module
 #define SCA_WM_NAME "sca"
 #define GCP_PUBSUB_WM_NAME "gcp-pubsub"
 #define GCP_BUCKET_WM_NAME "gcp-bucket"
@@ -72,7 +72,6 @@ typedef enum crypto_type {
 #include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
-#include "wm_keyrequest.h"
 #include "wm_sca.h"
 #include "wm_fluent.h"
 #include "wm_control.h"
@@ -89,7 +88,6 @@ extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wa
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
 
-
 // Read XML configuration and internal options
 int wm_config();
 cJSON *getModulesConfig(void);
@@ -98,6 +96,20 @@ int modulesSync(char* args);
 
 // Add module to the global list
 void wm_add(wmodule *module);
+
+/*
+ * @brief Get ID group of Wazuh user.
+ *
+ * @return ID group.
+ */
+gid_t wm_getGroupID(void);
+
+/*
+ * @brief Set ID group of wazuh modules
+ *
+ * @param[in] gid ID group.
+ */
+void wm_setGroupID(const gid_t gid);
 
 // Check general configuration
 int wm_check();

@@ -35,7 +35,8 @@ int __wrap_wdb_global_update_agent_version(wdb_t *wdb,
                                            const char *node_name,
                                            const char *agent_ip,
                                            const char *connection_status,
-                                           const char *sync_status);
+                                           const char *sync_status,
+                                           const char *group_config_status);
 
 cJSON* __wrap_wdb_global_get_agent_labels(wdb_t *wdb, int id);
 
@@ -53,25 +54,25 @@ cJSON* __wrap_wdb_global_select_agent_name(wdb_t *wdb, int id);
 
 cJSON* __wrap_wdb_global_select_agent_group(wdb_t *wdb, int id);
 
+cJSON* __wrap_wdb_global_get_group_agents(wdb_t *wdb, wdbc_result *status, char *group_name, int last_agent_id);
+
 int __wrap_wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 
 cJSON* __wrap_wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
-int __wrap_wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
 
 cJSON* __wrap_wdb_global_find_group(wdb_t *wdb, char* group_name);
 
 int __wrap_wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
 
-int __wrap_wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+cJSON* __wrap_wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
 
-int __wrap_wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
+int __wrap_wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
 
 int __wrap_wdb_global_delete_group(wdb_t *wdb, char* group_name);
 
-cJSON* __wrap_wdb_global_select_groups(wdb_t *wdb);
+wdbc_result __wrap_wdb_global_set_agent_groups(__attribute__((unused)) wdb_t *wdb, wdb_groups_set_mode_t mode, char *sync_status, cJSON *j_agents_group_info);
 
-cJSON* __wrap_wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
+cJSON* __wrap_wdb_global_select_groups(wdb_t *wdb);
 
 wdbc_result __wrap_wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
 
@@ -85,7 +86,24 @@ int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_statu
 
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
 
+wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_t *wdb, wdb_groups_sync_condition_t condition, int last_agent_id, bool set_synced, bool get_hash, int agent_registration_delta, cJSON **output);
+
+cJSON* __wrap_wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
+
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id);
+
+int __wrap_wdb_global_adjust_v4(wdb_t* wdb);
+
+cJSON* __wrap_wdb_global_get_backups();
+
+time_t __wrap_wdb_global_get_most_recent_backup(char **most_recent_backup_name);
+
+int __wrap_wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
+
+int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
+
+int __wrap_wdb_remove_group_db(const char *name, int *sock);
+
 #endif

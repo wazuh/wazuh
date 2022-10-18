@@ -60,13 +60,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(dbsync PROPERTIES
         PREFIX ""
         SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
+        LINK_FLAGS "-Wl,--add-stdcall-alias"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(dbsync PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")

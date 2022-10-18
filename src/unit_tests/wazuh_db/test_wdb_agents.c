@@ -24,6 +24,8 @@
 #include "wazuhdb_op.h"
 #include "wazuh_db/wdb_agents.h"
 
+/* setup/teardown */
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -48,6 +50,35 @@ static int test_teardown(void **state) {
     os_free(data->wdb);
     os_free(data);
     return 0;
+}
+
+/* wrappers configurations for fail/success */
+
+// __wrap_wdb_exec_stmt_sized
+
+/**
+ * @brief Configure a successful call to __wrap_wdb_exec_stmt_sized
+ *
+ * @param j_array The cJSON* array to mock
+ * @param column_mode The expected column mode, STMT_MULTI_COLUMN or STMT_SINGLE_COLUMN
+ */
+void wrap_wdb_exec_stmt_sized_success_call(cJSON* j_array, int column_mode) {
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, column_mode);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_array);
+}
+
+/**
+ * @brief Configure a failed call to __wrap_wdb_exec_stmt_sized
+ *
+ * @param column_mode The expected column mode, STMT_MULTI_COLUMN or STMT_SINGLE_COLUMN
+ */
+void wrap_wdb_exec_stmt_sized_failed_call(int column_mode) {
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, column_mode);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
 }
 
 /* Tests wdb_agents_get_sys_osinfo */
@@ -913,9 +944,8 @@ void test_wdb_agents_remove_vuln_cves_by_status_error_exec_stmt_sized(void **sta
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
     //Executing statement
-    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
-    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
-    will_return(__wrap_wdb_exec_stmt_sized, NULL);
+    wrap_wdb_exec_stmt_sized_failed_call(STMT_MULTI_COLUMN);
+
     expect_string(__wrap__merror, formatted_msg, "Failed to retrieve vulnerabilities with status OBSOLETE from the database");
 
     ret = wdb_agents_remove_vuln_cves_by_status(data->wdb, status, &data->output);
@@ -950,9 +980,7 @@ void test_wdb_agents_remove_vuln_cves_by_status_error_removing_cve(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
     //Executing statement
-    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
-    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
-    will_return(__wrap_wdb_exec_stmt_sized, root);
+    wrap_wdb_exec_stmt_sized_success_call(root, STMT_MULTI_COLUMN);
 
     // Removing vulnerability
     will_return(__wrap_cJSON_GetObjectItem, str1);
@@ -997,9 +1025,7 @@ void test_wdb_agents_remove_vuln_cves_by_status_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
     //Executing statement
-    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
-    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
-    will_return(__wrap_wdb_exec_stmt_sized, root);
+    wrap_wdb_exec_stmt_sized_success_call(root, STMT_MULTI_COLUMN);
 
     // Removing vulnerability
     will_return(__wrap_cJSON_GetObjectItem, str1);
@@ -1021,34 +1047,6 @@ void test_wdb_agents_remove_vuln_cves_by_status_success(void **state) {
     assert_int_equal(ret, WDBC_OK);
 
     __real_cJSON_Delete(root);
-}
-
-/* Tests wdb_agents_clear_vuln_cves */
-
-void test_wdb_agents_clear_vuln_cves_statement_init_fail(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_CLEAR);
-
-    ret = wdb_agents_clear_vuln_cves(data->wdb);
-
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_agents_clear_vuln_cves_success(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_CLEAR);
-
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-
-    ret = wdb_agents_clear_vuln_cves(data->wdb);
-
-    assert_int_equal(ret, OS_SUCCESS);
 }
 
 /* Tests wdb_agents_set_sys_osinfo_triaged */
@@ -1427,9 +1425,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_by_status_error_exec_stmt_sized, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_by_status_error_removing_cve, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_by_status_success, test_setup, test_teardown),
-        /* Tests wdb_agents_clear_vuln_cves */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_statement_init_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_success, test_setup, test_teardown),
         /* Tests wdb_agents_set_sys_osinfo_triaged */
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_success, test_setup, test_teardown),

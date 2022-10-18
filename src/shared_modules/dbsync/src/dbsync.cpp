@@ -15,24 +15,13 @@
 #include "dbsync.hpp"
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
+#include "cjsonSmartDeleter.hpp"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 using namespace DbSync;
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
 
 static std::function<void(const std::string&)> gs_logFunction;
 
@@ -114,11 +103,11 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(tables)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(tables)};
             txn = PipelineFactory::instance().create(handle, nlohmann::json::parse(spJsonBytes.get()), thread_number, max_queue_size, callbackWrapper);
         }
         catch (const DbSync::dbsync_error& ex)
@@ -186,7 +175,7 @@ int dbsync_sync_txn_row(const TXN_HANDLE txn,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_input)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(js_input)};
             PipelineFactory::instance().pipeline(txn)->syncRow(nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -222,7 +211,7 @@ int dbsync_add_table_relationship(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_input)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(js_input)};
             DBSyncImplementation::instance().addTableRelationship(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -261,7 +250,7 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_Print(js_insert)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_Print(js_insert)};
             DBSyncImplementation::instance().insertBulkData(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -350,11 +339,11 @@ int dbsync_sync_row(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(js_input) };
             DBSyncImplementation::instance().syncRowData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -400,11 +389,11 @@ int dbsync_select_rows(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(js_data_input) };
             DBSyncImplementation::instance().selectData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -445,7 +434,7 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
     {
         try
         {
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_key_values) };
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(js_key_values) };
             DBSyncImplementation::instance().deleteRowsData(handle, nlohmann::json::parse(spJsonBytes.get()));
             retVal = 0;
         }
@@ -490,7 +479,7 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
@@ -547,7 +536,7 @@ int dbsync_update_with_snapshot(const DBSYNC_HANDLE handle,
                     result[s_opMap.at(resultType)].push_back(jsonResult);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             *js_result = cJSON_Parse(result.dump().c_str());
             retVal = 0;
@@ -599,11 +588,11 @@ int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
+            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(js_snapshot)};
             DBSyncImplementation::instance().updateSnapshotData(handle, nlohmann::json::parse(spJsonBytes.get()), callbackWrapper);
             retVal = 0;
         }
@@ -766,6 +755,7 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const unsigned int    threadNumber,
                      const unsigned int    maxQueueSize,
                      ResultCallbackData    callbackData)
+    : m_shouldBeRemoved {true}
 {
     const auto callbackWrapper
     {
@@ -779,17 +769,21 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
 
 DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
     : m_txn { handle }
+    , m_shouldBeRemoved {false}
 { }
 
 DBSyncTxn::~DBSyncTxn()
 {
-    try
+    if (m_shouldBeRemoved)
     {
-        PipelineFactory::instance().destroy(m_txn);
-    }
-    catch (const DbSync::dbsync_error& ex)
-    {
-        log_message(ex.what());
+        try
+        {
+            PipelineFactory::instance().destroy(m_txn);
+        }
+        catch (const DbSync::dbsync_error& ex)
+        {
+            log_message(ex.what());
+        }
     }
 }
 

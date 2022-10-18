@@ -96,6 +96,11 @@
 #include <direct.h>
 #endif
 
+#ifdef __cplusplus
+#include <atomic>
+#define _Atomic(T) std::atomic<T>
+#endif
+
 #include <time.h>
 #include <errno.h>
 #include <libgen.h>
@@ -176,6 +181,29 @@ typedef uint8_t u_int8_t;
 #define fallthrough ((void) 0)
 #endif
 
+/* IPv4 structure */
+typedef struct _os_ipv4 {
+    unsigned int ip_address;
+    unsigned int netmask;
+} os_ipv4;
+
+/* IPv6 structure */
+typedef struct _os_ipv6 {
+    uint8_t ip_address[16];
+    uint8_t netmask[16];
+} os_ipv6;
+
+/* IP structure */
+typedef struct _os_ip {
+    char *ip;
+    union {
+        os_ipv4 *ipv4;
+        os_ipv6 *ipv6;
+    };
+    bool is_ipv6;
+} os_ip;
+
+
 extern const char *__local_name;
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
@@ -253,7 +281,7 @@ extern const char *__local_name;
 #include "notify_op.h"
 #include "version_op.h"
 #include "utf8_op.h"
-#include "shared.h"
+#include "rwlock_op.h"
 #include "log_builder.h"
 
 #include "os_xml/os_xml.h"

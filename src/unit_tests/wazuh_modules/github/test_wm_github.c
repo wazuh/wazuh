@@ -39,6 +39,10 @@ unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __att
     return mock_type(unsigned int);
 }
 
+int __wrap_isDebug() {
+    return mock();
+}
+
 ////////////////  test wm-github /////////////////
 
 typedef struct test_struct {
@@ -388,6 +392,18 @@ void test_github_execute_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
 
+    will_return(__wrap_isDebug, 1);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+
+    will_return(__wrap_strftime,"2021-05-07T12:24:56Z");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T12:24:56Z' for organization 'test_org' and event type 'git', waiting '10' seconds to run first scan.");
+
     expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
@@ -399,6 +415,18 @@ void test_github_execute_scan(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_isDebug, 1);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+
+    will_return(__wrap_strftime,"2021-05-07T11:24:56Z");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T11:24:56Z' for organization 'test_org' and event type 'web', waiting '10' seconds to run first scan.");
 
     expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -472,6 +500,7 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
     will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
@@ -531,6 +560,7 @@ void test_github_execute_scan_status_code_200(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
     will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
@@ -588,6 +618,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
@@ -650,7 +681,7 @@ void test_github_execute_scan_max_size_reached(void **state) {
     will_return(__wrap_gmtime_r, 1);
 #endif
 
-    will_return(__wrap_strftime,"2021-05-07 12:34:56");
+    will_return(__wrap_strftime,"2021-05-07T12:34:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
@@ -660,6 +691,7 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
@@ -670,6 +702,9 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T12:34:56Z' for organization 'test_org' and event type 'web', waiting '10' seconds to run next scan.");
 
     wm_github_execute_scan(data->github_config, initial_scan);
 
@@ -787,7 +822,7 @@ void test_read_default_configuration(void **state) {
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->interval, 60);
-    assert_int_equal(module_data->time_delay, 1);
+    assert_int_equal(module_data->time_delay, 30);
     assert_int_equal(module_data->only_future_events, 1);
     assert_string_equal(module_data->auth->org_name, "Wazuh");
     assert_string_equal(module_data->auth->api_token, "Wazuh_token");

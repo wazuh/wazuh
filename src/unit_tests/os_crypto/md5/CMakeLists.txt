@@ -8,7 +8,9 @@
 cmake_minimum_required(VERSION 3.10)
 
 list(APPEND md5_tests_names "test_md5_op")
-list(APPEND md5_tests_flags " ")
+list(APPEND md5_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
+                             -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
 
 # Compiling tests
 list(LENGTH md5_tests_names count)

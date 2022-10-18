@@ -19,5 +19,6 @@ xml_node ** __wrap_OS_GetElementsbyNode(const OS_XML * _lxml, const xml_node * n
 void __wrap_OS_ClearNode(xml_node ** node);
 void __wrap_OS_ClearXML(OS_XML * _lxml) __attribute__((nonnull));
 int __wrap_OS_ReadXML(const char * file, OS_XML * lxml) __attribute__((nonnull));
+int __wrap_OS_ReadXML_Ex(const char * file, OS_XML * lxml) __attribute__((nonnull));
 
 #endif

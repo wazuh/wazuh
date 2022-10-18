@@ -26,7 +26,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.syscheck import AffectedItemsWazuhResult
         from wazuh import WazuhError, WazuhInternalError
         from wazuh.core import common
-        from wazuh.core.agent import Agent
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -68,7 +67,7 @@ test_result = [
                                         {'id': '003', 'status': ['disconnected']}]}],
      ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
-@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_data_path, 'client.keys'))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_data_path, 'client.keys'))
 @patch('wazuh.syscheck.WazuhDBQueryAgents.__exit__')
 @patch('wazuh.syscheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')
@@ -192,11 +191,12 @@ def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, a
     (['006'], {'version': 'Wazuh v3.9.4'}),
     (['004'], {}),
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
-def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, agent_id, wazuh_version):
+def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, exists_mock, agent_id, wazuh_version):
     """Test function `last_scan` from syscheck module.
 
     Parameters
@@ -208,7 +208,7 @@ def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, a
     """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
         with patch('wazuh.syscheck.glob',
-                   return_value=[os.path.join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
+                   return_value=[os.path.join(common.DATABASE_PATH_AGENTS, '{}.db'.format(agent_id[0]))]):
             result = last_scan(agent_id)
             assert isinstance(result, AffectedItemsWazuhResult)
             assert isinstance(result.affected_items, list)
@@ -239,23 +239,27 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
             last_scan(['001'])
 
 
-@pytest.mark.parametrize('agent_id, select, filters, distinct', [
-    (['001'], None, None, None),
-    (['002'], ['file', 'size', 'mtime'], None, False),
-    (['003'], None, {'inode': '15470536'}, True),
-    (['004'], ['file', 'size'], {'hash': '15470536'}, False),
-    (['005'], None, {'date': '2019-05-21 12:10:20'}, True),
-    (['006'], None, {'type': 'registry_key'}, True),
-    (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True),
-    (['008'], ['file', 'value.name'], None, True),
-    (['009'], ['value.name'], None, True),
-    (['000'], ['attributes'], None, True),
+@pytest.mark.parametrize('agent_id, select, filters, distinct, q', [
+    (['001'], None, None, None, None),
+    (['002'], ['file', 'size', 'mtime'], None, False, None),
+    (['003'], None, {'inode': '15470536'}, True, None),
+    (['004'], ['file', 'size'], {'hash': '15470536'}, False, None),
+    (['005'], None, {'date': '2019-05-21 12:10:20'}, True, None),
+    (['006'], None, {'type': 'registry_key'}, True, None),
+    (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True, None),
+    (['008'], ['file', 'value.name'], None, True, None),
+    (['009'], ['value.name'], None, True, None),
+    (['000'], ['attributes'], None, True, None),
     (['000'], None,
-     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
+     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True,
+     None),
+    (['000'], None, None, False, "file=HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\Tcpip\\Parameters"
+                                 "\\Interfaces\\{4473f692-67de-480d-a481-6de3e4a2813b};(type=file,type=registry_key)")
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('socket.socket.connect')
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
-def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
+def test_syscheck_files(socket_mock, exists_mock, agent_id, select, filters, distinct, q):
     """Test function `files` from syscheck module.
 
     Parameters
@@ -276,7 +280,7 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
         select = select if select else select_list
-        result = files(agent_id, select=select, filters=filters)
+        result = files(agent_id, select=select, filters=filters, q=q)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert isinstance(result.affected_items, list)
         # Use flag for min_select_field, if file not in select, len(item.keys()) = len(select) + 1

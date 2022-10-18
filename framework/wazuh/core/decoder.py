@@ -52,7 +52,7 @@ def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
     try:
         decoders = list()
         position = 0
-        root = load_wazuh_xml(os.path.join(common.wazuh_path, decoder_path, decoder_file))
+        root = load_wazuh_xml(os.path.join(common.WAZUH_PATH, decoder_path, decoder_file))
 
         for xml_decoder in list(root):
             # New decoder

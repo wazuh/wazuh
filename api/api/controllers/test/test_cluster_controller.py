@@ -3,8 +3,9 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomAffectedItems
 from connexion.lifecycle import ConnexionResponse
+
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -16,9 +17,10 @@ with patch('wazuh.common.wazuh_uid'):
             get_healthcheck, get_info_node, get_log_node, get_log_summary_node,
             get_node_config, get_stats_analysisd_node, get_stats_hourly_node,
             get_stats_node, get_stats_remoted_node, get_stats_weekly_node,
-            get_status, get_status_node, put_restart, update_configuration)
+            get_status, get_status_node, put_restart, update_configuration, get_nodes_ruleset_sync_status)
         from wazuh import cluster, common, manager, stats
         from wazuh.tests.util import RBAC_bypasser
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
@@ -107,6 +109,40 @@ async def test_get_healthcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
                                    call(mock_dfunc.return_value)])
         assert mock_exc.call_count == 2
+        mock_remove.assert_called_once_with(f_kwargs)
+        assert isinstance(result, web_response.Response)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cluster_controller.remove_nones_to_dict')
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_nodes_ruleset_sync_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_nodes_ruleset_sync_status' endpoint is working as expected."""
+    with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+        result = await get_nodes_ruleset_sync_status(request=mock_request)
+        f_kwargs = {'node_list': '*',
+                    'master_md5': {'dikt_key': 'dikt_value'}
+                    }
+        mock_dapi.assert_has_calls([call(f=cluster.get_node_ruleset_integrity,
+                                         request_type="local_master",
+                                         is_async=True,
+                                         wait_for_complete=False,
+                                         logger=ANY,
+                                         local_client_arg="lc"),
+                                    call(f=cluster.get_ruleset_sync_status,
+                                         f_kwargs=mock_remove.return_value,
+                                         request_type="distributed_master",
+                                         is_async=True,
+                                         wait_for_complete=False,
+                                         logger=ANY,
+                                         rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                         nodes=mock_exc.return_value,
+                                         broadcasting=True)])
+        mock_exc.assert_has_calls([call(mock_snodes.return_value),
+                                   call(mock_dfunc.return_value)])
+        assert mock_exc.call_count == 3
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, web_response.Response)
 
@@ -354,7 +390,7 @@ async def test_get_stats_analysisd_node(mock_exc, mock_dapi, mock_remove, mock_d
         result = await get_stats_analysisd_node(request=mock_request,
                                                 node_id='001')
         f_kwargs = {'node_id': '001',
-                    'filename': common.analysisd_stats
+                    'filename': common.ANALYSISD_STATS
                     }
         mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                           f_kwargs=mock_remove.return_value,
@@ -383,7 +419,7 @@ async def test_get_stats_remoted_node(mock_exc, mock_dapi, mock_remove, mock_dfu
         result = await get_stats_remoted_node(request=mock_request,
                                               node_id='001')
         f_kwargs = {'node_id': '001',
-                    'filename': common.remoted_stats
+                    'filename': common.REMOTED_STATS
                     }
         mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                           f_kwargs=mock_remove.return_value,
@@ -555,7 +591,8 @@ async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.cluster_controller.remove_nones_to_dict')
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_node_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+@patch('api.controllers.cluster_controller.check_component_configuration_pair')
+async def test_get_node_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_node_config' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         kwargs_param = {'configuration': 'configuration_value'
@@ -579,8 +616,9 @@ async def test_get_node_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                                           nodes=mock_exc.return_value
                                           )
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
+                                   call(mock_check_pair.return_value),
                                    call(mock_dfunc.return_value)])
-        assert mock_exc.call_count == 2
+        assert mock_exc.call_count == 3
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, web_response.Response)
 
