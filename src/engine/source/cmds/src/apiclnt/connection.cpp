@@ -24,16 +24,16 @@ void client(uvw::Loop& loop,
     client->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
         {
-            std::cout << "API Client ErrorEvent: " << event.what() << std::endl;
+            std::cerr << "API Client ErrorEvent: " << event.what() << std::endl;
             handle.close();
         });
 
     client->once<uvw::ConnectEvent>(
         [&request](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
         {
-            std::cout << "API Client ConnectEvent" << std::endl;
+            //std::cout << "API Client ConnectEvent" << std::endl;
             std::vector<char> buffer {request.begin(), request.end()};
-            std::cout << "API Client sending request: " << request << std::endl;
+            //std::cout << "API Client sending request: " << request << std::endl;
             handle.write(buffer.data(), buffer.size());
             handle.read();
         });
@@ -41,33 +41,33 @@ void client(uvw::Loop& loop,
     client->on<uvw::DataEvent>(
         [&response](const uvw::DataEvent& event, uvw::PipeHandle& handle)
         {
-            std::cout << "API Client DataEvent" << std::endl;
-            std::cout << "API Client received response: "
-                      << std::string(event.data.get(), event.length) << std::endl;
+            //std::cout << "API Client DataEvent" << std::endl;
+            // std::cout << "API Client received response: "
+            //           << std::string(event.data.get(), event.length) << std::endl;
             response = std::string(event.data.get(), event.length);
             handle.close();
         });
 
-    client->on<uvw::WriteEvent>([](const uvw::WriteEvent&, uvw::PipeHandle&)
-                                { std::cout << "API Client WriteEvent" << std::endl; });
+    // client->on<uvw::WriteEvent>([](const uvw::WriteEvent&, uvw::PipeHandle&)
+    //                             { std::cout << "API Client WriteEvent" << std::endl; });
 
     client->once<uvw::EndEvent>(
         [](const uvw::EndEvent&, uvw::PipeHandle& handle)
         {
-            std::cout << "API Client EndEvent" << std::endl;
+            // std::cout << "API Client EndEvent" << std::endl;
             int count = 0;
             handle.loop().walk([&count](uvw::BaseHandle&) { ++count; });
-            std::cout << "still alive: " << count << " handles" << std::endl;
+            // std::cout << "still alive: " << count << " handles" << std::endl;
             handle.close();
         });
 
     client->once<uvw::CloseEvent>(
         [](const uvw::CloseEvent&, uvw::PipeHandle& handle)
         {
-            std::cout << "API Client CloseEvent" << std::endl;
+            // std::cout << "API Client CloseEvent" << std::endl;
             int count = 0;
             handle.loop().walk([&count](uvw::BaseHandle&) { ++count; });
-            std::cout << "still alive: " << count << " handles" << std::endl;
+            // std::cout << "still alive: " << count << " handles" << std::endl;
         });
 
     // Send request
@@ -148,10 +148,17 @@ namespace cmd::apiclnt
 
 std::string connection(const std::string& socketPath, const std::string& request)
 {
+    // Add protocol header
+    int32_t length = request.size();
+    std::unique_ptr<char[]> buffer(new char[sizeof(length) + length]);
+    std::memcpy(buffer.get(), &length, sizeof(length));
+    std::memcpy(buffer.get() + sizeof(length), request.data(), length);
+    auto requestWithHeader = std::string(buffer.get(), sizeof(length) + length);
+
     // Stablish connection, send request and receive response
     std::string response;
     auto loop = uvw::Loop::getDefault();
-    client(*loop, socketPath, request, response);
+    client(*loop, socketPath, requestWithHeader, response);
     loop->run();
 
     return response;

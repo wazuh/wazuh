@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "rapidjson/schema.h"
+
 #include <fmt/format.h>
 
 namespace json
@@ -1086,4 +1088,24 @@ std::optional<Json> Json::getJson(std::string_view path) const
     }
 }
 
+std::optional<base::Error> Json::validate(const Json& schema) const
+{
+    rapidjson::SchemaDocument sd(schema.m_document);
+    rapidjson::SchemaValidator validator(sd);
+
+    if (!m_document.Accept(validator))
+    {
+        rapidjson::StringBuffer sb;
+        validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
+        rapidjson::StringBuffer sb2;
+        validator.GetInvalidDocumentPointer().StringifyUriFragment(sb2);
+        return base::Error {fmt::format("Invalid JSON schema: [{}], [{}]",
+                                        std::string {sb.GetString()},
+                                        std::string {sb2.GetString()})};
+    }
+    else
+    {
+        return std::nullopt;
+    }
+}
 } // namespace json
