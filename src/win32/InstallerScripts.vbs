@@ -20,321 +20,336 @@
 
 On Error Resume Next
 
+private function get_unique_array_values(array)
+    Dim dicTemp : Set dicTemp = CreateObject("Scripting.Dictionary")
+    Dim DicItem
+    For Each DicItem In array
+        dicTemp(DicItem) = 0
+    Next
+    get_unique_array_values = dicTemp.Keys()
+End Function
+
+
 public function config()
 
-Const ForReading = 1
-Const ForWriting = 2
+    Const ForReading = 1
+    Const ForWriting = 2
 
-' Custom parameters
-strArgs = Session.Property("CustomActionData")
-args = Split(strArgs, "/+/")
+    ' Custom parameters
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
 
-home_dir= Replace(args(0), Chr(34), "")
-WAZUH_MANAGER = Replace(args(1), Chr(34), "")
-WAZUH_MANAGER_PORT = Replace(args(2), Chr(34), "")
-WAZUH_PROTOCOL = Replace(args(3), Chr(34), "")
-NOTIFY_TIME = Replace(args(4), Chr(34), "")
-WAZUH_REGISTRATION_SERVER = Replace(args(5), Chr(34), "")
-WAZUH_REGISTRATION_PORT = Replace(args(6), Chr(34), "")
-WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
-WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
-WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
-WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
-WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
-WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
-WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
-WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
-ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
+    home_dir= Replace(args(0), Chr(34), "")
+    WAZUH_MANAGER = Replace(args(1), Chr(34), "")
+    WAZUH_MANAGER_PORT = Replace(args(2), Chr(34), "")
+    WAZUH_PROTOCOL = Replace(args(3), Chr(34), "")
+    NOTIFY_TIME = Replace(args(4), Chr(34), "")
+    WAZUH_REGISTRATION_SERVER = Replace(args(5), Chr(34), "")
+    WAZUH_REGISTRATION_PORT = Replace(args(6), Chr(34), "")
+    WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
+    WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
+    WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
+    WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
+    WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
+    WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
+    WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
+    WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
+    ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
 
-' Only try to set the configuration if variables are setted
+    ' Only try to set the configuration if variables are setted
 
-Set objFSO = CreateObject("Scripting.FileSystemObject")
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-' Create an empty client.keys file on first install
-If Not objFSO.fileExists(home_dir & "client.keys") Then
-    objFSO.CreateTextFile(home_dir & "client.keys")
-End If
+    ' Create an empty client.keys file on first install
+    If Not objFSO.fileExists(home_dir & "client.keys") Then
+        objFSO.CreateTextFile(home_dir & "client.keys")
+    End If
 
-If objFSO.fileExists(home_dir & "ossec.conf") Then
-    ' Reading ossec.conf file
-    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
+    If objFSO.fileExists(home_dir & "ossec.conf") Then
+        ' Reading ossec.conf file
+        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
 
-    strText = objFile.ReadAll
-    objFile.Close
+        strText = objFile.ReadAll
+        objFile.Close
 
-    If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-		If WAZUH_PROTOCOL <> "" and InStr(WAZUH_PROTOCOL,",") Then
-            protocol_list=Split(WAZUH_PROTOCOL,",")
-		Else
-			protocol_list=Array(WAZUH_PROTOCOL)
-        End If
-        If WAZUH_MANAGER <> "" Then 
-			Set re = new regexp
-            re.Pattern = "\s+<server>(.|\n)+?</server>"
-			If InStr(WAZUH_MANAGER,",") Then
-				ip_list=Split(WAZUH_MANAGER,",")
-			Else
-				ip_list=Array(WAZUH_MANAGER)
-			End If
-            not_replaced = True
-			formatted_list = vbCrLf
-            for i=0 to UBound(ip_list)
-                    formatted_list = formatted_list & "    <server>" & vbCrLf
-                    formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
-                    formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                    if UBound(protocol_list) >= i then
-                        if protocol_list(i) <> "" then
+        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
+            If WAZUH_PROTOCOL <> "" and InStr(WAZUH_PROTOCOL,",") Then
+                protocol_list=Split(WAZUH_PROTOCOL,",")
+            Else
+                protocol_list=Array(WAZUH_PROTOCOL)
+            End If
+            If WAZUH_MANAGER <> "" Then 
+                Set re = new regexp
+                re.Pattern = "\s+<server>(.|\n)+?</server>"
+                If InStr(WAZUH_MANAGER,",") Then
+                    ip_list=Split(WAZUH_MANAGER,",")
+                Else
+                    ip_list=Array(WAZUH_MANAGER)
+                End If
+
+                unique_protocol_list=get_unique_array_values(protocol_list)
+
+                if ( UBound(protocol_list) >= UBound(ip_list) And UBound(unique_protocol_list) = 1 ) Or WAZUH_PROTOCOL <> "" Or ( UBound(unique_protocol_list) = 1 And LCase(unique_protocol_list(0)) = "tcp" ) Then
+                    ip_list=get_unique_array_values(ip_list) 
+                End If
+                
+                not_replaced = True
+                formatted_list = vbCrLf
+                for i=0 to UBound(ip_list)
+                        formatted_list = formatted_list & "    <server>" & vbCrLf
+                        formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
+                        formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+                        if UBound(protocol_list) >= i then
                             formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list(i)) & "</protocol>" & vbCrLf
+                        Else
+                            formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                         End If
-                    Else
-                        formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
-                    End If
-                    if i = UBound(ip_list) then
-                        formatted_list = formatted_list & "    </server>"
-                    Else
-                        formatted_list = formatted_list & "    </server>" & vbCrLf
-                    End If
-            next
-            strText = re.Replace(strText, formatted_list)
-        Else
-            If WAZUH_PROTOCOL <> "" Then
-                Set re = new regexp
-                re.Pattern = "<protocol>.*</protocol>"
-                strText = re.Replace(strText, "      <protocol>" & LCase(protocol_list(0)) & "</protocol>")
-            End If
-        End If
-
-        If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
-            If InStr(strText, "<port>") > 0 Then
-                strText = Replace(strText, "<port>1514</port>", "<port>" & WAZUH_MANAGER_PORT & "</port>")
+                        if i = UBound(ip_list) then
+                            formatted_list = formatted_list & "    </server>"
+                        Else
+                            formatted_list = formatted_list & "    </server>" & vbCrLf
+                        End If
+                next
+                strText = re.Replace(strText, formatted_list)
+            Else
+                If WAZUH_PROTOCOL <> "" Then
+                    Set re = new regexp
+                    re.Pattern = "<protocol>.*</protocol>"
+                    strText = re.Replace(strText, "      <protocol>" & LCase(protocol_list(0)) & "</protocol>")
+                End If
             End If
 
-        End If
+            If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
+                If InStr(strText, "<port>") > 0 Then
+                    strText = Replace(strText, "<port>1514</port>", "<port>" & WAZUH_MANAGER_PORT & "</port>")
+                End If
 
-        If WAZUH_KEEP_ALIVE_INTERVAL <> "" Then
-            If InStr(strText, "<notify_time>") > 0 Then
-                Set re = new regexp
-                re.Pattern = "<notify_time>.*</notify_time>"
-                re.Global = True
-                strText = re.Replace(strText, "<notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>")
             End If
-        End If
 
-        If WAZUH_TIME_RECONNECT <> "" Then 'TODO fix the - and use _
-            If InStr(strText, "<time-reconnect>") > 0 Then
-                Set re = new regexp
-                re.Pattern = "<time-reconnect>.*</time-reconnect>"
-                re.Global = True
-                strText = re.Replace(strText, "<time-reconnect>" & WAZUH_TIME_RECONNECT & "</time-reconnect>")
+            If WAZUH_KEEP_ALIVE_INTERVAL <> "" Then
+                If InStr(strText, "<notify_time>") > 0 Then
+                    Set re = new regexp
+                    re.Pattern = "<notify_time>.*</notify_time>"
+                    re.Global = True
+                    strText = re.Replace(strText, "<notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>")
+                End If
             End If
-        End If
-    End If
-    
-    If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
-        enrollment_list = "    <enrollment>" & vbCrLf
-        enrollment_list = enrollment_list & "        <enabled>yes</enabled>" & vbCrLf
-        enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf
-        enrollment_list = enrollment_list & "  </client>" & vbCrLf
 
-        strText = Replace(strText, "  </client>", enrollment_list)
-
-        If WAZUH_REGISTRATION_SERVER <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
-        End If  
-        
-        If WAZUH_REGISTRATION_PORT <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
+            If WAZUH_TIME_RECONNECT <> "" Then 'TODO fix the - and use _
+                If InStr(strText, "<time-reconnect>") > 0 Then
+                    Set re = new regexp
+                    re.Pattern = "<time-reconnect>.*</time-reconnect>"
+                    re.Global = True
+                    strText = re.Replace(strText, "<time-reconnect>" & WAZUH_TIME_RECONNECT & "</time-reconnect>")
+                End If
+            End If
         End If
         
-        If WAZUH_REGISTRATION_PASSWORD <> "" Then
-            Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
-            objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
-            objFile.Close
-            strText = Replace(strText, "    </enrollment>", "        <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
+        If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
+            enrollment_list = "    <enrollment>" & vbCrLf
+            enrollment_list = enrollment_list & "        <enabled>yes</enabled>" & vbCrLf
+            enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf
+            enrollment_list = enrollment_list & "  </client>" & vbCrLf
+
+            strText = Replace(strText, "  </client>", enrollment_list)
+
+            If WAZUH_REGISTRATION_SERVER <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
+            End If  
+            
+            If WAZUH_REGISTRATION_PORT <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
+            End If
+            
+            If WAZUH_REGISTRATION_PASSWORD <> "" Then
+                Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
+                objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
+                objFile.Close
+                strText = Replace(strText, "    </enrollment>", "        <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
+            End If
+
+            If WAZUH_REGISTRATION_CA <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
+            End If
+
+            If WAZUH_REGISTRATION_CERTIFICATE <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
+            End If
+
+            If WAZUH_REGISTRATION_KEY <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
+            End If
+
+            If WAZUH_AGENT_NAME <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
+            End If
+
+            If WAZUH_AGENT_GROUP <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
+            End If
+
+            If ENROLLMENT_DELAY <> "" Then
+                strText = Replace(strText, "    </enrollment>", "        <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
+            End If
+
         End If
 
-        If WAZUH_REGISTRATION_CA <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
-        End If
+        ' Writing the ossec.conf file
+        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+        objFile.WriteLine strText
+        objFile.Close
 
-        If WAZUH_REGISTRATION_CERTIFICATE <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
-        End If
+        If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
 
-        If WAZUH_REGISTRATION_KEY <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
-        End If
+            If objFSO.fileExists(home_dir & "default-local_internal_options.conf") Then
+                ' Reading default-local_internal_options.conf file
+                Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
+                strText = objFile.ReadAll
+                objFile.Close
 
-        If WAZUH_AGENT_NAME <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
-        End If
+                ' Writing the local_internal_options.conf file
+                Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
+                objFile.WriteLine strText
+                objFile.Close
+            Else
+                Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
+                objFile.WriteLine("# local_internal_options.conf")
+                objFile.WriteLine("#")
+                objFile.WriteLine("# This file should be handled with care. It contains")
+                objFile.WriteLine("# run time modifications that can affect the use")
+                objFile.WriteLine("# of OSSEC. Only change it if you know what you")
+                objFile.WriteLine("# are doing. Look first at ossec.conf")
+                objFile.WriteLine("# for most of the things you want to change.")
+                objFile.WriteLine("#")
+                objFile.WriteLine("# This file will not be overwritten during upgrades")
+                objFile.WriteLine("# but will be removed when the agent is un-installed.")
+                objFile.Close
+            End If
 
-        If WAZUH_AGENT_GROUP <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
-        End If
-
-        If ENROLLMENT_DELAY <> "" Then
-            strText = Replace(strText, "    </enrollment>", "        <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
-        End If
-
-    End If
-
-    ' Writing the ossec.conf file
-    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-    objFile.WriteLine strText
-    objFile.Close
-
-    If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
-
-        If objFSO.fileExists(home_dir & "default-local_internal_options.conf") Then
-            ' Reading default-local_internal_options.conf file
-            Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
-            strText = objFile.ReadAll
-            objFile.Close
-
-            ' Writing the local_internal_options.conf file
-            Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
-            objFile.WriteLine strText
-            objFile.Close
-        Else
-            Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
-            objFile.WriteLine("# local_internal_options.conf")
-            objFile.WriteLine("#")
-            objFile.WriteLine("# This file should be handled with care. It contains")
-            objFile.WriteLine("# run time modifications that can affect the use")
-            objFile.WriteLine("# of OSSEC. Only change it if you know what you")
-            objFile.WriteLine("# are doing. Look first at ossec.conf")
-            objFile.WriteLine("# for most of the things you want to change.")
-            objFile.WriteLine("#")
-            objFile.WriteLine("# This file will not be overwritten during upgrades")
-            objFile.WriteLine("# but will be removed when the agent is un-installed.")
-            objFile.Close
         End If
 
     End If
 
-End If
+        ' Replace templates
+        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
+        Set re = new regexp
 
-    ' Replace templates
-    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
-    Set re = new regexp
+        strNewText = objFile.ReadAll
+        objFile.Close
 
-    strNewText = objFile.ReadAll
-    objFile.Close
+        If objFSO.fileExists(home_dir & "profile.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "(    <crypto_method>.*</crypto_method>)"
+            re.Global = False
+            strNewText = re.Replace(strNewText, "    " & newline  & vbCrLf & "$1")
+        End If
 
-    If objFSO.fileExists(home_dir & "profile.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "profile.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "(    <crypto_method>.*</crypto_method>)"
-        re.Global = False
-        strNewText = re.Replace(strNewText, "    " & newline  & vbCrLf & "$1")
+        If objFSO.fileExists(home_dir & "header-comments.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "header-comments.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "<!--" & vbCrLf & "(.*" & vbCrLf & ")*-->"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "logging.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "logging.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "  <logging>" & vbCrLf & "(.*" & vbCrLf & ")*  </logging>"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "rootcheck.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "rootcheck.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "  <rootcheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </rootcheck>"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "wodle-syscollector.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "wodle-syscollector.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "  <wodle name=""syscollector"">(" & vbCrLf & "(.*))*</processes>\s*(</wodle>)?"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "syscheck.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "syscheck.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "  <syscheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </syscheck>"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "localfile-events.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "localfile-events.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "  <localfile>" & vbCrLf	& ".*Application(.*" & vbCrLf & ")*.*Security(.*" & vbCrLf & ")*.*System.*" & vbCrLf & ".*" & vbCrLf & "  </localfile>"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "sca.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "sca.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "  <sca>" & vbCrLf & "(.*" & vbCrLf & ")*  </sca>"
+            re.Global = False
+            strNewText = re.Replace(strNewText, newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "localfile-logs.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "localfile-logs.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "(<!-- Log analysis -->\s*)"
+            re.Global = False
+            strNewText = re.Replace(strNewText, "$1" & vbCrLf & newline)
+        End If
+
+        If objFSO.fileExists(home_dir & "localfile-commands.template") Then
+            Set file = objFSO.OpenTextFile(home_dir & "localfile-commands.template", ForReading)
+            newline = file.ReadAll
+            file.Close
+            re.Pattern = "(</localfile>\s*)(  <!--)"
+            re.Global = False
+            strNewText = re.Replace(strNewText, "$1" & newline & vbCrLf & "$2")
+        End If
+
+        ' Writing the ossec.conf file
+        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+        objFile.WriteLine strNewText
+        objFile.Close
+
+    If GetVersion() >= 6 Then
+        Set WshShell = CreateObject("WScript.Shell")
+
+        ' Remove last backslash from home_dir
+        install_dir = Left(home_dir, Len(home_dir) - 1)
+
+        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d /q"
+        WshShell.run setPermsInherit, 0, True
+
+        remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
+        WshShell.run remUserPerm, 0, True
+
+        ' Remove Everyone group for ossec.conf
+        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
+        WshShell.run remEveryonePerms, 0, True
     End If
 
-    If objFSO.fileExists(home_dir & "header-comments.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "header-comments.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "<!--" & vbCrLf & "(.*" & vbCrLf & ")*-->"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "logging.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "logging.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "  <logging>" & vbCrLf & "(.*" & vbCrLf & ")*  </logging>"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "rootcheck.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "rootcheck.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "  <rootcheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </rootcheck>"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "wodle-syscollector.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "wodle-syscollector.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "  <wodle name=""syscollector"">(" & vbCrLf & "(.*))*</processes>\s*(</wodle>)?"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "syscheck.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "syscheck.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "  <syscheck>" & vbCrLf & "(.*" & vbCrLf & ")*  </syscheck>"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "localfile-events.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "localfile-events.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "  <localfile>" & vbCrLf	& ".*Application(.*" & vbCrLf & ")*.*Security(.*" & vbCrLf & ")*.*System.*" & vbCrLf & ".*" & vbCrLf & "  </localfile>"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "sca.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "sca.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "  <sca>" & vbCrLf & "(.*" & vbCrLf & ")*  </sca>"
-        re.Global = False
-        strNewText = re.Replace(strNewText, newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "localfile-logs.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "localfile-logs.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "(<!-- Log analysis -->\s*)"
-        re.Global = False
-        strNewText = re.Replace(strNewText, "$1" & vbCrLf & newline)
-    End If
-
-    If objFSO.fileExists(home_dir & "localfile-commands.template") Then
-        Set file = objFSO.OpenTextFile(home_dir & "localfile-commands.template", ForReading)
-        newline = file.ReadAll
-        file.Close
-        re.Pattern = "(</localfile>\s*)(  <!--)"
-        re.Global = False
-        strNewText = re.Replace(strNewText, "$1" & newline & vbCrLf & "$2")
-    End If
-
-    ' Writing the ossec.conf file
-    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
-    objFile.WriteLine strNewText
-    objFile.Close
-
-If GetVersion() >= 6 Then
-	Set WshShell = CreateObject("WScript.Shell")
-
-	' Remove last backslash from home_dir
-	install_dir = Left(home_dir, Len(home_dir) - 1)
-
-	setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d /q"
-	WshShell.run setPermsInherit, 0, True
-
-	remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
-	WshShell.run remUserPerm, 0, True
-
-	' Remove Everyone group for ossec.conf
-	remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
-	WshShell.run remEveryonePerms, 0, True
-End If
-
-config = 0
+    config = 0
 
 End Function
 

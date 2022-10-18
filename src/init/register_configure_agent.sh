@@ -336,7 +336,7 @@ main () {
         ADDRESSES=( ${WAZUH_MANAGER//,/ } ) 
         PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
         # Get uniques values if all protocols are the same
-        if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( ! echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) ) || [ ${#PROTOCOLS[@]} -eq 0 ]; then
+        if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( ! echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) ) || [ ${#PROTOCOLS[@]} -eq 0 ] || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ; then
             ADDRESSES=( $(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ') ) 
         fi
         
