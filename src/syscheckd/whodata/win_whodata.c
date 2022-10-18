@@ -91,6 +91,7 @@ static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
 STATIC int restore_policies = 0;
+STATIC int policies_checked = 0;
 atomic_int_t whodata_end = ATOMIC_INT_INITIALIZER(0);
 EVT_HANDLE evt_subscribe_handle;  // Subscribe handle.
 
@@ -150,7 +151,7 @@ void replace_device_path(char **path);
 /**
  * @brief Function to check if a global policy is configured as Success.
  *
- * @return int 0 if the policies are configured properly, 0 if not and -1 if some function fail.
+ * @return int 0 if the policies are configured properly, 1 if not and -1 if some function fail.
  */
 int policy_check();
 
@@ -955,9 +956,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 break;
 
             case 4719:
-                mwarn(FIM_WHODATA_POLICY_CHANGE);
-                win_whodata_release_resources(&syscheck.wdata);
-
+                if (policies_checked > 1) {
+                    mwarn(FIM_WHODATA_POLICY_CHANGE);
+                    win_whodata_release_resources(&syscheck.wdata);
+                }
             break;
             default:
                 merror(FIM_ERROR_WHODATA_EVENTID);
@@ -1058,6 +1060,8 @@ int policy_check() {
                                     LsaFreeMemory(AuditEvents);
                                     LsaClose(PolicyHandle);
 
+                                    policies_checked++;
+
                                     return 0;
                                 }
                             }
@@ -1117,7 +1121,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
     while (atomic_int_get(&whodata_end) == 0) {
         // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
-        // Check the Audit Policy Change policy, if disabled, show a warning but keep whodata monitoring.
         if (policy_check() == 1) {
             mwarn(FIM_WHODATA_POLICY_CHANGE);
             win_whodata_release_resources(&syscheck.wdata);
