@@ -4,6 +4,7 @@ add_library(cmds STATIC
     src/cmdTest.cpp
     src/cmdKvdb.cpp
     src/cmdApiCatalog.cpp
+    src/cmdApiEnvironment.cpp
     src/apiclnt/connection.cpp
     src/stackExecutor.cpp
 )
