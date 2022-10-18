@@ -1,8 +1,8 @@
 ---
-name: cisco
+name: decoder/cisco/0
 
 parents:
-  - syslog-queue
+  - decoder/syslog-queue/0
 
 metadata:
   description: Generic Cisco Syslog decoder

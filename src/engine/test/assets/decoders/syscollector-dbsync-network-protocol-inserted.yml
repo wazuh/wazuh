@@ -1,7 +1,7 @@
-name: syscollector-dbsync-network-protocol-inserted
+name: decoder/syscollector-dbsync-network-protocol-inserted/0
 
 parents:
-  - syscollector-dbsync-base
+  - decoder/syscollector-dbsync-base/0
 
 check:
   - _json.type: +s_eq/dbsync_network_protocol

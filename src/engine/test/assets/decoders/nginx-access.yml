@@ -1,5 +1,5 @@
 ---
-name: nginx-access
+name: decoder/nginx-access/0
 
 metadata:
   description: Parses nginx access logs

@@ -1,7 +1,7 @@
-name: dbsync
+name: decoder/dbsync/0
 
 parents:
-  - json
+  - decoder/json/0
 
 check:
   - wazuh.queue: 53 # DBSYNC_MQ '5'

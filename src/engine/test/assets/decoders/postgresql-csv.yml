@@ -1,5 +1,5 @@
 ---
-name: postgresql-csv
+name: decoder/postgresql-csv/0
 
 metadata:
   description: Decoder for postgresql in csv log format

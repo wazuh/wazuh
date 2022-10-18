@@ -1,7 +1,7 @@
-name: syscollector-process-del
+name: decoder/syscollector-process-del/0
 
 parents:
-  - syscollector-process
+  - decoder/syscollector-process/0
 
 check:
   - _json.process: +not_exists
