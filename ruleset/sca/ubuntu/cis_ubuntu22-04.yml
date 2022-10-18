@@ -1108,30 +1108,14 @@ checks:
   # 2.1.1 Ensure time synchronization is in use
   # 2.1.1.1 Ensure a single time synchronization daemon is in use (Automated) - Not implemented
   # 2.1.2 Configure chrony
-  # 2.1.2.1 Ensure chrony is configured with authorized timeserver (Manual)
-  - id: 28550
-    title: "Ensure chrony is configured with authorized timeserver (Manual)"
-    description: "server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server's system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations"
-    remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file # chronyc reload sources OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony"
-    references: "1. chrony.conf(5) Manual . https://tf.nist.gov/tf-cgi/servers.cgi Additional Information: If pool and/or server directive(s) are set in a sources file in /etc/chrony/sources.d, the line: sourcedir /etc/chrony/sources.d must be present in /etc/chrony/chrony.conf"
-    compliance:
-      - cis: ["2.1.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
+  # 2.1.2.1 Ensure chrony is configured with authorized timeserver (Manual) - Not implemented
 
   # 2.1.2.2 Ensure chrony is running as user _chrony (Automated)
   - id: 28551
-    title: "Ensure chrony is running as user _chrony"
-    description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service"
-    rationale: "The chronyd service should run with only the required privileges"
-    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony Default Value: user _chrony"
+    title: "Ensure chrony is running as user _chrony."
+    description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
+    rationale: "The chronyd service should run with only the required privileges."
+    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony Default Value: user _chrony."
     compliance:
       - cis: ["2.1.2.2"]
       - cis_csc_v7: ["6.1"]
@@ -1148,10 +1132,10 @@ checks:
 
   # 2.1.2.3 Ensure chrony is enabled and running (Automated)
   - id: 28552
-    title: "Ensure chrony is enabled and running"
-    description: "chrony is a daemon for synchronizing the system clock across the network"
-    rationale: "chrony needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations"
-    remediation: "IF chrony is in use on the system, run the following commands: Run the following command to unmask chrony.service: # systemctl unmask chrony.service Run the following command to enable and start chrony.service: # systemctl --now enable chrony.service OR If another time synchronization service is in use on the system, run the following command to remove chrony: # apt purge chrony"
+    title: "Ensure chrony is enabled and running."
+    description: "chrony is a daemon for synchronizing the system clock across the network."
+    rationale: "chrony needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
+    remediation: "IF chrony is in use on the system, run the following commands: Run the following command to unmask chrony.service: # systemctl unmask chrony.service Run the following command to enable and start chrony.service: # systemctl --now enable chrony.service OR If another time synchronization service is in use on the system, run the following command to remove chrony: # apt purge chrony."
     compliance:
       - cis: ["2.1.2.3"]
       - cis_csc_v7: ["6.1"]
@@ -1172,112 +1156,114 @@ checks:
   # 2.1.4 Configure ntp
   # 2.1.4.1 Ensure ntp access control is configured (Automated)
   - id: 28553
-    title: "Ensure ntp access control is configured"
-    description: "ntp Access Control Commands: restrict address [mask mask] [ippeerlimit int] [flag ...] The address argument expressed in dotted-quad form is the address of a host or network. Alternatively, the address argument can be a valid host DNS name. The mask argument expressed in dotted-quad form defaults to 255.255.255.255, meaning that the address is treated as the address of an individual host. A default entry (address 0.0.0.0, mask 0.0.0.0) is always included and is always the first entry in the list. Note: the text string default, with no mask option, may be used to indicate the default entry. The ippeerlimit directive limits the number of peer requests for each IP to int, where a value of -1 means "unlimited", the current default. A value of 0 means "none". There would usually be at most 1 peering request per IP, but if the remote peering requests are behind a proxy there could well be more than 1 per IP. In the current implementation, flag always restricts access, i.e., an entry with no flags indicates that free access to the server is to be given. The flags are not orthogonal, in that more restrictive flags will often make less restrictive ones redundant. The flags can generally be classed into two categories, those which restrict time service and those which restrict informational queries and attempts to do run-time reconfiguration of the server. One or more of the following flags may be specified: kod - If this flag is set when an access violation occurs, a kiss-o'-death (KoD) packet is sent. KoD packets are rate limited to no more than one per second. If another KoD packet occurs within one second after the last one, the packet is dropped. limited - Deny service if the packet spacing violates the lower limits specified in the discard command. A history of clients is kept using the monitoring capability of ntpd. Thus, monitoring is always active as long as there is a restriction entry with the limited flag. lowpriotrap - Declare traps set by matching hosts to be low priority. The number of traps a server can maintain is limited (the current limit is 3). Traps are usually assigned on a first come, first served basis, with later trap requestors being denied service. This flag modifies the assignment algorithm by allowing low priority traps to be overridden by later requests for normal priority traps. noepeer - Deny ephemeral peer requests, even if they come from an authenticated source. Note that the ability to use a symmetric key for authentication may be restricted to one or more IPs or subnets via the third field of the ntp.keys file. This restriction is not enabled by default, to maintain backward compatibility. Expect noepeer to become the default in ntp-4.4. nomodify - Deny ntpq and ntpdc queries which attempt to modify the state of the server (i.e., run time reconfiguration). Queries which return information are permitted. noquery - Deny ntpq and ntpdc queries. Time service is not affected. nopeer - Deny unauthenticated packets which would result in mobilizing a new association. This includes broadcast and symmetric active packets when a configured association does not exist. It also includes pool associations, so if you want to use servers from a pool directive and also want to use nopeer by default, you'll want a restrict source ... line as well that does not include the nopeer directive. noserve - Deny all packets except ntpq and ntpdc queries. notrap - Decline to provide mode 6 control message trap service to matching hosts. The trap service is a subsystem of the ntpq control message protocol which is intended for use by remote event logging programs. notrust - Deny service unless the packet is cryptographically authenticated. ntpport - This is actually a match algorithm modifier, rather than a restriction flag. Its presence causes the restriction entry to be matched only if the source port in the packet is the standard NTP UDP port (123). Both ntpport and nonntpport may be specified. The ntpport is considered more specific and is sorted later in the list."
+    title: "Ensure ntp access control is configured."
+    description: "ntp Access Control Commands: restrict address [mask mask] [ippeerlimit int] [flag ...] The address argument expressed in dotted-quad form is the address of a host or network. Alternatively, the address argument can be a valid host DNS name. The mask argument expressed in dotted-quad form defaults to 255.255.255.255, meaning that the address is treated as the address of an individual host. A default entry (address 0.0.0.0, mask 0.0.0.0) is always included and is always the first entry in the list. Note: the text string default, with no mask option, may be used to indicate the default entry. The ippeerlimit directive limits the number of peer requests for each IP to int, where a value of -1 means \"unlimited\", the current default. A value of 0 means \"none\". There would usually be at most 1 peering request per IP, but if the remote peering requests are behind a proxy there could well be more than 1 per IP. In the current implementation, flag always restricts access, i.e., an entry with no flags indicates that free access to the server is to be given. The flags are not orthogonal, in that more restrictive flags will often make less restrictive ones redundant. The flags can generally be classed into two categories, those which restrict time service and those which restrict informational queries and attempts to do run-time reconfiguration of the server. One or more of the following flags may be specified: kod - If this flag is set when an access violation occurs, a kiss-o'-death (KoD) packet is sent. KoD packets are rate limited to no more than one per second. If another KoD packet occurs within one second after the last one, the packet is dropped. limited - Deny service if the packet spacing violates the lower limits specified in the discard command. A history of clients is kept using the monitoring capability of ntpd. Thus, monitoring is always active as long as there is a restriction entry with the limited flag. lowpriotrap - Declare traps set by matching hosts to be low priority. The number of traps a server can maintain is limited (the current limit is 3). Traps are usually assigned on a first come, first served basis, with later trap requestors being denied service. This flag modifies the assignment algorithm by allowing low priority traps to be overridden by later requests for normal priority traps. noepeer - Deny ephemeral peer requests, even if they come from an authenticated source. Note that the ability to use a symmetric key for authentication may be restricted to one or more IPs or subnets via the third field of the ntp.keys file. This restriction is not enabled by default, to maintain backward compatibility. Expect noepeer to become the default in ntp-4.4. nomodify - Deny ntpq and ntpdc queries which attempt to modify the state of the server (i.e., run time reconfiguration). Queries which return information are permitted. noquery - Deny ntpq and ntpdc queries. Time service is not affected. nopeer - Deny unauthenticated packets which would result in mobilizing a new association. This includes broadcast and symmetric active packets when a configured association does not exist. It also includes pool associations, so if you want to use servers from a pool directive and also want to use nopeer by default, you'll want a restrict source ... line as well that does not include the nopeer directive. noserve - Deny all packets except ntpq and ntpdc queries. notrap - Decline to provide mode 6 control message trap service to matching hosts. The trap service is a subsystem of the ntpq control message protocol which is intended for use by remote event logging programs. notrust - Deny service unless the packet is cryptographically authenticated. ntpport - This is actually a match algorithm modifier, rather than a restriction flag. Its presence causes the restriction entry to be matched only if the source port in the packet is the standard NTP UDP port (123). Both ntpport and nonntpport may be specified. The ntpport is considered more specific and is sorted later in the list."
     rationale: "If ntp is in use on the system, proper configuration is vital to ensuring time synchronization is accurate."
-    impact: ""
-    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: restrict -4 default kod notrap nomodify nopeer noquery limited restrict -6 default kod notrap nomodify nopeer noquery limited"
-    references: "1. http://www.ntp.org/ 2. ntp.conf(5) 3. ntpd(8)"
+    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: restrict -4 default kod notrap nomodify nopeer noquery limited restrict -6 default kod notrap nomodify nopeer noquery limited."
+    references:
+      - http://www.ntp.org/
+      - ntp.conf(5)
+      - ntpd(8)
     compliance:
       - cis: ["2.1.4.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.1"]
+      - cis_csc_v8: ["8.4"]
+      - cmmc_v2: ["AU.L2-3.3.7"]
+      - pci_321: ["10.4"]
+      - pci_4: ["10.6"," 10.6.1"," 10.6.2"," 10.6.3"]
+      - nist_853: ["AU-7"]
+      - soc_2: ["CC4.1"," CC5.2"]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28554
-    title: "Ensure ntp is configured with authorized timeserver (Manual)"
-    description: "The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons ":" in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations"
-    impact: ""
-    remediation: "Edit /etc/ntp.conf and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool mode: pool time.nist.gov iburst server mode: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run the following command to load the updated time sources into ntp running config: # systemctl restart ntp OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp"
-    references: "1. http://www.ntp.org/ 2. https://tf.nist.gov/tf-cgi/servers.cgi 3. ntp.conf(5) 4. ntpd(8)"
-    compliance:
-      - cis: ["2.1.4.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'f:/etc/ntp.conf -> r:restrict -4 default kod notrap nomodify nopeer noquery'
+      - 'f:/etc/ntp.conf -> r:restrict -6 default kod notrap nomodify nopeer noquery'
+
+  # 2.1.4.2 Ensure ntp is configured with authorized timeserver (Manual) - Not implemented
+  # 2.1.4.3 Ensure ntp is running as user ntp (Automated)
   - id: 28555
-    title: "Ensure ntp is running as user ntp"
-    description: "The ntp package is installed with a dedicated user account ntp. This account is granted the access required by the ntpd daemon Note: If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped This recommendation only applies if ntp is in use on the system Only one time synchronization method should be in use on the system"
-    rationale: "The ntpd daemon should run with only the required privlidge"
-    impact: ""
-    remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp Run the following command to restart ntp.servocee: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: user ntp"
-    references: "1. http://www.ntp.org/"
+    title: "Ensure ntp is running as user ntp."
+    description: "The ntp package is installed with a dedicated user account ntp. This account is granted the access required by the ntpd daemon Note: If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped This recommendation only applies if ntp is in use on the system Only one time synchronization method should be in use on the system."
+    rationale: "The ntpd daemon should run with only the required privlidge."
+    remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp Run the following command to restart ntp.servocee: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: user ntp."
+    references:
+      - http://www.ntp.org/
     compliance:
       - cis: ["2.1.4.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
+      - cis_csc_v7: ["6.1"]
+      - cis_csc_v8: ["8.4"]
+      - cmmc_v2: [ "AU.L2-3.3.7" ]
+      - pci_321: [ "10.4" ]
+      - pci_4: [ "10.6"," 10.6.1"," 10.6.2"," 10.6.3" ]
+      - nist_853: [ "AU-7" ]
+      - soc_2: [ "CC4.1"," CC5.2" ]
+    condition: any
     rules:
-      - ''    
-    
+      - 'f:/etc/init.d/ntp -> r:RUNASUSER=ntp'
+      - 'not c:ps -ef -> r:ntpd'
+
+  # 2.1.4.4 Ensure ntp is enabled and running (Automated)
   - id: 28556
-    title: "Ensure ntp is enabled and running"
-    description: "ntp is a daemon for synchronizing the system clock across the network"
-    rationale: "ntp needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations"
-    impact: ""
-    remediation: "IF ntp is in use on the system, run the following commands: Run the following command to unmask ntp.service: # systemctl unmask ntp.service Run the following command to enable and start ntp.service: # systemctl --now enable ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp: # apt purge ntp"
-    references: ""
+    title: "Ensure ntp is enabled and running."
+    description: "ntp is a daemon for synchronizing the system clock across the network."
+    rationale: "ntp needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
+    remediation: "IF ntp is in use on the system, run the following commands: Run the following command to unmask ntp.service: # systemctl unmask ntp.service Run the following command to enable and start ntp.service: # systemctl --now enable ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp: # apt purge ntp."
     compliance:
       - cis: ["2.1.4.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["6.1"]
+      - cis_csc_v8: ["8.4"]
+      - cmmc_v2: ["AU.L2-3.3.7"]
+      - pci_321: ["10.4"]
+      - pci_4: ["10.6"," 10.6.1"," 10.6.2"," 10.6.3"]
+      - nist_853: ["AU-7"]
+      - soc_2: ["CC4.1"," CC5.2"]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled ntp.service -> r:enabled'
+      - 'c:systemctl is-active ntp.service -> r:active'
+
+  # 2.2 Special Purpose Services
+  # 2.2.1 Ensure X Window System is not installed (Automated)
   - id: 28557
     title: "Ensure X Window System is not installed"
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     impact: "Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime, if provided by your distribution."
     remediation: "Remove the X Windows System packages: apt purge xserver-xorg*"
-    references: ""
     compliance:
       - cis: ["2.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["2.6"]
+      - cis_csc_v8: ["4.8"]
+      - mitre_techniques: ["T1203","T1210","T1543","T1543.002"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2: ["CM.L2-3.4.7"," CM.L2-3.4.8"," SC.L2-3.13.6"]
+      - pci_321: ["1.1.6"," 1.2.1"," 2.2.2"," 2.2.5"]
+      - pci_4: ["1.2.5"," 2.2.4"," 6.4.1"]
+      - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
-      - ''    
-    
+      - 'not c:dpkg-query -W xserver-xorg* -> r:installed'
+
+  # 2.2.2 Ensure Avahi Server is not installed (Automated)
   - id: 28558
-    title: "Ensure Avahi Server is not installed"
+    title: "Ensure Avahi Server is not installed."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
-    impact: ""
-    remediation: "Run the following commands to remove avahi-daemon: # systemctl stop avahi-daaemon.service # systemctl stop avahi-daemon.socket # apt purge avahi-daemon"
-    references: ""
+    remediation: "Run the following commands to remove avahi-daemon: # systemctl stop avahi-daaemon.service # systemctl stop avahi-daemon.socket # apt purge avahi-daemon."
     compliance:
       - cis: ["2.2.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.2"]
+      - cis_csc_v8: ["4.8"]
+      - mitre_techniques: ["T1203","T1210","T1543","T1543.002"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1042"]
+      - cmmc_v2: ["CM.L2-3.4.7"," CM.L2-3.4.8"," SC.L2-3.13.6"]
+      - pci_321: ["1.1.6"," 1.2.1"," 2.2.2"," 2.2.5"]
+      - pci_4: ["1.2.5"," 2.2.4"," 6.4.1"]
+      - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
-      - ''    
+      - 'not c:dpkg-query -W avahi-daemon -> r:installed'
     
   - id: 28559
     title: "Ensure CUPS is not installed"
