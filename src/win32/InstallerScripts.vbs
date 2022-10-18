@@ -92,15 +92,19 @@ public function config()
                 if ( UBound(protocol_list) >= UBound(ip_list) And UBound(unique_protocol_list) = 1 ) Or WAZUH_PROTOCOL <> "" Or ( UBound(unique_protocol_list) = 1 And LCase(unique_protocol_list(0)) = "tcp" ) Then
                     ip_list=get_unique_array_values(ip_list) 
                 End If
-                
+
                 not_replaced = True
                 formatted_list = vbCrLf
                 for i=0 to UBound(ip_list)
                         formatted_list = formatted_list & "    <server>" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                        if UBound(protocol_list) >= i then
-                            formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list(i)) & "</protocol>" & vbCrLf
+                        if UBound(protocol_list) >= i Then
+                            if protocol_list(i) <> "" Then
+                                formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list(i)) & "</protocol>" & vbCrLf
+                            Else
+                                formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
+                            End If
                         Else
                             formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
                         End If
