@@ -1406,7 +1406,7 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
     list
         Upgrade tasks results.
     """
-    result = list()
+    result = []
     agents_chunks = [eligible_agents[x:x + chunk_size] for x in range(0, len(eligible_agents), chunk_size)]
     for chunk in agents_chunks:
         response = core_upgrade_agents(command=command, agents_chunk=chunk, wpk_repo=kwargs.get('wpk_repo'),
@@ -1414,8 +1414,8 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
                                        use_http=kwargs.get('use_http'), file_path=kwargs.get('file_path'),
                                        installer=kwargs.get('installer'), get_result=kwargs.get('get_result'))
 
-        # In case of task manager communication error, try to create the upgrade tasks again with a shorter chunk size
-        # If the chunk size used is 1, return the response with the task manager communication error
+        # In case of task manager communication error, try to create the upgrade tasks again with a smaller chunk size
+        # If the used chunk size is 1, return the response with the task manager communication error
         if any(item['error'] == 4 for item in response['data']) and chunk_size != 1:
             return create_upgrade_tasks(eligible_agents, chunk_size // 2, command, **kwargs)
 
