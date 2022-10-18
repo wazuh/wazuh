@@ -1,11 +1,13 @@
 #include <memory>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include <CLI/CLI.hpp>
 
-#include <cmds/apiclnt/cmdApiCatalog.hpp>
+#include <cmds/cmdApiCatalog.hpp>
 #include <cmds/cmdGraph.hpp>
 #include <cmds/cmdKvdb.hpp>
 #include <cmds/cmdRun.hpp>
@@ -22,8 +24,7 @@ constexpr auto SUBCOMMAND_RUN = "run";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
-constexpr auto SUBCOMMAND_API = "api";
-constexpr auto SUBCOMMAND_API_CATALOG = "catalog";
+constexpr auto SUBCOMMAND_CATALOG = "catalog";
 
 // Graph file names
 constexpr auto ENV_DEF_DIR = ".";
@@ -50,10 +51,11 @@ int log_level;
 std::string kvdb_name;
 std::string kvdb_input_file;
 std::string kvdb_input_type;
-std::string apiMethod;
-std::string apiUri;
-std::string apiCatalogFormat;
-std::string apiCatalogContent;
+std::string catalogAction;
+std::string catalogName;
+bool catalogJsonFormat;
+bool catalogYmlFormat;
+std::string catalogContent;
 
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 {
@@ -227,37 +229,47 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
         ->required();
 }
 
-void configureSubCommandApi(std::shared_ptr<CLI::App> app)
+void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* api =
-        app->add_subcommand(args::SUBCOMMAND_API, "Run the Wazuh API integrated client.");
+    CLI::App* catalog = app->add_subcommand(args::SUBCOMMAND_CATALOG,
+                                            "Run the Wazuh Catalog integrated client.");
 
     // Endpoint
-    api->add_option(
-           "-a, --api_endpoint", args::apiEndpoint, "Engine api endpoint to connect.")
+    catalog->add_option("-e, --engine", args::apiEndpoint, "engine api address")
+        ->default_val("$WAZUH/socket")
         ->required();
 
     // Method
-    api->add_option("method", args::apiMethod, "HTTP method to use.")
+    catalog->add_option("action", args::catalogAction, "Catalog action")
         ->required()
-        ->check(CLI::IsMember({"GET", "POST", "PUT", "DELETE"}));
+        ->check(CLI::IsMember({"list", "get", "update", "create", "delete", "validate"}))
+        ->description(
+            "list <item-type>[/<item-id>]: List all items of the collection.\n"
+            "get <item-type>/<item-id>/<version>: Get an item.\n"
+            "update <item-type>/<item-id>/<version>: Update an item.\n"
+            "create <item-type>/<item-id>/<version>: Create an item.\n"
+            "delete <item-type>[/<item-id>/<version>]: Delete a collection or item.\n"
+            "validate <item-type>/<item-id>/<version>: Validate an item.");
 
-    // Uri
-    api->add_option("uri", args::apiUri, "URI to use in the request.")->required();
-
-    api->require_subcommand();
-    CLI::App* apiCatalog =
-        api->add_subcommand(args::SUBCOMMAND_API_CATALOG, "API Catalog");
+    // Name
+    catalog
+        ->add_option("name",
+                     args::catalogName,
+                     "Target name of the request, can be a collection, i.e.: "
+                     "<item-type>[/<item-id>] or a specific item, i.e.: "
+                     "<item-type>/<item-id>/<version>")
+        ->required();
 
     // format
-    apiCatalog
-        ->add_option(
-            "-f, --format", args::apiCatalogFormat, "Format of the catalog content.")
-        ->default_val("yaml")
-        ->check(CLI::IsMember({"json", "yaml"}));
+    catalog
+        ->add_flag(
+            "-j, --json", args::catalogJsonFormat, "Use Input/Output json format");
+    catalog
+        ->add_flag("-y, --yaml", args::catalogYmlFormat, "Use Input/Output yaml format")
+        ->excludes(catalog->get_option("--json"));
 
     // content
-    apiCatalog->add_option("content", args::apiCatalogContent, "Content of the catalog.")
+    catalog->add_option("content", args::catalogContent, "Content of the item.")
         ->default_val("");
 }
 
@@ -272,11 +284,34 @@ std::shared_ptr<CLI::App> configureCliApp()
     configureSubcommandLogtest(app);
     configureSubcommandGraph(app);
     configureSubcommandKvdb(app);
-    configureSubCommandApi(app);
+    configureSubCommandCatalog(app);
 
     return app;
 }
 } // namespace args
+
+int kbhit()
+{
+    // timeout structure passed into select
+    struct timeval tv;
+    // fd_set passed into select
+    fd_set fds;
+    // Set up the timeout.  here we can wait for 1 second
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    // Zero out the fd_set - make sure it's pristine
+    FD_ZERO(&fds);
+    // Set the FD that we want to read
+    FD_SET(STDIN_FILENO, &fds); // STDIN_FILENO is 0
+    // select takes the last file descriptor value + 1 in the fdset to check,
+    // the fdset for reads, writes, and errors.  We are only passing in reads.
+    // the last parameter is the timeout.  select will return if an FD is ready or
+    // the timeout has occurred
+    select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+    // return 0 if STDIN is not ready to be read.
+    return FD_ISSET(STDIN_FILENO, &fds);
+}
 
 int main(int argc, char* argv[])
 {
@@ -332,17 +367,29 @@ int main(int argc, char* argv[])
                   args::kvdb_input_file,
                   cmd::stringToInputType(args::kvdb_input_type));
     }
-    else if (app->get_subcommand(args::SUBCOMMAND_API)->parsed())
+    else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
     {
-        auto api = app->get_subcommand(args::SUBCOMMAND_API);
-        if (api->get_subcommand(args::SUBCOMMAND_API_CATALOG)->parsed())
+        // if The content is empty check if it was redirected to stdin
+        if (args::catalogContent.empty() && kbhit() != 0)
         {
-            cmd::apiclnt::catalog(args::apiEndpoint,
-                                  args::apiMethod,
-                                  args::apiUri,
-                                  args::apiCatalogFormat,
-                                  args::apiCatalogContent);
+            std::stringstream ss;
+            ss << std::cin.rdbuf();
+            args::catalogContent = ss.str();
         }
+        std::string formatString;
+        if (args::catalogYmlFormat)
+        {
+            formatString = "yaml";
+        }
+        else
+        {
+            formatString = "json";
+        }
+        cmd::catalog(args::apiEndpoint,
+                     args::catalogAction,
+                     args::catalogName,
+                     formatString,
+                     args::catalogContent);
     }
     else
     {

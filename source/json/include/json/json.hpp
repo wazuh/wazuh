@@ -15,6 +15,8 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include <error.hpp>
+
 namespace json
 {
 
@@ -331,7 +333,7 @@ public:
      */
     std::optional<std::string> str(std::string_view path) const;
 
-     /**
+    /**
      * @brief Get a copy of the Json object or nothing if the path not found.c++ diagram
      *
      * @param path The path to the object, default value is root object ("").
@@ -486,6 +488,15 @@ public:
      * - internal json type is not supported.
      */
     Type type(std::string_view path = "") const;
+
+    /**
+     * @brief Validate the Json agains the schema.
+     *
+     * @param schema The schema to validate against.
+     * @return std::optional<base::Error> Error message if validation failed, std::nullopt
+     * otherwise.
+     */
+    std::optional<base::Error> validate(const Json& schema) const;
 
     /************************************************************************************/
     // Setters
