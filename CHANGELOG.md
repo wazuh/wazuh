@@ -1,7 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-<<<<<<< HEAD
 ## [v4.4.0]
 
 ### Manager
@@ -154,7 +153,7 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
-## [v4.3.9]
+## [v4.3.9] - 2022-10-13 
 
 ### Agent
 
