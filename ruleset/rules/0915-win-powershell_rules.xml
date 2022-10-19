@@ -10,7 +10,7 @@
 
 <!-- Powershell Operational grouping -->
   <rule id="91801" level="0">
-    <if_sid>60000</if_sid>
+    <if_sid>60000,60009,60010,60011</if_sid>
     <field name="win.system.channel">^Microsoft-Windows-PowerShell/Operational$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the Powershell/Operational channel.</description>
