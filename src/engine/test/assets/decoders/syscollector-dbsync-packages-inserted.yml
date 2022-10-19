@@ -9,7 +9,7 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: ""
 
@@ -23,7 +23,7 @@ normalize:
     map:
       - _json.data.format: "NULL"
   - check:
-      - _json.data.format: +not_exists
+      - _json.data.format: +ef_not_exists
     map:
       - _json.data.format: ""
 
@@ -37,7 +37,7 @@ normalize:
     map:
       - _json.data.name: "NULL"
   - check:
-      - _json.data.name: +not_exists
+      - _json.data.name: +ef_not_exists
     map:
       - _json.data.name: ""
 
@@ -51,7 +51,7 @@ normalize:
     map:
       - _json.data.priority: "NULL"
   - check:
-      - _json.data.priority: +not_exists
+      - _json.data.priority: +ef_not_exists
     map:
       - _json.data.priority: ""
 
@@ -65,12 +65,12 @@ normalize:
     map:
       - _json.data.groups: "NULL"
   - check:
-      - _json.data.groups: +not_exists
+      - _json.data.groups: +ef_not_exists
     map:
       - _json.data.groups: ""
 
   - check:
-      - _json.data.size: +not_exists
+      - _json.data.size: +ef_not_exists
     map:
       - _json.data.size: ""
 
@@ -84,7 +84,7 @@ normalize:
     map:
       - _json.data.vendor: "NULL"
   - check:
-      - _json.data.vendor: +not_exists
+      - _json.data.vendor: +ef_not_exists
     map:
       - _json.data.vendor: ""
 
@@ -98,7 +98,7 @@ normalize:
     map:
       - _json.data.install_time: "NULL"
   - check:
-      - _json.data.install_time: +not_exists
+      - _json.data.install_time: +ef_not_exists
     map:
       - _json.data.install_time: ""
 
@@ -112,7 +112,7 @@ normalize:
     map:
       - _json.data.version: "NULL"
   - check:
-      - _json.data.version: +not_exists
+      - _json.data.version: +ef_not_exists
     map:
       - _json.data.version: ""
 
@@ -126,7 +126,7 @@ normalize:
     map:
       - _json.data.architecture: "NULL"
   - check:
-      - _json.data.architecture: +not_exists
+      - _json.data.architecture: +ef_not_exists
     map:
       - _json.data.architecture: ""
 
@@ -140,7 +140,7 @@ normalize:
     map:
       - _json.data.multiarch: "NULL"
   - check:
-      - _json.data.multiarch: +not_exists
+      - _json.data.multiarch: +ef_not_exists
     map:
       - _json.data.multiarch: ""
 
@@ -154,7 +154,7 @@ normalize:
     map:
       - _json.data.source: "NULL"
   - check:
-      - _json.data.source: +not_exists
+      - _json.data.source: +ef_not_exists
     map:
       - _json.data.source: ""
 
@@ -168,7 +168,7 @@ normalize:
     map:
       - _json.data.description: "NULL"
   - check:
-      - _json.data.description: +not_exists
+      - _json.data.description: +ef_not_exists
     map:
       - _json.data.description: ""
 
@@ -182,7 +182,7 @@ normalize:
     map:
       - _json.data.location: "NULL"
   - check:
-      - _json.data.location: +not_exists
+      - _json.data.location: +ef_not_exists
     map:
       - _json.data.location: ""
 
@@ -196,7 +196,7 @@ normalize:
     map:
       - _json.data.triaged: "NULL"
   - check:
-      - _json.data.triaged: +not_exists
+      - _json.data.triaged: +ef_not_exists
     map:
       - _json.data.triaged: ""
 
@@ -210,7 +210,7 @@ normalize:
     map:
       - _json.data.cpe: "NULL"
   - check:
-      - _json.data.cpe: +not_exists
+      - _json.data.cpe: +ef_not_exists
     map:
       - _json.data.cpe: ""
 
@@ -224,12 +224,12 @@ normalize:
     map:
       - _json.data.msu_name: "NULL"
   - check:
-      - _json.data.msu_name: +not_exists
+      - _json.data.msu_name: +ef_not_exists
     map:
       - _json.data.msu_name: ""
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: ""
 
@@ -243,7 +243,7 @@ normalize:
     map:
       - _json.data.item_id: "NULL"
   - check:
-      - _json.data.item_id: +not_exists
+      - _json.data.item_id: +ef_not_exists
     map:
       - _json.data.item_id: ""
 
@@ -252,7 +252,7 @@ normalize:
       - _query_response: +wdb_update/$_query
 
   - check:
-      - _query_response: +is_true
+      - _query_response: +t_is_true
     map:
       - _json.data.format: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.program.format: $_json.data.format
@@ -275,7 +275,7 @@ normalize:
       - _json.data.description: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.program.description: $_json.data.description
       - wazuh.syscollector.program.location: $_json.data.location
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _json.data: +delete_field
-      - _escaped_pipe_char: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _json.data: +ef_delete
+      - _escaped_pipe_char: +ef_delete

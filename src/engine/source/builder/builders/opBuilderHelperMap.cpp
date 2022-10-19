@@ -552,7 +552,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         });
 }
 
-// field: +s_fromArray/$<array_reference1>/<separator>
+// field: +s_from_array/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] =
@@ -618,7 +618,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
         });
 }
 
-// field: +s_fromHexa/$<hex_reference>
+// field: +s_from_hexa/$<hex_reference>
 base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] =
@@ -698,7 +698,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
         });
 }
 
-// field: +s_hex_to_number/$ref
+// field: +s_hex_to_num/$ref
 base::Expression opBuilderHelperHexToNumber(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] =
@@ -1108,7 +1108,7 @@ base::Expression opBuilderHelperMerge(const std::any& definition)
 //*             JSON tranform                     *
 //*************************************************
 
-// field: +delete_field
+// field: +ef_delete
 base::Expression opBuilderHelperDeleteField(const std::any& definition)
 {
     // Extract parameters from any
@@ -1142,7 +1142,7 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         });
 }
 
-// field: +rename_field/$sourceField
+// field: +ef_rename/$sourceField
 base::Expression opBuilderHelperRenameField(const std::any& definition)
 {
     // Extract parameters from any
@@ -1287,7 +1287,7 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition) 
 //*              Checksum and hash                *
 //*************************************************
 
-// field: +hash_sha1/<string1>|<string_reference1>
+// field: +h_sha1/<string1>|<string_reference1>
 base::Expression opBuilderHelperHashSHA1(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);

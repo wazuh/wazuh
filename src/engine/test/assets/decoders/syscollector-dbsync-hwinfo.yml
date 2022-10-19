@@ -9,7 +9,7 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: "NULL"
 
@@ -23,12 +23,12 @@ normalize:
     map:
       - _json.data.board_serial: "NULL"
   - check:
-      - _json.data.board_serial: +not_exists
+      - _json.data.board_serial: +ef_not_exists
     map:
       - _json.data.board_serial: "NULL"
 
   - check:
-      - _json.data.cpu_name: +not_exists
+      - _json.data.cpu_name: +ef_not_exists
     map:
       - _json.data.cpu_name: "NULL"
 
@@ -44,32 +44,32 @@ normalize:
       - _json.data.cpu_name: "NULL"
 
   - check:
-      - _json.data.cpu_cores: +not_exists
+      - _json.data.cpu_cores: +ef_not_exists
     map:
       - _json.data.cpu_cores: "NULL"
 
   - check:
-      - _json.data.cpu_mhz: +not_exists
+      - _json.data.cpu_mhz: +ef_not_exists
     map:
       - _json.data.cpu_mhz: "NULL"
 
   - check:
-      - _json.data.ram_total: +not_exists
+      - _json.data.ram_total: +ef_not_exists
     map:
       - _json.data.ram_total: "NULL"
 
   - check:
-      - _json.data.ram_free: +not_exists
+      - _json.data.ram_free: +ef_not_exists
     map:
       - _json.data.ram_free: "NULL"
 
   - check:
-      - _json.data.ram_usage: +not_exists
+      - _json.data.ram_usage: +ef_not_exists
     map:
       - _json.data.ram_usage: "NULL"
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: "NULL"
 
@@ -93,9 +93,9 @@ normalize:
       - wazuh.syscollector.hardware.ram_total: $_array_of_field/4
       - wazuh.syscollector.hardware.ram_free": $_array_of_field/5
       - wazuh.syscollector.hardware.ram_usage: $_array_of_field/6
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

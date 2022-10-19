@@ -25,7 +25,7 @@ TEST(opBuilderHelperNetInfoTest, Builds)
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"saveNetInfoIPv4"},
+        std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {"$agentID", "$scanId", "$name", "$array"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperSaveNetInfoIPv4(tuple));
@@ -35,7 +35,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"saveNetInfoIPv6"},
+        std::string {"sysc_ni_save_ipv6"},
         std::vector<std::string> {"parameter", "agentID", "scanId", "name"});
 
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
@@ -45,7 +45,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_referen
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"saveNetInfoIPv6"},
+        std::string {"sysc_ni_save_ipv6"},
         std::vector<std::string> {"$agentID", "$scanId", "$name", "array"});
 
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
@@ -55,7 +55,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"saveNetInfoIPv6"},
+        std::string {"sysc_ni_save_ipv6"},
         std::vector<std::string> {"$agentID", "$scanId", "$name", "$array", "$array2"});
 
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
@@ -63,12 +63,13 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity
 
 TEST(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -112,12 +113,13 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
 
 TEST(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -160,12 +162,13 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
 
 TEST(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -194,12 +197,13 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -271,12 +275,13 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -334,17 +339,17 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getBool("/field").value());
-
 }
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -412,12 +417,13 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_event)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv6"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv6"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv6"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv6"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -479,12 +485,13 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_others)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -557,12 +564,13 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_othe
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wrong_type)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -639,12 +647,13 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
 
 TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv4"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv4"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv4"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv4"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"(
@@ -714,12 +723,13 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
 
 TEST(opBuilderHelperNetInfoTest, False_result_when_no_address)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"saveNetInfoIPv6"},
-                                 std::vector<std::string> {"$agent.id",
-                                                           "$event.original.ID",
-                                                           "$event.original.iface.name",
-                                                           "$event.original.iface.IPv6"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"sysc_ni_save_ipv6"},
+                        std::vector<std::string> {"$agent.id",
+                                                  "$event.original.ID",
+                                                  "$event.original.iface.name",
+                                                  "$event.original.iface.IPv6"});
 
     const auto event1 = std::make_shared<json::Json>(
         R"({

@@ -9,7 +9,7 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: ""
 
@@ -23,12 +23,12 @@ normalize:
     map:
       - _json.data.board_serial: "NULL"
   - check:
-      - _json.data.board_serial: +not_exists
+      - _json.data.board_serial: +ef_not_exists
     map:
       - _json.data.board_serial: ""
 
   - check:
-      - _json.data.cpu_name: +not_exists
+      - _json.data.cpu_name: +ef_not_exists
     map:
       - _json.data.cpu_name: ""
 
@@ -43,32 +43,32 @@ normalize:
       - _json.data.cpu_name: "NULL"
 
   - check:
-      - _json.data.cpu_cores: +not_exists
+      - _json.data.cpu_cores: +ef_not_exists
     map:
       - _json.data.cpu_cores: ""
 
   - check:
-      - _json.data.cpu_mhz: +not_exists
+      - _json.data.cpu_mhz: +ef_not_exists
     map:
       - _json.data.cpu_mhz: ""
 
   - check:
-      - _json.data.ram_total: +not_exists
+      - _json.data.ram_total: +ef_not_exists
     map:
       - _json.data.ram_total: ""
 
   - check:
-      - _json.data.ram_free: +not_exists
+      - _json.data.ram_free: +ef_not_exists
     map:
       - _json.data.ram_free: ""
 
   - check:
-      - _json.data.ram_usage: +not_exists
+      - _json.data.ram_usage: +ef_not_exists
     map:
       - _json.data.ram_usage: ""
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: ""
 
@@ -77,7 +77,7 @@ normalize:
       - _query_response: +wdb_update/$_query
 
   - check:
-      - _query_response: +is_true
+      - _query_response: +t_is_true
     map:
       - _json.data.board_serial: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.hardware.serial: $_json.data.board_serial
@@ -88,7 +88,7 @@ normalize:
       - wazuh.syscollector.hardware.ram_total: $_json.data.ram_total
       - wazuh.syscollector.hardware.ram_free": $_json.data.ram_free
       - wazuh.syscollector.hardware.ram_usage: $_json.data.ram_usage
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _json.data: +delete_field
-      - _escaped_pipe_char: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _json.data: +ef_delete
+      - _escaped_pipe_char: +ef_delete

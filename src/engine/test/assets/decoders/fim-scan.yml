@@ -6,7 +6,7 @@ parents:
 
 check:
   - _json.type: +s_starts/scan
-  - _json.data.timestamp: +is_number
+  - _json.data.timestamp: +t_is_num
 
 normalize:
   - check:

@@ -18,17 +18,17 @@ normalize:
     map:
       - _json.data.iface: "NULL"
   - check:
-      - _json.data.iface: +not_exists
+      - _json.data.iface: +ef_not_exists
     map:
       - _json.data.iface: "NULL"
 
   - check:
-      - _json.data.type: +not_exists
+      - _json.data.type: +ef_not_exists
     map:
       - _json.data.type: "NULL"
 
   - check:
-      - _json.data.gateway: +not_exists
+      - _json.data.gateway: +ef_not_exists
     map:
       - _json.data.gateway: "NULL"
 
@@ -42,7 +42,7 @@ normalize:
     map:
       - _json.data.dhcp: "NULL"
   - check:
-      - _json.data.dhcp: +not_exists
+      - _json.data.dhcp: +ef_not_exists
     map:
       - _json.data.dhcp: "NULL"
 
@@ -56,17 +56,17 @@ normalize:
     map:
       - _json.data.metric: "NULL"
   - check:
-      - _json.data.metric: +not_exists
+      - _json.data.metric: +ef_not_exists
     map:
       - _json.data.metric: "NULL"
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: "NULL"
 
   - check:
-      - _json.data.item_id: +not_exists
+      - _json.data.item_id: +ef_not_exists
     map:
       - _json.data.item_id: "NULL"
 
@@ -89,9 +89,9 @@ normalize:
       - wazuh.syscollector.netinfo.proto.dhcp: $_array_of_field/3
       - _array_of_field/4: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.netinfo.proto.metric: $_array_of_field/4
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

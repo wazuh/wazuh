@@ -12,7 +12,7 @@ metadata:
     - v4.0.4
 
 check:
-  - _json.flow_id: +exists
+  - _json.flow_id: +ef_exists
 
 normalize:
   - map:

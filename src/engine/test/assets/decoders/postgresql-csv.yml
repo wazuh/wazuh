@@ -11,10 +11,10 @@ metadata:
 
 check:
   - wazuh.queue: 49
-  - event.original: +exists
+  - event.original: +ef_exists
 
 parse:
-  logql:
+  logpar:
       # 1992-07-10 01:07:24.374 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"CHECKPOINT",1992-07-10 01:06:20 UTC,3/0,0,LOG,00000,"duration: 15.136 ms  statement: checkpoint;",,,,,,,,,"psql","client backend"
       # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,,0,LOG,00000,"disconnection: session time: 0:00:22.123 user=postgres database=postgres host=192.191.190.189 port=45678",,,,,,,,,"psql","client backend"
       # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,3/4,0,FATAL,25P03,"terminating connection due to idle-in-transaction timeout",,,,,,,,,"psql","client backend"
@@ -44,22 +44,22 @@ normalize:
       - _tmp.timestamp_array: "+s_to_array/$timestamp/ "
       - event.timezone: $_tmp.timestamp_array/2
 
-      - log.level: +rename_field/$_csv.log_level
-      - postgresql.internal_query: +rename_field/$_csv.internal_query
-      - postgresql.log.application_name: +rename_field/$_csv.log_application_name
-      - postgresql.log.backend_type: +rename_field/$_csv.log_backend_type
-      - postgresql.log.command_tag: +rename_field/$_csv.log_command_tag
-      - postgresql.log.context: +rename_field/$_csv.log_context
-      - postgresql.log.database: +rename_field/$_csv.log_database
-      - postgresql.log.detail: +rename_field/$_csv.log_detail
-      - postgresql.log.hint: +rename_field/$_csv.log_hint
-      - postgresql.log.location: +rename_field/$_csv.log_location
-      - postgresql.log.query: +rename_field/$_csv.log_query
-      - postgresql.log.session_id: +rename_field/$_csv.log_session_id
-      - postgresql.log.session_line_num: +rename_field/$_csv.session_line_num # TODO: this must be a long
-      - postgresql.log.session_start_time: +rename_field/$_csv.log_session_start_time
-      - postgresql.log.sql_state_code: +rename_field/$_csv.log_sql_state_code
-      - postgresql.log.transaction_id: +rename_field/$_csv.log_transaction_id
-      - postgresql.log.virtual_transaction_id: +rename_field/$_csv.log_virtual_transaction_id
-      - process.pid: +rename_field/$_csv.process_pid
-      - user.name: +rename_field/$_csv.user_name
+      - log.level: +ef_rename/$_csv.log_level
+      - postgresql.internal_query: +ef_rename/$_csv.internal_query
+      - postgresql.log.application_name: +ef_rename/$_csv.log_application_name
+      - postgresql.log.backend_type: +ef_rename/$_csv.log_backend_type
+      - postgresql.log.command_tag: +ef_rename/$_csv.log_command_tag
+      - postgresql.log.context: +ef_rename/$_csv.log_context
+      - postgresql.log.database: +ef_rename/$_csv.log_database
+      - postgresql.log.detail: +ef_rename/$_csv.log_detail
+      - postgresql.log.hint: +ef_rename/$_csv.log_hint
+      - postgresql.log.location: +ef_rename/$_csv.log_location
+      - postgresql.log.query: +ef_rename/$_csv.log_query
+      - postgresql.log.session_id: +ef_rename/$_csv.log_session_id
+      - postgresql.log.session_line_num: +ef_rename/$_csv.session_line_num # TODO: this must be a long
+      - postgresql.log.session_start_time: +ef_rename/$_csv.log_session_start_time
+      - postgresql.log.sql_state_code: +ef_rename/$_csv.log_sql_state_code
+      - postgresql.log.transaction_id: +ef_rename/$_csv.log_transaction_id
+      - postgresql.log.virtual_transaction_id: +ef_rename/$_csv.log_virtual_transaction_id
+      - process.pid: +ef_rename/$_csv.process_pid
+      - user.name: +ef_rename/$_csv.user_name

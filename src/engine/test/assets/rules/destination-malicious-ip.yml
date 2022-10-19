@@ -1,7 +1,7 @@
 name: destination-malicious-ip
 
 check:
-  - destination.ip: +exists
+  - destination.ip: +ef_exists
   - destination.ip: +kvdb_match/malicious-ip
 
 normalize:

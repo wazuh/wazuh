@@ -9,12 +9,12 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: ""
 
   - check:
-      - _json.data.pid: +not_exists
+      - _json.data.pid: +ef_not_exists
     map:
       - _json.data.pid: ""
 
@@ -28,7 +28,7 @@ normalize:
     map:
       - _json.data.name: "NULL"
   - check:
-      - _json.data.name: +not_exists
+      - _json.data.name: +ef_not_exists
     map:
       - _json.data.name: ""
 
@@ -42,22 +42,22 @@ normalize:
     map:
       - _json.data.state: "NULL"
   - check:
-      - _json.data.state: +not_exists
+      - _json.data.state: +ef_not_exists
     map:
       - _json.data.state: ""
 
   - check:
-      - _json.data.ppid: +not_exists
+      - _json.data.ppid: +ef_not_exists
     map:
       - _json.data.ppid: ""
 
   - check:
-      - _json.data.utime: +not_exists
+      - _json.data.utime: +ef_not_exists
     map:
       - _json.data.utime: ""
 
   - check:
-      - _json.data.stime: +not_exists
+      - _json.data.stime: +ef_not_exists
     map:
       - _json.data.stime: ""
 
@@ -71,7 +71,7 @@ normalize:
     map:
       - _json.data.cmd: "NULL"
   - check:
-      - _json.data.cmd: +not_exists
+      - _json.data.cmd: +ef_not_exists
     map:
       - _json.data.cmd: ""
 
@@ -85,7 +85,7 @@ normalize:
     map:
       - _json.data.argvs: "NULL"
   - check:
-      - _json.data.argvs: +not_exists
+      - _json.data.argvs: +ef_not_exists
     map:
       - _json.data.argvs: ""
 
@@ -99,7 +99,7 @@ normalize:
     map:
       - _json.data.euser: "NULL"
   - check:
-      - _json.data.euser: +not_exists
+      - _json.data.euser: +ef_not_exists
     map:
       - _json.data.euser: ""
 
@@ -113,7 +113,7 @@ normalize:
     map:
       - _json.data.ruser: "NULL"
   - check:
-      - _json.data.ruser: +not_exists
+      - _json.data.ruser: +ef_not_exists
     map:
       - _json.data.ruser: ""
 
@@ -127,7 +127,7 @@ normalize:
     map:
       - _json.data.suser: "NULL"
   - check:
-      - _json.data.suser: +not_exists
+      - _json.data.suser: +ef_not_exists
     map:
       - _json.data.suser: ""
 
@@ -141,7 +141,7 @@ normalize:
     map:
       - _json.data.egroup: "NULL"
   - check:
-      - _json.data.egroup: +not_exists
+      - _json.data.egroup: +ef_not_exists
     map:
       - _json.data.egroup: ""
 
@@ -155,7 +155,7 @@ normalize:
     map:
       - _json.data.rgroup: "NULL"
   - check:
-      - _json.data.rgroup: +not_exists
+      - _json.data.rgroup: +ef_not_exists
     map:
       - _json.data.rgroup: ""
 
@@ -169,7 +169,7 @@ normalize:
     map:
       - _json.data.sgroup: "NULL"
   - check:
-      - _json.data.sgroup: +not_exists
+      - _json.data.sgroup: +ef_not_exists
     map:
       - _json.data.sgroup: ""
 
@@ -183,77 +183,77 @@ normalize:
     map:
       - _json.data.fgroup: "NULL"
   - check:
-      - _json.data.fgroup: +not_exists
+      - _json.data.fgroup: +ef_not_exists
     map:
       - _json.data.fgroup: ""
 
   - check:
-      - _json.data.priority: +not_exists
+      - _json.data.priority: +ef_not_exists
     map:
       - _json.data.priority: ""
 
   - check:
-      - _json.data.nice: +not_exists
+      - _json.data.nice: +ef_not_exists
     map:
       - _json.data.nice: ""
 
   - check:
-      - _json.data.size: +not_exists
+      - _json.data.size: +ef_not_exists
     map:
       - _json.data.size: ""
 
   - check:
-      - _json.data.vm_size: +not_exists
+      - _json.data.vm_size: +ef_not_exists
     map:
       - _json.data.vm_size: ""
 
   - check:
-      - _json.data.resident: +not_exists
+      - _json.data.resident: +ef_not_exists
     map:
       - _json.data.resident: ""
 
   - check:
-      - _json.data.share: +not_exists
+      - _json.data.share: +ef_not_exists
     map:
       - _json.data.share: ""
 
   - check:
-      - _json.data.start_time: +not_exists
+      - _json.data.start_time: +ef_not_exists
     map:
       - _json.data.start_time: ""
 
   - check:
-      - _json.data.pgrp: +not_exists
+      - _json.data.pgrp: +ef_not_exists
     map:
       - _json.data.pgrp: ""
 
   - check:
-      - _json.data.session: +not_exists
+      - _json.data.session: +ef_not_exists
     map:
       - _json.data.session: ""
 
   - check:
-      - _json.data.nlwp: +not_exists
+      - _json.data.nlwp: +ef_not_exists
     map:
       - _json.data.nlwp: ""
 
   - check:
-      - _json.data.tgid: +not_exists
+      - _json.data.tgid: +ef_not_exists
     map:
       - _json.data.tgid: ""
 
   - check:
-      - _json.data.tty: +not_exists
+      - _json.data.tty: +ef_not_exists
     map:
       - _json.data.tty: ""
 
   - check:
-      - _json.data.processor: +not_exists
+      - _json.data.processor: +ef_not_exists
     map:
       - _json.data.processor: ""
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: ""
 
@@ -262,7 +262,7 @@ normalize:
       - _query_response: +wdb_update/$_query
 
   - check:
-      - _query_response: +is_true
+      - _query_response: +t_is_true
     map:
       - _json.data.board_serial: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.process.pid: $_json.data.pid
@@ -304,7 +304,7 @@ normalize:
       - wazuh.syscollector.process.tgid: $_json.data.tgid
       - wazuh.syscollector.process.tty: $_json.data.tty
       - wazuh.syscollector.process.processor: $_json.data.processor
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _json.data: +delete_field
-      - _escaped_pipe_char: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _json.data: +ef_delete
+      - _escaped_pipe_char: +ef_delete

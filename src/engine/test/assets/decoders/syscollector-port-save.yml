@@ -4,66 +4,66 @@ parents:
   - decoder/syscollector-port/0
 
 check:
-  - _json.port: +exists
+  - _json.port: +ef_exists
 
 normalize:
   - check:
-      - _json.timestamp: +not_exists
+      - _json.timestamp: +ef_not_exists
     map:
       - _json.timestamp: "NULL"
 
   - check:
-      - _json.port.protocol: +not_exists
+      - _json.port.protocol: +ef_not_exists
     map:
       - _json.port.protocol: "NULL"
 
   - check:
-      - _json.port.local_ip: +not_exists
+      - _json.port.local_ip: +ef_not_exists
     map:
       - _json.port.local_ip: "NULL"
 
   - check:
-      - _json.port.local_port: +not_exists
+      - _json.port.local_port: +ef_not_exists
     map:
       - _json.port.local_port: "NULL"
 
   - check:
-      - _json.port.remote_ip: +not_exists
+      - _json.port.remote_ip: +ef_not_exists
     map:
       - _json.port.remote_ip: "NULL"
 
   - check:
-      - _json.port.remote_port: +not_exists
+      - _json.port.remote_port: +ef_not_exists
     map:
       - _json.port.remote_port: "NULL"
 
   - check:
-      - _json.port.tx_queue: +not_exists
+      - _json.port.tx_queue: +ef_not_exists
     map:
       - _json.port.tx_queue: "NULL"
 
   - check:
-      - _json.port.rx_queue: +not_exists
+      - _json.port.rx_queue: +ef_not_exists
     map:
       - _json.port.rx_queue: "NULL"
 
   - check:
-      - _json.port.inode: +not_exists
+      - _json.port.inode: +ef_not_exists
     map:
       - _json.port.inode: "NULL"
 
   - check:
-      - _json.port.state: +not_exists
+      - _json.port.state: +ef_not_exists
     map:
       - _json.port.state: "NULL"
 
   - check:
-      - _json.port.PID: +not_exists
+      - _json.port.PID: +ef_not_exists
     map:
       - _json.port.PID: "NULL"
 
   - check:
-      - _json.port.process: +not_exists
+      - _json.port.process: +ef_not_exists
     map:
       - _json.port.process: "NULL"
 

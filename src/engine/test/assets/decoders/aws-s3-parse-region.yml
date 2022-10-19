@@ -15,5 +15,5 @@ check:
   - wazuh.modules.aws.source: +s_eq/s3_server_access
 
 parse:
-  logql:
+  logpar:
     - _json.aws.host_header: <_>.<cloud.region>.<_>.<_>

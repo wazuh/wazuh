@@ -9,22 +9,22 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: "NULL"
 
   - check:
-      - _json.data.hotfix: +exists
+      - _json.data.hotfix: +ef_exists
     map:
       - _json.data.hotfix: +s_replace/|/$_escaped_pipe_char
 
   - check:
-      - _json.data.hotfix: +not_exists
+      - _json.data.hotfix: +ef_not_exists
     map:
       - _json.data.hotfix: "NULL"
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: "NULL"
 
@@ -46,9 +46,9 @@ normalize:
       #replace spcaped values
       - _json.data.hotfix: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.hotfix: $_json.data.hotfix
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

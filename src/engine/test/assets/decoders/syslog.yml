@@ -12,10 +12,10 @@ metadata:
   json_event_name: syslog
 
 check:
-  - event.original: +exists
+  - event.original: +ef_exists
 
 parse:
-  logql:
+  logpar:
     # BSD Syslog RFC 3164 standard
     - event.original: "<timestamp/SYSLOG> <host.hostname> <process.name>[<process.pid>]:<_/ignore/ ><message>"
     # BSD Syslog RFC 3164 no pid

@@ -55,22 +55,22 @@ normalize:
       - file.hash.sha256: $_json.aws.previousDigestSignature
 
   - check:
-      - _json.aws.userIdentity.accountId: +not_exists
+      - _json.aws.userIdentity.accountId: +ef_not_exists
     map:
       - cloud.account.id: $_json.aws.awsAccountId
 
   - check:
-      - _json.aws.userIdentity.accountId: +exists
+      - _json.aws.userIdentity.accountId: +ef_exists
     map:
       - cloud.account.id: $_json.aws.userIdentity.accountId
 
   - check:
-      - _json.aws.userIdentity.userName: +not_exists
+      - _json.aws.userIdentity.userName: +ef_not_exists
     map:
       - user.name: $_json.aws.userIdentity.sessionContext.sessionIssuer.userName
 
   - check:
-      - _json.aws.userIdentity.userName: +exists
+      - _json.aws.userIdentity.userName: +ef_exists
     map:
       - user.name: $_json.aws.userIdentity.userName
 
@@ -142,22 +142,22 @@ normalize:
 
       # TODO: check the "scripts" and assignments related to "flattened" fields
 
-      - _json: +delete_field
+      - _json: +ef_delete
 
   - check:
-      - aws.cloudtrail.error_code: +is_not_null
+      - aws.cloudtrail.error_code: +t_is_not_null
     map:
       - _aws_is_failure: true
       - event.outcome: failure
 
   - check:
-      - _aws_is_failure: +exists
-      - aws.cloudtrail.error_message: +is_not_null
+      - _aws_is_failure: +ef_exists
+      - aws.cloudtrail.error_message: +t_is_not_null
     map:
       - event.outcome: failure
 
   - check:
       - event.action: +s_eq/ConsoleLogin
-      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: +is_not_null
+      - aws.cloudtrail.flattened.response_elements.ConsoleLogin: +t_is_not_null
     map:
       - event.outcome: +s_lo/aws.cloudtrail.flattened.response_elements.ConsoleLogin

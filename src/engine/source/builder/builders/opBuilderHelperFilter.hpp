@@ -16,22 +16,22 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief Create `exists` helper function that filters events that contains specified
+ * @brief Create `ef_exists` helper function that filters events that contains specified
  * field.
  *
  * The filter checks if a field exists in the JSON event `e`.
  * @param definition The filter definition.
- * @return Expression The lifter with the `exists` filter.
+ * @return Expression The lifter with the `ef_exists` filter.
  */
 base::Expression opBuilderHelperExists(const std::any& definition);
 
 /**
- * @brief Create `not_exists` helper function that filters events that not contains
+ * @brief Create `ef_not_exists` helper function that filters events that not contains
  * specified field.
  *
  * The filter checks if a field not exists in the JSON event `e`.
  * @param definition The filter definition.
- * @return Expression The lifter with the `not_exists` filter.
+ * @return Expression The lifter with the `ef_not_exists` filter.
  */
 base::Expression opBuilderHelperNotExists(const std::any& definition);
 
@@ -248,7 +248,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition);
 //*************************************************
 
 /**
- * @brief Create `is_number` helper function that filters events which field is not of the
+ * @brief Create `t_is_num` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -257,7 +257,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition);
 base::Expression opBuilderHelperIsNumber(const std::any& definition);
 
 /**
- * @brief Create `is_not_number` helper function that filters events which field is not of
+ * @brief Create `t_is_not_num` helper function that filters events which field is not of
  * the expected type.
  *
  * @param definition The filter definition.
@@ -266,7 +266,7 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition);
 base::Expression opBuilderHelperIsNotNumber(const std::any& definition);
 
 /**
- * @brief Create `is_string` helper function that filters events which field is not of the
+ * @brief Create `t_is_string` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -275,7 +275,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition);
 base::Expression opBuilderHelperIsString(const std::any& definition);
 
 /**
- * @brief Create `is_not_string` helper function that filters events which field is not of
+ * @brief Create `t_is_not_string` helper function that filters events which field is not of
  * the expected type.
  *
  * @param definition The filter definition.
@@ -284,7 +284,7 @@ base::Expression opBuilderHelperIsString(const std::any& definition);
 base::Expression opBuilderHelperIsNotString(const std::any& definition);
 
 /**
- * @brief Create `is_bool` helper function that filters events which field is not of the
+ * @brief Create `t_is_bool` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -293,7 +293,7 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition);
 base::Expression opBuilderHelperIsBool(const std::any& definition);
 
 /**
- * @brief Create `is_not_bool` helper function that filters events which field is not of
+ * @brief Create `t_is_not_bool` helper function that filters events which field is not of
  * the expected type.
  *
  * @param definition The filter definition.
@@ -302,7 +302,7 @@ base::Expression opBuilderHelperIsBool(const std::any& definition);
 base::Expression opBuilderHelperIsNotBool(const std::any& definition);
 
 /**
- * @brief Create `is_array` helper function that filters events which field is not of the
+ * @brief Create `t_is_array` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -311,7 +311,7 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition);
 base::Expression opBuilderHelperIsArray(const std::any& definition);
 
 /**
- * @brief Create `is_not_array` helper function that filters events which field is not of
+ * @brief Create `t_is_not_array` helper function that filters events which field is not of
  * the expected type.
  *
  * @param definition The filter definition.
@@ -320,7 +320,7 @@ base::Expression opBuilderHelperIsArray(const std::any& definition);
 base::Expression opBuilderHelperIsNotArray(const std::any& definition);
 
 /**
- * @brief Create `is_object` helper function that filters events which field is not of the
+ * @brief Create `t_is_object` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -329,7 +329,7 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition);
 base::Expression opBuilderHelperIsObject(const std::any& definition);
 
 /**
- * @brief Create `is_not_object` helper function that filters events which field is not of
+ * @brief Create `t_is_not_object` helper function that filters events which field is not of
  * the expected type.
  *
  * @param definition The filter definition.
@@ -338,7 +338,7 @@ base::Expression opBuilderHelperIsObject(const std::any& definition);
 base::Expression opBuilderHelperIsNotObject(const std::any& definition);
 
 /**
- * @brief Create `is_null` helper function that filters events which field is not of the
+ * @brief Create `t_is_null` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -347,7 +347,7 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition);
 base::Expression opBuilderHelperIsNull(const std::any& definition);
 
 /**
- * @brief Create `is_not_null` helper function that filters events which field is not of
+ * @brief Create `t_is_not_null` helper function that filters events which field is not of
  * the expected type.
  *
  * @param definition The filter definition.
@@ -356,7 +356,7 @@ base::Expression opBuilderHelperIsNull(const std::any& definition);
 base::Expression opBuilderHelperIsNotNull(const std::any& definition);
 
 /**
- * @brief Create `is_true` helper function that filters events which field is not of the
+ * @brief Create `t_is_true` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.
@@ -365,7 +365,7 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition);
 base::Expression opBuilderHelperIsTrue(const std::any& definition);
 
 /**
- * @brief Create `is_false` helper function that filters events which field is not of the
+ * @brief Create `t_is_false` helper function that filters events which field is not of the
  * expected type.
  *
  * @param definition The filter definition.

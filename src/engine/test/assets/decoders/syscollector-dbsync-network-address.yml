@@ -18,37 +18,37 @@ normalize:
     map:
       - _json.data.iface: "NULL"
   - check:
-      - _json.data.iface: +not_exists
+      - _json.data.iface: +ef_not_exists
     map:
       - _json.data.iface: "NULL"
 
   - check:
-      - _json.data.proto: +not_exists
+      - _json.data.proto: +ef_not_exists
     map:
       - _json.data.proto: "NULL"
 
   - check:
-      - _json.data.address: +not_exists
+      - _json.data.address: +ef_not_exists
     map:
       - _json.data.address: "NULL"
 
   - check:
-      - _json.data.netmask: +not_exists
+      - _json.data.netmask: +ef_not_exists
     map:
       - _json.data.netmask: "NULL"
 
   - check:
-      - _json.data.broadcast: +not_exists
+      - _json.data.broadcast: +ef_not_exists
     map:
       - _json.data.broadcast: "NULL"
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: "NULL"
 
   - check:
-      - _json.data.item_id: +not_exists
+      - _json.data.item_id: +ef_not_exists
     map:
       - _json.data.item_id: "NULL"
 
@@ -69,9 +69,9 @@ normalize:
       - wazuh.syscollector.netinfo.addr.address: $_array_of_field/2
       - wazuh.syscollector.netinfo.addr.netmask: $_array_of_field/3
       - wazuh.syscollector.netinfo.addr.broadcast: $_array_of_field/4
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

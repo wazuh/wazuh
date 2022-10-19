@@ -36,7 +36,7 @@ TEST_F(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_not_match"));
 
     ASSERT_NO_THROW(Registry::getBuilder("helper.exists"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.not_exists"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.ef_not_exists"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.i_eq"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.i_ne"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.i_gt"));
@@ -61,6 +61,6 @@ TEST_F(RegisterTest, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_ext"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_append"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.s_to_array"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.s_hex_to_number"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.merge"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.s_hex_to_num"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.ef_merge"));
 }
