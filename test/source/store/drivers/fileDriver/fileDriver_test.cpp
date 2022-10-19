@@ -194,10 +194,14 @@ TEST_F(FileDriverTest, GetCollection)
     std::variant<json::Json, base::Error> result;
     ASSERT_NO_THROW(result = fDriver.get(TEST_NAME_COLLECTION));
     ASSERT_TRUE(std::holds_alternative<json::Json>(result));
-    json::Json expected(
-        fmt::format("[\"{}\",\"{}\"]", name2.fullName().c_str(), name1.fullName().c_str())
-            .c_str());
-    ASSERT_EQ(std::get<json::Json>(result), expected);
+    ASSERT_TRUE(std::get<json::Json>(result).isArray());
+    ASSERT_EQ(std::get<json::Json>(result).getArray().value().size(),2);
+    // Checking precence not order because it can't be assured
+    std::vector<std::string> expected{name2.fullName(), name1.fullName()};
+    auto val1 = std::get<json::Json>(result).getArray().value()[0];
+    auto val2 = std::get<json::Json>(result).getArray().value()[1];
+    ASSERT_FALSE(std::find(expected.begin(), expected.end(), val1.str()) != expected.end());
+    ASSERT_FALSE(std::find(expected.begin(), expected.end(), val2.str()) != expected.end());
 }
 
 TEST_F(FileDriverTest, GetFailNotExisting)

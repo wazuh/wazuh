@@ -11,11 +11,11 @@ check:
 
 normalize:
   - map:
-      event.type: +s_append/$_json.alert.action
-      event.category: +s_append/intrusion_detection
-      event.kind: alert
-      event.severity: $_json.alert.severity
-      message: $_json.alert.category
-      rule.category: $_json.alert.category
-      rule.id: $_json.alert.signature_id
-      rule.name: $_json.alert.signature
+      - event.type: +s_append/$_json.alert.action
+      - event.category: +s_append/intrusion_detection
+      - event.kind: alert
+      - event.severity: $_json.alert.severity
+      - message: $_json.alert.category
+      - rule.category: $_json.alert.category
+      - rule.id: $_json.alert.signature_id
+      - rule.name: $_json.alert.signature

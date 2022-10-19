@@ -11,43 +11,43 @@ normalize:
   - check:
       - _json.timestamp: +not_exists
     map:
-      _json.timestamp: "NULL"
+      - _json.timestamp: "NULL"
 
   - check:
       - _json.inventory.board_serial: +not_exists
     map:
-      _json.inventory.board_serial: "NULL"
+      - _json.inventory.board_serial: "NULL"
 
   - check:
       - _json.inventory.cpu_name: +not_exists
     map:
-      _json.inventory.cpu_name: "NULL"
+      - _json.inventory.cpu_name: "NULL"
 
   - check:
       - _json.inventory.cpu_cores: +not_exists
     map:
-      _json.inventory.cpu_cores: "NULL"
+      - _json.inventory.cpu_cores: "NULL"
 
   - check:
       - _json.inventory.cpu_MHz: +not_exists
     map:
-      _json.inventory.cpu_MHz: "NULL"
+      - _json.inventory.cpu_MHz: "NULL"
 
   - check:
       - _json.inventory.ram_total: +not_exists
     map:
-      _json.inventory.ram_total: "NULL"
+      - _json.inventory.ram_total: "NULL"
 
   - check:
       - _json.inventory.ram_free: +not_exists
     map:
-      _json.inventory.ram_free: "NULL"
+      - _json.inventory.ram_free: "NULL"
 
   - check:
       - _json.inventory.ram_usage: +not_exists
     map:
-      _json.inventory.ram_usage: "NULL"
+      - _json.inventory.ram_usage: "NULL"
 
   - map:
-      _query: +s_concat/agent /$agent.id/ hardware save /$_json.ID/|/$_json.timestamp/|/$_json.inventory.board_serial/|/$_json.inventory.cpu_name/|/$_json.inventory.cpu_cores/|/$_json.inventory.cpu_MHz/|/$_json.inventory.ram_total/|/$_json.inventory.ram_free/|/$_json.inventory.ram_usage
-      _query_response: +wdb_update/$_query
+      - _query: +s_concat/agent /$agent.id/ hardware save /$_json.ID/|/$_json.timestamp/|/$_json.inventory.board_serial/|/$_json.inventory.cpu_name/|/$_json.inventory.cpu_cores/|/$_json.inventory.cpu_MHz/|/$_json.inventory.ram_total/|/$_json.inventory.ram_free/|/$_json.inventory.ram_usage
+      - _query_response: +wdb_update/$_query

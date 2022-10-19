@@ -166,24 +166,24 @@ parse:
 
 normalize:
   - map:
-      observer.product: ASA
-      observer.type: firewall
-      cisco.asa.message_id: $event.code
-      event.action: firewall-rule
-      event.category: [ network ]
-      event.type: [ connection, firewall ]
+      - observer.product: ASA
+      - observer.type: firewall
+      - cisco.asa.message_id: $event.code
+      - event.action: firewall-rule
+      - event.category: [ network ]
+      - event.type: [ connection, firewall ]
       # Only one of the following will be set
-      source.ip: $source.address
-      source.host: $source.address
+      - source.ip: $source.address
+      - source.host: $source.address
       # Only one of the following will be set
-      destination.ip: $destination.address
-      destination.host: $destination.address
-      tags: +s_append/cisco-asa
+      - destination.ip: $destination.address
+      - destination.host: $destination.address
+      - tags: +s_append/cisco-asa
 
   - map:
-      related.ip: +s_append/$source.ip
+      - related.ip: +s_append/$source.ip
   - map:
-      related.ip: +s_append/$destination.ip
+      - related.ip: +s_append/$destination.ip
 
   - check: >-
       +exists/_outcome AND (
@@ -191,11 +191,11 @@ normalize:
       OR _outcome==permitted
       OR _outcome==allow)
     map:
-      event.outcome: allowed
+      - event.outcome: allowed
 
   - check:
       +exists/_outcome AND (
       _outcome==deny
       OR _outcome==Deny)
     map:
-      event.outcome: denied
+      - event.outcome: denied

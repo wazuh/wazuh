@@ -10,4 +10,4 @@ check:
 
 normalize:
   - map:
-      _escaped_pipe_char: "\uffff"
+      - _escaped_pipe_char: "\uffff"
