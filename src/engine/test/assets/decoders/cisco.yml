@@ -39,39 +39,39 @@ normalize:
       # host.os.platform: cisco-ios
       # host.os.type: cisco-ios
       # host.ip: wazuh.origin
-      observer.vendor: Cisco
-      service.type: "cisco"
-      log.source.address: $wazuh.origin
+      - observer.vendor: Cisco
+      - service.type: "cisco"
+      - log.source.address: $wazuh.origin
 
   - check:
       - event.severity: 0
     map:
-        log.level: "emergency"
+        - log.level: "emergency"
   - check:
       - event.severity: 1
     map:
-        log.level: "alert"
+        - log.level: "alert"
   - check:
       - event.severity: 2
     map:
-        log.level: "critical"
+        - log.level: "critical"
   - check:
       - event.severity: 3
     map:
-        log.level: "error"
+        - log.level: "error"
   - check:
       - event.severity: 4
     map:
-        log.level: "warning"
+        - log.level: "warning"
   - check:
       - event.severity: 5
     map:
-        log.level: "notice"
+        - log.level: "notice"
   - check:
       - event.severity: 6
     map:
-        log.level: "informational"
+        - log.level: "informational"
   - check:
       - event.severity: 7
     map:
-        log.level: "debug"
+        - log.level: "debug"

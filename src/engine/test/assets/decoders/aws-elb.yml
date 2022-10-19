@@ -81,39 +81,39 @@ parse:
 
 normalize:
   - map:
-      event.kind: event
-      event.dataset: aws
-      event.module: aws
-      cloud.provider: aws
-      service.type: aws
-      trace.id: $aws.elb.trace_id
-      aws.elb.action_executed: +s_to_array/$_tmp.actions_executed/,
-      aws.elb.target_port: "+s_to_array/$_tmp.target_port/ "
-      aws.elb.target_status_code: "+s_to_array/$_tmp.target_status_code/ "
-      event.end: $timestamp
-      tls.cipher: $aws.elb.ssl_cipher
+      - event.kind: event
+      - event.dataset: aws
+      - event.module: aws
+      - cloud.provider: aws
+      - service.type: aws
+      - trace.id: $aws.elb.trace_id
+      - aws.elb.action_executed: +s_to_array/$_tmp.actions_executed/,
+      - aws.elb.target_port: "+s_to_array/$_tmp.target_port/ "
+      - aws.elb.target_status_code: "+s_to_array/$_tmp.target_status_code/ "
+      - event.end: $timestamp
+      - tls.cipher: $aws.elb.ssl_cipher
       # TODO: process ssl_protocol once parse is avaliable on normalize
 
   - check:
       - http: +exists
     map:
-      aws.elb.protocol: http
-      event.category: +s_append/web
+      - aws.elb.protocol: http
+      - event.category: +s_append/web
 
   - check:
       - http.response.status_code: +i_lt/400
     map:
-      event.outcome: success
+      - event.outcome: success
 
   - check:
       - http.response.status_code: +i_ge/400
     map:
-      event.outcome: failure
+      - event.outcome: failure
 
   - check:
       - http: +not_exists
     map:
-      aws.elb.protocol: tcp
-      event.category: +s_append/network
+      - aws.elb.protocol: tcp
+      - event.category: +s_append/network
 
   #TODO: add uri and user_agent once parsers are fixed

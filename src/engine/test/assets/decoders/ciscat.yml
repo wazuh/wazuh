@@ -23,58 +23,58 @@ normalize:
   - check:
       - _json.scan_id: +not_exists
     map:
-      _json.scan_id: "NULL"
+      - _json.scan_id: "NULL"
 
   - check:
       - _json.cis.timestamp: +not_exists
     map:
-      _json.cis.timestamp: "NULL"
+      - _json.cis.timestamp: "NULL"
 
   - check:
       - _json.cis.benchmark: +not_exists
     map:
-      _json.cis.benchmark: "NULL"
+      - _json.cis.benchmark: "NULL"
 
   - check:
       - _json.cis.profile: +not_exists
     map:
-      _json.cis.profile: "NULL"
+      - _json.cis.profile: "NULL"
 
   - check:
       - _json.cis.pass: +not_exists
     map:
-      _json.cis.pass: "NULL"
+      - _json.cis.pass: "NULL"
 
   - check:
       - _json.cis.fail: +not_exists
     map:
-      _json.cis.fail: "NULL"
+      - _json.cis.fail: "NULL"
 
   - check:
       - _json.cis.error: +not_exists
     map:
-      _json.cis.error: "NULL"
+      - _json.cis.error: "NULL"
 
   - check:
       - _json.cis.notchecked: +not_exists
     map:
-      _json.cis.notchecked: "NULL"
+      - _json.cis.notchecked: "NULL"
 
   - check:
       - _json.cis.unknown: +not_exists
     map:
-      _json.cis.unknown: "NULL"
+      - _json.cis.unknown: "NULL"
 
   - check:
       - _json.cis.score: +exists
     map:
-      _json.cis.score: +s_trim/end/%
+      - _json.cis.score: +s_trim/end/%
 
   - check:
       - _json.cis.score: +not_exists
     map:
-      _json.cis.score: "NULL"
+      - _json.cis.score: "NULL"
 
   - map:
-      _query: +s_concat/agent /$agent.id/ ciscat save /$_json.scan_id/|/$_json.cis.timestamp/|/$_json.cis.benchmark/|/$_json.cis.profile/|/$_json.cis.pass/|/$_json.cis.fail/|/$_json.cis.error/|/$_json.cis.notchecked/|/$_json.cis.unknown/|/$_json.cis.score
-      _query_response: +wdb_update/$_query
+      - _query: +s_concat/agent /$agent.id/ ciscat save /$_json.scan_id/|/$_json.cis.timestamp/|/$_json.cis.benchmark/|/$_json.cis.profile/|/$_json.cis.pass/|/$_json.cis.fail/|/$_json.cis.error/|/$_json.cis.notchecked/|/$_json.cis.unknown/|/$_json.cis.score
+      - _query_response: +wdb_update/$_query
