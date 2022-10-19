@@ -137,12 +137,12 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
 
         auto itemObj = item.getObject().value();
         auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
-        auto logql = std::get<1>(itemObj[0]).getString().value();
+        auto logpar = std::get<1>(itemObj[0]).getString().value();
 
         ParserFn parseOp;
         try
         {
-            parseOp = hlp::getParserOp(logql);
+            parseOp = hlp::getParserOp(logpar);
         }
         catch (std::runtime_error& e)
         {
@@ -152,7 +152,7 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
         }
 
         // Traces
-        auto name = fmt::format("{}: {}", field, logql);
+        auto name = fmt::format("{}: {}", field, logpar);
         auto successTrace = fmt::format("{} -> Success", name);
 
         // field to be parsed not exists
@@ -168,7 +168,7 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
         try
         {
             parseExpression = base::Term<base::EngineOp>::create(
-                "parse.logql",
+                "parse.logpar",
                 [=, parserOp = std::move(parseOp)](base::Event event)
                 {
                     if (!event->exists(field))
@@ -202,13 +202,13 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
             throw std::runtime_error(fmt::format(
                 "[builder::opBuilderLogqlParser(json)] Exception creating [{}: {}]: {}",
                 field,
-                logql,
+                logpar,
                 e.what()));
         }
 
         parsersExpressions.push_back(parseExpression);
     }
 
-    return base::Or::create("parse.logql", parsersExpressions);
+    return base::Or::create("parse.logpar", parsersExpressions);
 }
 } // namespace builder::internals::builders

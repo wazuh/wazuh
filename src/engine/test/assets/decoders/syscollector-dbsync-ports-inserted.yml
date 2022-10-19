@@ -9,47 +9,47 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: ""
 
   - check:
-      - _json.data.protocol: +not_exists
+      - _json.data.protocol: +ef_not_exists
     map:
       - _json.data.protocol: ""
 
   - check:
-      - _json.data.local_ip: +not_exists
+      - _json.data.local_ip: +ef_not_exists
     map:
       - _json.data.local_ip: ""
 
   - check:
-      - _json.data.local_port: +not_exists
+      - _json.data.local_port: +ef_not_exists
     map:
       - _json.data.local_port: ""
 
   - check:
-      - _json.data.remote_ip: +not_exists
+      - _json.data.remote_ip: +ef_not_exists
     map:
       - _json.data.remote_ip: ""
 
   - check:
-      - _json.data.remote_port: +not_exists
+      - _json.data.remote_port: +ef_not_exists
     map:
       - _json.data.remote_port: ""
 
   - check:
-      - _json.data.tx_queue: +not_exists
+      - _json.data.tx_queue: +ef_not_exists
     map:
       - _json.data.tx_queue: ""
 
   - check:
-      - _json.data.rx_queue: +not_exists
+      - _json.data.rx_queue: +ef_not_exists
     map:
       - _json.data.rx_queue: ""
 
   - check:
-      - _json.data.inode: +not_exists
+      - _json.data.inode: +ef_not_exists
     map:
       - _json.data.inode: ""
 
@@ -63,12 +63,12 @@ normalize:
     map:
       - _json.data.state: "NULL"
   - check:
-      - _json.data.state: +not_exists
+      - _json.data.state: +ef_not_exists
     map:
       - _json.data.state: ""
 
   - check:
-      - _json.data.pid: +not_exists
+      - _json.data.pid: +ef_not_exists
     map:
       - _json.data.pid: ""
 
@@ -82,17 +82,17 @@ normalize:
     map:
       - _json.data.process: "NULL"
   - check:
-      - _json.data.process: +not_exists
+      - _json.data.process: +ef_not_exists
     map:
       - _json.data.process: ""
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: ""
 
   - check:
-      - _json.data.item_id: +not_exists
+      - _json.data.item_id: +ef_not_exists
     map:
       - _json.data.item_id: ""
 
@@ -101,7 +101,7 @@ normalize:
       - _query_response: +wdb_update/$_query
 
   - check:
-      - _query_response: +is_true
+      - _query_response: +t_is_true
     map:
       - wazuh.syscollector.port.protocol: $_json.data.protocol
       - wazuh.syscollector.port.local_ip: $_json.data.local_ip
@@ -116,7 +116,7 @@ normalize:
       - wazuh.syscollector.port.pid: $_json.data.pid
       - _json.data.process: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.port.process: $_json.data.process
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _json.data: +delete_field
-      - _escaped_pipe_char: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _json.data: +ef_delete
+      - _escaped_pipe_char: +ef_delete

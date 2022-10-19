@@ -120,9 +120,9 @@ normalize:
       - wazuh.syscollector.port.pid: $_array_of_field/9
       - _array_of_field/10: +s_replace/$_escaped_pipe_char/|
       - wazuh.syscollector.port.process: $_array_of_field/10
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

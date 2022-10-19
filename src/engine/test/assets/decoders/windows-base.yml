@@ -7,20 +7,20 @@ parents:
   - decoder/json/0
 
 check:
-  - _json.Message: +exists
-  - _json.Event: +exists
+  - _json.Message: +ef_exists
+  - _json.Event: +ef_exists
 
 parse:
-  logql:
+  logpar:
     - _json.Event: <_winlog/xml/windows>
 
 normalize:
   - map:
       # Base mapping, delete duplicated fields
       - winlog: $_winlog.Event
-      - _winlog: +delete_field
-      - _json: +delete_field
-      - winlog.event_data: +rename_field/$winlog.EventData
+      - _winlog: +ef_delete
+      - _json: +ef_delete
+      - winlog.event_data: +ef_rename/$winlog.EventData
 
       # Normalize System fields
       - timestamp: $winlog.System.TimeCreated.@SystemTime
@@ -39,5 +39,5 @@ normalize:
       - winlog.level: $winlog.System.Level.#text
 
       # Delete Reduntant and unused fields
-      - winlog.System: +delete_field
-      - winlog.@xmlns: +delete_field
+      - winlog.System: +ef_delete
+      - winlog.@xmlns: +ef_delete

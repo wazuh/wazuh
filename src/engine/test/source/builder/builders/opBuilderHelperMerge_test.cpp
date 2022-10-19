@@ -12,7 +12,7 @@ namespace bld = builder::internals::builders;
 TEST(OpBuilderHelperMerge, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$ref"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperMerge(tuple));
@@ -21,7 +21,7 @@ TEST(OpBuilderHelperMerge, Builds)
 TEST(OpBuilderHelperMerge, WrongSizeParameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$ref", "$ref2"});
 
     ASSERT_THROW(bld::opBuilderHelperMerge(tuple), std::runtime_error);
@@ -30,7 +30,7 @@ TEST(OpBuilderHelperMerge, WrongSizeParameters)
 TEST(OpBuilderHelperMerge, WrongTypeParameter)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"ref"});
 
     ASSERT_THROW(bld::opBuilderHelperMerge(tuple), std::runtime_error);
@@ -39,7 +39,7 @@ TEST(OpBuilderHelperMerge, WrongTypeParameter)
 TEST(OpBuilderHelperMerge, MergeObjectsRoot)
 {
     auto tuple = std::make_tuple(std::string {""},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);
@@ -52,7 +52,7 @@ TEST(OpBuilderHelperMerge, MergeObjectsRoot)
        }
     })");
 
-    json::Json expected{R"({
+    json::Json expected {R"({
        "field1": "new_value1",
        "field2": "value2",
        "field3": "value3"
@@ -66,7 +66,7 @@ TEST(OpBuilderHelperMerge, MergeObjectsRoot)
 TEST(OpBuilderHelperMerge, MergeObjectsNested)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);
@@ -81,7 +81,7 @@ TEST(OpBuilderHelperMerge, MergeObjectsNested)
        }
     })");
 
-    json::Json expected{R"({
+    json::Json expected {R"({
        "field": {
           "field1": "new_value1",
           "field2": "value2",
@@ -97,7 +97,7 @@ TEST(OpBuilderHelperMerge, MergeObjectsNested)
 TEST(OpBuilderHelperMerge, MergeArraysNested)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);
@@ -112,7 +112,7 @@ TEST(OpBuilderHelperMerge, MergeArraysNested)
        ]
     })");
 
-    json::Json expected{R"({
+    json::Json expected {R"({
        "field": [
           "value1",
           "value3",
@@ -128,7 +128,7 @@ TEST(OpBuilderHelperMerge, MergeArraysNested)
 TEST(OpBuilderHelperMerge, FailMergeDifferentTypes)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);
@@ -147,8 +147,8 @@ TEST(OpBuilderHelperMerge, FailMergeDifferentTypes)
     ASSERT_FALSE(result);
 
     tuple = std::make_tuple(std::string {"/to_merge"},
-                                 std::string {"+merge"},
-                                 std::vector<std::string> {"$field"});
+                            std::string {"+ef_merge"},
+                            std::vector<std::string> {"$field"});
     op = bld::opBuilderHelperMerge(tuple);
     result = op->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_FALSE(result);
@@ -157,7 +157,7 @@ TEST(OpBuilderHelperMerge, FailMergeDifferentTypes)
 TEST(OpBuilderHelperMerge, FailTargetNotFound)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);
@@ -175,7 +175,7 @@ TEST(OpBuilderHelperMerge, FailTargetNotFound)
 TEST(OpBuilderHelperMerge, FailReferenceNotFound)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);
@@ -193,7 +193,7 @@ TEST(OpBuilderHelperMerge, FailReferenceNotFound)
 TEST(OpBuilderHelperMerge, FailNotObjNotArray)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+merge"},
+                                 std::string {"+ef_merge"},
                                  std::vector<std::string> {"$to_merge"});
 
     auto op = bld::opBuilderHelperMerge(tuple);

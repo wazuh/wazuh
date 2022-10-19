@@ -5,5 +5,5 @@ check:
   - event.original: +s_starts/{
 
 parse:
-  logql:
+  logpar:
     - event.original: <_json/json>

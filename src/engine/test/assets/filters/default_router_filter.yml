@@ -2,7 +2,7 @@ name: default_router_filter
 parents:
   - rule_test
 allow:
-  # - queue: +exists
-  # - location: +exists
-  # - message: +exists
-  - nonexistentfield: +exists
+  # - queue: +ef_exists
+  # - location: +ef_exists
+  # - message: +ef_exists
+  - nonexistentfield: +ef_exists

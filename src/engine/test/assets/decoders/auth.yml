@@ -14,7 +14,7 @@ check: >-
   OR process.name==usermod
 
 parse:
-  logql:
+  logpar:
     # - message: >-
     #     <system.auth.ssh.event> <system.auth.ssh.method> for (invalid user) <?user.name>
     #     from <source.ip> port <source.port>
@@ -86,7 +86,7 @@ normalize:
 
   # Jul 10 10:11:12 somehostname sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /path/file.log
   - check: >-
-      +exists/process.name AND (
+      +ef_exists/process.name AND (
       process.name==groupadd
       OR process.name==groupdel
       OR process.name==groupmod
@@ -99,7 +99,7 @@ normalize:
       - event.outcome: success
 
   - check: >-
-      +exists/process.name AND (
+      +ef_exists/process.name AND (
       process.name==useradd
       OR process.name==userdel
       OR process.name==usermod
@@ -109,7 +109,7 @@ normalize:
 
   # Jul 10 10:11:12 somehostname groupadd[6969]: new group: name=mysql, GID=222
   - check: >-
-      +exists/process.name AND (
+      +ef_exists/process.name AND (
       process.name==groupadd
       OR process.name==groupdel
       OR process.name==groupmod
@@ -118,7 +118,7 @@ normalize:
       - event.type: +s_append/group
 
   - check: >-
-      +exists/process.name AND (
+      +ef_exists/process.name AND (
       process.name==groupadd
       OR process.name==useradd
       )
@@ -126,7 +126,7 @@ normalize:
       - event.type: +s_append/creation
 
   - check: >-
-      +exists/process.name AND (
+      +ef_exists/process.name AND (
       process.name==groupdel
       OR process.name==userdel
       )
@@ -134,7 +134,7 @@ normalize:
       - event.type: +s_append/deletion
 
   - check: >-
-      +exists/process.name AND (
+      +ef_exists/process.name AND (
       process.name==groupmod
       OR process.name==usermod
       )

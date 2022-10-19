@@ -9,11 +9,9 @@
 using namespace base;
 using namespace builder::internals::builders;
 
-
-const std::string helperFunctionName {"s_fromHexa"};
+const std::string helperFunctionName {"s_from_hexa"};
 
 const std::string targetField {"/output"};
-
 
 TEST(opBuilderHelperStringFromHexa, build)
 {

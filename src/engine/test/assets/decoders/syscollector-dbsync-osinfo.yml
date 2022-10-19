@@ -9,7 +9,7 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: "NULL"
 
@@ -23,7 +23,7 @@ normalize:
     map:
       - _json.data.hostname: "NULL"
   - check:
-      - _json.data.hostname: +not_exists
+      - _json.data.hostname: +ef_not_exists
     map:
       - _json.data.hostname: "NULL"
 
@@ -37,7 +37,7 @@ normalize:
     map:
       - _json.data.architecture: "NULL"
   - check:
-      - _json.data.architecture: +not_exists
+      - _json.data.architecture: +ef_not_exists
     map:
       - _json.data.architecture: "NULL"
 
@@ -51,12 +51,12 @@ normalize:
     map:
       - _json.data.os_name: "NULL"
   - check:
-      - _json.data.os_name: +not_exists
+      - _json.data.os_name: +ef_not_exists
     map:
       - _json.data.os_name: "NULL"
 
   - check:
-      - _json.data.os_version: +not_exists
+      - _json.data.os_version: +ef_not_exists
     map:
       - _json.data.os_version: "NULL"
 
@@ -70,17 +70,17 @@ normalize:
     map:
       - _json.data.os_codename: "NULL"
   - check:
-      - _json.data.os_codename: +not_exists
+      - _json.data.os_codename: +ef_not_exists
     map:
       - _json.data.os_codename: "NULL"
 
   - check:
-      - _json.data.os_major: +not_exists
+      - _json.data.os_major: +ef_not_exists
     map:
       - _json.data.os_major: "NULL"
 
   - check:
-      - _json.data.os_minor: +not_exists
+      - _json.data.os_minor: +ef_not_exists
     map:
       - _json.data.os_minor: "NULL"
 
@@ -94,12 +94,12 @@ normalize:
     map:
       - _json.data.os_patch: "NULL"
   - check:
-      - _json.data.os_patch: +not_exists
+      - _json.data.os_patch: +ef_not_exists
     map:
       - _json.data.os_patch: "NULL"
 
   - check:
-      - _json.data.os_build: +not_exists
+      - _json.data.os_build: +ef_not_exists
     map:
       - _json.data.os_build: "NULL"
 
@@ -113,7 +113,7 @@ normalize:
     map:
       - _json.data.os_platform: "NULL"
   - check:
-      - _json.data.os_platform: +not_exists
+      - _json.data.os_platform: +ef_not_exists
     map:
       - _json.data.os_platform: "NULL"
 
@@ -127,32 +127,32 @@ normalize:
     map:
       - _json.data.sysname: "NULL"
   - check:
-      - _json.data.sysname: +not_exists
+      - _json.data.sysname: +ef_not_exists
     map:
       - _json.data.sysname: "NULL"
 
   - check:
-      - _json.data.release: +not_exists
+      - _json.data.release: +ef_not_exists
     map:
       - _json.data.release: "NULL"
 
   - check:
-      - _json.data.version: +not_exists
+      - _json.data.version: +ef_not_exists
     map:
       - _json.data.version: "NULL"
 
   - check:
-      - _json.data.os_release: +not_exists
+      - _json.data.os_release: +ef_not_exists
     map:
       - _json.data.os_release: "NULL"
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: "NULL"
 
   - check:
-      - _json.data.os_display_version: +not_exists
+      - _json.data.os_display_version: +ef_not_exists
     map:
       - _json.data.os_display_version: "NULL"
 
@@ -166,7 +166,7 @@ normalize:
     map:
       - _json.data.triaged: "NULL"
   - check:
-      - _json.data.triaged: +not_exists
+      - _json.data.triaged: +ef_not_exists
     map:
       - _json.data.triaged: "NULL"
 
@@ -180,7 +180,7 @@ normalize:
     map:
       - _json.data.reference: "NULL"
   - check:
-      - _json.data.reference: +not_exists
+      - _json.data.reference: +ef_not_exists
     map:
       - _json.data.reference: "NULL"
 
@@ -216,9 +216,9 @@ normalize:
       - wazuh.syscollector.os.os_release: $_array_of_field/12
       - wazuh.syscollector.os.version: $_array_of_field/13
       - wazuh.syscollector.os.display_version: $_array_of_field/15
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

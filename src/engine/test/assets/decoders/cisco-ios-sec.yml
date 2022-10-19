@@ -20,7 +20,7 @@ check: >-
   OR (cisco.ios.facility==IPV6 AND event.code==ACCESSLOGP)
 
 parse:
-  logql:
+  logpar:
 
     # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.10.20.30(6969) -> 192.11.22.33(22), 1 packet
     # %SEC-6-IPACCESSLOGP: list ACL-IPv4-E0/0-IN permitted tcp 192.10.20.30(6969) -> 192.11.22.33(22), 9 packets
@@ -54,7 +54,7 @@ normalize:
 
 
   - check: >-
-      +exists/_outcome AND (
+      +ef_exists/_outcome AND (
       _outcome==est-allowed
       OR _outcome==permitted
       OR _outcome==allow
@@ -63,7 +63,7 @@ normalize:
       - event.outcome: allowed
 
   - check:
-      +exists/_outcome AND (
+      +ef_exists/_outcome AND (
       _outcome==deny
       OR _outcome==Deny)
     map:
