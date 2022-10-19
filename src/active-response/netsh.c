@@ -10,13 +10,14 @@
 #ifdef WIN32
 
 #include "active_responses.h"
-#include "utilities.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
 #define NETSH     "C:\\Windows\\System32\\netsh.exe"
 #define REG       "C:\\Windows\\System32\\reg.exe"
 
 #define PATH_FIREWALL_PROFILES_REG_DEFAULT "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\"
+#define FIREWALL_DATA_INITIALIZE {false, false, FIREWALL_DOMAIN}
+#define FIREWALL_PROFILES_MAX (3)   /*!< Maximun number of profiles*/
 
 typedef struct {
     char *log_msg;
@@ -24,7 +25,40 @@ typedef struct {
     char **argv;
 } data_common_t;
 
+/**
+ * @brief enumeration of the available profiles
+ */
+typedef enum {
+    FIREWALL_DOMAIN = 0,
+    FIREWALL_PRIVATE,
+    FIREWALL_PUBLIC,
+    FIREWALL_DEFAULT
+} firewallProfile_t;
+
+/**
+ * @brief firewall data struct
+ */
+typedef struct{
+    bool isThereProfile;
+    bool isEnabled;
+    firewallProfile_t profile;
+} firewallData_t;
+
 static int getAllProfilesStatus(data_common_t *data_common);
+
+/**
+ * @brief this function get name and if is there profile
+ * @param output_buf buffer output
+ * @param firewallData  pointer to firewall data
+*/
+static void getFirewallProfile(const char * output_buf, firewallData_t *firewallData);
+
+/**
+ * @brief this function get status profile
+ * @param output_buf buffer output
+ * @param firewallData  pointer to firewall data
+*/
+static void getStatusFirewallProfile(const char * output_buf, firewallData_t *firewallData);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -79,7 +113,7 @@ int main (int argc, char **argv) {
 
     char *exec_args_add[11] = { NETSH, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
     char *exec_args_delete[8] = { NETSH, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
-    
+
     wfd_t *wfd = NULL;
     if ((action == ADD_COMMAND)) {
         if(getAllProfilesStatus(&data_common) == OS_INVALID) {
@@ -236,4 +270,39 @@ static int getAllProfilesStatus(data_common_t *data_common){
     }
     return retVal;
 }
+
+void getFirewallProfile(const char * output_buf, firewallData_t *firewallData){
+    if( output_buf != NULL){
+        const char* ptr = NULL;
+        if ((ptr = strstr(output_buf, "FirewallPolicy")) != NULL) {
+           char after[OS_MAXSTR];
+           splitStrFromCharDelimiter(ptr, '\\', NULL, after);
+
+            if (after != NULL){
+                if (strstr(after, "DomainProfile") != NULL){
+                    firewallData->profile = FIREWALL_DOMAIN;
+                    firewallData->isThereProfile = true;
+                } else if (strstr(after, "PublicProfile") != NULL){
+                    firewallData->profile = FIREWALL_PUBLIC;
+                    firewallData->isThereProfile = true;
+                } else if (strstr(after, "StandardProfile") != NULL){
+                    firewallData->profile = FIREWALL_PRIVATE;
+                    firewallData->isThereProfile = true;
+                } else {
+                    firewallData->isThereProfile = false;
+                }
+            }
+        }
+    }
+}
+
+void getStatusFirewallProfile(const char * output_buf, firewallData_t *firewallData){
+    if (firewallData->isThereProfile == true && isEnabledFromPattern(output_buf, "REG_DWORD", "0x1")) {
+        firewallData->isEnabled = true;
+    }
+    else {
+        firewallData->isEnabled = false;
+    }
+}
+
 #endif
