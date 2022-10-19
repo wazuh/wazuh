@@ -6,7 +6,7 @@
   Sysmon Event ID 1 rules: 92000 - 92100
 -->
 
-<group name="sysmon_eid1_detections,">
+<group name="sysmon,sysmon_eid1_detections,windows,">
 
   <rule id="92000" level="4">
     <if_group>sysmon_event1</if_group>
