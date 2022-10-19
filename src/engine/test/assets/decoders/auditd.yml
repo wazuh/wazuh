@@ -30,7 +30,7 @@ check:
 # type=VIRT_MACHINE_ID msg=audit(1234567890.911:1992): pid=6969 uid=0 auid=4943949201 ses=4943949201 subj=system_u:system_r:virtd_t:s0-s0:c0.c1023 msg='virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 img-ctx=system_u:object_r:svirt_image_t:s0:c424,c957 model=selinux exe="/usr/sbin/someexe" hostname=? addr=? terminal=? res=success'
 
 parse:
-  logql:
+  logpar:
     # Logs that start with "type="
     - event.original: >-
         $TYPE_FIELD $MSG_FIELD <_log.msg>
@@ -134,14 +134,14 @@ parse:
 
 normalize:
   - check:
-      - _log.msg: +exists
-      - _log.sub_msg: +exists
+      - _log.msg: +ef_exists
+      - _log.sub_msg: +ef_exists
     map:
       - _kv_msg: +s_concat/$_log.msg/ /$_log.sub_msg
 
   - check:
-      - _log.sub_msg: +not_exists
-      - _log.msg: +exists
+      - _log.sub_msg: +ef_not_exists
+      - _log.msg: +ef_exists
     map:
       - _kv_msg: $_log.msg
 
@@ -149,4 +149,4 @@ normalize:
       - event.kind: event
       - timestamp: $_log.epoch
       - event.action: +s_lo/$_log.record_type
-      - wazuh.avc: +rename_field/$_avc
+      - wazuh.avc: +ef_rename/$_avc

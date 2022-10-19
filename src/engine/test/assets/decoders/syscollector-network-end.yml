@@ -4,7 +4,7 @@ parents:
   - decoder/syscollector-netinfo/0
 
 check:
-  - _json.iface: +not_exists
+  - _json.iface: +ef_not_exists
   - _json.type: +s_eq/network_end
 
 normalize:

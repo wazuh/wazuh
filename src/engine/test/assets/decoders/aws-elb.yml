@@ -37,10 +37,10 @@ definitions:
 
 check:
   - wazuh.queue: 49
-  - event.original: +exists
+  - event.original: +ef_exists
 
 parse:
-  logql:
+  logpar:
     # HTTP (Classic ELB)
     - event.original: $ELBHTTPLOG
     # TCP (Classic ELB)
@@ -95,7 +95,7 @@ normalize:
       # TODO: process ssl_protocol once parse is avaliable on normalize
 
   - check:
-      - http: +exists
+      - http: +ef_exists
     map:
       - aws.elb.protocol: http
       - event.category: +s_append/web
@@ -111,7 +111,7 @@ normalize:
       - event.outcome: failure
 
   - check:
-      - http: +not_exists
+      - http: +ef_not_exists
     map:
       - aws.elb.protocol: tcp
       - event.category: +s_append/network

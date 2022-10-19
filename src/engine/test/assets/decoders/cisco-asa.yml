@@ -22,7 +22,7 @@ definitions:
   NET_BASE: <network.direction> <network.transport>
 
 parse:
-  logql:
+  logpar:
 
     # %ASA-2-105001: Inbound TCP connection denied from 192.168.120.60/56565 to 192.100.200.5/60600 flags SYN  on interface External
     # %ASA-2-105001: Inbound TCP connection denied from 192.168.120.60/22 to 192.100.200.5/60600 flags SYN ACK  on interface inside
@@ -186,7 +186,7 @@ normalize:
       - related.ip: +s_append/$destination.ip
 
   - check: >-
-      +exists/_outcome AND (
+      +ef_exists/_outcome AND (
       _outcome==est-allowed
       OR _outcome==permitted
       OR _outcome==allow)
@@ -194,7 +194,7 @@ normalize:
       - event.outcome: allowed
 
   - check:
-      +exists/_outcome AND (
+      +ef_exists/_outcome AND (
       _outcome==deny
       OR _outcome==Deny)
     map:

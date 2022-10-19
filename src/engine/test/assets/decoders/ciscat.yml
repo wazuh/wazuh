@@ -16,62 +16,62 @@ metadata:
 check:
   - wazuh.queue: 101
   - wazuh.origin: "wodle_cis-cat"
-  - _json.cis: +exists
+  - _json.cis: +ef_exists
   - _json.type: +s_eq/scan_info
 
 normalize:
   - check:
-      - _json.scan_id: +not_exists
+      - _json.scan_id: +ef_not_exists
     map:
       - _json.scan_id: "NULL"
 
   - check:
-      - _json.cis.timestamp: +not_exists
+      - _json.cis.timestamp: +ef_not_exists
     map:
       - _json.cis.timestamp: "NULL"
 
   - check:
-      - _json.cis.benchmark: +not_exists
+      - _json.cis.benchmark: +ef_not_exists
     map:
       - _json.cis.benchmark: "NULL"
 
   - check:
-      - _json.cis.profile: +not_exists
+      - _json.cis.profile: +ef_not_exists
     map:
       - _json.cis.profile: "NULL"
 
   - check:
-      - _json.cis.pass: +not_exists
+      - _json.cis.pass: +ef_not_exists
     map:
       - _json.cis.pass: "NULL"
 
   - check:
-      - _json.cis.fail: +not_exists
+      - _json.cis.fail: +ef_not_exists
     map:
       - _json.cis.fail: "NULL"
 
   - check:
-      - _json.cis.error: +not_exists
+      - _json.cis.error: +ef_not_exists
     map:
       - _json.cis.error: "NULL"
 
   - check:
-      - _json.cis.notchecked: +not_exists
+      - _json.cis.notchecked: +ef_not_exists
     map:
       - _json.cis.notchecked: "NULL"
 
   - check:
-      - _json.cis.unknown: +not_exists
+      - _json.cis.unknown: +ef_not_exists
     map:
       - _json.cis.unknown: "NULL"
 
   - check:
-      - _json.cis.score: +exists
+      - _json.cis.score: +ef_exists
     map:
       - _json.cis.score: +s_trim/end/%
 
   - check:
-      - _json.cis.score: +not_exists
+      - _json.cis.score: +ef_not_exists
     map:
       - _json.cis.score: "NULL"
 

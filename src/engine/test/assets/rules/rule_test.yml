@@ -1,8 +1,8 @@
 name: rule_test
 check:
-  - decoded.queue: +exists
-  - decoded.location: +exists
-  - decoded.message: +exists
+  - decoded.queue: +ef_exists
+  - decoded.location: +ef_exists
+  - decoded.message: +ef_exists
 
 normalize:
   - map:

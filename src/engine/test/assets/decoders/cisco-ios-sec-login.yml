@@ -13,7 +13,7 @@ check:
   - cisco.ios.facility: SEC_LOGIN
 
 parse:
-  logql:
+  logpar:
 
     # Quiet mode is now on
     # "%SEC_LOGIN-1-QUIET_MODE_ON: Still timeleft for watching failures is 0 secs, [user: admin] [Source: UNKNOWN] [localport: 23] [Reason: Login Authentication Failed] [ACL: sl_def_acl] at 10:11:12 UTC Fri Jul 10 1992"

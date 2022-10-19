@@ -6,10 +6,10 @@ metadata:
 
 check:
   - wazuh.queue: 49
-  - event.original: +exists
+  - event.original: +ef_exists
 
 parse:
-  logql:
+  logpar:
       # ::1 - - [10/Jul/1992:10:07:13 +0200] \"GET /someicon.ico HTTP/1.1\" 404 209
       - event.original: <source.ip> - - [<timestamp/HTTPDATE>] "<http.request.method> <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes>
       # 192.168.8.69 - - [10/Jul/1992:10:07:13 +0000] \"GET / HTTP/1.1\" 200 484 \"-\" \"Mozilla/4.0 (Macintosh; Intel Mac OS X 10_12_0) SomeApp/911.22 (KHTML, like Gecko) Chrome/20.0.2005.99 Safari/547.36\"

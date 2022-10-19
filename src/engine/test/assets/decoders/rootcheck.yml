@@ -22,7 +22,7 @@ normalize:
       - wazuh.rootcheck.update: true
 
   - check:
-      - wazuh.rootcheck.file: +not_exists
+      - wazuh.rootcheck.file: +ef_not_exists
     map:
       - wazuh.rootcheck.file: "+r_ext/$event.original/File: (.*?)(?:(?:\\. )|(?:\\.$))"
 
@@ -42,4 +42,4 @@ normalize:
   - check:
       - _title: "+r_match/.+"
     map:
-      - wazuh.rootcheck.title: +rename_field/$_title
+      - wazuh.rootcheck.title: +ef_rename/$_title

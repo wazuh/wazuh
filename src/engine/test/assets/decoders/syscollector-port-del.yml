@@ -4,7 +4,7 @@ parents:
   - decoder/syscollector-port/0
 
 check:
-  - _json.port: +not_exists
+  - _json.port: +ef_not_exists
   - _json.type: +s_eq/port_end
 
 normalize:
