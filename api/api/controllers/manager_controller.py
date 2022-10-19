@@ -13,6 +13,7 @@ import wazuh.stats as stats
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.validator import check_component_configuration_pair
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -191,7 +192,7 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filename': common.analysisd_stats}
+    f_kwargs = {'filename': common.ANALYSISD_STATS}
 
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -212,7 +213,7 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filename': common.remoted_stats}
+    f_kwargs = {'filename': common.REMOTED_STATS}
 
     dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -359,6 +360,8 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
     f_kwargs = {'component': component,
                 'config': kwargs.get('configuration', None)
                 }
+
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

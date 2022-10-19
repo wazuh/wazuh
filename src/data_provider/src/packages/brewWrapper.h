@@ -27,6 +27,11 @@ class BrewWrapper final : public IPackageWrapper
             , m_format{"pkg"}
             , m_source{"homebrew"}
             , m_location{ctx.filePath}
+            , m_priority{UNKNOWN_VALUE}
+            , m_size{0}
+            , m_vendor{UNKNOWN_VALUE}
+            , m_installTime{UNKNOWN_VALUE}
+            , m_multiarch{UNKNOWN_VALUE}
         {
             const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
 
@@ -82,7 +87,30 @@ class BrewWrapper final : public IPackageWrapper
         {
             return m_location;
         }
+        std::string vendor() const override
+        {
+            return m_vendor;
+        }
 
+        std::string priority() const override
+        {
+            return m_priority;
+        }
+
+        int size() const override
+        {
+            return m_size;
+        }
+
+        std::string install_time() const override
+        {
+            return m_installTime;
+        }
+
+        std::string multiarch() const override
+        {
+            return m_multiarch;
+        }
     private:
         std::string m_name;
         std::string m_version;
@@ -93,6 +121,11 @@ class BrewWrapper final : public IPackageWrapper
         std::string m_osPatch;
         const std::string m_source;
         const std::string m_location;
+        std::string m_priority;
+        int m_size;
+        std::string m_vendor;
+        std::string m_installTime;
+        std::string m_multiarch;
 };
 
 

@@ -27,7 +27,7 @@ def test_custom_file_rotating_handler_do_rollover():
         today = date.today()
         backup_file = join(tmp_dir, 'test', str(today.year),
                            today.strftime("%b"),
-                           f"test-{today.day:02d}.log.gz")
+                           f"test.log-{today.day:02d}.gz")
 
         with gzip.open(backup_file, 'r') as backup:
             assert backup.read().decode() == test_str
@@ -55,7 +55,7 @@ def test_custom_file_rotating_handler_compute_archives_directory(mock_mkdir, rot
         year = year.split('.')[2]
         month = calendar.month_abbr[int(month)]
         log_path = join(tmp_dir, 'test', year, month)
-        expected_name = join(log_path, f"test-{int(day):02d}.log.gz")
+        expected_name = join(log_path, f"test.log-{int(day):02d}.gz")
         computed_name = fh.computeArchivesDirectory(rotated_file)
 
         assert expected_name == computed_name
@@ -81,7 +81,7 @@ def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_nam
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
         w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir,
-                                        tag='{test} {test}: {test}',
+                                        tag='%(test)s %(test)s: %(test)s',
                                         debug_level=[0, 'test'])
     w_logger.setup_logger()
     mock_fh.assert_called_with(filename=ANY, when='midnight')
@@ -96,7 +96,8 @@ def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_nam
 @patch.object(wlogging.WazuhLogger, 'debug_level', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'logger_name', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'custom_formatter', create=True, new_callable=PropertyMock)
-def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
+@patch('logging.Formatter')
+def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
                               mock_logger, mock_tag, mock_log_path):
     """Test if WazuhLogger __init__ method initialize all attributes properly.
 
@@ -119,11 +120,11 @@ def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level
     """
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
-        test = wlogging.WazuhLogger(foreground_mode=mock_foreground_mode, log_path=mock_log_path, tag=mock_tag,
-                                    debug_level=mock_debug_level, logger_name=mock_logger_name,
-                                    custom_formatter=mock_formatter)
+        wlogging.WazuhLogger(foreground_mode=mock_foreground_mode, log_path=mock_log_path, tag=mock_tag,
+                             debug_level=mock_debug_level, logger_name=mock_logger_name,
+                             custom_formatter=mock_formatter)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
-              mock_logger, mock_tag, mock_log_path]:
+              mock_logger, mock_log_path]:
         x.assert_called()
 
 
@@ -138,7 +139,7 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
 
     Parameters
     ----------
-    expected_value: lol
+    expected_value:
         Expected result of the __getattr__(attribute) call.
     mock_fh: MagicMock
         Mock of CustomFileRotatingHandler function.
@@ -150,7 +151,7 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
     tmp_dir = tempfile.TemporaryDirectory
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
-        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir, tag='{test} {test}: {test}',
+        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir, tag='%(test)s %(test)s: %(test)s',
                                         debug_level=[0, 'test'], logger_name='test')
     w_logger.setup_logger()
 
@@ -159,3 +160,21 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
     else:
         with pytest.raises(expected_exception):
             w_logger.__getattr__('doesnt_exists')
+
+
+def test_customfilter():
+    """
+    Test if CustomFilter class works properly.
+    """
+    class MockedRecord():
+        def __init__(self, log_type):
+            if log_type:
+                self.log_type = log_type
+    # Return True
+    for value in ['test', None]:
+        cf = wlogging.CustomFilter(value)
+        assert cf.filter(MockedRecord(value))
+
+    # Return False
+    cf = wlogging.CustomFilter('testA')
+    assert not cf.filter(MockedRecord('testB'))

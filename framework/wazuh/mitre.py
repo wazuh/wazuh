@@ -28,7 +28,7 @@ def mitre_metadata() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_mitigations(filters: dict = None, offset=0, limit=common.database_limit, select=None, sort_by=None,
+def mitre_mitigations(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None,
                       sort_ascending=True, search_text=None, complementary_search=False,
                       search_in_fields=None, q='') -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's mitigations and its relations.
@@ -72,7 +72,7 @@ def mitre_mitigations(filters: dict = None, offset=0, limit=common.database_limi
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_references(filters: dict = None, offset=0, limit=common.database_limit, select=None, sort_by=None,
+def mitre_references(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None,
                      sort_ascending=True, search_text=None, complementary_search=False,
                      search_in_fields=None, q='') -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's references.
@@ -116,7 +116,7 @@ def mitre_references(filters: dict = None, offset=0, limit=common.database_limit
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit, select=None, sort_by=None,
+def mitre_techniques(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None,
                      sort_ascending=True, search_text=None, complementary_search=False,
                      search_in_fields=None, q='') -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's techniques and its relations.
@@ -160,7 +160,7 @@ def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.database_limit, select: list = None,
+def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                   sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                   complementary_search: bool = False, search_in_fields: list = None,
                   q: str = '') -> AffectedItemsWazuhResult:
@@ -205,7 +205,7 @@ def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.dat
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.database_limit, select: list = None,
+def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                  sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                  complementary_search: bool = False, search_in_fields: list = None,
                  q: str = '') -> AffectedItemsWazuhResult:
@@ -250,7 +250,7 @@ def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.data
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_software(filters: dict = None, offset: int = 0, limit: int = common.database_limit, select: list = None,
+def mitre_software(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
                    sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
                    complementary_search: bool = False, search_in_fields: list = None,
                    q: str = '') -> AffectedItemsWazuhResult:

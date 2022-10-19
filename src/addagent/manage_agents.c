@@ -102,8 +102,6 @@ int add_agent(int json_output)
     char name[FILE_SIZE + 1];
     char id[FILE_SIZE + 1] = { '\0' };
     char ip[FILE_SIZE + 1];
-    os_ip c_ip;
-    c_ip.ip = NULL;
 
     char *id_exist = NULL;
     authd_force_options_t authd_force_options = {0};
@@ -214,30 +212,39 @@ int add_agent(int json_output)
         /* Read IP address from user's environment. If that IP is invalid,
          * force user to provide IP from input device */
         _ip = getenv("OSSEC_AGENT_IP");
-        if (_ip == NULL || !OS_IsValidIP(_ip, &c_ip)) {
+
+        os_ip *aux_ip;
+        os_calloc(1, sizeof(os_ip), aux_ip);
+
+        if (_ip == NULL || !OS_IsValidIP(_ip, aux_ip)) {
             if (json_output) {
                 cJSON *json_root = cJSON_CreateObject();
                 cJSON_AddNumberToObject(json_root, "error", 77);
                 cJSON_AddStringToObject(json_root, "message", "Invalid IP for agent");
                 printf("%s", cJSON_PrintUnformatted(json_root));
+                w_free_os_ip(aux_ip);
                 exit(1);
-            } else
+            } else {
                 _ip = read_from_user();
+                /* Quit */
+                if (strcmp(_ip, QUIT) == 0) {
+                    w_free_os_ip(aux_ip);
+                    goto cleanup;
+                }
+                os_free(aux_ip->ip);
+                if (!OS_IsValidIP(_ip, aux_ip)) {
+                    printf(IP_ERROR, _ip);
+                    w_free_os_ip(aux_ip);
+                    _ip = NULL;
+                    continue;
+                }
+            }
         }
 
-        /* Quit */
-        if (strcmp(_ip, QUIT) == 0) {
-            goto cleanup;
-        }
+        strncpy(ip, aux_ip->ip, FILE_SIZE - 1);
+        w_free_os_ip(aux_ip);
 
-        strncpy(ip, _ip, FILE_SIZE - 1);
-        free(c_ip.ip);
-
-        if (!OS_IsValidIP(ip, &c_ip)) {
-            printf(IP_ERROR, ip);
-            _ip = NULL;
-            c_ip.ip = NULL;
-        } else if (!authd_running && (id_exist = IPExist(ip))) {
+        if (!authd_running && (id_exist = IPExist(ip))) {
             bool replace_agent = true;
             char error_message[OS_SIZE_128];
             cJSON *j_agent_info = NULL;
@@ -307,8 +314,6 @@ int add_agent(int json_output)
                     printf("%s\n", error_message);
                     setenv("OSSEC_AGENT_IP", "", 1);
                     _ip = NULL;
-                    free(c_ip.ip);
-                    c_ip.ip = NULL;
                 }
             }
 
@@ -417,7 +422,7 @@ int add_agent(int json_output)
                 OS_MD5_Str(str1, -1, md1);
 
                 snprintf(key, 65, "%s%s", md1, md2);
-                fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
+                fprintf(file.fp, "%s %s %s %s\n", id, name, ip, key);
                 fclose(file.fp);
 
                 if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
@@ -470,7 +475,6 @@ int add_agent(int json_output)
     } while (1);
 
 cleanup:
-    free(c_ip.ip);
     auth_close(sock);
     return (0);
 }

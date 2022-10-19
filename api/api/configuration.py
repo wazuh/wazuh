@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
+import wazuh.core.utils as core_utils
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
@@ -45,6 +46,7 @@ default_api_configuration = {
     },
     "logs": {
         "level": "info",
+        "format": "plain"
     },
     "cors": {
         "enabled": False,
@@ -62,14 +64,21 @@ default_api_configuration = {
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "remote_commands": {
-        "localfile": {
-            "enabled": True,
-            "exceptions": []
+    "upload_configuration": {
+        "remote_commands": {
+            "localfile": {
+                "allow": True,
+                "exceptions": []
+            },
+            "wodle_command": {
+                "allow": True,
+                "exceptions": []
+            }
         },
-        "wodle_command": {
-            "enabled": True,
-            "exceptions": []
+        "limits": {
+            "eps": {
+                "allow": True
+            }
         }
     }
 }
@@ -201,10 +210,10 @@ def generate_self_signed_certificate(private_key, certificate_path):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow()
+        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     ).not_valid_after(
-        # Our certificate will be valid for 10 days
-        datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        # Our certificate will be valid for one year
+        core_utils.get_utc_now() + datetime.timedelta(days=365)
     ).add_extension(
         x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
         critical=False,
@@ -267,14 +276,6 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     return configuration
 
-
-# Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
-# change is performed to the configuration.
-try:
-    validate(instance=default_security_configuration, schema=security_config_schema)
-    validate(instance=default_api_configuration, schema=api_config_schema)
-except ValidationError as e:
-    raise APIError(2000, details=e.message)
 
 # Configuration - global object
 api_conf = read_yaml_config()

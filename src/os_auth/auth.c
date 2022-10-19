@@ -38,10 +38,8 @@ void add_insert(const keyentry *entry,const char *group) {
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
     node->ip = strdup(entry->ip->ip);
-    node->group = NULL;
-
-    if (group != NULL)
-        node->group = strdup(group);
+    node->raw_key = strdup(entry->raw_key);
+    node->group = group ? strdup(group) : NULL;
 
     (*insert_tail) = node;
     insert_tail = &node->next;
@@ -87,7 +85,7 @@ w_err_t w_auth_parse_data(const char* buf,
 
         if (parseok == 0) {
             merror("Invalid password provided by %s. Closing connection.", ip);
-            snprintf(response, 2048, "ERROR: Invalid password");
+            snprintf(response, OS_SIZE_2048, "ERROR: Invalid password");
             return OS_INVALID;
         }
     }
@@ -115,13 +113,13 @@ w_err_t w_auth_parse_data(const char* buf,
 
     if (!parseok) {
         merror("Invalid request for new agent from: %s", ip);
-        snprintf(response, 2048, "ERROR: Invalid request for new agent");
+        snprintf(response, OS_SIZE_2048, "ERROR: Invalid request for new agent");
         return OS_INVALID;
     }
 
     if (!OS_IsValidName(*agentname)) {
         merror("Invalid agent name: %s from %s", *agentname, ip);
-        snprintf(response, 2048, "ERROR: Invalid agent name: %s", *agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", *agentname);
         return OS_INVALID;
     }
 
@@ -138,7 +136,7 @@ w_err_t w_auth_parse_data(const char* buf,
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
         if (!*groups) {
-            snprintf(response, 2048, "ERROR: Insuficient memory");
+            snprintf(response, OS_SIZE_2048, "ERROR: Insuficient memory");
             return OS_MEMERR;
         }
         mdebug1("Group(s) is: %s",*groups);
@@ -160,12 +158,16 @@ w_err_t w_auth_parse_data(const char* buf,
 
         /* If IP: != 'src' overwrite the provided ip */
         if (strncmp(client_source_ip,"src",3) != 0) {
-            if (!OS_IsValidIP(client_source_ip, NULL)) {
+            os_ip *aux_ip;
+            os_calloc(1, sizeof(os_ip), aux_ip);
+            if (!OS_IsValidIP(client_source_ip, aux_ip)) {
                 merror("Invalid IP: '%s'", client_source_ip);
-                snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
+                w_free_os_ip(aux_ip);
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE + 1, "%s", client_source_ip);
+            snprintf(ip, IPSIZE, "%s", aux_ip->ip);
+            w_free_os_ip(aux_ip);
         }
 
         /* Forward the string pointer IP:'........' 3 for IP: , 2 for '' */
@@ -293,7 +295,7 @@ w_err_t w_auth_validate_data(char *response,
             minfo("Duplicate IP '%s'. %s", ip, str_result);
         } else {
             mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
-            snprintf(response, 2048, "ERROR: Duplicate IP: %s", ip);
+            snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
             result = OS_INVALID;
         }
     }
@@ -301,7 +303,7 @@ w_err_t w_auth_validate_data(char *response,
     /* Check whether the agent name is the same as the manager */
     if (result != OS_INVALID && !strcmp(agentname, shost)) {
         merror("Invalid agent name %s (same as manager)", agentname);
-        snprintf(response, 2048, "ERROR: Invalid agent name: %s", agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", agentname);
         result = OS_INVALID;
     }
 
@@ -311,7 +313,7 @@ w_err_t w_auth_validate_data(char *response,
             minfo("Duplicate name. %s", str_result);
         } else {
             mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
-            snprintf(response, 2048, "ERROR: Duplicate agent name: %s", agentname);
+            snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
             result = OS_INVALID;
         }
     }
@@ -320,27 +322,15 @@ w_err_t w_auth_validate_data(char *response,
     return result;
 }
 
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key) {
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, char **id, char **key) {
 
     /* Add the new agent */
     int index;
 
     if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
         merror("Unable to add agent: %s (internal error)", agentname);
-        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s", agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Internal manager error adding agent: %s", agentname);
         return OS_INVALID;
-    }
-
-    /* Add the agent to the centralized configuration group */
-    if (groups) {
-        char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-            OS_RemoveAgent(keys.keyentries[index]->id);
-            merror("Unable to set agent centralized group: %s (internal error)", groups);
-            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s", groups);
-            return OS_INVALID;
-        }
     }
 
     os_strdup(keys.keyentries[index]->id, *id);
@@ -360,6 +350,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
     while ( group != NULL ) {
+        max_multigroups++;
         DIR * dp;
         char dir[PATH_MAX + 1] = {0};
 
@@ -367,7 +358,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         if (max_multigroups > MAX_GROUPS_PER_MULTIGROUP) {
             merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
             if (response) {
-                snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
+                snprintf(response, OS_SIZE_2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
             }
             ret = OS_INVALID;
             break;
@@ -378,16 +369,71 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         if (!dp) {
             merror("Invalid group: %.255s",group);
             if (response) {
-                snprintf(response, 2048, "ERROR: Invalid group: %s", group);
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group: %s", group);
             }
             ret = OS_INVALID;
             break;
         }
 
         group = strtok_r(NULL, delim, &save_ptr);
-        max_multigroups++;
         closedir(dp);
     }
     os_free(tmp_groups);
     return ret;
+}
+
+char *w_generate_random_pass()
+{
+    int rand1;
+    int rand2;
+    char *rand3;
+    char *rand4;
+    os_md5 md1;
+    os_md5 md3;
+    os_md5 md4;
+    char *fstring = NULL;
+    char *str1 = NULL;
+    int time_value = (int)time(NULL);
+
+    rand1 = os_random();
+    rand2 = os_random();
+
+    rand3 = GetRandomNoise();
+    rand4 = GetRandomNoise();
+
+    OS_MD5_Str(rand3, -1, md3);
+    OS_MD5_Str(rand4, -1, md4);
+
+    const int requested_size = snprintf(NULL,
+                                        0,
+                                        "%d%d%s%d%s%s",
+                                        time_value,
+                                        rand1,
+                                        getuname(),
+                                        rand2,
+                                        md3,
+                                        md4);
+
+    if (requested_size > 0) {
+        os_calloc(requested_size + 1, sizeof(char), str1);
+        const int requested_size_assignation = snprintf(str1,
+                                                        requested_size + 1,
+                                                        "%d%d%s%d%s%s",
+                                                        time_value,
+                                                        rand1,
+                                                        getuname(),
+                                                        rand2,
+                                                        md3,
+                                                        md4);
+
+        if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
+            OS_MD5_Str(str1, -1, md1);
+            fstring = strdup(md1);
+        }
+    }
+
+    free(rand3);
+    free(rand4);
+    os_free(str1);
+    return(fstring);
 }

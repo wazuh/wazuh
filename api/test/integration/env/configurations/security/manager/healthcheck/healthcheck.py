@@ -8,8 +8,8 @@ from healthcheck_utils import check, get_api_health
 
 
 def get_master_health():
-    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
+    os.system("/var/ossec/bin/wazuh-control status > /tmp_volume/daemons.txt")
+    check0 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
     check1 = get_api_health()
     return check0 or check1
 

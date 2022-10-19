@@ -126,8 +126,7 @@ int main (int argc, char **argv) {
             while (fgets(output_buf, OS_MAXSTR, fp)) {
                 char *ptr = strchr(output_buf, ':');
                 if (ptr != NULL) {
-                    memset(gateway, '\0', IPSIZE + 1);
-                    strncpy(gateway, ptr+2, strlen(ptr+2)-1);
+                    snprintf(gateway, sizeof(gateway), "%s", ptr + 2);
                 }
             }
             fclose(fp);

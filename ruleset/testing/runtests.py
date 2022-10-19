@@ -22,6 +22,7 @@ from coverage import get_rule_ids
 from coverage import get_parent_decoder_names
 
 
+
 class MultiOrderedDict(OrderedDict):
     def __setitem__(self, key, value):
         if isinstance(value, list) and key in self:
@@ -65,6 +66,7 @@ def provisionDR():
             shutil.copy2(file_fullpath, args.wazuh_home + "/etc/decoders")
 
 
+
 def cleanDR():
     rules_dir = args.wazuh_home + "/etc/rules"
     decoders_dir = args.wazuh_home + "/etc/decoders"
@@ -79,10 +81,6 @@ def cleanDR():
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$', file):
             os.remove(file_fullpath)
 
-
-def restart_analysisd():
-    print("Restarting wazuh-manager...")
-    ret = os.system('systemctl restart wazuh-manager')
 
 
 def enable_win_eventlog_test_actions(tree):
@@ -292,15 +290,12 @@ if __name__ == "__main__":
         enable_win_eventlog_tests()
 
     provisionDR()
-    restart_analysisd()
-
     OT = OssecTester(args.wazuh_home)
     error = OT.run(selective_test, args.geoip)
 
     cleanDR()
     if args.windows_tests:
         disable_win_eventlog_tests()
-    restart_analysisd()
 
     rules = get_rule_ids("/var/ossec/ruleset/rules/")
     decoders = get_parent_decoder_names("/var/ossec/ruleset/decoders/")

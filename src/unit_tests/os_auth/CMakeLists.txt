@@ -27,15 +27,27 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate Analysisd tests
 list(APPEND os_auth_names "test_auth_parse")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsValidIP")
 list(APPEND os_auth_names "test_auth_validate")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
                            -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_remove \
-                           -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,difftime")
+                           -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,difftime -Wl,--wrap,OS_IsValidIP")
 list(APPEND os_auth_names "test_auth_add")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsValidIP")
 list(APPEND os_auth_names "test_ssl")
 list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
+list(APPEND os_auth_names "test_auth_key_request")
+list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
+                           -Wl,--wrap,wm_exec -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
+                           -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,close -Wl,-wrap,send -Wl,--wrap,cJSON_ParseWithOpts \
+                           -Wl,--wrap,recv -Wl,--wrap,setsockopt -Wl,--wrap,fcntl -Wl,--wrap,connect -Wl,--wrap,socket \
+                           -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,sleep -Wl,--wrap,cJSON_Delete -Wl,--wrap,local_add \
+                           -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek \
+                           -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap=fgetc -Wl,--wrap,getpid \
+                           -Wl,--wrap,external_socket_connect ${HASH_OP_WRAPPERS}")
+list(APPEND os_auth_names "test_auth")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
+                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")

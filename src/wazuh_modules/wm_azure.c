@@ -10,7 +10,6 @@
  */
 
 #ifndef WIN32
-#ifndef CLIENT
 
 #include "wmodules.h"
 #include "wm_azure.h"
@@ -35,7 +34,7 @@ cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump 
 const wm_context WM_AZURE_CONTEXT = {
     AZ_WM_NAME,
     (wm_routine)wm_azure_main,
-    (wm_routine)(void *)wm_azure_destroy,
+    (void(*)(void *))wm_azure_destroy,
     (cJSON * (*)(const void *))wm_azure_dump,
     NULL,
     NULL
@@ -153,6 +152,14 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
             wm_strcat(&command, "--la_time_offset", ' ');
             wm_strcat(&command, curr_request->time_offset, ' ');
         }
+        if (isDebug()) {
+            char *int_to_string;
+            os_malloc(OS_SIZE_1024, int_to_string);
+            sprintf(int_to_string, "%d", isDebug());
+            wm_strcat(&command, "--debug", ' ');
+            wm_strcat(&command, int_to_string, ' ');
+            os_free(int_to_string);
+        }
 
         // Check timeout defined
         if (curr_request->timeout)
@@ -165,8 +172,8 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
                 if (status > 0) {
-                    mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
-                    mtdebug2(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
+                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
+                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
                 }
                 break;
             case WM_ERROR_TIMEOUT:
@@ -232,6 +239,15 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
             wm_strcat(&command, curr_request->time_offset, ' ');
         }
 
+        if (isDebug()) {
+            char *int_to_string;
+            os_malloc(OS_SIZE_1024, int_to_string);
+            sprintf(int_to_string, "%d", isDebug());
+            wm_strcat(&command, "--debug", ' ');
+            wm_strcat(&command, int_to_string, ' ');
+            os_free(int_to_string);
+        }
+
         // Check timeout defined
         if (curr_request->timeout)
             timeout = curr_request->timeout;
@@ -243,8 +259,8 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
                 if (status > 0) {
-                    mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
-                    mtdebug2(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
+                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
+                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
                 }
                 break;
             case WM_ERROR_TIMEOUT:
@@ -323,6 +339,15 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
             wm_strcat(&command, curr_container->time_offset, ' ');
         }
 
+        if (isDebug()) {
+            char *int_to_string;
+            os_malloc(OS_SIZE_1024, int_to_string);
+            sprintf(int_to_string, "%d", isDebug());
+            wm_strcat(&command, "--debug", ' ');
+            wm_strcat(&command, int_to_string, ' ');
+            os_free(int_to_string);
+        }
+
         // Check timeout defined
         if (curr_container->timeout)
             timeout = curr_container->timeout;
@@ -334,8 +359,8 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
                 if (status > 0) {
-                    mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_container->name, status);
-                    mtdebug2(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
+                    mterror(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_container->name, status);
+                    mtdebug1(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
                 }
                 break;
             case WM_ERROR_TIMEOUT:
@@ -546,5 +571,4 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
     return root;
 }
 
-#endif
 #endif

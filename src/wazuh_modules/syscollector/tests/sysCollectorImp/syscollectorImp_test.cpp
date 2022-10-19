@@ -131,7 +131,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -163,7 +163,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -193,6 +193,12 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -212,6 +218,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
 
     std::thread t
     {
@@ -380,7 +387,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -412,7 +419,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -438,6 +445,15 @@ TEST_F(SyscollectorImpTest, noHardware)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_hwinfo","data":{},"type":"integrity_clear"})"
+    };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult4)).Times(1);
@@ -455,6 +471,8 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -542,7 +560,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -570,7 +588,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -600,6 +618,15 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_osinfo","data":{},"type":"integrity_clear"})"
+    };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult4)).Times(1);
@@ -617,6 +644,8 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -741,6 +770,19 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"component":"syscollector_network_address","data":{},"type":"integrity_clear"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_network_protocol","data":{},"type":"integrity_clear"})"
+    };
+    const auto expectedResult22
+    {
+        R"({"component":"syscollector_network_iface","data":{},"type":"integrity_clear"})"
+    };
+
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -754,6 +796,9 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
 
     std::thread t
     {
@@ -842,7 +887,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -870,7 +915,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -896,6 +941,14 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_packages","data":{},"type":"integrity_clear"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -914,6 +967,8 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapper, callbackMock(expectedResult16)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1004,7 +1059,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -1032,7 +1087,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -1058,6 +1113,15 @@ TEST_F(SyscollectorImpTest, noPorts)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_ports","data":{},"type":"integrity_clear"})"
+    };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1075,7 +1139,8 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
-
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1167,7 +1232,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -1199,7 +1264,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -1233,6 +1298,11 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         R"({"data":{"checksum":"09d591fb0ed092c387f77b24af5bada43b5d519d","inode":0,"item_id":"7046b3f9cda975eb6567259c2469748e634dde49","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
     };
+    const auto expectedResult21
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1253,6 +1323,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1341,7 +1412,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -1369,7 +1440,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -1395,6 +1466,16 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_processes","data":{},"type":"integrity_clear"})"
+    };
+
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1412,7 +1493,8 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
-
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1504,7 +1586,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
@@ -1536,7 +1618,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
@@ -1558,6 +1640,14 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult18
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult19
+    {
+        R"({"component":"syscollector_hotfixes","data":{},"type":"integrity_clear"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -1576,7 +1666,8 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapper, callbackMock(expectedResult15)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult16)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
-
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
 
     std::thread t
     {
@@ -1715,7 +1806,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult4
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"338a8e51ab095707973bb34d85a22208c7284490","end":"338a8e51ab095707973bb34d85a22208c7284490"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
     };
     const auto expectedResult5
     {
@@ -1755,7 +1846,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult14
     {
-        R"({"data":{"checksum":"2ab0e1d3980d80e11fd5262236a662b9726151a8","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"338a8e51ab095707973bb34d85a22208c7284490","metric":" ","type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult15
     {
@@ -1781,6 +1872,10 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     {
         R"({"data":{"checksum":"af3801fac517cf9ae30f746092ce3e4058574454","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"45","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
+    const auto expectedResult21
+    {
+        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult2)).Times(1);
@@ -1802,6 +1897,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {

@@ -16,3 +16,11 @@
 int __wrap_w_is_worker(void) {
     return mock();
 }
+
+int __wrap_w_is_single_node(int* is_worker) {
+    if(is_worker) {
+        *is_worker = mock();
+    }
+
+    return mock();
+}
