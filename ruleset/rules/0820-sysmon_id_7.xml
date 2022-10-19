@@ -6,7 +6,7 @@
   Sysmon Event ID 7 rules: 92151 - 92199
 -->
 
-<group name="sysmon_eid7_detections,">
+<group name="sysmon,sysmon_eid7_detections,windows,">
 
   <rule id="92151" level="12">
     <if_group>sysmon_event7</if_group>
