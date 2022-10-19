@@ -6,7 +6,7 @@
   Sysmon Event 13 rules ID: 92300 - 92399
 -->
 
-<group name="sysmon_eid13_detections,">
+<group name="sysmon,sysmon_eid13_detections,windows,">
 
   <rule id="92300" level="0">
     <if_group>sysmon_event_13</if_group>
