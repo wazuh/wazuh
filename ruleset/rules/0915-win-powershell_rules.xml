@@ -37,6 +37,7 @@
   <rule id="91805" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ADComputer</field>
+    <options>no_full_log</options>
     <description>Executed Powershell script "Get-ADComputer" executed.</description>
     <mitre>
       <id>T1018</id>
@@ -46,6 +47,7 @@
   <rule id="91806" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-NetUser</field>
+    <options>no_full_log</options>
     <description>Powershell script "Get-NetUser executed".</description>
     <mitre>
       <id>T1087.002</id>>
@@ -55,12 +57,14 @@
   <rule id="91807" level="0">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ItemProperty</field>
+    <options>no_full_log</options>
     <description>Powershell script did a query on using Get-ItemProperty</description>
   </rule>
 
   <rule id="91808" level="0">
     <if_sid>91807</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)-Path\sHK(CU|LM)</field>
+    <options>no_full_log</options>
     <description>Powershell script queried registry value</description>
     <mitre>
       <id>T1012</id>>
@@ -70,6 +74,7 @@
   <rule id="91809" level="10">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)FromBase64String</field>
+    <options>no_full_log</options>
     <description>Powershell script may be using Base64 decoding method</description>
     <mitre>
       <id>T1140</id>>
@@ -79,6 +84,7 @@
   <rule id="91810" level="10">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)CreateThread</field>
+    <options>no_full_log</options>
     <description>Powershell script may be executing suspicious code with CreateThread API</description>
     <mitre>
       <id>T1106</id>>
@@ -88,6 +94,7 @@
   <rule id="91811" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Expand-Archive</field>
+    <options>no_full_log</options>
     <description>Powershell script executed "Expand-Archive"</description>
     <mitre>
       <id>T1105</id>
@@ -97,6 +104,7 @@
   <rule id="91812" level="0">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Remove-Item\s-Path</field>
+    <options>no_full_log</options>
     <description>Powershell script executed an object deletion.</description>
     <mitre>
       <id>T1112</id>
@@ -106,6 +114,7 @@
   <rule id="91813" level="3">
     <if_sid>91812</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)\sHK(LM|CU)\:</field>
+    <options>no_full_log</options>
     <description>Powershell script deleted a registry key from an object.</description>
     <mitre>
       <id>T1112</id>
@@ -115,6 +124,7 @@
   <rule id="91814" level="4">
     <if_sid>91813</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)\\\\Software\\\\Classes\\\\Folder</field>
+    <options>no_full_log</options>
     <description>Powershell script deleted an auto start entry registry key.</description>
     <mitre>
       <id>T1112</id>
@@ -124,6 +134,7 @@
   <rule id="91815" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-Process</field>
+    <options>no_full_log</options>
     <description>Powershell executing process discovery</description>
     <mitre>
       <id>T1057</id>
@@ -133,6 +144,7 @@
   <rule id="91816" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(\$env\:TEMP|\$env\:USERNAME|\$env\:COMPUTERNAME|\$env\:USERDOMAIN|\$PID)</field>
+    <options>no_full_log</options>
     <description>Powershell script querying system environment variables</description>
     <mitre>
       <id>T1082</id>
@@ -142,6 +154,7 @@
   <rule id="91817" level="4">
     <if_sid>91816, 91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)ConvertSidToStringSid</field>
+    <options>no_full_log</options>
     <description>Powershell script executed "ConvertSidToStringSid" API. Possible domain SID enumeration.</description>
     <mitre>
       <id>T1033</id>
@@ -152,6 +165,7 @@
   <rule id="91818" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)new-service</field>
+    <options>no_full_log</options>
     <description>Powershell script executed "New-Service" command</description>
     <mitre>
       <id>T1543.003</id>
@@ -161,6 +175,7 @@
   <rule id="91819" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)ChildItem</field>
+    <options>no_full_log</options>
     <description>Powershell script searching filesystem</description>
     <mitre>
       <id>T1083</id>
@@ -170,6 +185,7 @@
   <rule id="91820" level="4">
     <if_sid>91819</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)recurse</field>
+    <options>no_full_log</options>
     <description>Powershell script recursively collected files from a filesystem search</description>
     <mitre>
       <id>T1083</id>
@@ -180,6 +196,7 @@
   <rule id="91821" level="4">
     <if_sid>91820, 91821</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Compress-Archive</field>
+    <options>no_full_log</options>
     <description>Powershell script created a compressed file from results of filesystem search</description>
     <mitre>
       <id>T1083</id>
@@ -190,6 +207,7 @@
   <rule id="91822" level="12">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Invoke-Command</field>
+    <options>no_full_log</options>
     <description>Powershell script used "Invoke-command" cmdlet to execute sub script</description>
     <mitre>
       <id>T1059.001</id>
@@ -199,6 +217,7 @@
   <rule id="91823" level="14">
     <if_sid>91822</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(ComputerName|Cn)</field>
+    <options>no_full_log</options>
     <description>Powershell script used "Invoke-command" cmdlet to execute code on remote computer</description>
     <mitre>
       <id>T1059.001</id>
@@ -209,6 +228,7 @@
   <rule id="91824" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-Clipboard</field>
+    <options>no_full_log</options>
     <description>Powershell collected clipboard data</description>
     <mitre>
       <id>T1115</id>
@@ -218,6 +238,7 @@
   <rule id="91825" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Compress-7Zip</field>
+    <options>no_full_log</options>
     <description>Powershell executed file compression</description>
     <mitre>
       <id>T1560.001</id>
@@ -227,6 +248,7 @@
   <rule id="91826" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Copy-Item</field>
+    <options>no_full_log</options>
     <description>Powershell executed "Copy-Item"</description>
     <mitre>
       <id>T1560</id>
@@ -236,6 +258,7 @@
   <rule id="91827" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Set-WmiInstance</field>
+    <options>no_full_log</options>
     <description>Powershell executed "Set-WmiInstance". Possible creation or update of a WMI instance.</description>
     <mitre>
       <id>T1560</id>
@@ -245,6 +268,7 @@
   <rule id="91828" level="6">
     <if_sid>91827</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Text\.Encoding</field>
+    <options>no_full_log</options>
     <description>Powershell executed a creation or update of a WMI instance with encoded values</description>
     <mitre>
       <id>T1027</id>
@@ -254,6 +278,7 @@
   <rule id="91829" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)GetComputerNameEx</field>
+    <options>no_full_log</options>
     <description>Powershell executed "GetComputerNameEx". Possible system configuration discovery.</description>
     <mitre>
       <id>T1082</id>
@@ -263,6 +288,7 @@
   <rule id="91830" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)NetWkstaGetInfo</field>
+    <options>no_full_log</options>
     <description>Powershell executed "NetWkstaGetInfo". Possible network configuration discovery.</description>
     <mitre>
       <id>T1016</id>
@@ -272,6 +298,7 @@
   <rule id="91831" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)GetUserNameEx</field>
+    <options>no_full_log</options>
     <description>Powershell executed "GetUserNameEx". Possible user information discovery.</description>
     <mitre>
       <id>T1033</id>
@@ -281,6 +308,7 @@
   <rule id="91832" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)CreateToolhelp32Snapshot</field>
+    <options>no_full_log</options>
     <description>Powershell executed "CreateToolhelp32Snapshot". Possible process discovery.</description>
     <mitre>
       <id>T1057</id>
@@ -290,6 +318,7 @@
   <rule id="91833" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(Get-ChildItem|gci).+(env\:windir|system32|windows)</field>
+    <options>no_full_log</options>
     <description>Possible discovery activity: Powershell executed "Get-ChildItem" command on a system folder</description>
     <mitre>
       <id>T1083</id>
@@ -299,6 +328,7 @@
   <rule id="91834" level="6">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(SetCreationTime|SetLastAccessTime|SetLastWriteTime)</field>
+    <options>no_full_log</options>
     <description>Powershell executed a command that modifies file timestamp, possible timestomp attempt</description>
     <mitre>
       <id>T1070.006</id>
@@ -308,6 +338,7 @@
   <rule id="91835" level="6">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)AntiVirusProduct</field>
+    <options>no_full_log</options>
     <description>Powershell tampering with WMI AntiVirusProduct class - Antivirus Software discovery</description>
     <mitre>
       <id>T1518.001</id>
@@ -317,6 +348,7 @@
   <rule id="91836" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall</field>
+    <options>no_full_log</options>
     <description>Powershell tampering software installation info on system registry</description>
     <mitre>
       <id>T1012</id>
@@ -326,6 +358,7 @@
   <rule id="91837" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(Get-Content.+\-Stream|IEX|Invoke-Expresion)</field>
+    <options>no_full_log</options>
     <description>Powershell executed "Get-Content -Stream or Invoke-Expresion". Possible string execution as code</description>
     <mitre>
       <id>T1059.001</id>
@@ -335,6 +368,7 @@
   <rule id="91838" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(gwmi|get-wmiobject).+ Win32_BIOS</field>
+    <options>no_full_log</options>
     <description>Powershell queried Win32_BIOS. Possible sandbox detection activity</description>
     <mitre>
       <id>T1497</id>
@@ -345,6 +379,7 @@
   <rule id="91839" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(gwmi|get-wmiobject).+ Win32_ComputerSystem</field>
+    <options>no_full_log</options>
     <description>Powershell queried Win32_ComputerSystem. Possible system discovery activity</description>
     <mitre>
       <id>T1497</id>
@@ -356,6 +391,7 @@
   <rule id="91840" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(gwmi|get-wmiobject).+ Win32_PnPEntity</field>
+    <options>no_full_log</options>
     <description>Powershell queried Win32_PnPEntity. Possible devices/adapter discovery activity</description>
     <mitre>
       <id>T1120</id>
@@ -365,6 +401,7 @@
   <rule id="91841" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)(gwmi|get-wmiobject).+ Win32_Process</field>
+    <options>no_full_log</options>
     <description>Powershell queried Win32_Process. Possible process discovery activity</description>
     <mitre>
       <id>T1057</id>
@@ -374,6 +411,7 @@
   <rule id="91842" level="4">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-Item \-Path</field>
+    <options>no_full_log</options>
     <description>Powershell executed "Get-Item -Path". Script trying to see files in path</description>
     <mitre>
       <id>T1083</id>
@@ -383,6 +421,7 @@
   <rule id="91843" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)New-ItemProperty.+\-Path</field>
+    <options>no_full_log</options>
     <description>Powershell executed "New-ItemProperty -Path". Possible addition of new item to registry</description>
     <mitre>
       <id>T1059.001</id>
@@ -393,6 +432,7 @@
   <rule id="91844" level="12">
     <if_sid>91843</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run</field>
+    <options>no_full_log</options>
     <description>Possible addition of new item to Windows startup registry</description>
     <mitre>
       <id>T1547.001</id>
@@ -404,6 +444,7 @@
   <rule id="91845" level="10">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Microsoft.Office.Interop.Outlook</field>
+    <options>no_full_log</options>
     <description>Outlook add-in was loaded by powershell, possible use for email collection</description>
     <mitre>
       <id>T1114.001</id>
@@ -413,6 +454,7 @@
   <rule id="91846" level="10">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)::CreateFromDirectory</field>
+    <options>no_full_log</options>
     <description>Powershell used .NET compression method, possible data extraction operation</description>
     <mitre>
       <id>T1560.001</id>
