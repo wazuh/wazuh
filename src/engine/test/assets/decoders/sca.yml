@@ -9,6 +9,6 @@ check:
 
 normalize:
   - check:
-      - _json.type: +exists
+      - _json.type: +ef_exists
     map:
       - decode_result: +sca_decoder/$_json/$agent.id

@@ -11,17 +11,17 @@ parents:
   - decoder/auditd/0
 
 check:
-  - _kv_msg: +exists
+  - _kv_msg: +ef_exists
 
 parse:
-  logql:
+  logpar:
     - _kv_msg: <_kv_map/kv_map/=/ >
 
 normalize:
   - map:
-      - auditd.log: +rename_field/$_kv_map
-      - auditd.log.node: +rename_field/$_node
-      - _kv_msg: +delete_field
+      - auditd.log: +ef_rename/$_kv_map
+      - auditd.log.node: +ef_rename/$_node
+      - _kv_msg: +ef_delete
 
   - check:
       - auditd.log.syscall: +s_eq/execve
@@ -98,9 +98,9 @@ normalize:
       - container.runtime: $auditd.log.virt
 
   - check:
-      - auditd.log.user: +not_exists
+      - auditd.log.user: +ef_not_exists
     map:
-      - user.name: +rename_field/$auditd.log.acct
+      - user.name: +ef_rename/$auditd.log.acct
 
   - check:
       - auditd.log.success: +s_eq/no
@@ -113,7 +113,7 @@ normalize:
       - auditd.log.success: true
 
   - check:
-      - auditd.log.src: +not_exists
+      - auditd.log.src: +ef_not_exists
     map:
       - auditd.log.src: $auditd.log.addr
 
@@ -124,15 +124,15 @@ normalize:
       - auditd.log.exe: +s_trim/both/"
       - _hex.exe_is_str: true
   - check:
-      - _hex.exe_is_str: +not_exists
+      - _hex.exe_is_str: +ef_not_exists
       - auditd.log.exe: +s_starts/'
     map:
       - auditd.log.exe: +s_trim/both/'
       - _hex.exe_is_str: true
   - check:
-      - _hex.exe_is_str: +not_exists
+      - _hex.exe_is_str: +ef_not_exists
     map:
-      - auditd.log.exe: +s_fromHexa/$auditd.log.exe
+      - auditd.log.exe: +s_from_hexa/$auditd.log.exe
 
   - check:
       - auditd.log.cmd: +s_starts/"
@@ -140,15 +140,15 @@ normalize:
       - auditd.log.cmd: +s_trim/both/"
       - _hex.cmd_is_str: true
   - check:
-      - _hex.cmd_is_str: +not_exists
+      - _hex.cmd_is_str: +ef_not_exists
       - auditd.log.cmd: +s_starts/'
     map:
       - auditd.log.cmd: +s_trim/both/'
       - _hex.cmd_is_str: true
   - check:
-      - _hex.cmd_is_str: +not_exists
+      - _hex.cmd_is_str: +ef_not_exists
     map:
-      - auditd.log.cmd: +s_fromHexa/$auditd.log.cmd
+      - auditd.log.cmd: +s_from_hexa/$auditd.log.cmd
 
   - check:
       - auditd.log.data: +s_starts/"
@@ -156,15 +156,15 @@ normalize:
       - auditd.log.data: +s_trim/both/"
       - _hex.data_is_str: true
   - check:
-      - _hex.data_is_str: +not_exists
+      - _hex.data_is_str: +ef_not_exists
       - auditd.log.data: +s_starts/'
     map:
       - auditd.log.data: +s_trim/both/'
       - _hex.data_is_str: true
   - check:
-      - _hex.data_is_str: +not_exists
+      - _hex.data_is_str: +ef_not_exists
     map:
-      - auditd.log.data: +s_fromHexa/$auditd.log.data
+      - auditd.log.data: +s_from_hexa/$auditd.log.data
 
   - check:
       - auditd.log.path: +s_starts/"
@@ -172,15 +172,15 @@ normalize:
       - auditd.log.path: +s_trim/both/"
       - _hex.path_is_str: true
   - check:
-      - _hex.path_is_str: +not_exists
+      - _hex.path_is_str: +ef_not_exists
       - auditd.log.path: +s_starts/'
     map:
       - auditd.log.path: +s_trim/both/'
       - _hex.path_is_str: true
   - check:
-      - _hex.path_is_str: +not_exists
+      - _hex.path_is_str: +ef_not_exists
     map:
-      - auditd.log.path: +s_fromHexa/$auditd.log.path
+      - auditd.log.path: +s_from_hexa/$auditd.log.path
 
   - check:
       - auditd.log.comm: +s_starts/"
@@ -188,15 +188,15 @@ normalize:
       - auditd.log.comm: +s_trim/both/"
       - _hex.comm_is_str: true
   - check:
-      - _hex.comm_is_str: +not_exists
+      - _hex.comm_is_str: +ef_not_exists
       - auditd.log.comm: +s_starts/'
     map:
       - auditd.log.comm: +s_trim/both/'
       - _hex.comm_is_str: true
   - check:
-      - _hex.comm_is_str: +not_exists
+      - _hex.comm_is_str: +ef_not_exists
     map:
-      - auditd.log.comm: +s_fromHexa/$auditd.log.comm
+      - auditd.log.comm: +s_from_hexa/$auditd.log.comm
 
   - check:
       - auditd.log.file: +s_starts/"
@@ -204,15 +204,15 @@ normalize:
       - auditd.log.file: +s_trim/both/"
       - _hex.file_is_str: true
   - check:
-      - _hex.file_is_str: +not_exists
+      - _hex.file_is_str: +ef_not_exists
       - auditd.log.file: +s_starts/'
     map:
       - auditd.log.file: +s_trim/both/'
       - _hex.file_is_str: true
   - check:
-      - _hex.file_is_str: +not_exists
+      - _hex.file_is_str: +ef_not_exists
     map:
-      - auditd.log.file: +s_fromHexa/$auditd.log.file
+      - auditd.log.file: +s_from_hexa/$auditd.log.file
 
   - check:
       - auditd.log.name: +s_starts/"
@@ -220,15 +220,15 @@ normalize:
       - auditd.log.name: +s_trim/both/"
       - _hex.name_is_str: true
   - check:
-      - _hex.name_is_str: +not_exists
+      - _hex.name_is_str: +ef_not_exists
       - auditd.log.name: +s_starts/'
     map:
       - auditd.log.name: +s_trim/both/'
       - _hex.name_is_str: true
   - check:
-      - _hex.name_is_str: +not_exists
+      - _hex.name_is_str: +ef_not_exists
     map:
-      - auditd.log.name: +s_fromHexa/$auditd.log.name
+      - auditd.log.name: +s_from_hexa/$auditd.log.name
 
   - check:
       - auditd.log.watch: +s_starts/"
@@ -236,15 +236,15 @@ normalize:
       - auditd.log.watch: +s_trim/both/"
       - _hex.watch_is_str: true
   - check:
-      - _hex.watch_is_str: +not_exists
+      - _hex.watch_is_str: +ef_not_exists
       - auditd.log.watch: +s_starts/'
     map:
       - auditd.log.watch: +s_trim/both/'
       - _hex.watch_is_str: true
   - check:
-      - _hex.watch_is_str: +not_exists
+      - _hex.watch_is_str: +ef_not_exists
     map:
-      - auditd.log.watch: +s_fromHexa/$auditd.log.watch
+      - auditd.log.watch: +s_from_hexa/$auditd.log.watch
 
   - check:
       - auditd.log.cwd: +s_starts/"
@@ -252,15 +252,15 @@ normalize:
       - auditd.log.cwd: +s_trim/both/"
       - _hex.cwd_is_str: true
   - check:
-      - _hex.cwd_is_str: +not_exists
+      - _hex.cwd_is_str: +ef_not_exists
       - auditd.log.cwd: +s_starts/'
     map:
       - auditd.log.cwd: +s_trim/both/'
       - _hex.cwd_is_str: true
   - check:
-      - _hex.cwd_is_str: +not_exists
+      - _hex.cwd_is_str: +ef_not_exists
     map:
-      - auditd.log.cwd: +s_fromHexa/$auditd.log.cwd
+      - auditd.log.cwd: +s_from_hexa/$auditd.log.cwd
 
   - check:
       - auditd.log.acct: +s_starts/"
@@ -268,15 +268,15 @@ normalize:
       - auditd.log.acct: +s_trim/both/"
       - _hex.acct_is_str: true
   - check:
-      - _hex.acct_is_str: +not_exists
+      - _hex.acct_is_str: +ef_not_exists
       - auditd.log.acct: +s_starts/'
     map:
       - auditd.log.acct: +s_trim/both/'
       - _hex.acct_is_str: true
   - check:
-      - _hex.acct_is_str: +not_exists
+      - _hex.acct_is_str: +ef_not_exists
     map:
-      - auditd.log.acct: +s_fromHexa/$auditd.log.acct
+      - auditd.log.acct: +s_from_hexa/$auditd.log.acct
 
   - check:
       - auditd.log.dir: +s_starts/"
@@ -284,15 +284,15 @@ normalize:
       - auditd.log.dir: +s_trim/both/"
       - _hex.dir_is_str: true
   - check:
-      - _hex.dir_is_str: +not_exists
+      - _hex.dir_is_str: +ef_not_exists
       - auditd.log.dir: +s_starts/'
     map:
       - auditd.log.dir: +s_trim/both/'
       - _hex.dir_is_str: true
   - check:
-      - _hex.dir_is_str: +not_exists
+      - _hex.dir_is_str: +ef_not_exists
     map:
-      - auditd.log.dir: +s_fromHexa/$auditd.log.dir
+      - auditd.log.dir: +s_from_hexa/$auditd.log.dir
 
   - check:
       - auditd.log.vm: +s_starts/"
@@ -300,15 +300,15 @@ normalize:
       - auditd.log.vm: +s_trim/both/"
       - _hex.vm_is_str: true
   - check:
-      - _hex.vm_is_str: +not_exists
+      - _hex.vm_is_str: +ef_not_exists
       - auditd.log.vm: +s_starts/'
     map:
       - auditd.log.vm: +s_trim/both/'
       - _hex.vm_is_str: true
   - check:
-      - _hex.vm_is_str: +not_exists
+      - _hex.vm_is_str: +ef_not_exists
     map:
-      - auditd.log.vm: +s_fromHexa/$auditd.log.vm
+      - auditd.log.vm: +s_from_hexa/$auditd.log.vm
 
   - check:
       - auditd.log.old-chardev: +s_starts/"
@@ -324,7 +324,7 @@ normalize:
   - check:
       - _hex.old-chardev_is_str: +not_exists
     map:
-      - auditd.log.old-chardev: +s_fromHexa/$auditd.log.old-chardev
+      - auditd.log.old-chardev: +s_from_hexa/$auditd.log.old-chardev
 
   - check:
       - auditd.log.new-chardev: +s_starts/"
@@ -340,7 +340,7 @@ normalize:
   - check:
       - _hex.new-chardev_is_str: +not_exists
     map:
-      - auditd.log.new-chardev: +s_fromHexa/$auditd.log.new-chardev
+      - auditd.log.new-chardev: +s_from_hexa/$auditd.log.new-chardev
 
   - check:
       - auditd.log.old-disk: +s_starts/"
@@ -356,7 +356,7 @@ normalize:
   - check:
       - _hex.old-disk_is_str: +not_exists
     map:
-      - auditd.log.old-disk: +s_fromHexa/$auditd.log.old-disk
+      - auditd.log.old-disk: +s_from_hexa/$auditd.log.old-disk
 
   - check:
       - auditd.log.new-disk: +s_starts/"
@@ -372,7 +372,7 @@ normalize:
   - check:
       - _hex.new-disk_is_str: +not_exists
     map:
-      - auditd.log.new-disk: +s_fromHexa/$auditd.log.new-disk
+      - auditd.log.new-disk: +s_from_hexa/$auditd.log.new-disk
 
   - check:
       - auditd.log.old-fs: +s_starts/"
@@ -388,7 +388,7 @@ normalize:
   - check:
       - _hex.old-fs_is_str: +not_exists
     map:
-      - auditd.log.old-fs: +s_fromHexa/$auditd.log.old-fs
+      - auditd.log.old-fs: +s_from_hexa/$auditd.log.old-fs
 
   - check:
       - auditd.log.new-fs: +s_starts/"
@@ -404,7 +404,7 @@ normalize:
   - check:
       - _hex.new-fs_is_str: +not_exists
     map:
-      - auditd.log.new-fs: +s_fromHexa/$auditd.log.new-fs
+      - auditd.log.new-fs: +s_from_hexa/$auditd.log.new-fs
 
   - check:
       - auditd.log.old-net: +s_starts/"
@@ -420,7 +420,7 @@ normalize:
   - check:
       - _hex.old-net_is_str: +not_exists
     map:
-      - auditd.log.old-net: +s_fromHexa/$auditd.log.old-net
+      - auditd.log.old-net: +s_from_hexa/$auditd.log.old-net
 
   - check:
       - auditd.log.new-net: +s_starts/"
@@ -436,7 +436,7 @@ normalize:
   - check:
       - _hex.new-net_is_str: +not_exists
     map:
-      - auditd.log.new-net: +s_fromHexa/$auditd.log.new-net
+      - auditd.log.new-net: +s_from_hexa/$auditd.log.new-net
 
   - check:
       - auditd.log.device: +s_starts/"
@@ -452,7 +452,7 @@ normalize:
   - check:
       - _hex.device_is_str: +not_exists
     map:
-      - auditd.log.device: +s_fromHexa/$auditd.log.device
+      - auditd.log.device: +s_from_hexa/$auditd.log.device
 
   - check:
       - auditd.log.cgroup: +s_starts/"
@@ -468,7 +468,7 @@ normalize:
   - check:
       - _hex.cgroup_is_str: +not_exists
     map:
-      - auditd.log.cgroup: +s_fromHexa/$auditd.log.cgroup
+      - auditd.log.cgroup: +s_from_hexa/$auditd.log.cgroup
 
   - check:
       - auditd.log.apparmor: +s_starts/"
@@ -484,7 +484,7 @@ normalize:
   - check:
       - _hex.apparmor_is_str: +not_exists
     map:
-      - auditd.log.apparmor: +s_fromHexa/$auditd.log.apparmor
+      - auditd.log.apparmor: +s_from_hexa/$auditd.log.apparmor
 
   - check:
       - auditd.log.operation: +s_starts/"
@@ -500,7 +500,7 @@ normalize:
   - check:
       - _hex.operation_is_str: +not_exists
     map:
-      - auditd.log.operation: +s_fromHexa/$auditd.log.operation
+      - auditd.log.operation: +s_from_hexa/$auditd.log.operation
 
   - check:
       - auditd.log.denied_mask: +s_starts/"
@@ -516,7 +516,7 @@ normalize:
   - check:
       - _hex.denied_mask_is_str: +not_exists
     map:
-      - auditd.log.denied_mask: +s_fromHexa/$auditd.log.denied_mask
+      - auditd.log.denied_mask: +s_from_hexa/$auditd.log.denied_mask
 
   - check:
       - auditd.log.info: +s_starts/"
@@ -532,7 +532,7 @@ normalize:
   - check:
       - _hex.info_is_str: +not_exists
     map:
-      - auditd.log.info: +s_fromHexa/$auditd.log.info
+      - auditd.log.info: +s_from_hexa/$auditd.log.info
 
   - check:
       - auditd.log.profile: +s_starts/"
@@ -548,7 +548,7 @@ normalize:
   - check:
       - _hex.profile_is_str: +not_exists
     map:
-      - auditd.log.profile: +s_fromHexa/$auditd.log.profile
+      - auditd.log.profile: +s_from_hexa/$auditd.log.profile
 
   - check:
       - auditd.log.requested_mask: +s_starts/"
@@ -564,7 +564,7 @@ normalize:
   - check:
       - _hex.requested_mask_is_str: +not_exists
     map:
-      - auditd.log.requested_mask: +s_fromHexa/$auditd.log.requested_mask
+      - auditd.log.requested_mask: +s_from_hexa/$auditd.log.requested_mask
 
   - check:
       - auditd.log.old-rng: +s_starts/"
@@ -580,7 +580,7 @@ normalize:
   - check:
       - _hex.old-rng_is_str: +not_exists
     map:
-      - auditd.log.old-rng: +s_fromHexa/$auditd.log.old-rng
+      - auditd.log.old-rng: +s_from_hexa/$auditd.log.old-rng
 
   - check:
       - auditd.log.new-rng: +s_starts/"
@@ -596,7 +596,7 @@ normalize:
   - check:
       - _hex.new-rng_is_str: +not_exists
     map:
-      - auditd.log.new-rng: +s_fromHexa/$auditd.log.new-rng
+      - auditd.log.new-rng: +s_from_hexa/$auditd.log.new-rng
 
   - check:
       - auditd.log.ocomm: +s_starts/"
@@ -612,7 +612,7 @@ normalize:
   - check:
       - _hex.ocomm_is_str: +not_exists
     map:
-      - auditd.log.ocomm: +s_fromHexa/$auditd.log.ocomm
+      - auditd.log.ocomm: +s_from_hexa/$auditd.log.ocomm
 
   - check:
       - auditd.log.grp: +s_starts/"
@@ -628,7 +628,7 @@ normalize:
   - check:
       - _hex.grp_is_str: +not_exists
     map:
-      - auditd.log.grp: +s_fromHexa/$auditd.log.grp
+      - auditd.log.grp: +s_from_hexa/$auditd.log.grp
 
   - check:
       - auditd.log.new_group: +s_starts/"
@@ -644,7 +644,7 @@ normalize:
   - check:
       - _hex.new_group_is_str: +not_exists
     map:
-      - auditd.log.new_group: +s_fromHexa/$auditd.log.new_group
+      - auditd.log.new_group: +s_from_hexa/$auditd.log.new_group
 
   - check:
       - auditd.log.invalid_context: +s_starts/"
@@ -660,7 +660,7 @@ normalize:
   - check:
       - _hex.invalid_context_is_str: +not_exists
     map:
-      - auditd.log.invalid_context: +s_fromHexa/$auditd.log.invalid_context
+      - auditd.log.invalid_context: +s_from_hexa/$auditd.log.invalid_context
 
   - check:
       - auditd.log.sw: +s_starts/"
@@ -676,7 +676,7 @@ normalize:
   - check:
       - _hex.sw_is_str: +not_exists
     map:
-      - auditd.log.sw: +s_fromHexa/$auditd.log.sw
+      - auditd.log.sw: +s_from_hexa/$auditd.log.sw
 
   - check:
       - auditd.log.root_dir: +s_starts/"
@@ -692,7 +692,7 @@ normalize:
   - check:
       - _hex.root_dir_is_str: +not_exists
     map:
-      - auditd.log.root_dir: +s_fromHexa/$auditd.log.root_dir
+      - auditd.log.root_dir: +s_from_hexa/$auditd.log.root_dir
 
   - check:
       - auditd.log.proctitle: +s_starts/"
@@ -708,43 +708,43 @@ normalize:
   - check:
       - _hex.proctitle_is_str: +not_exists
     map:
-      - auditd.log.proctitle: +s_fromHexa/$auditd.log.proctitle
+      - auditd.log.proctitle: +s_from_hexa/$auditd.log.proctitle
 
   - map:
-      - _hex: +delete_field
+      - _hex: +ef_delete
   # End of hexa to string fields transformation
 
   - map:
-      - auditd.log.old_auid: +rename_field/$auditd.log.old-auid
-      - auditd.log.old_ses: +rename_field/$auditd.log.old-ses
+      - auditd.log.old_auid: +ef_rename/$auditd.log.old-auid
+      - auditd.log.old_ses: +ef_rename/$auditd.log.old-ses
       - auditd.log.record_type: +s_lo/$auditd.log.record_type
       - destination.address: $auditd.log.dst
-      - event.action: +rename_field/$auditd.log.record_type
-      - event.outcome: +rename_field/$auditd.log.res
-      - host.architecture: +rename_field/$auditd.log.arch
-      - message: +rename_field/$auditd.log.msg
-      - process.args_count: +rename_field/$auditd.log.argc
+      - event.action: +ef_rename/$auditd.log.record_type
+      - event.outcome: +ef_rename/$auditd.log.res
+      - host.architecture: +ef_rename/$auditd.log.arch
+      - message: +ef_rename/$auditd.log.msg
+      - process.args_count: +ef_rename/$auditd.log.argc
       - process.args: "+s_to_array/$auditd.log.cmd/ " # It ends with a space
-      - process.executable: +rename_field/$auditd.log.exe
-      - process.exit_code: +rename_field/$auditd.log.exit
-      - process.name: +rename_field/$auditd.log.comm
-      - process.parent.pid: +rename_field/$auditd.log.ppid
-      - process.pid: +rename_field/$auditd.log.pid
-      - process.working_directory: +rename_field/$auditd.log.cwd
-      - source.address: +rename_field/$auditd.log.src
-      - source.as.number: +rename_field/$source.as.asn
-      - source.as.organization.name: +rename_field/$source.as.organization_name
-      - user.audit.group.id: +rename_field/$auditd.log.agid
-      - user.audit.id: +rename_field/$auditd.log.auid
-      - user.effective.group.id: +rename_field/$auditd.log.egid
-      - user.effective.id: +rename_field/$auditd.log.euid
-      - user.filesystem.group.id: +rename_field/$auditd.log.fsgid
-      - user.filesystem.id: +rename_field/$auditd.log.fsuid
-      - user.group.id: +rename_field/$auditd.log.gid
-      - user.id: +rename_field/$auditd.log.uid
-      - user.name: +rename_field/$auditd.log.user
-      - user.owner.group.id: +rename_field/$auditd.log.ogid
-      - user.owner.id: +rename_field/$auditd.log.ouid
-      - user.saved.group.id: +rename_field/$auditd.log.sgid
-      - user.saved.id: +rename_field/$auditd.log.suid
-      - user.terminal: +rename_field/$auditd.log.terminal
+      - process.executable: +ef_rename/$auditd.log.exe
+      - process.exit_code: +ef_rename/$auditd.log.exit
+      - process.name: +ef_rename/$auditd.log.comm
+      - process.parent.pid: +ef_rename/$auditd.log.ppid
+      - process.pid: +ef_rename/$auditd.log.pid
+      - process.working_directory: +ef_rename/$auditd.log.cwd
+      - source.address: +ef_rename/$auditd.log.src
+      - source.as.number: +ef_rename/$source.as.asn
+      - source.as.organization.name: +ef_rename/$source.as.organization_name
+      - user.audit.group.id: +ef_rename/$auditd.log.agid
+      - user.audit.id: +ef_rename/$auditd.log.auid
+      - user.effective.group.id: +ef_rename/$auditd.log.egid
+      - user.effective.id: +ef_rename/$auditd.log.euid
+      - user.filesystem.group.id: +ef_rename/$auditd.log.fsgid
+      - user.filesystem.id: +ef_rename/$auditd.log.fsuid
+      - user.group.id: +ef_rename/$auditd.log.gid
+      - user.id: +ef_rename/$auditd.log.uid
+      - user.name: +ef_rename/$auditd.log.user
+      - user.owner.group.id: +ef_rename/$auditd.log.ogid
+      - user.owner.id: +ef_rename/$auditd.log.ouid
+      - user.saved.group.id: +ef_rename/$auditd.log.sgid
+      - user.saved.id: +ef_rename/$auditd.log.suid
+      - user.terminal: +ef_rename/$auditd.log.terminal
