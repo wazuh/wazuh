@@ -25,13 +25,13 @@ parse:
 
 normalize:
   - map:
-     event.kind: event
-     event.dataset: apache.access
-     event.category: +s_append/web
-     event.module: apache
-     service.type: apache
-     event.outcome: success
+     - event.kind: event
+     - event.dataset: apache.access
+     - event.category: +s_append/web
+     - event.module: apache
+     - service.type: apache
+     - event.outcome: success
   - check:
       - http.response.status_code: +i_gt/399
     map:
-      event.outcome: failure
+      - event.outcome: failure

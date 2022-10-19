@@ -65,9 +65,9 @@ TEST_F(AssetTest, JsonNoName)
         ],
         "normalize": [
             {
-                "map": {
-                    "decoded.names": "+s_append/decoder1"
-                }
+                "map": [
+                    {"decoded.names": "+s_append/decoder1"}
+                ]
             }
         ]
     })";
@@ -79,9 +79,9 @@ TEST_F(AssetTest, JsonNoName)
         ],
         "normalize": [
             {
-                "map": {
-                    "decoded.names": "+s_append/decoder1"
-                }
+                "map": [
+                    {"decoded.names": "+s_append/decoder1"}
+                ]
             }
         ]
     })";
@@ -102,9 +102,9 @@ TEST_F(AssetTest, BuildDecoder)
         },
         "normalize": [
             {
-                "map": {
-                    "decoded.names": "+s_append/decoder1"
-                }
+                "map": [
+                    {"decoded.names": "+s_append/decoder1"}
+                ]
             }
         ]
     })";
@@ -132,9 +132,9 @@ TEST_F(AssetTest, BuildRule)
         ],
         "normalize": [
             {
-                "map": {
-                    "alerted.name": "rule1"
-                }
+                "map": [
+                    {"alerted.name": "rule1"}
+                ]
             }
         ]
     })";

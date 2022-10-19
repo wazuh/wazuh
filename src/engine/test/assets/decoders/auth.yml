@@ -71,18 +71,18 @@ normalize:
   - check:
       - _system.auth.ssh.event: Accepted
     map:
-      event.type: +s_append/authentication_success/info
-      event.category: +s_append/authentication/session
-      event.action: ssh_login
-      event.outcome: success
+      - event.type: +s_append/authentication_success/info
+      - event.category: +s_append/authentication/session
+      - event.action: ssh_login
+      - event.outcome: success
 
   # Jul 10 10:11:12 somehostname sshd[6969]: Failed password for root from 200.100.5.69 port 2911 ssh2"
   - check: _system.auth.ssh.event==Invalid OR _system.auth.ssh.event==Failed
     map:
-      event.type: +s_append/authentication_failure/info
-      event.category: +s_append/authentication
-      event.action: ssh_login
-      event.outcome: failure
+      - event.type: +s_append/authentication_failure/info
+      - event.category: +s_append/authentication
+      - event.action: ssh_login
+      - event.outcome: failure
 
   # Jul 10 10:11:12 somehostname sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /path/file.log
   - check: >-
@@ -95,8 +95,8 @@ normalize:
       OR process.name==usermod
       )
     map:
-      event.category: +s_append/iam
-      event.outcome: success
+      - event.category: +s_append/iam
+      - event.outcome: success
 
   - check: >-
       +exists/process.name AND (
@@ -105,7 +105,7 @@ normalize:
       OR process.name==usermod
       )
     map:
-      event.type: +s_append/user
+      - event.type: +s_append/user
 
   # Jul 10 10:11:12 somehostname groupadd[6969]: new group: name=mysql, GID=222
   - check: >-
@@ -115,7 +115,7 @@ normalize:
       OR process.name==groupmod
       )
     map:
-      event.type: +s_append/group
+      - event.type: +s_append/group
 
   - check: >-
       +exists/process.name AND (
@@ -123,7 +123,7 @@ normalize:
       OR process.name==useradd
       )
     map:
-      event.type: +s_append/creation
+      - event.type: +s_append/creation
 
   - check: >-
       +exists/process.name AND (
@@ -131,7 +131,7 @@ normalize:
       OR process.name==userdel
       )
     map:
-      event.type: +s_append/deletion
+      - event.type: +s_append/deletion
 
   - check: >-
       +exists/process.name AND (
@@ -139,8 +139,8 @@ normalize:
       OR process.name==usermod
       )
     map:
-      event.type: +s_append/change
+      - event.type: +s_append/change
 
   - map:
-      related.user: +s_append/$user.name/$user.effective.name # check for uniques only +s_append_unique/$user.name/$user.effective.name
-      related.ip: +s_append/$source.ip # check for uniques only +s_append_unique/$source.ip
+      - related.user: +s_append/$user.name/$user.effective.name # check for uniques only +s_append_unique/$user.name/$user.effective.name
+      - related.ip: +s_append/$source.ip # check for uniques only +s_append_unique/$source.ip

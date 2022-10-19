@@ -11,61 +11,61 @@ normalize:
   - check:
       - _json.data.iface: +s_ne//
     map:
-      _json.data.iface: +s_replace/|/$_escaped_pipe_char
-      _json.data.iface: +s_replace/NULL/_NULL_
+      - _json.data.iface: +s_replace/|/$_escaped_pipe_char
+      - _json.data.iface: +s_replace/NULL/_NULL_
   - check:
       - _json.data.iface: +s_eq//
     map:
-      _json.data.iface: "NULL"
+      - _json.data.iface: "NULL"
   - check:
       - _json.data.iface: +not_exists
     map:
-      _json.data.iface: ""
+      - _json.data.iface: ""
 
   - check:
       - _json.data.proto: +not_exists
     map:
-      _json.data.proto: ""
+      - _json.data.proto: ""
 
   - check:
       - _json.data.address: +not_exists
     map:
-      _json.data.address: ""
+      - _json.data.address: ""
 
   - check:
       - _json.data.netmask: +not_exists
     map:
-      _json.data.netmask: ""
+      - _json.data.netmask: ""
 
   - check:
       - _json.data.broadcast: +not_exists
     map:
-      _json.data.broadcast: ""
+      - _json.data.broadcast: ""
 
   - check:
       - _json.data.checksum: +not_exists
     map:
-      _json.data.checksum: ""
+      - _json.data.checksum: ""
 
   - check:
       - _json.data.item_id: +not_exists
     map:
-      _json.data.item_id: ""
+      - _json.data.item_id: ""
 
   - map:
-      _query: +s_concat/agent /$agent.id/ dbsync network_address /$_json.operation/ /$_json.data.iface/|/$_json.data.proto/|/$_json.data.address/|/$_json.data.netmask/|/$_json.data.broadcast/|/$_json.data.checksum/|/$_json.data.item_id/|
-      _query_response: +wdb_update/$_query
+      - _query: +s_concat/agent /$agent.id/ dbsync network_address /$_json.operation/ /$_json.data.iface/|/$_json.data.proto/|/$_json.data.address/|/$_json.data.netmask/|/$_json.data.broadcast/|/$_json.data.checksum/|/$_json.data.item_id/|
+      - _query_response: +wdb_update/$_query
 
   - check:
       - _query_response: +is_true
     map:
-      _json.data.iface: +s_replace/$_escaped_pipe_char/|
-      wazuh.syscollector.netinfo.addr.iface: $_json.data.iface
-      wazuh.syscollector.netinfo.addr.proto: $_json.data.proto
-      wazuh.syscollector.netinfo.addr.address: $_json.data.address
-      wazuh.syscollector.netinfo.addr.netmask: $_json.data.netmask
-      wazuh.syscollector.netinfo.addr.broadcast: $_json.data.broadcast
-      _query: +delete_field
-      _query_response: +delete_field
-      _json.data: +delete_field
-      _escaped_pipe_char: +delete_field
+      - _json.data.iface: +s_replace/$_escaped_pipe_char/|
+      - wazuh.syscollector.netinfo.addr.iface: $_json.data.iface
+      - wazuh.syscollector.netinfo.addr.proto: $_json.data.proto
+      - wazuh.syscollector.netinfo.addr.address: $_json.data.address
+      - wazuh.syscollector.netinfo.addr.netmask: $_json.data.netmask
+      - wazuh.syscollector.netinfo.addr.broadcast: $_json.data.broadcast
+      - _query: +delete_field
+      - _query_response: +delete_field
+      - _json.data: +delete_field
+      - _escaped_pipe_char: +delete_field

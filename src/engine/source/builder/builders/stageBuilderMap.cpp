@@ -25,21 +25,37 @@ base::Expression stageMapBuilder(std::any definition)
             "[builders::stageMapBuilder(json)] Received unexpected argument type");
     }
 
-    if (!jsonDefinition.isObject())
+    if (!jsonDefinition.isArray())
     {
         throw std::runtime_error(
             fmt::format("[builders::stageMapBuilder(json)] Invalid json definition "
-                        "type: expected [object] but got [{}]",
+                        "type: expected [array] but got [{}]",
                         jsonDefinition.typeName()));
     }
 
-    auto mappings = jsonDefinition.getObject().value();
+    auto mappings = jsonDefinition.getArray().value();
     std::vector<base::Expression> mappingExpressions;
     std::transform(mappings.begin(),
-                   mappings.end(),
-                   std::back_inserter(mappingExpressions),
-                   [](auto tuple)
-                   { return Registry::getBuilder("operation.map")(tuple); });
+        mappings.end(),
+        std::back_inserter(mappingExpressions),
+        [](auto arrayMember)
+        {
+            if(!arrayMember.isObject())
+            {
+                throw std::runtime_error(
+                    fmt::format("[builders::stageMapBuilder(json)] "
+                                "Invalid array item type: expected [object] but got [{}]",
+                                arrayMember.typeName()));
+            }
+            if(arrayMember.size() != 1)
+            {
+                throw std::runtime_error(fmt::format(
+                    "[builders::stageMapBuilder(json)] "
+                    "Invalid array item object size: expected [1] but got [{}]",
+                    arrayMember.size()));
+            }
+            return Registry::getBuilder("operation.map")(arrayMember.getObject().value()[0]);
+        });
 
     auto expression = base::Chain::create("stage.map", mappingExpressions);
     return expression;

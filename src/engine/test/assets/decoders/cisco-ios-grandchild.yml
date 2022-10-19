@@ -18,6 +18,6 @@ check:
 
 normalize:
   - map:
-      network.type: +s_ipVersion/$source.ip
-      related.ip: +s_append/$source.ip/$destination.ip
-      tags: +s_append/cisco-ios
+      - network.type: +s_ipVersion/$source.ip
+      - related.ip: +s_append/$source.ip/$destination.ip
+      - tags: +s_append/cisco-ios

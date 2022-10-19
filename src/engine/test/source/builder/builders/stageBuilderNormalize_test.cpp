@@ -34,16 +34,16 @@ protected:
 TEST_F(StageBuilderNormalizeTest, Builds)
 {
     auto normalizeJson = Json {R"([
-        {"map": {
-            "string": "value",
-            "int": 1,
-            "double": 1.0,
-            "boolT": true,
-            "boolF": false,
-            "null": null,
-            "array": [1, 2, 3],
-            "object": {"a": 1, "b": 2}
-        }},
+        {"map": [
+            {"string": "value"},
+            {"int": 1},
+            {"double": 1.0},
+            {"boolT": true},
+            {"boolF": false},
+            {"null": null},
+            {"array": [1, 2, 3]},
+            {"object": {"a": 1, "b": 2}}
+        ]},
         {"check": [
             {"string": "value"},
             {"int": 1},
@@ -54,16 +54,16 @@ TEST_F(StageBuilderNormalizeTest, Builds)
             {"array": [1, 2, 3]},
             {"object": {"a": 1, "b": 2}}
         ],
-        "map": {
-            "stringCond": "value",
-            "intCond": 1,
-            "doubleCond": 1.0,
-            "boolTCond": true,
-            "boolFCond": false,
-            "nullCond": null,
-            "arrayCond": [1, 2, 3],
-            "objectCond": {"a": 1, "b": 2}
-        }}
+        "map": [
+            {"stringCond": "value"},
+            {"intCond": 1},
+            {"doubleCond": 1.0},
+            {"boolTCond": true},
+            {"boolFCond": false},
+            {"nullCond": null},
+            {"arrayCond": [1, 2, 3]},
+            {"objectCond": {"a": 1, "b": 2}}
+        ]}
 ])"};
 
     ASSERT_NO_THROW(stageNormalizeBuilder(normalizeJson));
@@ -88,16 +88,16 @@ TEST_F(StageBuilderNormalizeTest, ArrayWrongTypeItem)
 TEST_F(StageBuilderNormalizeTest, BuildsCorrectExpression)
 {
     auto normalizeJson = Json {R"([
-        {"map": {
-            "string": "value",
-            "int": 1,
-            "double": 1.0,
-            "boolT": true,
-            "boolF": false,
-            "null": null,
-            "array": [1, 2, 3],
-            "object": {"a": 1, "b": 2}
-        }},
+        {"map": [
+            {"string": "value"},
+            {"int": 1},
+            {"double": 1.0},
+            {"boolT": true},
+            {"boolF": false},
+            {"null": null},
+            {"array": [1, 2, 3]},
+            {"object": {"a": 1, "b": 2}}
+        ]},
         {"check": [
             {"string": "value"},
             {"int": 1},
@@ -108,16 +108,16 @@ TEST_F(StageBuilderNormalizeTest, BuildsCorrectExpression)
             {"array": [1, 2, 3]},
             {"object": {"a": 1, "b": 2}}
         ],
-        "map": {
-            "stringCond": "value",
-            "intCond": 1,
-            "doubleCond": 1.0,
-            "boolTCond": true,
-            "boolFCond": false,
-            "nullCond": null,
-            "arrayCond": [1, 2, 3],
-            "objectCond": {"a": 1, "b": 2}
-        }}
+        "map": [
+            {"stringCond": "value"},
+            {"intCond": 1},
+            {"doubleCond": 1.0},
+            {"boolTCond": true},
+            {"boolFCond": false},
+            {"nullCond": null},
+            {"arrayCond": [1, 2, 3]},
+            {"objectCond": {"a": 1, "b": 2}}
+        ]}
 ])"};
 
     auto expression = stageNormalizeBuilder(normalizeJson);

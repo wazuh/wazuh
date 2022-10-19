@@ -23,13 +23,13 @@ parse:
 
 normalize:
   - map:
-     event.kind: event
-     event.dataset: apache.error
-     event.category: +s_append/web
-     event.module: apache
-     service.type: apache
-     event.type: +s_append/info
+     - event.kind: event
+     - event.dataset: apache.error
+     - event.category: +s_append/web
+     - event.module: apache
+     - service.type: apache
+     - event.type: +s_append/info
   - check:
       - log.level: +r_match/^[eacw]
     map:
-      event.type: +s_append/error
+      - event.type: +s_append/error
