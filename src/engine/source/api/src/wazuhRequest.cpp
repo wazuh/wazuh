@@ -44,7 +44,9 @@ std::optional<std::string> WazuhRequest::validate() const
     return std::nullopt;
 }
 
-WazuhRequest WazuhRequest::create(std::string_view command, const json::Json& parameters)
+WazuhRequest WazuhRequest::create(std::string_view command,
+                                  std::string_view originName,
+                                  const json::Json& parameters)
 {
 
     if (command.empty())
@@ -60,8 +62,8 @@ WazuhRequest WazuhRequest::create(std::string_view command, const json::Json& pa
     jrequest.setInt(VERSION_SUPPORTED, "/version");
     jrequest.setString(command, "/command");
     jrequest.set("/parameters", parameters);
-    jrequest.setString("Wazuh-Engine", "/origin/module");
-    jrequest.setString("api", "/origin/name");
+    jrequest.setString("wazuh-engine", "/origin/module");
+    jrequest.setString(originName, "/origin/name");
 
     return WazuhRequest(jrequest);
 }

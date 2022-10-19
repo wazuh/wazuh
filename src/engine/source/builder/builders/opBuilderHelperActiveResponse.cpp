@@ -16,6 +16,8 @@
 #include <baseHelper.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/stringUtils.hpp>
+// TODO: move the wazuhRequest to a common path such as "utils"
+#include <api/wazuhRequest.hpp>
 
 using base::utils::socketInterface::SendRetval;
 using base::utils::socketInterface::unixDatagram;
@@ -29,31 +31,10 @@ namespace ar
 
 // TODO: this is a standard protocol, and it should be changed when the API is merged,
 // since it contains the classes to generate the requests and responses.
-constexpr const char* AR_JSON_FORMAT {R"({
-                                            "version":0,
-                                            "origin":{
-                                                "name":"",
-                                                "module":""
-                                            },
-                                            "command":"",
-                                            "parameters":{
-                                                "extra_args":[],
-                                                "alert":{}
-                                            }
+constexpr const char* AR_JSON_PARAMS {R"({
+                                            "extra_args":[],
+                                            "alert":{}
                                     })"};
-
-// JSON Paths
-constexpr const char* ALERT_PATH {"/parameters/alert"};
-constexpr const char* COMMAND_PATH {"/command"};
-constexpr const char* EXTRA_ARGS_PATH {"/parameters/extra_args"};
-constexpr const char* ORIGIN_MODULE_PATH {"/origin/module"};
-constexpr const char* ORIGIN_NAME_PATH {"/origin/name"};
-constexpr const char* VERSION_PATH {"/version"};
-
-// values
-constexpr const char* MODULE_NAME {"wazuh-engine"};
-constexpr const char* NODE_NAME {"node01"};
-constexpr int VERSION {1};
 
 inline bool isStringNumber(const std::string value)
 {
@@ -146,17 +127,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
         [=, targetField = std::move(targetField), name = std::move(name)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            json::Json baseJson(ar::AR_JSON_FORMAT);
-
-            // TODO: module name and version are fixed values, should it be changed?
-            baseJson.setInt(ar::VERSION, ar::VERSION_PATH);
-
-            // TODO: get Node name from ossec.conf -> if not "undefined" -> if not ""
-            // it is harcoded by now
-            baseJson.setString(ar::NODE_NAME, ar::ORIGIN_NAME_PATH);
-
-            // Set module name
-            baseJson.setString(ar::MODULE_NAME, ar::ORIGIN_MODULE_PATH);
+            json::Json jsonParams(ar::AR_JSON_PARAMS);
 
             // Get and set command name
             std::string commandNameResolvedValue {};
@@ -199,8 +170,6 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             // Adds the timeout at the end of the command name (or "0" if no timeout set)
             commandNameResolvedValue +=
                 timeoutResolvedValue.empty() ? "0" : timeoutResolvedValue;
-
-            baseJson.setString(commandNameResolvedValue, ar::COMMAND_PATH);
 
             std::optional<std::string> locationResolvedValue {};
             std::string location {locationValue};
@@ -278,9 +247,9 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
                         if (resolvedElement)
                         {
-                            baseJson.appendString(
+                            jsonParams.appendString(
                                 std::string_view {resolvedElement.value()},
-                                std::string_view {ar::EXTRA_ARGS_PATH});
+                                std::string_view {"/extra_args"});
                         }
                         else
                         {
@@ -293,14 +262,15 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             try
             {
                 json::Json jsonEvent {event->str().c_str()};
-                baseJson.merge(jsonEvent, std::string_view {ar::ALERT_PATH});
+                jsonParams.merge(jsonEvent, std::string_view {"/alert"});
             }
             catch (const std::runtime_error& e)
             {
                 return base::result::makeFailure(event, failureTrace5 + e.what());
             }
 
-            const std::string query {baseJson.str()};
+            auto payload = api::WazuhRequest::create(
+                commandNameResolvedValue, ar::ORIGIN_NAME, jsonParams);
 
             // Append header message
             const std::string completeMesage =
@@ -308,7 +278,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                             isLocal ? 'R' : 'N',
                             (isAll || isID) ? 'S' : 'N',
                             agentID,
-                            query);
+                            payload.toStr());
 
             event->setString(completeMesage, targetField);
             return base::result::makeSuccess(event, successTrace);
