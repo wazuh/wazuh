@@ -9,4 +9,4 @@ check:
 
 normalize:
   - map:
-      _decoded: $name
+      - _decoded: $name
