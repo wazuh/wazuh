@@ -1078,7 +1078,7 @@ checks:
             "SC-20",
             "SC-21",
           ]
-      - pci_dss_v3.2.1: ["2,2"]
+      - pci_dss_v3.2.1: ["2.2"]
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
@@ -1220,7 +1220,7 @@ checks:
   - id: 19009
     title: "Ensure nosuid option set on /tmp partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create set userid files in /tmp."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nosuid /tmp OR Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,nosuid /tmp"
     compliance:
       - cis: ["1.1.4"]
@@ -1960,6 +1960,7 @@ checks:
     title: "Ensure separate partition exists for /var/tmp."
     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Since the /var/tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own file system allows an administrator to set the noexec option on the mount, making /var/tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.11"]
