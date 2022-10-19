@@ -292,7 +292,7 @@ def test_validation_json_ko(value, format):
 
 @pytest.mark.parametrize("component, configuration, expected_response", [
     ("agent", "client", None),
-    ("agent", "wmodules", WazuhError(1127))
+    ("agent", "wmodules", WazuhError(1128))
 ])
 def test_check_component_configuration_pair(component, configuration, expected_response):
     """Verify that `check_component_configuration_pair` function returns an exception when the configuration does

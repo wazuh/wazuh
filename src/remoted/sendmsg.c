@@ -16,37 +16,26 @@
 extern netbuffer_t netbuffer_send;
 
 /* pthread key update mutex */
-static pthread_rwlock_t keyupdate_rwlock;
+static rwlock_t keyupdate_rwlock;
 
 void key_lock_init()
 {
-    pthread_rwlockattr_t attr;
-    pthread_rwlockattr_init(&attr);
-
-#ifdef __linux__
-    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
-     * Do not use recursive locking.
-     */
-    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-#endif
-
-    w_rwlock_init(&keyupdate_rwlock, &attr);
-    pthread_rwlockattr_destroy(&attr);
+    rwlock_init(&keyupdate_rwlock);
 }
 
 void key_lock_read()
 {
-    w_rwlock_rdlock(&keyupdate_rwlock);
+    rwlock_lock_read(&keyupdate_rwlock);
 }
 
 void key_lock_write()
 {
-    w_rwlock_wrlock(&keyupdate_rwlock);
+    rwlock_lock_write(&keyupdate_rwlock);
 }
 
 void key_unlock()
 {
-    w_rwlock_unlock(&keyupdate_rwlock);
+    rwlock_unlock(&keyupdate_rwlock);
 }
 
 /* Check for key updates */
