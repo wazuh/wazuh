@@ -6,7 +6,7 @@
   Sysmon Event ID 3 rules: 92101 - 92150
 -->
 
-<group name="sysmon_eid3_detections,">
+<group name="sysmon,sysmon_eid3_detections,windows,08">
 
   <rule id="92101" level="0">
     <if_group>sysmon_event3</if_group>
