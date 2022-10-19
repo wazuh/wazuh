@@ -6,7 +6,7 @@
   General Windows Event channel detection rules: 92650 - 92700
 -->
 
-<group name="win_evt_channel,">
+<group name="win_evt_channel,windows,">
 
   <rule id="92650" level="12">
     <if_sid>61138</if_sid>
