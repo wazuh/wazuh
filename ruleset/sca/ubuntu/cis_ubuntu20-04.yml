@@ -3745,7 +3745,7 @@ checks:
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
   - id: 19039
     title: "Ensure all AppArmor Profiles are enforcing."
-    description: "AppArmor profiles define what resources applicatons are able to access."
+    description: "AppArmor profiles define what resources applications are able to access."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
