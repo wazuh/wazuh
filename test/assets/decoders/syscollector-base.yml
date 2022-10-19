@@ -4,4 +4,4 @@ parents:
   - decoder/syscollector-queue/0
 
 check:
-  - _json.type: +is_string
+  - _json.type: +t_is_string

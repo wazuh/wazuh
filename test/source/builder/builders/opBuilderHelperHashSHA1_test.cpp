@@ -27,17 +27,16 @@ constexpr char abcdeHash[] {"7be07aaf460d593a323d0db33da05b64bfdcb3a5"};
 TEST(opBuilderHelperHashSHA1, Builds)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"begin"});
+                                       std::string {"h_sha1"},
+                                       std::vector<std::string> {"begin"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperHashSHA1(tuple));
 }
 
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_single_string)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"XXX"});
+    const auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"h_sha1"}, std::vector<std::string> {"XXX"});
 
     const auto event1 =
         std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
@@ -51,11 +50,10 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_single_string)
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_several_strings)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"wordworldworst"});
+                                       std::string {"h_sha1"},
+                                       std::vector<std::string> {"wordworldworst"});
 
-    const auto event1 =
-        std::make_shared<json::Json>(R"({"Field": "ABCDE"})");
+    const auto event1 = std::make_shared<json::Json>(R"({"Field": "ABCDE"})");
 
     auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -65,12 +63,12 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_several_strings)
 
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_reference)
 {
-    const auto tuple =
-        std::make_tuple(std::string {"/field"},
-                        std::string {"hash_sha1"},
-                        std::vector<std::string> {"$fieldReference"});
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                       std::string {"h_sha1"},
+                                       std::vector<std::string> {"$fieldReference"});
 
-    const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": "wordworldworst"})");
+    const auto event1 =
+        std::make_shared<json::Json>(R"({"fieldReference": "wordworldworst"})");
 
     auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -80,12 +78,13 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_reference)
 
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_reference)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"$object.fieldReference3"});
+    const auto tuple =
+        std::make_tuple(std::string {"/field"},
+                        std::string {"h_sha1"},
+                        std::vector<std::string> {"$object.fieldReference3"});
 
-    const auto event1 = std::make_shared<json::Json>(
-        R"({"object":{"fieldReference3":"word"}})");
+    const auto event1 =
+        std::make_shared<json::Json>(R"({"object":{"fieldReference3":"word"}})");
 
     auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -96,7 +95,7 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_reference)
 TEST(opBuilderHelperHashSHA1, No_parameters_error)
 {
     const auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"hash_sha1"}, std::vector<std::string> {});
+        std::string {"/field"}, std::string {"h_sha1"}, std::vector<std::string> {});
 
     const auto event1 = std::make_shared<json::Json>(R"({"arrayField": "A"})");
 
@@ -105,9 +104,8 @@ TEST(opBuilderHelperHashSHA1, No_parameters_error)
 
 TEST(opBuilderHelperHashSHA1, Empty_parameter)
 {
-    const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {""});
+    const auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"h_sha1"}, std::vector<std::string> {""});
 
     const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": "word"})");
 
@@ -119,8 +117,8 @@ TEST(opBuilderHelperHashSHA1, Empty_parameter)
 TEST(opBuilderHelperHashSHA1, Empty_reference_parameter)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"$fieldReference"});
+                                       std::string {"h_sha1"},
+                                       std::vector<std::string> {"$fieldReference"});
 
     const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": ""})");
 
@@ -132,8 +130,8 @@ TEST(opBuilderHelperHashSHA1, Empty_reference_parameter)
 TEST(opBuilderHelperHashSHA1, Failed_execution_with_array_reference)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"$arrayField"});
+                                       std::string {"h_sha1"},
+                                       std::vector<std::string> {"$arrayField"});
 
     const auto event1 =
         std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
@@ -146,8 +144,8 @@ TEST(opBuilderHelperHashSHA1, Failed_execution_with_array_reference)
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_result)
 {
     const auto tuple = std::make_tuple(std::string {"/object/field"},
-                                 std::string {"hash_sha1"},
-                                 std::vector<std::string> {"ABCDE"});
+                                       std::string {"h_sha1"},
+                                       std::vector<std::string> {"ABCDE"});
 
     const auto event1 =
         std::make_shared<json::Json>(R"({"object":[{"field":"worst"},{"field2":1}]})");

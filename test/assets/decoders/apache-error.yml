@@ -6,10 +6,10 @@ metadata:
 
 check:
   - wazuh.queue: 49
-  - event.original: +exists
+  - event.original: +ef_exists
 
 parse:
-  logql:
+  logpar:
       # [Fri Jul 10 22:07:08.694043 1992] [core:notice] [pid 69404] AH01024: Command line: '/usr/local/path/httpd24/2.4.22_2/bin/httpd'
       - event.original: '[<timestamp/APACHE_ERROR>] [<_module>:<log.level>] [pid <process.pid>] <message>'
       # [Fri Jul 10 22:07:08.694043 1992] [core:error] [pid 69404:tid 9111016913] [client 11.12.13.14] File does not exist: /usr/local/path/someicon.ico

@@ -13,10 +13,10 @@ parents:
   - decoder/postgresql-csv/0
 
 check:
-  - _csv.message: +exists
+  - _csv.message: +ef_exists
 
 parse:
-  logql:
+  logpar:
     - _csv.message: 'duration: <_tmp.duration/float> ms <_tmp.query_step/quoted/ /: ><message/keyword>'
     - _csv.message: 'duration: <_tmp.duration/float> ms'
     - _csv.message: '<_tmp.query_step/keyword>: <message/keyword>'

@@ -47,18 +47,18 @@ check:
 
 # TODO: improve the multiple parsing (instead of using multiple files)
 parse:
-  logql:
+  logpar:
     - _json.aws.request_uri: <http.request.method> <http.url.original> HTTP/<http.version>
     - _json.aws.request_uri: <http.request.method> <http.url.original> http/<http.version>
 
 normalize:
   - check:
-      - _json.aws.error_code: +exists
+      - _json.aws.error_code: +ef_exists
     map:
       - event.outcome: failure
 
   - check:
-      - _json.aws.error_code: +not_exists
+      - _json.aws.error_code: +ef_not_exists
     map:
       - event.outcome: success
 
@@ -112,4 +112,4 @@ normalize:
 
       - tls.cipher: $_json.aws.cipher_suite
 
-      - _json: +delete_field
+      - _json: +ef_delete

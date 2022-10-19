@@ -4,86 +4,86 @@ parents:
   - decoder/syscollector-netinfo/0
 
 check:
-  - _json.iface: +exists
+  - _json.iface: +ef_exists
 
 normalize:
   - check:
-      - _json.ID: +not_exists
+      - _json.ID: +ef_not_exists
     map:
       - _json.ID: "NULL"
 
   - check:
-      - _json.timestamp: +not_exists
+      - _json.timestamp: +ef_not_exists
     map:
       - _json.timestamp: "NULL"
 
   - check:
-      - _json.iface.name: +not_exists
+      - _json.iface.name: +ef_not_exists
     map:
       - _json.iface.name: "NULL"
 
   - check:
-      - _json.iface.adapter: +not_exists
+      - _json.iface.adapter: +ef_not_exists
     map:
       - _json.iface.adapter: "NULL"
 
   - check:
-      - _json.iface.type: +not_exists
+      - _json.iface.type: +ef_not_exists
     map:
       - _json.iface.type: "NULL"
 
   - check:
-      - _json.iface.state: +not_exists
+      - _json.iface.state: +ef_not_exists
     map:
       - _json.iface.state: "NULL"
 
   - check:
-      - _json.iface.MTU: +not_exists
+      - _json.iface.MTU: +ef_not_exists
     map:
       - _json.iface.MTU: "NULL"
 
   - check:
-      - _json.iface.MAC: +not_exists
+      - _json.iface.MAC: +ef_not_exists
     map:
       - _json.iface.MAC: "NULL"
 
   - check:
-      - _json.iface.tx_packets: +not_exists
+      - _json.iface.tx_packets: +ef_not_exists
     map:
       - _json.iface.tx_packets: "NULL"
 
   - check:
-      - _json.iface.rx_packets: +not_exists
+      - _json.iface.rx_packets: +ef_not_exists
     map:
       - _json.iface.rx_packets: "NULL"
 
   - check:
-      - _json.iface.tx_bytes: +not_exists
+      - _json.iface.tx_bytes: +ef_not_exists
     map:
       - _json.iface.tx_bytes: "NULL"
 
   - check:
-      - _json.iface.rx_bytes: +not_exists
+      - _json.iface.rx_bytes: +ef_not_exists
     map:
       - _json.iface.rx_bytes: "NULL"
 
   - check:
-      - _json.iface.tx_errors: +not_exists
+      - _json.iface.tx_errors: +ef_not_exists
     map:
       - _json.iface.tx_errors: "NULL"
 
   - check:
-      - _json.iface.rx_errors: +not_exists
+      - _json.iface.rx_errors: +ef_not_exists
     map:
       - _json.iface.rx_errors: "NULL"
 
   - check:
-      - _json.iface.tx_dropped: +not_exists
+      - _json.iface.tx_dropped: +ef_not_exists
     map:
       - _json.iface.tx_dropped: "NULL"
 
   - check:
-      - _json.iface.rx_dropped: +not_exists
+      - _json.iface.rx_dropped: +ef_not_exists
     map:
       - _json.iface.rx_dropped: "NULL"
 

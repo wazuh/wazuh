@@ -4,10 +4,10 @@ metadata:
   description: Nginx error log decoder
 
 check:
-  - event.original: +exists
+  - event.original: +ef_exists
 
 parse:
-  logql:
+  logpar:
     - event.original: >-
         <timestamp/NGINX_ERROR> [<log.level>] <process.pid>#<process.thread.id>:
         *<_nginx.error.connection_id/number> <message>

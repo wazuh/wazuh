@@ -15,7 +15,7 @@ class StageBuilderParseTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        Registry::registerBuilder(opBuilderLogqlParser, "parser.logql");
+        Registry::registerBuilder(opBuilderLogqlParser, "parser.logpar");
     }
 
     void TearDown() override
@@ -27,7 +27,7 @@ protected:
 TEST_F(StageBuilderParseTest, Builds)
 {
     Json doc = Json {R"({
-            "logql":[
+            "logpar":[
                 {"field": "<field>"}
             ]
     })"};
@@ -42,7 +42,7 @@ TEST_F(StageBuilderParseTest, NotJson)
 TEST_F(StageBuilderParseTest, NotObject)
 {
     Json doc = Json {R"([
-            {"logql":[
+            {"logpar":[
                 {"field": "<field>"}
             ]}
     ])"};
@@ -52,7 +52,7 @@ TEST_F(StageBuilderParseTest, NotObject)
 TEST_F(StageBuilderParseTest, BuildsCorrectExpression)
 {
     Json doc = Json {R"({
-            "logql":[
+            "logpar":[
                 {"field": "<field>"}
             ]
     })"};
