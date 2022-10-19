@@ -3665,7 +3665,7 @@ checks:
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 19038
     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
-    description: "AppArmor profiles define what resources applicatons are able to access."
+    description: "AppArmor profiles define what resources applications are able to access."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
@@ -4614,7 +4614,7 @@ checks:
     title: "Ensure GNOME Display Manager is removed."
     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
     rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
-    Impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
+    impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
     remediation: "Run the following command to uninstall gdm3: # apt purge gdm3"
     compliance:
       - cis: ["1.8.1"]
@@ -4991,7 +4991,7 @@ checks:
           ]
     condition: all
     rules:
-      - "apt -s upgrade -> r:0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded"
+      - "c:apt -s upgrade -> r:0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded"
 
   ########### WIP
 
