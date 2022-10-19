@@ -3739,6 +3739,7 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
+      - 'c:apparmor_status -> r:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
       - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing (Automated)
