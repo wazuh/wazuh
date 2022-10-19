@@ -1725,9 +1725,10 @@ def test_add_dynamic_detail(detail, value, attribs, details):
         assert details[detail][key] == value
 
 
+@patch('wazuh.core.utils.check_disabled_limits_in_conf')
 @patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_remote_commands):
+def test_validate_wazuh_xml(mock_remote_commands, mock_disabled_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1875,3 +1876,25 @@ def test_get_utc_now():
     date = utils.get_utc_strptime(mock_date, default_format)
     assert isinstance(date, datetime.datetime)
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
+
+
+@pytest.mark.parametrize("configuration", [
+    "<root><global><limits><eps><whatever>yes</whatever></eps></limits></global></root>",
+    "<root><global><logall>no</logall></global><global><limits><eps><whatever>yes</whatever></eps></limits>"
+    "</global></root>"
+])
+@pytest.mark.parametrize("limits_conf, expect_exc", [
+    ({'eps': {'allow': True}}, False),
+    ({'eps': {'allow': False}}, True)
+])
+def test_check_disabled_limits_in_conf(configuration, limits_conf, expect_exc):
+    """Test if forbidden limits in the API settings are blocked."""
+    new_conf = utils.configuration.api_conf
+    new_conf['upload_configuration']['limits'].update(limits_conf)
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=new_conf):
+        if expect_exc:
+            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
+                utils.check_disabled_limits_in_conf(configuration)
+        else:
+            utils.check_disabled_limits_in_conf(configuration)
