@@ -1318,9 +1318,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
     data->perm = NULL;
-#ifdef WIN32
     data->perm_json = NULL;
-#endif
     data->attributes = NULL;
     data->uid = NULL;
     data->gid = NULL;
