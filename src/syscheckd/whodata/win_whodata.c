@@ -1120,6 +1120,8 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
     while (atomic_int_get(&whodata_end) == 0) {
+        mdebug2(FIM_WHODATA_STATE_CHECKER);
+
         // Check File System and Handle Manipulation policies. Switch to realtime in case these policies are disabled.
         if (policy_check() == 1) {
             mwarn(FIM_WHODATA_POLICY_CHANGE);

@@ -270,6 +270,7 @@
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
+#define FIM_WHODATA_STATE_CHECKER           "(6366): Starting check of Windows Audit Policies and SACLs."
 
 
 /* Modules messages */

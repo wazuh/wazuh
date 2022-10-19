@@ -74,6 +74,7 @@ extern char sys_64;
 extern PSID everyone_sid;
 extern size_t ev_sid_size;
 extern int restore_policies;
+extern int policies_checked;
 extern EVT_HANDLE context;
 extern atomic_int_t whodata_end;
 
@@ -151,7 +152,7 @@ void expect_policy_check_match_call(NTSTATUS status1,
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
     will_return(wrap_FormatMessage, "Access is denied");
-    expect_string(__wrap__mwarn, formatted_msg, "(6950): Unable to check the necessary policies for whodata: Access is denied (5).");
+    expect_string(__wrap__mwarn, formatted_msg, "(6951): Unable to check the necessary policies for whodata: Access is denied (5).");
 }
 
 /**************************************************************************/
@@ -5383,6 +5384,8 @@ void test_whodata_callback_4719_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
+    policies_checked = 2;
+
     successful_whodata_event_render(event, raw_data);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_WHODATA_POLICY_CHANGE);
@@ -6864,6 +6867,8 @@ void test_state_checker_no_files_to_check(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
                                    pol_data->category_guid, TRUE,
@@ -6898,6 +6903,8 @@ void test_state_checker_file_not_whodata(void **state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -6936,6 +6943,8 @@ void test_state_checker_file_does_not_exist(void **state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -6983,6 +6992,8 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7102,6 +7113,8 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
                                    pol_data->category_guid, TRUE,
@@ -7212,6 +7225,8 @@ void test_state_checker_dir_readded_error(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
                                    pol_data->category_guid, TRUE,
@@ -7285,6 +7300,8 @@ void test_state_checker_dir_readded_succesful(void **state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7429,6 +7446,8 @@ void test_state_checker_not_match_policy(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
 
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
+
     pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7436,7 +7455,7 @@ void test_state_checker_not_match_policy(void **state) {
                                    2, TRUE,
                                    pol_data->paudit_policy, TRUE);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6951): Audit policy change detected. Switching directories to realtime.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6952): Audit policy change detected. Switching directories to realtime.");
 
     ret = state_checker(input);
 
@@ -7456,6 +7475,8 @@ void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7487,6 +7508,8 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7529,6 +7552,8 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7576,6 +7601,8 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7628,6 +7655,8 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
@@ -7693,6 +7722,8 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_STATE_CHECKER);
 
     expect_policy_check_match_call((NTSTATUS)0,
                                    pol_data->audit_event_info, (NTSTATUS)0,
