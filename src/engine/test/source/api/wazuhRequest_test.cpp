@@ -246,6 +246,7 @@ TEST(WazuhRequest_create, valid_paramObjtype)
 {
     auto wrequest = api::WazuhRequest::create(
         "test command",
+        "api",
         json::Json {
             R"({"param 1":"disconnected","param 2":false,"param 3":1,"param 4":1.1})"});
     ASSERT_TRUE(wrequest.isValid());
@@ -260,6 +261,7 @@ TEST(WazuhRequest_create, invalid_paramArraytype)
     ASSERT_THROW(
         api::WazuhRequest::create(
             "test command",
+            "api",
             json::Json {R"(["param 1","disconnected","param 2",false,"param 3",1,"param 4",1.1])"}),
         std::runtime_error);
 }
@@ -269,6 +271,7 @@ TEST(WazuhRequest_create, invalid_emptyCommand)
     ASSERT_THROW(
         api::WazuhRequest::create(
             "",
+            "api",
             json::Json {R"({"param 1":"disconnected","param 2":false,"param 3":1,"param 4":1.1})"}),
         std::runtime_error);
 }

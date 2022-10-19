@@ -86,7 +86,9 @@ public:
      * @throw std::runtime_error if the command is empty or the parameters are not a JSON
      * object
      */
-    static WazuhRequest create(std::string_view command, const json::Json& parameters);
+    static WazuhRequest create(std::string_view command,
+                               std::string_view originName,
+                               const json::Json& parameters);
 
     std::string toStr() const { return m_jrequest.str(); }
 
