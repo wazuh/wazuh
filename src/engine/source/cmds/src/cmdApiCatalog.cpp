@@ -3,8 +3,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <system_error>
 
 #include <api/wazuhRequest.hpp>
 #include <api/wazuhResponse.hpp>
@@ -13,22 +16,26 @@
 
 namespace cmd
 {
-void catalog(const std::string& socketPath,
-             const std::string& methodStr,
-             const std::string& nameStr,
-             const std::string& format,
-             const std::string& content)
+
+namespace catalog_details
+{
+
+void singleRequest(const std::string& socketPath,
+                   const std::string& actionStr,
+                   const std::string& nameStr,
+                   const std::string& format,
+                   const std::string& content)
 {
     api::WazuhRequest request;
 
-    auto method = catalog_details::stringToMethod(methodStr.c_str());
-    if (method == catalog_details::Method::ERROR_METHOD)
+    auto action = catalog_details::stringToAction(actionStr.c_str());
+    if (action == catalog_details::Action::ERROR_ACTION)
     {
-        std::cerr << "Invalid method " << methodStr << std::endl;
+        std::cerr << "Invalid action " << actionStr << std::endl;
         return;
     }
 
-    // Prepare command and assert name is valid for the method
+    // Prepare command and assert name is valid for the action
     std::string command;
     base::Name name;
     try
@@ -41,111 +48,102 @@ void catalog(const std::string& socketPath,
         return;
     }
 
-    switch (method)
+    switch (action)
     {
-        case catalog_details::Method::LIST:
+        case catalog_details::Action::LIST:
             if (name.parts().size() != 1 && name.parts().size() != 2)
             {
-                std::cerr << fmt::format("Invalid name [{}] for method {}, name must be "
+                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
                                          "a valid <type>[/<item-id>]",
                                          nameStr,
-                                         methodStr)
+                                         actionStr)
                           << std::endl;
                 return;
             }
             if (!content.empty())
             {
-                std::cerr << "Content not allowed for method " << methodStr << std::endl;
+                std::cerr << "Content not allowed for action " << actionStr << std::endl;
                 return;
             }
             command = "get";
             break;
-        case catalog_details::Method::GET:
+        case catalog_details::Action::GET:
             if (name.parts().size() != 3)
             {
-                std::cerr << fmt::format("Invalid name [{}] for method {}, name must be "
+                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
                                          "a valid <type>/<item-id>/<ver>",
                                          nameStr,
-                                         methodStr)
+                                         actionStr)
                           << std::endl;
                 return;
             }
             if (!content.empty())
             {
-                std::cerr << "Content not allowed for method " << methodStr << std::endl;
+                std::cerr << "Content not allowed for action " << actionStr << std::endl;
                 return;
             }
             command = "get";
             break;
-        case catalog_details::Method::UPDATE:
+        case catalog_details::Action::UPDATE:
             if (name.parts().size() != 3)
             {
-                std::cerr << fmt::format("Invalid name [{}] for method {}, name must be "
+                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
                                          "a valid <type>/<item-id>/<ver>",
                                          nameStr,
-                                         methodStr)
+                                         actionStr)
                           << std::endl;
                 return;
             }
             if (content.empty())
             {
-                std::cerr << "Content required for method " << methodStr << std::endl;
+                std::cerr << "Content required for action " << actionStr << std::endl;
                 return;
             }
             command = "put";
             break;
-        case catalog_details::Method::CREATE:
+        case catalog_details::Action::CREATE:
             if (name.parts().size() != 1)
             {
                 std::cerr << fmt::format(
-                    "Invalid name [{}] for method {}, name must be a valid <type>",
+                    "Invalid name [{}] for action {}, name must be a valid <type>",
                     nameStr,
-                    methodStr)
+                    actionStr)
                           << std::endl;
                 return;
             }
             if (content.empty())
             {
-                std::cerr << "Content required for method " << methodStr << std::endl;
+                std::cerr << "Content required for action " << actionStr << std::endl;
                 return;
             }
             command = "post";
             break;
-        case catalog_details::Method::DELETE:
-            if (name.parts().size() != 3)
-            {
-                std::cerr << fmt::format("Invalid name [{}] for method {}, name must be "
-                                         "a valid <type>/<item-id>/<ver>",
-                                         nameStr,
-                                         methodStr)
-                          << std::endl;
-                return;
-            }
+        case catalog_details::Action::DELETE:
             if (!content.empty())
             {
-                std::cerr << "Content not allowed for method " << methodStr << std::endl;
+                std::cerr << "Content not allowed for action " << actionStr << std::endl;
                 return;
             }
             command = "delete";
             break;
-        case catalog_details::Method::VALIDATE:
+        case catalog_details::Action::VALIDATE:
             if (name.parts().size() != 3)
             {
-                std::cerr << fmt::format("Invalid name [{}] for method {}, name must be "
+                std::cerr << fmt::format("Invalid name [{}] for action {}, name must be "
                                          "a valid <type>/<item-id>/<ver>",
                                          nameStr,
-                                         methodStr)
+                                         actionStr)
                           << std::endl;
                 return;
             }
             if (content.empty())
             {
-                std::cerr << "Content required for method " << methodStr << std::endl;
+                std::cerr << "Content required for action " << actionStr << std::endl;
                 return;
             }
             command = "validate";
             break;
-        default: break;
+        default: throw std::runtime_error("Invalid action for single request");
     }
     command += "_catalog";
 
@@ -210,4 +208,116 @@ void catalog(const std::string& socketPath,
         std::cerr << "Error procesing response from API: " << e.what() << std::endl;
     }
 }
+
+void loadRuleset(const std::string& socketPath,
+                    const std::string& collectionNameStr,
+                    const std::string& collectionPathStr,
+                    const std::string& format)
+{
+    // Build and check collection path
+    std::error_code ec;
+    std::filesystem::path collectionPath;
+    try
+    {
+        collectionPath = std::filesystem::path(collectionPathStr);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return;
+    }
+    if (!std::filesystem::is_directory(collectionPath, ec))
+    {
+        std::cerr << "Error " << collectionPathStr
+                  << " is not a directory: " << ec.message() << std::endl;
+        ec.clear();
+        return;
+    }
+
+    // Assert collection name is valid
+    if ("decoder" != collectionNameStr && "rule" != collectionNameStr
+        && "filter" != collectionNameStr && "output" != collectionNameStr
+        && "schema" != collectionNameStr && "environment" != collectionNameStr)
+    {
+        std::cerr << "Invalid collection name: " << collectionNameStr << std::endl;
+        return;
+    }
+
+    // Iterate directory and send requests to create items
+    for (const auto& dirEntry : std::filesystem::directory_iterator(collectionPath, ec))
+    {
+        // If error ignore entry and continue
+        if (ec)
+        {
+            std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
+                      << std::endl;
+            ec.clear();
+            continue;
+        }
+
+        if (dirEntry.is_regular_file(ec))
+        {
+            // If error ignore entry and continue
+            if (ec)
+            {
+                std::cerr << "Error reading " << dirEntry.path() << ": " << ec.message()
+                          << std::endl;
+                ec.clear();
+                continue;
+            }
+
+            // Read file content
+            std::string content;
+
+            try
+            {
+                std::ifstream file(dirEntry.path());
+                content = std::string(std::istreambuf_iterator<char>(file),
+                                      std::istreambuf_iterator<char>());
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Error reading " << dirEntry.path() << ": " << e.what()
+                          << std::endl;
+                continue;
+            }
+
+            // Send request
+            singleRequest(socketPath,
+                          actionToString(Action::CREATE),
+                          collectionNameStr,
+                          format,
+                          content);
+        }
+    }
+}
+
+} // namespace catalog_details
+
+void catalog(const std::string& socketPath,
+             const std::string& actionStr,
+             const std::string& nameStr,
+             const std::string& format,
+             const std::string& content,
+             const std::string& path)
+{
+    auto action = catalog_details::stringToAction(actionStr.c_str());
+    switch (action)
+    {
+        case catalog_details::Action::CREATE:
+        case catalog_details::Action::DELETE:
+        case catalog_details::Action::UPDATE:
+        case catalog_details::Action::GET:
+        case catalog_details::Action::LIST:
+        case catalog_details::Action::VALIDATE:
+            catalog_details::singleRequest(
+                socketPath, actionStr, nameStr, format, content);
+            break;
+        case catalog_details::Action::LOAD:
+            catalog_details::loadRuleset(socketPath, nameStr, path, format);
+            break;
+        default: std::cerr << "Invalid action: " << actionStr << std::endl; break;
+    }
+}
+
 } // namespace cmd
