@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
+from wazuh.core.exception import DOCU_VERSION
 
 
 class APIException(Exception):
@@ -25,7 +26,9 @@ class APIException(Exception):
         # show relative paths in exceptions
         self.exceptions = {
             2000: 'Some parameters are not expected in the configuration file '
-                  f'(WAZUH_PATH/{RELATIVE_CONFIG_FILE_PATH})',
+                  f"(WAZUH_PATH/{RELATIVE_CONFIG_FILE_PATH}). Please check the documentation for further details: "
+                  f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"
+                  '#api-configuration-options',
             2001: 'Error creating or reading secrets file. Please, ensure '
                   'there is enough disk space and permission to write in '
                   f'WAZUH_PATH/{RELATIVE_SECURITY_PATH}',
