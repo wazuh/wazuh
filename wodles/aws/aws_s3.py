@@ -63,12 +63,12 @@ if sys.version_info[0] == 3:
 ################################################################################
 
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
+RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/considerations.html#Connection-configuration-for-retries'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
 
 # Enable/disable debug mode
 debug_level = 0
-
 
 ################################################################################
 # Classes
@@ -790,7 +790,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_account_ids" request was denied due to request throttling. ', 2)
+                debug('Error: The "find_account_ids" request was denied due to request throttling. If the problem '
+                      'persists check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -817,7 +819,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "find_regions" request was denied due to request throttling. ', 2)
+                debug('Error: The "find_regions" request was denied due to request throttling. If the problem persists '
+                      'check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -1105,7 +1109,9 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "iter_files_in_bucket" request was denied due to request throttling. ', 2)
+                debug('Error: The "iter_files_in_bucket" request was denied due to request throttling. If the problem '
+                      'persists check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
@@ -1132,7 +1138,9 @@ class AWSBucket(WazuhIntegration):
                 exit(14)
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug(f'Error: The "check_bucket" request was denied due to request throttling. ', 2)
+                debug('Error: The "check_bucket" request was denied due to request throttling. If the problem persists '
+                      'check the following link to learn how to use the Retry configuration to avoid it: '
+                      f'{RETRY_CONFIGURATION_URL}', 2)
                 sys.exit(16)
             else:
                 print("ERROR: Invalid credentials to access S3 Bucket")
@@ -2479,8 +2487,28 @@ class AWSALBBucket(AWSLBBucket):
                 "request_creation_time", "action_executed", "redirect_url", "error_reason", "target_port_list",
                 "target_status_code_list", "classification", "classification_reason")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            tsv_file = [dict(x, source='alb') for x in tsv_file]
 
-            return [dict(x, source='alb') for x in tsv_file]
+            fields_to_process_map = {
+                "client_port": "client_ip",
+                "target_port": "target_ip",
+                "target_port_list": "target_ip_list"
+            }
+
+            for log_entry in tsv_file:
+                for field_to_process, ip_field in fields_to_process_map.items():
+                    try:
+                        port, ip = "", ""
+                        for item in [i.split(":") for i in log_entry[field_to_process].split()]:
+                            ip += f"{item[0]} "
+                            port += f"{item[1]} "
+                        log_entry[field_to_process], log_entry[ip_field] = port.strip(), ip.strip()
+                    except (ValueError, IndexError):
+                        debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.", msg_level=1)
+                        debug(f"Log Entry: {log_entry}", msg_level=2)
+
+            return tsv_file
+
 
 
 class AWSCLBBucket(AWSLBBucket):

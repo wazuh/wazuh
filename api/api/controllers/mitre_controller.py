@@ -13,7 +13,6 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh-api')
 
-
 async def get_metadata(request, pretty=False, wait_for_complete=False):
     """Return the metadata of the MITRE's database
 

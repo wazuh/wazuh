@@ -69,7 +69,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
 
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 
-        ChecksumContext checksumCtx;
+        ChecksumContext checksumCtx {};
         // In this case, 'size' field will not be used because of the checksum type (CHECKSUM_COMPLETE).
         checksumCtx.size = 0;
         checksumCtx.rightCtx.id = std::time(nullptr);

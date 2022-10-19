@@ -248,7 +248,6 @@ STATIC void w_remoted_clean_agents_state() {
 
     while (hash_node) {
         agent_id = hash_node->key;
-        agent_state = hash_node->data;
 
         hash_node = OSHash_Next(remoted_agents_state, &inode_it, hash_node);
 

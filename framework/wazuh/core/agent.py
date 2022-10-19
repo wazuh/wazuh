@@ -822,7 +822,7 @@ class Agent:
         """
         wdb = WazuhDBConnection()
         try:
-            _, payload = wdb.run_wdb_command(f'global select-group-belong {agent_id}')
+            _, payload = wdb.send(f'global select-group-belong {agent_id}', raw=True)
             return json.loads(payload)
         finally:
             wdb.close()
@@ -839,7 +839,7 @@ class Agent:
 
         wdb = WazuhDBConnection()
         try:
-            wdb.run_wdb_command(command)
+            wdb.send(command, raw=True)
         finally:
             wdb.close()
 
@@ -1063,7 +1063,7 @@ def expand_group(group_name):
             else:
                 command = f'global get-group-agents {group_name} last_id {last_id}'
 
-            status, payload = wdb_conn.run_wdb_command(command)
+            status, payload = wdb_conn.send(command, raw=True)
             agents = json.loads(payload)
 
             for agent in agents[0]['data'] if group_name == '*' else agents:

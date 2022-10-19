@@ -38,6 +38,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND analysisd_names "test_analysisd_syscheck")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND analysisd_names "test_cleanevent")
+list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+
 list(APPEND analysisd_names "test_dbsync")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                          -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
@@ -153,8 +156,8 @@ list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_Bin
                              -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getGlobalConfig -Wl,--wrap,asys_create_agents_state_json \
                              -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
-list(APPEND analysisd_names "test_cleanevent")
-list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+LIST(APPEND analysisd_names "test_limits")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_minfo")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

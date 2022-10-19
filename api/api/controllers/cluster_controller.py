@@ -9,7 +9,6 @@ from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
-import wazuh.core.cluster.cluster as core_cluster
 import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
@@ -144,7 +143,7 @@ async def get_nodes_ruleset_sync_status(request, pretty=False, wait_for_complete
     """
     nodes = raise_if_exc(await get_system_nodes())
 
-    master_dapi = DistributedAPI(f=core_cluster.get_node_ruleset_integrity,
+    master_dapi = DistributedAPI(f=cluster.get_node_ruleset_integrity,
                                  request_type='local_master',
                                  is_async=True,
                                  wait_for_complete=wait_for_complete,

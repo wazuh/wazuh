@@ -494,12 +494,12 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     }
                 }
 
-                w_mutex_unlock(&files_mutex);
-
                 if (aux && aux->f_sum && aux->f_sum[0] && *(aux->f_sum[0]->sum)) {
                     // Copy sum before unlock mutex
                     memcpy(data->merged_sum, aux->f_sum[0]->sum, sizeof(os_md5));
                 }
+
+                w_mutex_unlock(&files_mutex);
             } else {
                 merror("Error getting group for agent '%s'", key->id);
             }
@@ -1694,8 +1694,12 @@ void manager_init()
     os_calloc(1, sizeof(group_t *), groups);
     os_calloc(1, sizeof(group_t *), multi_groups);
 
-    /* Clean multigroups directory and run initial groups and multigroups scan */
-    cldir_ex(MULTIGROUPS_DIR);
+    /* Clean multigroups directory */
+    if (!logr.nocmerged) {
+        cldir_ex(MULTIGROUPS_DIR);
+    }
+
+    /* Run initial groups and multigroups scan */
     c_files();
 
     w_yaml_create_groups();
