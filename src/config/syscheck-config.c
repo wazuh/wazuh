@@ -1258,7 +1258,7 @@ int read_data_unit(const char *content) {
     if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
         if (isalpha(content[len_value_str - 2])){
             os_calloc(len_value_str, sizeof(char), value_str);
-            strncpy(value_str, content, len_value_str - 2);
+            memcpy(value_str, content, len_value_str - 2);
 
             if (OS_StrIsNum(value_str)) {
                 read_value = atoi(value_str);
@@ -2099,8 +2099,21 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
     if (prefilter_cmd[0]) {
         if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
-            free(syscheck->prefilter_cmd);
-            os_strdup(prefilter_cmd, syscheck->prefilter_cmd);
+            char *save_ptr;
+            int total_vectors = 2;
+
+            os_calloc(total_vectors, sizeof(char *), syscheck->prefilter_cmd);
+            strtok_r(prefilter_cmd, " ", &save_ptr);
+            os_strdup(prefilter_cmd, syscheck->prefilter_cmd[0]);
+            syscheck->prefilter_cmd[1] = NULL;
+
+            while (save_ptr != NULL && *save_ptr != '\0') {
+                os_realloc(syscheck->prefilter_cmd, (total_vectors + 1) * sizeof(char *), syscheck->prefilter_cmd);
+                syscheck->prefilter_cmd[total_vectors] = NULL;
+                os_strdup( save_ptr, syscheck->prefilter_cmd[total_vectors - 1]);
+                total_vectors++;
+                strtok_r(NULL, " ", &save_ptr);
+            }
         } else if (!syscheck->allow_remote_prefilter_cmd) {
             mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
         }
@@ -2324,7 +2337,7 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->realtime);
         }
         if (config->prefilter_cmd) {
-            free(config->prefilter_cmd);
+            free_strarray(config->prefilter_cmd);
         }
 
         free_strarray(config->audit_key);

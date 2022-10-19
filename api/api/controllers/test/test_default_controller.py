@@ -8,10 +8,11 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.default_controller import (BasicInfo, date_format,
+        from api.controllers.default_controller import (BasicInfo, DATE_FORMAT,
                                                         datetime, default_info,
                                                         socket)
         from wazuh.tests.util import RBAC_bypasser
+        from wazuh.core.utils import get_utc_now
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
@@ -29,7 +30,7 @@ async def test_default_info(mock_wresult, mock_lspec):
         'license_name': mock_lspec.return_value['info']['license']['name'],
         'license_url': mock_lspec.return_value['info']['license']['url'],
         'hostname': socket.gethostname(),
-        'timestamp': datetime.utcnow().strftime(date_format)
+        'timestamp': get_utc_now().strftime(DATE_FORMAT)
     }
     mock_lspec.assert_called_once_with()
     mock_wresult.assert_called_once_with({'data': BasicInfo.from_dict(data)})

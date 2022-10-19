@@ -17,7 +17,9 @@
 #include <windef.h>
 #endif
 
-typedef char os_sha1[41];
+#define OS_SHA1_HEXDIGEST_SIZE (SHA_DIGEST_LENGTH * 2) // Sha1 digest len (20) * 2 (hex chars per byte)
+
+typedef char os_sha1[OS_SHA1_HEXDIGEST_SIZE + 1];
 
 int OS_SHA1_File(const char *fname, os_sha1 output, int mode) __attribute((nonnull));
 int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output) __attribute((nonnull));

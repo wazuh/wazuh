@@ -1,9 +1,6 @@
 ---
 test_name: PUT /agents/group
 
-marks:
-  - base_tests
-
 stages:
 
   # PUT /agents/group?group_id=wrong_group
@@ -49,6 +46,19 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
+
+  - name: Try to assign an agent to a forbidden group id (it must count as non existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+        group_id: 'ar.conf'
+    response:
+      <<: *resource_not_found_group
 
     # PUT /agents/group?group_id=default&agents_list=998,999
   - name: Try to assign non existing agents to group default
@@ -187,7 +197,9 @@ stages:
             - "004"
             - "007"
             - "009"
-          total_affected_items: 5
+            - "011"
+            - "012"
+          total_affected_items: 7
 
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
@@ -221,7 +233,9 @@ stages:
             - "008"
             - "009"
             - "010"
-          total_affected_items: 10
+            - "011"
+            - "012"
+          total_affected_items: 12
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -980,7 +994,6 @@ stages:
             - error:
                 code: 1822
                 message: !anystr
-                remediation: !anything
               id:
                 - '001'
         message: !anystr
@@ -1073,7 +1086,6 @@ stages:
             - error:
                 code: 1822
                 message: !anystr
-                remediation: !anything
               id:
                 - '001'
                 - '002'

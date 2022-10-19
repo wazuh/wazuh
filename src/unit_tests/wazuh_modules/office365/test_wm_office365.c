@@ -43,6 +43,11 @@ unsigned int __wrap_sleep(unsigned int __seconds) {
 unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
     return mock_type(unsigned int);
 }
+
+int __wrap_isDebug() {
+    return mock();
+}
+
 ////////////////  test wmodules-office365 /////////////////
 
 typedef struct test_struct {
@@ -1106,6 +1111,8 @@ void test_wm_office365_main_enable(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_isDebug, 0);
 
     expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -2406,6 +2413,7 @@ void test_wm_office365_execute_scan_all(void **state) {
     os_calloc(1, sizeof(wm_office365_fail), data->office365_config->fails);
     os_strdup("subscription_name", data->office365_config->fails->subscription_name);
     os_strdup("tenant_id", data->office365_config->fails->tenant_id);
+    data->office365_config->interval = 10;
 
     int initial_scan = 1;
 
@@ -2527,6 +2535,9 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07 12:24:56' for tenant 'test_tenant_id' and subscription 'test_subscription_name', waiting '10' seconds to run next scan.");
+
     wm_office365_execute_scan(data->office365_config, initial_scan);
 
     os_free(data->response->body);
@@ -2548,6 +2559,7 @@ void test_wm_office365_execute_scan_initial_scan_only_future_events(void **state
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
     data->office365_config->only_future_events = 1;
+    data->office365_config->interval = 10;
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
@@ -2563,6 +2575,17 @@ void test_wm_office365_execute_scan_initial_scan_only_future_events(void **state
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_isDebug, 1);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07 12:24:56' for tenant 'test_tenant_id' and subscription 'test_subscription_name', waiting '10' seconds to run first scan.");
 
     wm_office365_execute_scan(data->office365_config, 1);
 }

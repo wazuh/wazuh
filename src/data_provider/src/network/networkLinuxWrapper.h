@@ -164,6 +164,31 @@ namespace RHInterfaceConfig
     };
 }
 
+namespace NetDevFileFields
+{
+    enum
+    {
+        Iface,
+        RxBytes,
+        RxPackets,
+        RxErrors,
+        RxDropped,
+        RxFifo,
+        RxFrame,
+        RxCompressed,
+        RxMulticast,
+        TxBytes,
+        TxPackets,
+        TxErrors,
+        TxDropped,
+        TxFifo,
+        TxColls,
+        TxCarrier,
+        TxCompressed,
+        FieldsQuantity
+    };
+}
+
 class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
@@ -255,12 +280,12 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                         if (GatewayFileFields::Size == fields.size() &&
                                 fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
                         {
-                            const auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
+                            auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
                             m_metrics = fields.at(GatewayFileFields::Metric);
 
                             if (address)
                             {
-                                m_gateway = std::string(inet_ntoa({ address }));
+                                m_gateway = Utils::NetworkHelper::IAddressToBinary(AF_INET, reinterpret_cast<in_addr*>(&address));
                                 break;
                             }
                         }
@@ -281,7 +306,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         int family() const override
         {
-            return m_interfaceAddress->ifa_addr ? m_interfaceAddress->ifa_addr->sa_family : AF_UNSPEC;
+            return m_interfaceAddress->ifa_addr ? m_interfaceAddress->ifa_addr->sa_family : AF_PACKET;
         }
 
         std::string address() const override
@@ -436,7 +461,49 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         LinkStats stats() const override
         {
-            return m_interfaceAddress->ifa_data ? *reinterpret_cast<LinkStats*>(m_interfaceAddress->ifa_data) : LinkStats();
+            LinkStats retVal {};
+
+            try
+            {
+                const auto devData { Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "dev") };
+
+                if (!devData.empty())
+                {
+                    auto lines { Utils::split(devData, '\n') };
+                    lines.erase(lines.begin());
+                    lines.erase(lines.begin());
+
+                    for (auto& line : lines)
+                    {
+                        line = Utils::trim(line);
+                        Utils::replaceAll(line, "\t", " ");
+                        Utils::replaceAll(line, "  ", " ");
+                        Utils::replaceAll(line, ": ", " ");
+                        const auto fields { Utils::split(line, ' ') };
+
+                        if (NetDevFileFields::FieldsQuantity == fields.size())
+                        {
+                            if (fields.at(NetDevFileFields::Iface).compare(this->name()) == 0)
+                            {
+                                retVal.rxBytes = std::stoul(fields.at(NetDevFileFields::RxBytes));
+                                retVal.txBytes = std::stoul(fields.at(NetDevFileFields::TxBytes));
+                                retVal.rxPackets = std::stoul(fields.at(NetDevFileFields::RxPackets));
+                                retVal.txPackets = std::stoul(fields.at(NetDevFileFields::TxPackets));
+                                retVal.rxErrors = std::stoul(fields.at(NetDevFileFields::RxErrors));
+                                retVal.txErrors = std::stoul(fields.at(NetDevFileFields::TxErrors));
+                                retVal.rxDropped = std::stoul(fields.at(NetDevFileFields::RxDropped));
+                                retVal.txDropped = std::stoul(fields.at(NetDevFileFields::TxDropped));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (...)
+            {
+            }
+
+            return retVal;
         }
 
         std::string type() const override

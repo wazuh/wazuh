@@ -119,10 +119,10 @@ static pthread_mutexattr_t win_el_mutex_attr;
 
 /* can read synchronization */
 static int _can_read = 0;
-static pthread_rwlock_t can_read_rwlock;
+static rwlock_t can_read_rwlock;
 
 /* Multiple readers / one write mutex */
-static pthread_rwlock_t files_update_rwlock;
+static rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
@@ -412,16 +412,6 @@ void LogCollectorStart()
             }
 #endif
         }
-
-        if (current->alias) {
-            int ii = 0;
-            while (current->alias[ii] != '\0') {
-                if (current->alias[ii] == ':') {
-                    current->alias[ii] = '\\';
-                }
-                ii++;
-            }
-        }
     }
 
     //Save status localfiles to disk
@@ -451,7 +441,7 @@ void LogCollectorStart()
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
             set_can_read(0); // Stop reading threads
-            w_rwlock_wrlock(&files_update_rwlock);
+            rwlock_lock_write(&files_update_rwlock);
             set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
@@ -471,12 +461,12 @@ void LogCollectorStart()
 
             f_free_excluded = 0;
 
-            w_rwlock_unlock(&files_update_rwlock);
+            rwlock_unlock(&files_update_rwlock);
         }
 
         if (f_check >= vcheck_files) {
             set_can_read(0); // Stop reading threads
-            w_rwlock_wrlock(&files_update_rwlock);
+            rwlock_lock_write(&files_update_rwlock);
             set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
@@ -507,14 +497,14 @@ void LogCollectorStart()
 
                 // Delay: yield mutex
 
-                w_rwlock_unlock(&files_update_rwlock);
+                rwlock_unlock(&files_update_rwlock);
 
                 if (reload_delay) {
                     nanosleep(&delay, NULL);
                 }
 
                 set_can_read(0); // Stop reading threads
-                w_rwlock_wrlock(&files_update_rwlock);
+                rwlock_lock_write(&files_update_rwlock);
                 set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
@@ -577,9 +567,6 @@ void LogCollectorStart()
                     if (update_fname(i, j)) {
                         if (current->fp) {
                             fclose(current->fp);
-#ifdef WIN32
-                            CloseHandle(current->h);
-#endif
                         }
                         current->fp = NULL;
                         current->exists = 1;
@@ -653,12 +640,10 @@ void LogCollectorStart()
                                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
                     if (h1 == INVALID_HANDLE_VALUE) {
                         fclose(current->fp);
-                        CloseHandle(current->h);
                         current->fp = NULL;
                         minfo(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                     } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                         fclose(current->fp);
-                        CloseHandle(current->h);
                         CloseHandle(h1);
                         current->fp = NULL;
                         minfo(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
@@ -718,7 +703,6 @@ void LogCollectorStart()
                         fclose(current->fp);
 
 #ifdef WIN32
-                        CloseHandle(current->h);
                         CloseHandle(h1);
 #endif
 
@@ -753,7 +737,6 @@ void LogCollectorStart()
                         fclose(current->fp);
 
 #ifdef WIN32
-                        CloseHandle(current->h);
                         CloseHandle(h1);
 #endif
                         current->fp = NULL;
@@ -780,16 +763,10 @@ void LogCollectorStart()
                                         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                                         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
                         if (h1 == INVALID_HANDLE_VALUE) {
-                            if (current->h) {
-                                CloseHandle(current->h);
-                            }
                             mdebug1(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                             file_exists = 0;
                             w_logcollector_state_delete_file(current->file);
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
-                            if (current->h) {
-                                CloseHandle(current->h);
-                            }
                             mdebug1(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                             file_exists = 0;
                             w_logcollector_state_delete_file(current->file);
@@ -836,9 +813,6 @@ void LogCollectorStart()
 
                     if (current->fp) {
                         fclose(current->fp);
-#ifdef WIN32
-                        CloseHandle(current->h);
-#endif
                     }
 
                     current->fp = NULL;
@@ -909,7 +883,7 @@ void LogCollectorStart()
             check_text_only();
 
 
-            w_rwlock_unlock(&files_update_rwlock);
+            rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
                 f_reload = 0;
@@ -1041,7 +1015,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     lf->fp = _fdopen(fd, "r");
     if (!lf->fp) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
-        CloseHandle(lf->h);
+        _close(fd);
         goto error;
     }
 
@@ -1052,7 +1026,6 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     if (GetFileInformationByHandle(lf->h, &lpFileInformation) == 0) {
         merror("Unable to get file information by handle.");
         fclose(lf->fp);
-        CloseHandle(lf->h);
         lf->fp = NULL;
         goto error;
     }
@@ -1131,7 +1104,7 @@ int reload_file(logreader * lf) {
     lf->fp = _fdopen(fd, "r");
 
     if (!lf->fp) {
-        CloseHandle(lf->h);
+        _close(fd);
         return (-1);
     }
 #endif
@@ -1152,7 +1125,6 @@ void close_file(logreader * lf) {
     lf->fp = NULL;
 
 #ifdef WIN32
-    CloseHandle(lf->h);
     lf->h = NULL;
 #endif
 }
@@ -2153,9 +2125,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         /* Check which file is available */
         for (i = 0, j = -1;; i++) {
 
-            w_rwlock_rdlock(&files_update_rwlock);
+            rwlock_lock_read(&files_update_rwlock);
             if (f_control = update_current(&current, &i, &j), f_control) {
-                w_rwlock_unlock(&files_update_rwlock);
+                rwlock_unlock(&files_update_rwlock);
 
                 if (f_control == NEXT_IT) {
                     continue;
@@ -2182,7 +2154,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     }
 #endif
                     w_mutex_unlock(&current->mutex);
-                    w_rwlock_unlock(&files_update_rwlock);
+                    rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
 
@@ -2207,7 +2179,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             fclose(current->fp);
                             current->fp = NULL;
                             w_mutex_unlock(&current->mutex);
-                            w_rwlock_unlock(&files_update_rwlock);
+                            rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
                     }
@@ -2221,7 +2193,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                    if ((r = fgetc(current->fp)) == EOF) {
                        clearerr(current->fp);
                        w_mutex_unlock(&current->mutex);
-                       w_rwlock_unlock(&files_update_rwlock);
+                       rwlock_unlock(&files_update_rwlock);
                        continue;
                    }
 
@@ -2235,7 +2207,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 if (current->h && (GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
                     merror("Unable to get file information by handle.");
                     w_mutex_unlock(&current->mutex);
-                    w_rwlock_unlock(&files_update_rwlock);
+                    rwlock_unlock(&files_update_rwlock);
                     continue;
                 } else {
                     FILETIME ft_handle = lpFileInformation.ftLastWriteTime;
@@ -2250,11 +2222,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     if((c_currenttime - current->age) >= file_currenttime) {
                         mdebug1("Ignoring file '%s' due to modification time",current->file);
                         fclose(current->fp);
-                        CloseHandle(current->h);
                         current->fp = NULL;
                         current->h = NULL;
                         w_mutex_unlock(&current->mutex);
-                        w_rwlock_unlock(&files_update_rwlock);
+                        rwlock_unlock(&files_update_rwlock);
                         continue;
                     }
                 }
@@ -2340,15 +2311,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                         /* Close the file */
                         fclose(current->fp);
-    #ifdef WIN32
-                        CloseHandle(current->h);
-    #endif
                         current->fp = NULL;
 
                         /* Try to open it again */
                         if (handle_file(i, j, 0, 1)) {
                             w_mutex_unlock(&current->mutex);
-                            w_rwlock_unlock(&files_update_rwlock);
+                            rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
 #ifdef WIN32
@@ -2379,7 +2347,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 }
             }
 
-            w_rwlock_unlock(&files_update_rwlock);
+            rwlock_unlock(&files_update_rwlock);
         }
     }
 
@@ -2415,19 +2383,8 @@ void w_create_input_threads(){
 
 void files_lock_init()
 {
-    pthread_rwlockattr_t attr;
-    pthread_rwlockattr_init(&attr);
-
-#ifdef __linux__
-    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
-     * Do not use recursive locking.
-     */
-    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-#endif
-
-    w_rwlock_init(&files_update_rwlock, &attr);
-    w_rwlock_init(&can_read_rwlock, &attr);
-    pthread_rwlockattr_destroy(&attr);
+    rwlock_init(&files_update_rwlock);
+    rwlock_init(&can_read_rwlock);
 }
 
 static void check_text_only() {
@@ -2631,17 +2588,17 @@ static void check_pattern_expand_excluded() {
 
 static void set_can_read(int value){
 
-    w_rwlock_wrlock(&can_read_rwlock);
-    _can_read = value;
-    w_rwlock_unlock(&can_read_rwlock);
+    RWLOCK_LOCK_WRITE(&can_read_rwlock, {
+        _can_read = value;
+    });
 }
 
 int can_read() {
 
     int ret;
-    w_rwlock_rdlock(&can_read_rwlock);
-    ret = _can_read;
-    w_rwlock_unlock(&can_read_rwlock);
+    RWLOCK_LOCK_READ(&can_read_rwlock, {
+        ret = _can_read;
+    });
     return ret;
 }
 
@@ -2806,7 +2763,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         }
     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-   
+
    w_macos_set_status_from_JSON(global_json);
 
 #endif
@@ -3018,7 +2975,7 @@ void w_macos_release_log_stream(void) {
 }
 
 void w_macos_release_log_execution(void) {
-    
+
     w_macos_release_log_show();
     w_macos_release_log_stream();
 }

@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytz
 
-from wazuh.core.common import LOGTEST_SOCKET, decimals_date_format, origin_module
+from wazuh.core.common import LOGTEST_SOCKET, DECIMALS_DATE_FORMAT, origin_module
 from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
 
 
@@ -35,7 +35,7 @@ def send_logtest_msg(command: str = None, parameters: dict = None):
     try:
         response['data']['output']['timestamp'] = datetime.strptime(
             response['data']['output']['timestamp'], "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc).strftime(
-            decimals_date_format)
+            DECIMALS_DATE_FORMAT)
     except KeyError:
         pass
 

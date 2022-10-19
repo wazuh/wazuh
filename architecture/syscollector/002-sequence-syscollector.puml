@@ -13,62 +13,53 @@ participant dbsync
 database local.db as ldb
 
 activate sysco
+activate manager
+activate agent.db
+
 
 sysco -> dbsync ++: reset DB
 dbsync -> ldb --
 
 loop every ""interval"" seconds
-
+    note across: Supported scans: osinfo, hwinfo, packages, processes, netaddr, netproto, netiface, ports, hotfixes
     group for each [scan enabled]
         sysco -> info ++: scan
-        note left
-            Supported scans:
-            1- os info.
-            2- hardware info.
-            3- installed packages info.
-            4- active processes info.
-            5- network info.
-            6- ports info.
-            7- hotfixes info (windows).
-        end note
         sysco <-- info --: info
         sysco -> dbsync++ : update DB with new info
         dbsync -> ldb
-        dbsync--
-        alt delta synchronization
+        alt not first set of scans
             note over manager, sysco
-                Sending deltas are currenty disabled.
+                delta synchronization
             end note
-            sysco -> dbsync++: get delta changes
-            dbsync -> ldb
             dbsync --> sysco --: delta changes
             sysco ->> manager : send delta data
             manager -> agent.db: update DB
-
-        else rsync synchronization
-
+            alt syscollector rules?
+            manager -> manager: generate alert
+            end
+        end
+    end
+    group for each [scan enabled]
+        note over manager, sysco
+            rsync synchronization
+        end note
+        loop until DB table is mirrored
             sysco -> rsync++ : get sync data
             rsync -> dbsync++ : get DB data
             dbsync -> ldb
             rsync <-- dbsync-- : DB data
             rsync -> rsync : build sync data
             rsync --> sysco --: sync data
-            sysco ->> manager : send sync data
-            manager -> agent.db: update DB
+            sysco ->> manager : send current table hash
+            manager -> agent.db: compare hash
+            manager <- agent.db
+            alt more datailed info needed ?
+                sysco <<- manager : request detailed table hash
+            else
+                sysco <<- manager : sync finished
+            end
         end
     end
 end
-
-... Manager request to sync databases ...
-
-manager ->> sysco : let's sync our DBs
-sysco -> rsync++ : get sync data
-rsync -> dbsync++ : get DB data
-dbsync -> ldb
-rsync <-- dbsync-- : DB data
-rsync -> rsync : build sync data
-rsync --> sysco --: sync data
-sysco --> manager : send sync data
-manager -> agent.db: update DB
 
 @enduml

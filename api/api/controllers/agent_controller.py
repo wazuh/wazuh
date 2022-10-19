@@ -13,11 +13,12 @@ from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.models.group_added_model import GroupAddedModel
-from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
+from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
+from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import database_limit
+from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -98,31 +99,57 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, agents_l
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents(request, pretty=False, wait_for_complete=False, agents_list=None, offset=0, limit=database_limit,
+async def get_agents(request, pretty=False, wait_for_complete=False, agents_list=None, offset=0, limit=DATABASE_LIMIT,
                      select=None, sort=None, search=None, status=None, q=None, older_than=None,
-                     manager=None, version=None, group=None, node_name=None, name=None, ip=None):
-    """Get information about all agents or a list of them
+                     manager=None, version=None, group=None, node_name=None, name=None, ip=None,
+                     group_config_status=None):
+    """Get information about all agents or a list of them.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    status : str
+        Filter by agent status. Use commas to enter multiple statuses.
+    q : str
+        Query to filter results by. For example "q&#x3D;&amp;quot;status&#x3D;active&amp;quot;".
+    older_than : str
+        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
+        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
+    manager : str
+        Filter by manager hostname to which agents are connected.
+    version : str
+        Filter by agents version.
+    group : str
+        Filter by agent group.
+    node_name : str
+        Filter by node name.
+    name : str
+        Filter by agent name.
+    ip : str
+        Filter by agent IP.
+    group_config_status : str
+        Filter by agent groups configuration sync status.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
-    :param manager: Filters by manager hostname to which agents are connected.
-    :param version: Filters by agents version.
-    :param group: Filters by group of agents.
-    :param node_name: Filters by node name.
-    :param name: Filters by agent name.
-    :param ip: Filters by agent IP
-    :return: AllItemsResponseAgents
+    Returns
+    -------
+    AffectedItemWazuhResult
+        Response with all selected agents information.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -139,7 +166,8 @@ async def get_agents(request, pretty=False, wait_for_complete=False, agents_list
                     'node_name': node_name,
                     'name': name,
                     'ip': ip,
-                    'registerIP': request.query.get('registerIP', None)
+                    'registerIP': request.query.get('registerIP', None),
+                    'group_config_status': group_config_status
                 },
                 'q': q
                 }
@@ -302,6 +330,8 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
                 'config': kwargs.get('configuration', None)
                 }
 
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
+
     dapi = DistributedAPI(f=agent.get_agent_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -344,16 +374,25 @@ async def delete_single_agent_multiple_groups(request, agent_id, groups_list=Non
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=False):
     """Get agent configuration sync status.
 
-    Returns whether the agent configuration has been synchronized with the agent
-    or not. This can be useful to check after updating a group configuration.
+    Return whether the agent group configuration has been synchronized with the agent or not.
 
-    :param agent_id: Agent ID. All possible values from 000 onwards.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout responseç
-    :return: AgentSync
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ApiResponse
+        Agent configuration sync status.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -877,7 +916,7 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, groups_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
+async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
                               select=None, sort=None, search=None, status=None, q=None):
     """Get the list of agents that belongs to the specified group.
 
@@ -950,7 +989,7 @@ async def post_group(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
+async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT):
     """Get group configuration defined in the `agent.conf` file.
 
     :param pretty: Show results in human-readable format
@@ -1180,7 +1219,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
+async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
                              select=None, sort=None, search=None, q=None):
     """Get agents without group.
 
@@ -1215,7 +1254,7 @@ async def get_agent_no_group(request, pretty=False, wait_for_complete=False, off
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_outdated(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None,
+async def get_agent_outdated(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT, sort=None,
                              search=None, q=None):
     """Get outdated agents.
 
@@ -1249,7 +1288,7 @@ async def get_agent_outdated(request, pretty=False, wait_for_complete=False, off
 
 
 async def get_agent_fields(request, pretty: bool = False, wait_for_complete: bool = False, fields: str = None,
-                           offset: int = 0, limit: int = database_limit, sort: str = None, search: str = None,
+                           offset: int = 0, limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
                            q: str = None) -> web.Response:
     """Get distinct fields in agents.
 

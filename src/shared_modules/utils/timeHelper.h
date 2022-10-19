@@ -50,4 +50,6 @@ namespace Utils
     }
 };
 
+#pragma GCC diagnostic pop
+
 #endif // _TIME_HELPER_H

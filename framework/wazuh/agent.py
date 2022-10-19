@@ -5,7 +5,6 @@
 import hashlib
 import operator
 from os import chmod, path, listdir
-from shutil import copyfile
 from typing import Union
 
 from wazuh.core import common, configuration
@@ -16,7 +15,8 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches
+from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
+    full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -41,7 +41,7 @@ ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT = [1813]
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.database_limit, sort: str = None,
+def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: str = None,
                         search: str = None, fields: str = None, q: str = None) -> AffectedItemsWazuhResult:
     """Get all the different combinations that all system agents have for the selected fields. It also indicates the
     total number of agents that have each combination.
@@ -88,8 +88,8 @@ def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_summary_status(agent_list=None):
-    """Count the number of agents by status.
+def get_agents_summary_status(agent_list: list = None):
+    """Count the number of agents by connection and groups configuration synchronization statuses.
 
     Parameters
     ----------
@@ -100,19 +100,25 @@ def get_agents_summary_status(agent_list=None):
     -------
     WazuhResult
     """
-    summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
+    connection = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
+    sync_configuration = {'synced': 0, 'not synced': 0, 'total': 0}
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
-        with WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters) as db_query:
+        with WazuhDBQueryAgents(limit=None, select=['status', 'group_config_status'], query="id!=000",
+                                **rbac_filters) as db_query:
             data = db_query.run()
 
-        for agent in data['items']:
-            summary[agent['status']] += 1
-            summary['total'] += 1
+        items = data['items']
+        for agent in items:
+            connection[agent['status']] += 1
+            sync_configuration[agent['group_config_status']] += 1
 
-    return WazuhResult({'data': summary})
+        connection['total'] = sync_configuration['total'] = len(items)
+
+    sync_configuration['not_synced'] = sync_configuration.pop('not synced')
+    return WazuhResult({'data': {'connection': connection, 'configuration': sync_configuration}})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -166,18 +172,17 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
                                       )
 
     system_agents = get_agents_info()
-    wq = WazuhQueue(common.ARQUEUE)
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent(agent_id).reconnect(wq)
-            result.affected_items.append(agent_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    wq.close()
+    with WazuhQueue(common.AR_SOCKET) as wq:
+        for agent_id in agent_list:
+            try:
+                if agent_id not in system_agents:
+                    raise WazuhResourceNotFound(1701)
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                Agent(agent_id).reconnect(wq)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
 
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
@@ -239,14 +244,13 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
             else agents_with_data
-        wq = WazuhQueue(common.ARQUEUE)
-        for agent in eligible_agents:
-            try:
-                send_restart_command(agent['id'], agent['version'], wq)
-                result.affected_items.append(agent['id'])
-            except WazuhException as e:
-                result.add_failed_item(id_=agent['id'], error=e)
-        wq.close()
+        with WazuhQueue(common.AR_SOCKET) as wq:
+            for agent in eligible_agents:
+                try:
+                    send_restart_command(agent['id'], agent['version'], wq)
+                    result.affected_items.append(agent['id'])
+                except WazuhException as e:
+                    result.add_failed_item(id_=agent['id'], error=e)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -291,7 +295,7 @@ def restart_agents_by_group(agent_list=None):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701]})
-def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_agents(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                filters=None, q=None):
     """Gets a list of available agents with basic attributes.
 
@@ -332,7 +336,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_agents_in_group(group_list, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                         filters=None, q=None):
     """Gets a list of available agents with basic attributes.
 
@@ -377,6 +381,7 @@ def get_agents_keys(agent_list=None):
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=lambda i: i['id'])
 
     return result
 
@@ -491,7 +496,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force=None):
         Added agent information.
     """
     # Check length of agent name
-    if len(name) > common.agent_name_len_limit:
+    if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
@@ -530,7 +535,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
             query_data = group_query.run()
 
         for group in query_data['items']:
-            full_entry = path.join(common.shared_path, group['name'])
+            full_entry = path.join(common.SHARED_PATH, group['name'])
 
             # merged.mg and agent.conf sum
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
@@ -568,7 +573,7 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     # We access unique group_id from list, this may change if and when we decide to add option to get files for
     # a list of groups
     group_id = group_list[0]
-    group_path = common.shared_path
+    group_path = common.SHARED_PATH
     result = AffectedItemsWazuhResult(all_msg='All selected groups files were returned',
                                       some_msg='Some groups files were not returned',
                                       none_msg='No groups files were returned'
@@ -577,7 +582,7 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
         if not Agent.group_exists(group_id):
             result.add_failed_item(id_=group_id, error=WazuhResourceNotFound(1710))
             return result
-        group_path = path.join(common.shared_path, group_id)
+        group_path = path.join(common.SHARED_PATH, group_id)
 
     if not path.exists(group_path):
         result.add_failed_item(id_=group_path, error=WazuhError(1006))
@@ -592,7 +597,7 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
             data.append(item)
 
         # ar.conf
-        ar_path = path.join(common.shared_path, 'ar.conf')
+        ar_path = path.join(common.SHARED_PATH, 'ar.conf')
         data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
@@ -619,19 +624,23 @@ def create_group(group_id):
     if not InputValidator().group(group_id):
         raise WazuhError(1722)
 
-    group_path = path.join(common.shared_path, group_id)
+    group_path = path.join(common.SHARED_PATH, group_id)
 
     if group_id.lower() == "default" or path.exists(group_path):
-        raise WazuhError(1711, extra_message=group_id)
+        if not path.isfile(group_path):
+            raise WazuhError(1711, extra_message=group_id)
+        else:
+            raise WazuhError(1713, extra_message=group_id)
 
     # Create group in /etc/shared
-    group_def_path = path.join(common.shared_path, 'agent-template.conf')
+    agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
     try:
         mkdir_with_mode(group_path)
-        copyfile(group_def_path, path.join(group_path, 'agent.conf'))
+        full_copy(agent_conf_template, path.join(group_path, 'agent.conf'))
+
         chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
-        chmod(group_path, 0o770)
+        chmod(group_path, 0o700)
         msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
@@ -683,7 +692,7 @@ def delete_groups(group_list=None):
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752, 1753]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]})
 def assign_agents_to_group(group_list=None, agent_list=None, replace=False, replace_list=None):
     """Assign a list of agents to a group.
 
@@ -703,14 +712,26 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     # Check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
+
     system_agents = get_agents_info()
+
+    # Check agent '000'
+    if '000' in agent_list:
+        agent_list.remove('000')
+        result.add_failed_item(id_='000', error=WazuhError(1703))
+
+    agent_list = set(agent_list)
+
+    # Check for non-existing agents
+    not_found_agents = agent_list - system_agents
+    for agent_id in not_found_agents:
+        result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+
+    agent_list -= not_found_agents
+
     for agent_id in agent_list:
         try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent.add_group_to_agent(group_id, agent_id, force=True, replace=replace, replace_list=replace_list)
+            Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -827,7 +848,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_outdated_agents(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                         q=None):
     """Gets the outdated agents.
 
@@ -937,9 +958,6 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 (f', q: {q}' if q else '')
             )
         )) for ag in non_eligible_agents]
-
-        if version and not version.startswith('v'):
-            version = f'v{version}'
 
         eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
 
@@ -1097,7 +1115,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     if my_agent.status != "active":
         raise WazuhError(1740)
 
-    return WazuhResult({'data': my_agent.getconfig(component=component, config=config, agent_version=my_agent.version)})
+    return WazuhResult({'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -1105,8 +1123,19 @@ def get_agent_config(agent_list=None, component=None, config=None):
 def get_agents_sync_group(agent_list=None):
     """Get agents configuration sync status.
 
-    :param agent_list: List of agents ID's.
-    :return AffectedItemsWazuhResult.
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Agent group sync status information.
     """
     result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
                                       some_msg='Sync info was not returned for some selected agents',
@@ -1127,9 +1156,9 @@ def get_agents_sync_group(agent_list=None):
                 if len(agent_info['group']) > 1:
                     multi_group = ','.join(agent_info['group'])
                     multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-                    group_merged_path = path.join(common.multi_groups_path, multi_group, "merged.mg")
+                    group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
                 else:
-                    group_merged_path = path.join(common.shared_path, agent_info['group'][0], "merged.mg")
+                    group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
                 result.affected_items.append({'id': agent_id,
                                               'synced': md5(group_merged_path) == agent_info['mergedSum']})
         except (IOError, KeyError):
@@ -1139,6 +1168,7 @@ def get_agents_sync_group(agent_list=None):
             result.add_failed_item(id_=agent_id, error=e)
 
     result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=lambda i: i['id'])
 
     return result
 
@@ -1162,7 +1192,7 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=common.database_limit):
+def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=common.DATABASE_LIMIT):
     """ Reads agent conf for specified group.
 
     :param group_list: List of Group names.

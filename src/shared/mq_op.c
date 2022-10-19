@@ -12,16 +12,22 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 static log_builder_t * mq_log_builder;
 int sock_fail_time;
 
 #ifndef WIN32
 
-/* Start the Message Queue. type: WRITE||READ */
-int StartMQ(const char *path, short int type, short int n_attempts)
+/* Start the Message Queue with specific owner and permissions(Only for READ type). type: WRITE||READ */
+int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode)
 {
     if (type == READ) {
-        return (OS_BindUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 512));
+        return (OS_BindUnixDomainWithPerms(path, SOCK_DGRAM, OS_MAXSTR + 512, uid, gid, mode));
     }
 
     /* We give up to 21 seconds for the other end to start */
@@ -49,6 +55,12 @@ int StartMQ(const char *path, short int type, short int n_attempts)
     }
 }
 
+/* Start the Message Queue. type: WRITE||READ */
+int StartMQ(const char *path, short int type, short int n_attempts)
+{
+    return StartMQWithSpecificOwnerAndPerms(path, type, n_attempts, getuid(), getgid(), 0660);
+}
+
 /* Reconnect to message queue */
 int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
     int rc = 0;
@@ -66,12 +78,18 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
 }
 
 /* Send message primitive. */
-static int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
+STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
-    char tmpstr[OS_MAXSTR + 1];
+    char tmpstr[OS_MAXSTR + 1] = {0};
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
     static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
+
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return (0);
+    }
 
     if (loc == SECURE_MQ) {
         loc = message[0];
@@ -87,9 +105,9 @@ static int SendMSGAction(int queue, const char *message, const char *locmsg, cha
             return (0);
         }
 
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, locmsg, message);
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s->%s", loc, loc_buff, message);
     } else {
-        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, locmsg, message);
+        snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
     }
 
     /* Queue not available */

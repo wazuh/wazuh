@@ -48,4 +48,9 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["format"] = m_packageWrapper->format();
     package["source"] = m_packageWrapper->source();
     package["location"] = m_packageWrapper->location();
+    package["priority"] = m_packageWrapper->priority();
+    package["size"] = m_packageWrapper->size();
+    package["vendor"] = m_packageWrapper->vendor();
+    package["install_time"] = m_packageWrapper->install_time();
+    package["multiarch"] = m_packageWrapper->multiarch();
 }

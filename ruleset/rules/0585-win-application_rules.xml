@@ -1159,7 +1159,7 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5616$</field>
     <options>no_full_log</options>
-    <description>WMI core, provider subsystem and event subsystem initialized sucessfully.</description>
+    <description>WMI core, provider subsystem and event subsystem initialized successfully.</description>
     <mitre>
       <id>T1047</id>
     </mitre>
