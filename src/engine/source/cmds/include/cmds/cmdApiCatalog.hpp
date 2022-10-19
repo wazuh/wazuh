@@ -10,7 +10,7 @@ namespace cmd
 
 namespace catalog_details
 {
-enum class Method
+enum class Action
 {
     LIST,
     GET,
@@ -18,54 +18,72 @@ enum class Method
     CREATE,
     DELETE,
     VALIDATE,
-    ERROR_METHOD
+    LOAD,
+    ERROR_ACTION
 };
 
-constexpr auto methodToString(Method method)
+constexpr auto actionToString(Action action)
 {
-    switch (method)
+    switch (action)
     {
-        case Method::LIST: return "list";
-        case Method::GET: return "get";
-        case Method::UPDATE: return "update";
-        case Method::CREATE: return "create";
-        case Method::DELETE: return "delete";
-        case Method::VALIDATE: return "validate";
-        default: return "ERROR_METHOD";
+        case Action::LIST: return "list";
+        case Action::GET: return "get";
+        case Action::UPDATE: return "update";
+        case Action::CREATE: return "create";
+        case Action::DELETE: return "delete";
+        case Action::VALIDATE: return "validate";
+        case Action::LOAD: return "load";
+        default: return "ERROR_ACTION";
     }
 }
 
-constexpr auto stringToMethod(const char* method)
+constexpr auto stringToAction(const char* action)
 {
-    if (strcmp(method, methodToString(Method::LIST)) == 0)
+    if (strcmp(action, actionToString(Action::LIST)) == 0)
     {
-        return Method::LIST;
+        return Action::LIST;
     }
-    else if (strcmp(method, methodToString(Method::GET)) == 0)
+    else if (strcmp(action, actionToString(Action::GET)) == 0)
     {
-        return Method::GET;
+        return Action::GET;
     }
-    else if (strcmp(method, methodToString(Method::UPDATE)) == 0)
+    else if (strcmp(action, actionToString(Action::UPDATE)) == 0)
     {
-        return Method::UPDATE;
+        return Action::UPDATE;
     }
-    else if (strcmp(method, methodToString(Method::CREATE)) == 0)
+    else if (strcmp(action, actionToString(Action::CREATE)) == 0)
     {
-        return Method::CREATE;
+        return Action::CREATE;
     }
-    else if (strcmp(method, methodToString(Method::DELETE)) == 0)
+    else if (strcmp(action, actionToString(Action::DELETE)) == 0)
     {
-        return Method::DELETE;
+        return Action::DELETE;
     }
-    else if (strcmp(method, methodToString(Method::VALIDATE)) == 0)
+    else if (strcmp(action, actionToString(Action::VALIDATE)) == 0)
     {
-        return Method::VALIDATE;
+        return Action::VALIDATE;
+    }
+    else if (strcmp(action, actionToString(Action::LOAD)) == 0)
+    {
+        return Action::LOAD;
     }
     else
     {
-        return Method::ERROR_METHOD;
+        return Action::ERROR_ACTION;
     }
 }
+
+void singleRequest(const std::string& socketPath,
+                   const std::string& actionStr,
+                   const std::string& nameStr,
+                   const std::string& format,
+                   const std::string& content,
+                   const std::string& path);
+
+void loadRuleset(const std::string& socketPath,
+                    const std::string& name,
+                    const std::string& collectionPath,
+                    const std::string& format);
 
 } // namespace catalog_details
 
@@ -73,16 +91,17 @@ constexpr auto stringToMethod(const char* method)
  * @brief Operate the engine catalog through the API
  *
  * @param socketPath Path to the api socket where the engine is listening
- * @param methodStr Method to use: list, get, update, create, delete
+ * @param actionStr Action to use: list, get, update, create, delete
  * @param nameStr Name of the item to operate on
  * @param format Format of the content: json, yaml
- * @param content  Content of the request, depending on the method
+ * @param content  Content of the request, depending on the action
  */
 void catalog(const std::string& socketPath,
-             const std::string& methodStr,
+             const std::string& actionStr,
              const std::string& nameStr,
              const std::string& format,
-             const std::string& content);
+             const std::string& content,
+             const std::string& path);
 } // namespace cmd
 
 #endif // _CMD_APICLNT_CATALOG_HPP

@@ -124,12 +124,13 @@ void run(const std::string& kvdbPath,
 
         // server = std::make_shared<engineserver::EngineServer>(
         //     std::vector<std::string> {"api:"+apiEndpoint});
-        base::Name hlpConfigFileName ({"schema", "wazuh-logql-types", "v0"});
+        base::Name hlpConfigFileName({"schema", "wazuh-logql-types", "0"});
         auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
-            WAZUH_LOG_ERROR("[HLP] Error retreiving schema.wazuh-logql-types.v0 "
+            WAZUH_LOG_ERROR("[HLP] Error retreiving {} "
                             "from store: {}",
+                            hlpConfigFileName.fullName(),
                             std::get<base::Error>(hlpParsers).message);
 
             g_exitHanlder.execute();
