@@ -28,39 +28,39 @@ protected:
 
 TEST_F(StageBuilderMapTest, Builds)
 {
-    auto mapJson = Json {R"({
-        "string": "value",
-        "int": 1,
-        "double": 1.0,
-        "boolT": true,
-        "boolF": false,
-        "null": null,
-        "array": [1, 2, 3],
-        "object": {"a": 1, "b": 2}
-})"};
+    auto mapJson = Json {R"([
+        {"string": "value"},
+        {"int": 1},
+        {"double": 1.0},
+        {"boolT": true},
+        {"boolF": false},
+        {"null": null},
+        {"array": [1, 2, 3]},
+        {"object": {"a": 1, "b": 2}}
+])"};
 
     ASSERT_NO_THROW(stageMapBuilder(mapJson));
 }
 
 TEST_F(StageBuilderMapTest, UnexpectedDefinition)
 {
-    auto mapJson = Json {R"([])"};
+    auto mapJson = Json {R"({})"};
 
     ASSERT_THROW(stageMapBuilder(mapJson), std::runtime_error);
 }
 
 TEST_F(StageBuilderMapTest, BuildsCorrectExpression)
 {
-    auto mapJson = Json {R"({
-        "string": "value",
-        "int": 1,
-        "double": 1.0,
-        "boolT": true,
-        "boolF": false,
-        "null": null,
-        "array": [1, 2, 3],
-        "object": {"a": 1, "b": 2}
-})"};
+    auto mapJson = Json {R"([
+        {"string": "value"},
+        {"int": 1},
+        {"double": 1.0},
+        {"boolT": true},
+        {"boolF": false},
+        {"null": null},
+        {"array": [1, 2, 3]},
+        {"object": {"a": 1, "b": 2}}
+])"};
 
     auto expression = stageMapBuilder(mapJson);
 

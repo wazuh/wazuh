@@ -14,8 +14,8 @@ parse:
 
 normalize:
   - map:
-      event.module: nginx
-      service.type: nginx
-      event.kind: event
-      event.category: +s_append/web
-      event.type: +s_append/error
+      - event.module: nginx
+      - service.type: nginx
+      - event.kind: event
+      - event.category: +s_append/web
+      - event.type: +s_append/error

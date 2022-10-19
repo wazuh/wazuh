@@ -37,14 +37,14 @@ parse:
 
 normalize:
   - map:
-      event.category: [ authentication ]
-      source.ip: $source.address
+      - event.category: [ authentication ]
+      - source.ip: $source.address
 
   - check:
       - event.code: LOGIN_SUCCESS
     map:
-        event.type: +s_append/allowed
+      - event.type: +s_append/allowed
   - check:
       - event.code: LOGIN_FAILED
     map:
-        event.type: +s_append/denied
+      - event.type: +s_append/denied

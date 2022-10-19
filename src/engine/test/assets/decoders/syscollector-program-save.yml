@@ -10,72 +10,72 @@ normalize:
   - check:
       - _json.timestamp: +not_exists
     map:
-      _json.timestamp: "NULL"
+      - _json.timestamp: "NULL"
 
   - check:
       - _json.program.format: +not_exists
     map:
-      _json.program.format: "NULL"
+      - _json.program.format: "NULL"
 
   - check:
       - _json.program.name: +not_exists
     map:
-      _json.program.name: "NULL"
+      - _json.program.name: "NULL"
 
   - check:
       - _json.program.priority: +not_exists
     map:
-      _json.program.priority: "NULL"
+      - _json.program.priority: "NULL"
 
   - check:
       - _json.program.group: +not_exists
     map:
-      _json.program.group: "NULL"
+      - _json.program.group: "NULL"
 
   - check:
       - _json.program.size: +not_exists
     map:
-      _json.program.size: "NULL"
+      - _json.program.size: "NULL"
 
   - check:
       - _json.program.vendor: +not_exists
     map:
-      _json.program.vendor: "NULL"
+      - _json.program.vendor: "NULL"
 
   - check:
       - _json.program.install_time: +not_exists
     map:
-      _json.program.install_time: "NULL"
+      - _json.program.install_time: "NULL"
 
   - check:
       - _json.program.version: +not_exists
     map:
-      _json.program.version: "NULL"
+      - _json.program.version: "NULL"
 
   - check:
       - _json.program.architecture: +not_exists
     map:
-      _json.program.architecture: "NULL"
+      - _json.program.architecture: "NULL"
 
   - check:
       - _json.program.multi-arch: +not_exists
     map:
-      _json.program.multi-arch: "NULL"
+      - _json.program.multi-arch: "NULL"
 
   - check:
       - _json.program.source: +not_exists
     map:
-      _json.program.source: "NULL"
+      - _json.program.source: "NULL"
 
   - check:
       - _json.program.description: +not_exists
     map:
-      _json.program.description: "NULL"
+      - _json.program.description: "NULL"
 
   - check:
       - _json.program.location: +not_exists
     map:
-      _json.program.location: "NULL"
+      - _json.program.location: "NULL"
 
     #Obtain hexDigest with name version and arch
   - check:
@@ -83,11 +83,11 @@ normalize:
       - _json.program.version: +exists
       - _json.program.architecture: +exists
     map:
-      _concat_words: +s_concat/$_json.program.name/$_json.program.version/$_json.program.architecture
-      _hexDigest: +hash_sha1/$_concat_words
+      - _concat_words: +s_concat/$_json.program.name/$_json.program.version/$_json.program.architecture
+      - _hexDigest: +hash_sha1/$_concat_words
 
   - check:
       - _hexDigest: +is_string
     map:
-      _query: +s_concat/agent /$agent.id/ package save /$_json.ID/|/$_json.timestamp/|/$_json.program.format/|/$_json.program.name/|/$_json.program.priority/|/$_json.program.group/|/$_json.program.size/|/$_json.program.vendor/|/$_json.program.install_time/|/$_json.program.version/|/$_json.program.architecture/|/$_json.program.multi-arch/|/$_json.program.source/|/$_json.program.description/|/$_json.program.location/|/$_hexDigest
-      _package_save_result: +wdb_update/$_query
+      - _query: +s_concat/agent /$agent.id/ package save /$_json.ID/|/$_json.timestamp/|/$_json.program.format/|/$_json.program.name/|/$_json.program.priority/|/$_json.program.group/|/$_json.program.size/|/$_json.program.vendor/|/$_json.program.install_time/|/$_json.program.version/|/$_json.program.architecture/|/$_json.program.multi-arch/|/$_json.program.source/|/$_json.program.description/|/$_json.program.location/|/$_hexDigest
+      - _package_save_result: +wdb_update/$_query

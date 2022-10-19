@@ -31,35 +31,35 @@ parse:
 
 normalize:
   - map:
-      event.category: +s_append/database
-      event.dataset: postgresql.log
-      event.kind: event
-      event.module: postgresql
-      fileset.name: log                 #assumed fixed value
-      input.type: log                   #assumed fixed value
-      postgresql.log.timestamp: $timestamp
-      service.type: postgresql
+      - event.category: +s_append/database
+      - event.dataset: postgresql.log
+      - event.kind: event
+      - event.module: postgresql
+      - fileset.name: log                 #assumed fixed value
+      - input.type: log                   #assumed fixed value
+      - postgresql.log.timestamp: $timestamp
+      - service.type: postgresql
 
       #Getting timezone from timestamp (third position after spliting it)
-      _tmp.timestamp_array: "+s_to_array/$timestamp/ "
-      event.timezone: $_tmp.timestamp_array/2
+      - _tmp.timestamp_array: "+s_to_array/$timestamp/ "
+      - event.timezone: $_tmp.timestamp_array/2
 
-      log.level: +rename_field/$_csv.log_level
-      postgresql.internal_query: +rename_field/$_csv.internal_query
-      postgresql.log.application_name: +rename_field/$_csv.log_application_name
-      postgresql.log.backend_type: +rename_field/$_csv.log_backend_type
-      postgresql.log.command_tag: +rename_field/$_csv.log_command_tag
-      postgresql.log.context: +rename_field/$_csv.log_context
-      postgresql.log.database: +rename_field/$_csv.log_database
-      postgresql.log.detail: +rename_field/$_csv.log_detail
-      postgresql.log.hint: +rename_field/$_csv.log_hint
-      postgresql.log.location: +rename_field/$_csv.log_location
-      postgresql.log.query: +rename_field/$_csv.log_query
-      postgresql.log.session_id: +rename_field/$_csv.log_session_id
-      postgresql.log.session_line_num: +rename_field/$_csv.session_line_num # TODO: this must be a long
-      postgresql.log.session_start_time: +rename_field/$_csv.log_session_start_time
-      postgresql.log.sql_state_code: +rename_field/$_csv.log_sql_state_code
-      postgresql.log.transaction_id: +rename_field/$_csv.log_transaction_id
-      postgresql.log.virtual_transaction_id: +rename_field/$_csv.log_virtual_transaction_id
-      process.pid: +rename_field/$_csv.process_pid
-      user.name: +rename_field/$_csv.user_name
+      - log.level: +rename_field/$_csv.log_level
+      - postgresql.internal_query: +rename_field/$_csv.internal_query
+      - postgresql.log.application_name: +rename_field/$_csv.log_application_name
+      - postgresql.log.backend_type: +rename_field/$_csv.log_backend_type
+      - postgresql.log.command_tag: +rename_field/$_csv.log_command_tag
+      - postgresql.log.context: +rename_field/$_csv.log_context
+      - postgresql.log.database: +rename_field/$_csv.log_database
+      - postgresql.log.detail: +rename_field/$_csv.log_detail
+      - postgresql.log.hint: +rename_field/$_csv.log_hint
+      - postgresql.log.location: +rename_field/$_csv.log_location
+      - postgresql.log.query: +rename_field/$_csv.log_query
+      - postgresql.log.session_id: +rename_field/$_csv.log_session_id
+      - postgresql.log.session_line_num: +rename_field/$_csv.session_line_num # TODO: this must be a long
+      - postgresql.log.session_start_time: +rename_field/$_csv.log_session_start_time
+      - postgresql.log.sql_state_code: +rename_field/$_csv.log_sql_state_code
+      - postgresql.log.transaction_id: +rename_field/$_csv.log_transaction_id
+      - postgresql.log.virtual_transaction_id: +rename_field/$_csv.log_virtual_transaction_id
+      - process.pid: +rename_field/$_csv.process_pid
+      - user.name: +rename_field/$_csv.user_name
