@@ -3340,8 +3340,6 @@ checks:
     condition: all
     rules:
       - 'not d:/usr/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
-      - 'not d:/usr/local/lib/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
-      - 'not d:/run/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
       - 'not d:/etc/sysctl.d -> r:\.*.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
       - 'not f:/etc/sysctl.conf -> r:kernel.randomize_va_space\s*= && !r:\s=\s*2\s+|\s=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2$'
