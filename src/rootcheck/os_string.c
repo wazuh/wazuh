@@ -68,7 +68,13 @@ struct exec {
 #define M_OLDSUN2      0
 
 #else
+
+#ifdef ALPINE
+#include <linux/a.out.h>
+#else
 #include <a.out.h>
+#endif
+
 #endif
 
 #ifndef PAGSIZ
