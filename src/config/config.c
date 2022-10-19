@@ -52,10 +52,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
+    const char *wazuh_db = "wdb";                       /* Wazuh-DB Daemon */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *osreports = "reports";                  /* Server Config */
+#ifndef CLIENT
+    const char *key_polling = "agent-key-polling";      /* Deprecated Agent Key Polling module */
+#endif
 #endif
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
@@ -74,7 +78,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
-                    && (Read_Global(chld_node, d1, d2) < 0)) {
+                    && (Read_Global(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
@@ -165,6 +169,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
+#ifndef CLIENT
+            else if ((node[i]->attributes[0] && !strcmp(node[i]->attributes[0], "name")) &&
+                     (node[i]->values[0] && !strcmp(node[i]->values[0], key_polling))) {
+                if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
+                    goto fail;
+                }
+            }
+#endif
         } else if (strcmp(node[i]->element, ossca) == 0) {
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
@@ -186,10 +198,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        }
-
 #ifndef WIN32
-        else if (strcmp(node[i]->element, osfluent_forward) == 0) {
+        } else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
@@ -197,9 +207,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        }
 #endif
-        else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+        } else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
@@ -223,6 +232,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
             #if !defined(WIN32) && !defined(CLIENT)
                 if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
+                    goto fail;
+                }
+            #else
+                mwarn("%s configuration is only set in the manager.", node[i]->element);
+            #endif
+        }  else if (chld_node && (strcmp(node[i]->element, wazuh_db) == 0)) {
+            #if !defined(CLIENT)
+                if ((modules & WAZUHDB) && (Read_WazuhDB(xml, chld_node) < 0)) {
                     goto fail;
                 }
             #else

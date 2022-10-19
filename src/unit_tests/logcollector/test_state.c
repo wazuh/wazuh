@@ -883,9 +883,10 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1103): Could not open file "
-                  "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
+    const char * error_msg = "(1103): Could not open file "
+                             "'" LOGCOLLECTOR_STATE "' due to";
+
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
 
     w_logcollector_state_dump();
 }
@@ -903,9 +904,10 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
     will_return(__wrap_fopen, (FILE *) 100);
     will_return(__wrap_fwrite, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "(1110): Could not write file "
-                  "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
+    const char * error_msg = "(1110): Could not write file "
+                             "'" LOGCOLLECTOR_STATE "' due to";
+
+    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
     will_return(__wrap_fclose, 0);

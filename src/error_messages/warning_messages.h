@@ -94,8 +94,6 @@
 #define ANALYSISD_IGNORE_RULE                   "(7604): Rule '%d' will be ignored."
 #define ANALYSISD_INV_OVERWRITE                 "(7605): It is not possible to overwrite '%s' value " \
                                                         "in rule '%d'. The original value is retained."
-#define ANALYSISD_SIG_ID_NOT_FOUND              "(7606): Signature ID '%d' was not found. Invalid '%s'. " \
-                                                        "Rule '%d' will be ignored."
 #define ANALYSISD_INV_SIG_ID                    "(7607): Invalid '%s'. Signature ID must be an integer. " \
                                                         "Rule '%d' will be ignored."
 #define ANALYSISD_LEVEL_NOT_FOUND               "(7608): Level ID '%d' was not found. Invalid 'if_level'. " \
@@ -112,6 +110,12 @@
 #define ANALYSISD_NULL_RULE                     "(7614): Rule pointer is NULL. Skipping."
 #define ANALYSISD_INV_IF_MATCHED_SID            "(7615): Invalid 'if_matched_sid' value: '%s'. Rule '%d' will be ignored."
 #define ANALYSISD_LIST_NOT_LOADED               "(7616): List '%s' could not be loaded. Rule '%d' will be ignored."
+#define ANALYSISD_SIG_ID_NOT_FOUND              "(7617): Signature ID '%d' was not found and will be ignored "\
+                                                        "in the 'if_sid' option of rule '%d'."
+#define ANALYSISD_INVALID_IF_SID                "(7618): Invalid 'if_sid' value: '%s'. Rule '%d' will be ignored."
+#define ANALYSISD_EMPTY_SID                     "(7619): Empty 'if_sid' value. Rule '%d' will be ignored."
+#define ANALYSISD_SIG_ID_NOT_FOUND_MID          "(7620): Signature ID '%d' was not found. Invalid 'if_matched_sid'."\
+                                                         "Rule '%d' will be ignored."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
@@ -134,8 +138,6 @@
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
 #define REMOTED_NET_PROTOCOL_ONLY_SECURE        "(9002): Only secure connection supports TCP and UDP at the same time."\
                                                 " Default value (%s) will be used."
-#define REMOTED_INET6_SECURE_CONNNECTION        "(9003): Secure connection does not support IPv6. "\
-                                                "IPv4 will be used instead."
 #define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
                                                 "Default value will be used."
 #endif /* WARN_MESSAGES_H */

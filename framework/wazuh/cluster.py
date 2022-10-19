@@ -4,7 +4,7 @@
 from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.control import get_health, get_nodes
+from wazuh.core.cluster.control import get_health, get_nodes, get_node_ruleset_integrity
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -95,5 +95,39 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node=None, **kwarg
     for node in non_existent_nodes:
         result.add_failed_item(id_=node, error=WazuhResourceNotFound(1730))
     result.total_affected_items = data['totalItems']
+
+    return result
+
+
+@expose_resources(actions=['cluster:read'], resources=[f"node:id:{node_id}"],
+                  post_proc_func=async_list_handler)
+async def get_ruleset_sync_status(master_md5: dict = None):
+    """Compare node's md5 with the master node's to check the custom ruleset synchronization status.
+
+    Parameters
+    ----------
+    master_md5 : dict
+        Master node's ruleset integrity.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result with current node's custom ruleset integrity.
+    """
+    result = AffectedItemsWazuhResult(all_msg="Nodes ruleset synchronization status was successfully read",
+                                      some_msg="Could not read ruleset synchronization status in some nodes",
+                                      none_msg="Could not read ruleset synchronization status",
+                                      sort_casting=["str"]
+                                      )
+
+    try:
+        lc = local_client.LocalClient()
+        node_ruleset_integrity = await get_node_ruleset_integrity(lc)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    else:
+        result.affected_items.append({'name': node_id,
+                                      'synced': master_md5 == node_ruleset_integrity})
+    result.total_affected_items = len(result.affected_items)
 
     return result

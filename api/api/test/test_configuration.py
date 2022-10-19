@@ -9,7 +9,6 @@ import pytest
 
 import api.constants
 from api import configuration, api_exception
-from wazuh.core import common
 
 custom_api_configuration = {
     "host": "0.0.0.0",
@@ -27,7 +26,8 @@ custom_api_configuration = {
         "ssl_ciphers": ""
     },
     "logs": {
-        "level": "info"
+        "level": "info",
+        "format": "plain"
     },
     "cors": {
         "enabled": False,
@@ -45,14 +45,16 @@ custom_api_configuration = {
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "remote_commands": {
-        "localfile": {
-            "enabled": True,
-            "exceptions": []
-        },
-        "wodle_command": {
-            "enabled": True,
-            "exceptions": []
+    "upload_configuration": {
+        "remote_commands": {
+            "localfile": {
+                "allow": True,
+                "exceptions": []
+            },
+            "wodle_command": {
+                "allow": True,
+                "exceptions": []
+            }
         }
     }
 }
@@ -113,6 +115,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'https': {'invalid_subkey': 'value'}},
     {'logs': {'level': 12345}},
     {'logs': {'path': 12345}},
+    {'logs': {'format': 12345}},
     {'logs': {'invalid_subkey': 'value'}},
     {'cors': {'enabled': 'invalid_type'}},
     {'cors': {'source_route': 12345}},
@@ -167,5 +170,3 @@ def test_generate_self_signed_certificate(mock_open, mock_chmod):
 
     assert mock_open.call_count == 2, 'Not expected number of calls'
     assert mock_chmod.call_count == 2, 'Not expected number of calls'
-
-

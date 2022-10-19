@@ -11,7 +11,7 @@ info:
 
     Wazuh API endpoints require authentication in order to be used. Therefore, all calls must include a JSON Web Token.
     JWT is an open standard (RFC 7519) that defines a compact and self-contained way for securely transmitting
-    information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
+    information between parties as a JSON object. Perform a call with `basicAuth` to `POST /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
     JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid
@@ -20,7 +20,7 @@ info:
 
     Login with USER and PASSWORD:
 
-    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate"`
+    `curl -u <USER>:<PASSWORD> -k -X POST "https://<HOST_IP>:55000/security/user/authenticate"`
     ```json
     {
         "data": {
@@ -40,8 +40,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.3.5'
-  x-revision: '40317'
+  version: '4.4.0'
+  x-revision: '40400'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -843,6 +843,19 @@ components:
                 $ref: '#/components/schemas/NodeHealthcheck'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseNodeRulesetSynchronizationStatus:
+      allOf:
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/NodeRulesetSyncStatus'
+        - $ref: '#/components/schemas/AllItemsResponse'
+
     AllItemsResponseGroupIDs:
       allOf:
         - type: object
@@ -1314,6 +1327,7 @@ components:
           description: "Command running in the agent. If this value starts by `!`, then it refers to a script name
           instead of a command name"
           type: string
+          format: active_response_command
         custom:
           description: "Whether the specified command is a custom command or not"
           type: boolean
@@ -1458,21 +1472,36 @@ components:
     AgentsSummaryStatus:
       type: object
       properties:
-        total:
-          type: integer
-          format: int32
-        active:
-          type: integer
-          format: int32
-        disconnected:
-          type: integer
-          format: int32
-        never_connected:
-          type: integer
-          format: int32
-        pending:
-          type: integer
-          format: int32
+        connection:
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int32
+            active:
+              type: integer
+              format: int32
+            disconnected:
+              type: integer
+              format: int32
+            never_connected:
+              type: integer
+              format: int32
+            pending:
+              type: integer
+              format: int32
+        configuration:
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int32
+            synced:
+              type: integer
+              format: int32
+            not_synced:
+              type: integer
+              format: int32
 
     AgentDistinct:
       allOf:
@@ -1696,6 +1725,16 @@ components:
                     n_synced_chunks:
                       type: integer
                       format: int32
+                last_sync_agentgroups:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    n_synced_chunks:
+                      type: integer
+                      format: int32
                 last_sync_integrity:
                   type: object
                   properties:
@@ -1720,8 +1759,20 @@ components:
                           format: int32
                 sync_agent_info_free:
                   type: boolean
+                sync_agent_groups_free:
+                  type: boolean
                 sync_integrity_free:
                   type: boolean
+
+    NodeRulesetSyncStatus:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Node name"
+        synced:
+          type: boolean
+          description: "Whether the ruleset is synchronized or not"
 
     DaemonStatus:
       type: string
@@ -2103,8 +2154,6 @@ components:
             type: object
 
         #Wodle sections inside WazuhConfiguration(ossec.conf)
-        agent-key-polling:
-          type: object
         aws-s3:
           type: object
         azure-logs:
@@ -2531,13 +2580,15 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:agent-key-polling:
+          wazuh-modulesd:agent-upgrade:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:aws-s3:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:azure-logs:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:ciscat:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:control:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:command:
             $ref: '#/components/schemas/LogSummary'
@@ -2554,6 +2605,8 @@ components:
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:vulnerability-detector:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
 
     ConfirmationMessage:
@@ -3656,6 +3709,11 @@ components:
         <td><code>&lt;analysisd&gt;</code></td>
         </tr>
         <tr>
+        <td>analysis</td>
+        <td>rule_test</td>
+        <td><code>&lt;rule_test&gt;</code></td>
+        </tr>
+        <tr>
         <td>auth</td>
         <td>auth</td>
         <td><code>&lt;auth&gt;</code></td>
@@ -3800,6 +3858,7 @@ components:
         - syscheck
         - rootcheck
         - wmodules
+        - rule_test
     cve:
       in: query
       name: cve
@@ -4548,7 +4607,7 @@ components:
     version:
       in: query
       name: version
-      description: "Filter by agents version"
+      description: "Filter by agents version using one of the following formats: 'X.Y.Z', 'vX.Y.Z', 'wazuh X.Y.Z' or 'wazuh vX.Y.Z'. For example: '4.4.0'"
       schema:
         type: string
         format: alphanumeric
@@ -4647,7 +4706,6 @@ components:
         - syscheck
         - syslog_output
         # Wodle sections
-        - agent-key-polling
         - aws-s3
         - azure-logs
         - cis-cat
@@ -5226,6 +5284,15 @@ components:
       schema:
         type: string
         format: alphanumeric
+    group_config_status:
+      in: query
+      name: group_config_status
+      description: "Agent groups configuration sync status"
+      schema:
+        type: string
+        enum:
+          - "synced"
+          - "not synced"
     force_single_group:
       in: query
       name: force_single_group
@@ -5568,6 +5635,7 @@ paths:
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
+        - $ref: '#/components/parameters/group_config_status'
       responses:
         '200':
           description: "List of agents or error description"
@@ -5606,6 +5674,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker2
+                      group_config_status: "synced"
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -5629,6 +5698,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker2
+                      group_config_status: "synced"
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -5652,6 +5722,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker1
+                      group_config_status: "not synced"
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -5848,6 +5919,7 @@ paths:
     get:
       tags:
         - Agents
+      deprecated: true
       summary: "Get configuration sync status"
       description: "Return whether the agent configuration has been synchronized with the agent or not. This can be
       useful to check after updating a group configuration"
@@ -6426,14 +6498,8 @@ paths:
                         remediation: Please, use `GET /agents?select=id,name` to find all available agents
                       id:
                         - '999'
-                    - error:
-                        code: 1753
-                        message: Could not assign group. Agent status is never_connected
-                        remediation: Please select another agent or connect your agent before assigning groups
-                      id:
-                        - '011'
                   total_affected_items: 2
-                  total_failed_items: 2
+                  total_failed_items: 1
                   message: Some agents were not assigned to group2 and removed from the other groups
                   error: 2
         '400':
@@ -6628,9 +6694,10 @@ paths:
               type: object
               properties:
                 group_id:
-                  description: "Group name"
+                  description: "Group name. It can contain any of the characters between a-z, A-Z, 0-9, '_', '-' and '.'. Names '.' and '..' are restricted."
                   type: string
                   format: group_names
+                  maxLength: 128
               required:
                 - group_id
             example:
@@ -7592,7 +7659,7 @@ paths:
       tags:
         - Agents
       summary: "Summarize agents status"
-      description: "Return a summary of the status of available agents"
+      description: "Return a summary of the connection and groups configuration synchronization statuses of available agents"
       operationId: api.controllers.agent_controller.get_agent_summary_status
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -7601,7 +7668,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Get summary of agents"
+          description: "Get summary of agents connection and group configuration statuses"
           content:
             application/json:
               schema:
@@ -7613,11 +7680,16 @@ paths:
                       $ref: '#/components/schemas/AgentsSummaryStatus'
               example:
                 data:
-                  active: 8
-                  disconnected: 0
-                  never_connected: 3
-                  pending: 0
-                  total: 11
+                  connection:
+                    active: 8
+                    disconnected: 0
+                    never_connected: 3
+                    pending: 0
+                    total: 11
+                  configuration:
+                    synced: 8
+                    not_synced: 3
+                    total: 11
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7874,7 +7946,12 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        sync_agent_groups_free: true
                         last_sync_agentinfo:
+                          date_start_master: 2021-05-27T10:50:49.174463Z
+                          date_end_master: 2021-05-27T10:50:49.175921Z
+                          n_synced_chunks: 1
+                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
@@ -7901,7 +7978,12 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        sync_agent_groups_free: true
                         last_sync_agentinfo:
+                          date_start_master: 2021-05-27T10:50:48.832800Z
+                          date_end_master: 2021-05-27T10:50:48.833854Z
+                          n_synced_chunks: 1
+                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1
@@ -7910,6 +7992,57 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected nodes healthcheck information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /cluster/ruleset/synchronization:
+    get:
+      tags:
+      - Cluster
+      summary: "Get cluster nodes ruleset synchronization status"
+      description: "Return ruleset synchronization status for all nodes or a list of them. This synchronization only
+      covers the user custom ruleset"
+      operationId: api.controllers.cluster_controller.get_nodes_ruleset_sync_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/nodes_list'
+      responses:
+        '200':
+          description: "Ruleset synchronization status for cluster nodes"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeRulesetSynchronizationStatus'
+              example:
+                data:
+                  affected_items:
+                    - name: "master-node"
+                      synced: true
+                    - name: "worker1"
+                      synced: true
+                    - name: "worker2"
+                      synced: true
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
+                message: "Nodes ruleset synchronization status was successfully read"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10606,7 +10739,7 @@ paths:
                     - timestamp: '2020-04-15T13:50:24Z'
                       tag: wazuh-maild
                       level: error
-                      description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
+                      description: " (1263): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
@@ -10930,7 +11063,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.5'
+                    - mitre_version: "1.2"
                       deprecated: 0
                       description: |-
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
@@ -11192,7 +11325,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.5'
+                    - mitre_version: "1.0"
                       deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
@@ -11347,7 +11480,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.5'
+                    - mitre_version: "1.0"
                       network_requirements: 0
                       remote_support: 0
                       mitre_detection: |-
@@ -12129,7 +12262,9 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "SCA database elements"
@@ -12145,19 +12280,19 @@ paths:
               example:
                 data:
                   affected_items:
-                    - total_checks: 192
-                      name: "CIS Benchmark for Debian/Linux 10"
-                      score: 39
-                      pass: 61
-                      description: "This document provides prescriptive guidance for establishing a secure configuration
-                       posture for Debian Linux 10."
-                      start_scan: "2021-05-28T11:16:14Z"
-                      policy_id: "cis_debian10"
-                      invalid: 37
-                      fail: 94
+                    - description: "This document provides prescriptive guidance for establishing a secure configuration
+                      posture for Ubuntu Linux 20.04 LTS."
+                      fail: 87
+                      start_scan: "2022-09-27T08:07:02+00:00"
                       references: "https://www.cisecurity.org/cis-benchmarks/"
-                      hash_file: "f9bc11bb3e2cfa4017da658e833a38840f180cc339c07c01a6239c4d947d1bbe"
-                      end_scan: "2021-05-28T11:16:14Z"
+                      name: "CIS benchmark for Ubuntu Linux 20.04 LTS"
+                      pass: 56
+                      score: 39
+                      end_scan: "2022-09-27T08:07:02+00:00"
+                      policy_id: "cis_ubuntu20-04"
+                      total_checks: 191
+                      hash_file: "fb41fe9660f4320aaed0c3c292c8602953df7f8c42b37b724855f9005c43fafc"
+                      invalid: 48
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -12206,7 +12341,9 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of SCA Checks for a given policy ID"
@@ -12222,44 +12359,36 @@ paths:
               example:
                 data:
                   affected_items:
-                  - remediation: "For new installations, during installation create a custom partition setup and specify
-                   a separate partition for /var. For systems that were previously installed, create a new partition and
-                    configure /etc/fstab as appropriate"
-                    rationale: "Since the /var directory may contain world-writable files and directories, there is a
-                    risk of resource exhaustion if it is not bound to a separate partition"
-                    title: "Ensure separate partition exists for /var"
-                    policy_id: cis_debian
-                    file: /etc/fstab
-                    description: "The /var directory is used by daemons and other system services to temporarily store
-                    dynamic data. Some directories created by these processes may be world-writable"
-                    id: 5003
-                    result: failed
-                    condition: all
-                    references: "https://tldp.org/HOWTO/LVM-HOWTO/"
-                    compliance:
-                    - key: cis
-                      value: "1.1.6"
-                    - key: cis_csc
-                      value: "5"
-                  - remediation: "Run the following commands to remove exim: # apt-get remove exim4; # apt-get purge
-                  exim4"
-                    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended
-                    that the package be removed to reduce the potential attack surface"
-                    title: "Ensure IMAP and POP3 server is not enabled (POP3)"
-                    policy_id: cis_debian
-                    file: /etc/inetd.conf
-                    description: "Exim is an open source IMAP and POP3 server for Linux based systems"
-                    id: 5022
-                    result: passed
-                    condition: all
-                    compliance:
-                    - key: cis
-                      value: "2.2.11"
-                    - key: cis_csc
-                      value: "9"
-                    - key: pci_dss
-                      value: "2.2.2"
-                  total_affected_items: 2
+                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in 
+                      small footprint systems. A cramfs image can be used without having to first decompress the image."
+                      id: 19000
+                      reason: "Invalid path or wrong permissions to run command 'modprobe -n -v cramfs'"
+                      command: "modprobe -n -v cramfs,lsmod"
+                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the 
+                      server. If this filesystem type is not needed, disable it."
+                      condition: "all"
+                      title: "Ensure mounting of cramfs filesystems is disabled."
+                      result: ""
+                      policy_id: "cis_ubuntu20-04"
+                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add 
+                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs 
+                      module: # rmmod cramfs"
+                      status: "Not applicable"
+                      compliance:
+                        - value: "1.1.1.1"
+                          key: "cis"
+                        - value: "5.1"
+                          key: "cis_csc"
+                        - value: "2.2.5"
+                          key: "pci_dss"
+                        - value: "CC6.3"
+                          key: "tsc"
+                      rules:
+                        - type: "command"
+                          rule: "c:modprobe -n -v cramfs -> r:^install /bin/true"
+                        - type: "numeric"
+                          rule: "not c:lsmod -> r:cramfs"
+                  total_affected_items: 191
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected sca/policy information was returned"
@@ -14691,13 +14820,54 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate:
-    get:
+    post:
       tags:
         - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
+      parameters:
+        - $ref: '#/components/parameters/raw'
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Token'
+              example:
+                data:
+                  token: "<generated_token>"
+                  error: 0
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentialsResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    get:
+      tags:
+        - Security
+      summary: "Login"
+      deprecated: true
+      description: "This method should be called to get an API token. This token will expire after
+      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
+      operationId: api.controllers.security_controller.deprecated_login_user
       parameters:
         - $ref: '#/components/parameters/raw'
       security:

@@ -22,6 +22,7 @@
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
 # logs:
 #  level: "info"
+#  format: "plain"
 
 # Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
 # cors:
@@ -51,12 +52,15 @@
 # Maximum body size that the API can accept, in bytes (0 -> limitless)
 # max_upload_size: 10485760
 
-# Enable remote commands
-# remote_commands:
-#   localfile:
-#     enabled: yes
-#     exceptions: []
-#
-#   wodle_command:
-#     enabled: yes
-#     exceptions: []
+# Uploadable Wazuh configuration sections
+# upload_configuration:
+#   remote_commands:
+#     localfile:
+#       allow: yes
+#       exceptions: []
+#     wodle_command:
+#       allow: yes
+#       exceptions: []
+#   limits:
+#     eps:
+#       allow: yes

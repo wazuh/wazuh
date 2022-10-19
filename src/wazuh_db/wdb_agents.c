@@ -249,7 +249,7 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status);
+    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
 
     if (SQLITE_DONE == sql_status) wdb_res = WDBC_OK;
     else if (SQLITE_ROW == sql_status) wdb_res = WDBC_DUE;
@@ -278,16 +278,6 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
     cJSON_Delete(cves);
 
     return wdb_res;
-}
-
-int wdb_agents_clear_vuln_cves(wdb_t *wdb) {
-
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_CLEAR);
-    if (stmt == NULL) {
-        return OS_INVALID;
-    }
-
-    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_agents_set_packages_triaged(wdb_t *wdb) {

@@ -1,9 +1,6 @@
 ---
 test_name: GET /manager/status
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /manager/status
@@ -797,6 +794,17 @@ stages:
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
                 experimental_features: !anybool
+                upload_configuration:
+                  remote_commands:
+                    localfile:
+                      allow: !anybool
+                      exceptions: !anything
+                    wodle_command:
+                      allow: !anybool
+                      exceptions: !anything
+                  limits:
+                    eps:
+                      allow: !anybool
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
@@ -1179,6 +1187,18 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+  - name: Try to show the invalid config of component in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agent/wmodules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        error: 1128
 
 ---
 test_name: PUT /manager/configuration

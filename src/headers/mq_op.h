@@ -12,6 +12,7 @@
 #define MQ_H
 
 #include "config/localfile-config.h"
+#include <sys/types.h>
 
 /* Default queues */
 #define LOCALFILE_MQ    '1'
@@ -35,6 +36,22 @@
 #define INFINITE_OPENQ_ATTEMPTS 0
 
 extern int sock_fail_time;
+
+/**
+ *  Starts a Message Queue with specific owner and perms.
+ *  @param key path where the message queue will be created
+ *  @param type WRITE||READ
+ *  @param n_attempts Number of attempts to connect to the queue (0 to attempt until a successful conection).
+ *  @param uid owner of the queue.
+ *  @param gid group of the queue.
+ *  @param perms permissions of the queue.
+ *  @return
+ *  UNIX -> OS_INVALID if queue failed to start
+ *  UNIX -> int(rc) file descriptor of initialized queue
+ *  WIN32 -> 0
+ */
+int StartMQWithSpecificOwnerAndPerms(const char *key, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
+
 /**
  *  Starts a Message Queue.
  *  @param key path where the message queue will be created

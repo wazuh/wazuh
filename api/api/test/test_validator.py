@@ -12,9 +12,11 @@ from api.validator import (check_exp, check_xml, _alphanumeric_param,
                            _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,
                            _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,
                            _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
-                           allowed_fields, is_safe_path, _wazuh_version, _symbols_alphanumeric_param, _base64,
-                           _group_names, _group_names_or_all, _iso8601_date, _iso8601_date_time, _numbers_or_all,
-                           _cdb_filename_path, _xml_filename_path, _xml_filename)
+                           allowed_fields, is_safe_path, _wazuh_version,
+                           _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
+                           _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename,
+                           check_component_configuration_pair, _active_response_command)
+from wazuh import WazuhError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -33,7 +35,11 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('file%1-test_name1', _names),
     ('[(Random_symbols-string123)],<>!.+:"\'|=~#', _symbols_alphanumeric_param),
     ('Group_name-2', _group_names),
+    ('.group-2', _group_names),
+    ('...', _group_names),
     ('Group_name-2', _group_names_or_all),
+    ('.Group_name-2', _group_names_or_all),
+    ('...', _group_names_or_all),
     ('all', _group_names_or_all),
     # IPs
     ('192.168.122.255', _ips),
@@ -72,11 +78,15 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('security-eventchannel', _cdb_filename_path),
     ('local_rules.xml', _xml_filename_path),
     ('local_rules1.xml,local_rules2.xml', _xml_filename),
+    ('scripts/active_response', _active_response_command),
+    ('!scripts/active_response', _active_response_command),
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
     # version
     ('v4.3.0', _wazuh_version),
     ('4.3.0', _wazuh_version),
+    ('wazuh 4.3.0', _wazuh_version),
+    ('wazuh v4.3.0', _wazuh_version),
     # miscellaneous
     ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64)
 ])
@@ -97,6 +107,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('file-$', _array_names),
     ('file_1$,file_2#,file-3', _array_names),
     ('all', _group_names),
+    ('.', _group_names),
+    ('..', _group_names),
+    ('.', _group_names_or_all),
+    ('..', _group_names_or_all),
     # IPs
     ('192.168.122.256', _ips),
     ('192.266.1.1', _ips),
@@ -129,6 +143,8 @@ def test_validation_check_exp_ok(exp, regex_name):
     # paths
     ('/var/ossec/etc/internal_options$', _paths),
     ('/var/ossec/etc/rules/local_rules.xml()', _paths),
+    ('!scripts/active_response()', _active_response_command),
+    ('scripts\\active_response$', _active_response_command),
     # relative paths
     ('etc/internal_options', _get_dirnames_path),
     ('../../path', _get_dirnames_path),
@@ -136,10 +152,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('../ossec', _get_dirnames_path),
     ('etc/rules/../../../dir', _get_dirnames_path),
     # version
-    ('4.3', _wazuh_version),
     ('v4.3', _wazuh_version),
-    ('Wazuh 4.3.0', _wazuh_version),
-    ('Wazuh v4.3.0', _wazuh_version),
+    ('4.3', _wazuh_version),
+    ('wazuh 4.3', _wazuh_version),
+    ('wazuh v4.3', _wazuh_version),
     # miscellaneous
     ('aDhjasdh3=', _base64)
 ])
@@ -179,13 +195,18 @@ def test_allowed_fields():
 def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path('/api/configuration/api.yaml')
+    assert is_safe_path('c:\\api\\configuration\\api.yaml')
     assert is_safe_path('etc/rules/local_rules.xml', relative=False)
     assert is_safe_path('etc/ossec.conf', relative=True)
     assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
     assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
-    assert not is_safe_path('./etc/rules/rule.xml', relative=False)
-    assert not is_safe_path('./ruleset/decoders/decoder.xml./', relative=False)
+    assert not is_safe_path('../etc/rules/rule.xml', relative=False)
+    assert not is_safe_path('../etc/rules/rule.xml')
+    assert not is_safe_path('/..')
+    assert not is_safe_path('\\..')
+    assert not is_safe_path('..\\etc\\rules\\rule.xml')
+    assert not is_safe_path('../ruleset/decoders/decoder.xml./', relative=False)
 
 
 @pytest.mark.parametrize('value, format', [
@@ -267,3 +288,18 @@ def test_validation_json_ko(value, format):
                     schema={'type': 'object',
                             'properties': {'key': {'type': 'string', 'format': format}}},
                     format_checker=js.draft4_format_checker)
+
+
+@pytest.mark.parametrize("component, configuration, expected_response", [
+    ("agent", "client", None),
+    ("agent", "wmodules", WazuhError(1128))
+])
+def test_check_component_configuration_pair(component, configuration, expected_response):
+    """Verify that `check_component_configuration_pair` function returns an exception when the configuration does
+    not belong to a Wazuh component."""
+    response = check_component_configuration_pair(component, configuration)
+    if isinstance(response, Exception):
+        assert isinstance(response, expected_response.__class__)
+        assert response.code == expected_response.code
+    else:
+        assert response is expected_response

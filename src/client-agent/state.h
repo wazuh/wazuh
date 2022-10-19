@@ -59,8 +59,11 @@ void w_agentd_state_init();
 /**
  * @brief Main thread, write the statistics in the file
  */
+#ifdef WIN32
+DWORD WINAPI state_main(__attribute__((unused)) LPVOID arg);
+#else
 void * state_main(__attribute__((unused)) void * args);
-
+#endif
 /**
  * @brief Update agent statistics
  * @param type Action

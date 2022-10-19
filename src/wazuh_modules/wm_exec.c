@@ -331,7 +331,14 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             } else if (strlen(env_path) >= OS_SIZE_6144) {
                 merror("at wm_exec(): PATH environment variable too large.");
             } else {
-                snprintf(new_path, OS_SIZE_6144 - 1, "%s:%s", add_path, env_path);
+                const int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
+
+                if (bytes_written >= OS_SIZE_6144) {
+                    merror("at wm_exec(): New environment variable too large.");
+                }
+                else if (bytes_written < 0) {
+                    merror("at wm_exec(): New environment variable error: %d (%s).", errno, strerror(errno));
+                }
             }
 
             if (setenv("PATH", new_path, 1) < 0) {

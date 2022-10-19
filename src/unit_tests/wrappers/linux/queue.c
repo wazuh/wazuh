@@ -19,7 +19,7 @@
 #include "remoted/remoted.h"
 #include "queue.h"
 
-int __wrap_rem_msgpush(__attribute__((unused)) const char * buffer, unsigned long size, struct sockaddr_in * addr, int sock) {
+int __wrap_rem_msgpush(__attribute__((unused)) const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
     check_expected(sock);
     check_expected_ptr(addr);
     check_expected(size);

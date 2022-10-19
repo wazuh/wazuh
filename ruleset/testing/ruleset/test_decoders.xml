@@ -21,3 +21,7 @@
   <regex>Test noalert=(\d)$</regex>
   <order>noalert</order>
 </decoder>
+
+<decoder name="test_wrong_ifsid">
+  <program_name>^test_wrong_ifsid</program_name>
+</decoder>

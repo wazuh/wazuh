@@ -22,8 +22,8 @@ import sys
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 from hashlib import md5
-from json import dump, dumps, load, loads, JSONDecodeError
-from os.path import abspath, dirname, exists, join
+from json import dumps, loads, JSONDecodeError
+from os.path import abspath, dirname
 from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
 
 from azure.common import AzureException, AzureHttpError
@@ -32,13 +32,13 @@ from azure.storage.common._error import AzureSigningError
 from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
 from pytz import UTC
-from requests import get, post, HTTPError
+from requests import get, post, HTTPError, RequestException
+
+import orm
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from utils import ANALYSISD, find_wazuh_path
+from utils import ANALYSISD
 
-date_file = "last_dates.json"
-last_dates_file = join(dirname(abspath(__file__)), date_file)
 
 # URLs
 url_logging = 'https://login.microsoftonline.com'
@@ -47,26 +47,31 @@ url_graph = 'https://graph.microsoft.com'
 
 socket_header = '1:Azure:'
 
+DATETIME_MASK = '%Y-%m-%dT%H:%M:%S.%fZ'
+
+# Logger parameters
+logging_msg_format = '%(asctime)s azure: %(levelname)s: %(message)s'
+logging_date_format = '%Y/%m/%d %I:%M:%S'
+log_levels = {0: logging.WARNING,
+              1: logging.INFO,
+              2: logging.DEBUG}
+
+CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
+DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
+                     'Please use another authentication method instead. Check {url} for more information.'
+
 
 def set_logger():
     """Set the logger configuration."""
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        logging.getLogger('azure').setLevel(logging.DEBUG)
-
-    else:
-        log_path = f"{find_wazuh_path()}/logs/azure_logs.log"
-        logging.basicConfig(filename=log_path, level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        logging.getLogger('azure').setLevel(logging.ERROR)
-        logging.getLogger('urllib3').setLevel(logging.ERROR)
+    logging.basicConfig(level=log_levels.get(args.debug_level, logging.INFO), format=logging_msg_format,
+                        datefmt=logging_date_format)
+    logging.getLogger('azure').setLevel(log_levels.get(args.debug_level, logging.WARNING))
+    logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
 def get_script_arguments():
     """Read and parse arguments."""
     parser = ArgumentParser()
-    parser.add_argument("-v", "--verbose", action='store_true', required=False, help="Debug mode.")
 
     # only one must be present (log_analytics, graph or storage)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -76,9 +81,11 @@ def get_script_arguments():
 
     # Log Analytics arguments #
     parser.add_argument("--la_id", metavar='ID', type=str, required=False,
-                        help="Application ID for Log Analytics authentication.")
+                        help="Application ID for Log Analytics authentication. "
+                             f"{DEPRECATED_MESSAGE.format(name='la_id', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--la_key", metavar="KEY", type=str, required=False,
-                        help="Application Key for Log Analytics authentication.")
+                        help="Application Key for Log Analytics authentication. "
+                             f"{DEPRECATED_MESSAGE.format(name='la_key', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--la_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials for authentication.")
     parser.add_argument("--la_tenant_domain", metavar="domain", type=str, required=False,
@@ -94,9 +101,11 @@ def get_script_arguments():
 
     # Graph arguments #
     parser.add_argument("--graph_id", metavar='ID', type=str, required=False,
-                        help="Application ID for Graph authentication.")
+                        help="Application ID for Graph authentication. "
+                             f"{DEPRECATED_MESSAGE.format(name='graph_id', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--graph_key", metavar="KEY", type=str, required=False,
-                        help="Application KEY for Graph authentication.")
+                        help="Application KEY for Graph authentication. "
+                             f"{DEPRECATED_MESSAGE.format(name='graph_key', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--graph_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials authentication.")
     parser.add_argument("--graph_tenant_domain", metavar="domain", type=str, required=False,
@@ -110,9 +119,11 @@ def get_script_arguments():
 
     # Storage arguments #
     parser.add_argument("--account_name", metavar='account', type=str, required=False,
-                        help="Storage account name for authentication.")
+                        help="Storage account name for authentication. "
+                             f"{DEPRECATED_MESSAGE.format(name='account_name', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--account_key", metavar='KEY', type=str, required=False,
-                        help="Storage account key for authentication.")
+                        help="Storage account key for authentication. "
+                             f"{DEPRECATED_MESSAGE.format(name='account_key', release='4.4', url=CREDENTIALS_URL)}")
     parser.add_argument("--storage_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials authentication.")
     parser.add_argument("--container", metavar="container", required=False, type=arg_valid_container_name,
@@ -133,6 +144,8 @@ def get_script_arguments():
     # General parameters #
     parser.add_argument('--reparse', action='store_true', dest='reparse',
                         help='Parse the log, even if its been parsed before', default=False)
+    parser.add_argument('-d', '--debug', action='store', type=int, dest='debug_level', default=0,
+                        help='Specify debug level. Admits values from 0 to 2.')
 
     return parser.parse_args()
 
@@ -191,103 +204,79 @@ def read_auth_file(auth_path: str, fields: tuple):
         sys.exit(1)
 
 
-def get_min_max(service_name: str, md5_hash: str, offset: str):
-    """Get the min and max values from the "last_dates_file" for the given service.
+def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str, query: str = None):
+    """Update the database with the specified values if applicable.
 
     Parameters
     ----------
-    service_name : str
-        Name of the service to look up in the file.
+    table : orm.Base
+        Database table reference for the service.
     md5_hash : str
-        Hash of the query, used as the key in the last_dates dict.
-    offset : str
-        The filtering condition for the query.
-
-    Returns
-    -------
-    tuple of str
-        The min and max values.
-    """
-    try:
-        min_ = dates_json[service_name][md5_hash]["min"]
-        max_ = dates_json[service_name][md5_hash]["max"]
-    except KeyError:
-        # The service name or the md5 value is not present in the dates file
-        if service_name not in dates_json:
-            dates_json[service_name] = {}
-
-        desired_datetime = offset_to_datetime(offset) if offset else datetime.utcnow().replace(hour=0, minute=0,
-                                                                                               second=0, microsecond=0)
-        desired_datetime = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-        logging.info(f"{md5_hash} was not found in {last_dates_file} for {service_name}")
-        dates_json[service_name][md5_hash] = {"min": desired_datetime, "max": desired_datetime}
-        min_ = max_ = desired_datetime
-    return min_, max_
-
-
-def load_dates_json():
-    """Read the "last_dates_file" containing the different processed dates. It will be created with empty values in
-    case it does not exist.
-
-    Returns
-    -------
-    dict
-        The contents of the "last_dates_file".
-    """
-    logging.info(f"Getting the data from {last_dates_file}.")
-    try:
-        if exists(last_dates_file):
-            with open(last_dates_file) as file:
-                contents = load(file)
-                # This adds compatibility with "last_dates_files" from previous releases as the format was different
-                for key in contents.keys():
-                    for md5_hash in contents[key].keys():
-                        if not isinstance(contents[key][md5_hash], dict):
-                            contents[key][md5_hash] = {"min": contents[key][md5_hash], "max": contents[key][md5_hash]}
-        else:
-            contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
-            with open(last_dates_file, 'w') as file:
-                dump(contents, file)
-        return contents
-    except (JSONDecodeError, OSError) as e:
-        logging.error(f"Error: The file of the last dates could not be read: '{e}.")
-        sys.exit(1)
-
-
-def save_dates_json(json_obj: dict):
-    """Save the json object containing the different processed dates in the "last_dates" file.
-
-    Parameters
-    ----------
-    json_obj : dict
-        Dict with the contents to write to the 'last_dates' file.
-    """
-    logging.info(f"Updating {last_dates_file} file.")
-    try:
-        with open(last_dates_file, 'w') as jsonFile:
-            dump(json_obj, jsonFile)
-    except (TypeError, ValueError, OSError) as e:
-        logging.error(f"Error: The file of the last dates could not be updated: '{e}.")
-
-
-def update_dates_json(new_min: str, new_max: str, service_name: str, md5_hash: str):
-    """Update the dates_json dictionary with the specified values if applicable.
-
-    Parameters
-    ----------
+        md5 value used to search the query in the file containing the dates.
     new_min : str
         Value to compare with the current min value stored.
     new_max : str
         Value to compare with the current max value stored.
-    service_name : str
-        Name of the service used as the key for the dates_json.
-    md5_hash : str
-        md5 value used to search the query in the file containing the dates.
+    query : str
+        Query value before applying the md5 hash transformation.
     """
-    if parse(new_min, fuzzy=True) < parse(dates_json[service_name.lower()][md5_hash]["min"], fuzzy=True):
-        dates_json[service_name.lower()][md5_hash]["min"] = new_min
-    if parse(new_max, fuzzy=True) > parse(dates_json[service_name.lower()][md5_hash]["max"], fuzzy=True):
-        dates_json[service_name.lower()][md5_hash]["max"] = new_max
+    try:
+        row = orm.get_row(table=table, md5=md5_hash)
+        old_min_str = row.min_processed_date
+        old_max_str = row.max_processed_date
+    except (orm.AzureORMError, AttributeError) as e:
+        logging.error(f"Error trying to obtain row object from '{table.__tablename__}' using md5='{md5}': {e}")
+        sys.exit(1)
+    old_min_date = parse(old_min_str, fuzzy=True)
+    old_max_date = parse(old_max_str, fuzzy=True)
+    # "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
+    # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+    new_min_date = parse(new_min, fuzzy=True)
+    new_max_date = parse(new_max, fuzzy=True)
+    if new_min_date < old_min_date or new_max_date > old_max_date:
+        min_ = new_min if new_min_date < old_min_date else old_min_str
+        max_ = new_max if new_max_date > old_max_date else old_max_str
+        logging.debug(f"Attempting to update a {table.__tablename__} row object. "
+                      f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
+        try:
+            success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query)
+        except orm.AzureORMError as e:
+            logging.error(f"Error updating row object from {table.__tablename__}: {e}")
+            sys.exit(1)
+
+
+def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> orm.Base:
+    """Create a new row object for the given table, insert it into the database and return it.
+
+    Parameters
+    ----------
+    table : orm.Base
+        Database table reference for the service.
+    md5_hash : str
+        md5 value used as the key for the table.
+    query : str
+        The query value before applying the md5 transformation.
+    offset : str
+        Value used to determine the desired datetime.
+
+    Returns
+    -------
+    orm.Base
+        A copy of the inserted row object.
+    """
+    logging.info(f"{md5_hash} was not found in the database for {table.__tablename__}. Adding it.")
+    desired_datetime = offset_to_datetime(offset) if offset else datetime.utcnow().replace(hour=0, minute=0,
+                                                                                           second=0, microsecond=0)
+    desired_str = desired_datetime.strftime(DATETIME_MASK)
+    item = table(md5=md5_hash, query=query, min_processed_date=desired_str, max_processed_date=desired_str)
+    logging.debug(f"Attempting to insert row object into {table.__tablename__} with md5='{md5_hash}', "
+                  f"min_date='{desired_str}', max_date='{desired_str}'")
+    try:
+        orm.add_row(row=item)
+    except orm.AzureORMError as e:
+        logging.error(f"Error inserting row object into {table.__tablename__}: e")
+        sys.exit(1)
+    return item
 
 
 # LOG ANALYTICS
@@ -301,6 +290,7 @@ def start_log_analytics():
     if args.la_auth_path and args.la_tenant_domain:
         client, secret = read_auth_file(auth_path=args.la_auth_path, fields=("application_id", "application_key"))
     elif args.la_id and args.la_key and args.la_tenant_domain:
+        logging.warning(DEPRECATED_MESSAGE.format(name="la_id and la_key", release="4.4", url=CREDENTIALS_URL))
         client = args.la_id
         secret = args.la_key
     else:
@@ -325,7 +315,7 @@ def start_log_analytics():
     logging.info("Azure Log Analytics ending.")
 
 
-def build_log_analytics_query(offset: str, md5_hash: str):
+def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
     """Prepares and makes the request, building the query based on the time of event generation.
 
     Parameters
@@ -340,19 +330,26 @@ def build_log_analytics_query(offset: str, md5_hash: str):
     dict
         The required body for the requested query.
     """
-    min_str, max_str = get_min_max(service_name="log_analytics", md5_hash=md5_hash, offset=offset)
-    # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
-    # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+    try:
+        item = orm.get_row(orm.LogAnalytics, md5=md5_hash)
+        if item is None:
+            item = create_new_row(table=orm.LogAnalytics, query=args.la_query, md5_hash=md5_hash, offset=offset)
+    except orm.AzureORMError as e:
+        logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}': {e}")
+        sys.exit(1)
+
+    min_str = item.min_processed_date
+    max_str = item.max_processed_date
     min_datetime = parse(min_str, fuzzy=True)
     max_datetime = parse(max_str, fuzzy=True)
+    desired_datetime = offset_to_datetime(offset) if offset else max_datetime
+    desired_str = f"datetime({desired_datetime.strftime(DATETIME_MASK)})"
     min_str = f"datetime({min_str})"
     max_str = f"datetime({max_str})"
-    # If no offset value was provided continue from the previous processed date
-    desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-    desired_str = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if args.reparse:
+        filter_value = f"TimeGenerated >= {desired_str}"
         filter_value = f"TimeGenerated >= {desired_str}"
     # Build the filter taking into account the min and max values from the file
     else:
@@ -402,11 +399,8 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
                 time_position = get_time_position(columns)
                 if time_position:
                     iter_log_analytics_events(columns, rows)
-                    update_dates_json(new_min=rows[0][time_position],
-                                      new_max=rows[len(rows) - 1][time_position],
-                                      service_name="log_analytics",
-                                      md5_hash=md5_hash)
-                    save_dates_json(dates_json)
+                    update_row_object(table=orm.LogAnalytics, md5_hash=md5_hash, new_min=rows[0][time_position],
+                                      new_max=rows[len(rows) - 1][time_position], query=args.la_query)
                 else:
                     logging.error("Error: No TimeGenerated field was found")
 
@@ -474,6 +468,7 @@ def start_graph():
     if args.graph_auth_path and args.graph_tenant_domain:
         client, secret = read_auth_file(auth_path=args.graph_auth_path, fields=("application_id", "application_key"))
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
+        logging.warning(DEPRECATED_MESSAGE.format(name="graph_id and graph_key", release="4.4", url=CREDENTIALS_URL))
         client = args.graph_id
         secret = args.graph_key
     else:
@@ -515,14 +510,20 @@ def build_graph_url(offset: str, md5_hash: str):
     str
         The required URL for the requested query.
     """
-    min_str, max_str = get_min_max(service_name="graph", md5_hash=md5_hash, offset=offset)
-    # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
-    # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+    try:
+        item = orm.get_row(orm.Graph, md5=md5_hash)
+        if item is None:
+            item = create_new_row(table=orm.Graph, query=args.graph_query, md5_hash=md5_hash, offset=offset)
+    except orm.AzureORMError as e:
+        logging.error(f"Error trying to obtain row object from '{orm.Graph.__tablename__}' using md5='{md5}': {e}")
+        sys.exit(1)
+
+    min_str = item.min_processed_date
+    max_str = item.max_processed_date
     min_datetime = parse(min_str, fuzzy=True)
     max_datetime = parse(max_str, fuzzy=True)
-    # If no offset value was provided continue from the previous processed date
     desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-    desired_str = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if offset else max_str
+    desired_str = desired_datetime.strftime(DATETIME_MASK)
     filtering_condition = "createdDateTime" if "signins" in args.graph_query.lower() else "activityDateTime"
 
     # If reparse was provided, get the logs ignoring if they were already processed
@@ -569,17 +570,13 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
                 date = value["activityDateTime"]
             except KeyError:
                 date = value["createdDateTime"]
-            update_dates_json(new_min=date,
-                              new_max=date,
-                              service_name="graph",
-                              md5_hash=md5_hash)
+            update_row_object(table=orm.Graph, md5_hash=md5_hash, new_min=date, new_max=date, query=args.graph_query)
             value["azure_tag"] = "azure-ad-graph"
             if args.graph_tag:
                 value['azure_aad_tag'] = args.graph_tag
             json_result = dumps(value)
             logging.info("Graph: Sending event by socket.")
             send_message(json_result)
-        save_dates_json(dates_json)
 
         if len(values_json) == 0:
             logging.info("Graph: There are no new results")
@@ -604,6 +601,7 @@ def start_storage():
     if args.storage_auth_path:
         name, key = read_auth_file(auth_path=args.storage_auth_path, fields=("account_name", "account_key"))
     elif args.account_name and args.account_key:
+        logging.warning(DEPRECATED_MESSAGE.format(name="account_name and account_key", release="4.4", url=CREDENTIALS_URL))
         name = args.account_name
         key = args.account_key
     else:
@@ -644,23 +642,20 @@ def start_storage():
     # Get the blobs
     for container in containers:
         md5_hash = md5(name.encode()).hexdigest()
-        # check if the hash was already present in the last_dates file
-        md5_exists = md5_hash in dates_json["storage"]
         offset = args.storage_time_offset
-        min_str, max_str = get_min_max(service_name="storage", md5_hash=md5_hash, offset=offset)
-        # "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
-        # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
-        min_datetime = parse(min_str, fuzzy=True)
-        max_datetime = parse(max_str, fuzzy=True)
-        desired_datetime = offset_to_datetime(offset) if offset else max_datetime
         try:
-            get_blobs(container_name=container, blob_service=block_blob_service, md5_hash=md5_hash,
-                      min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
-        except AzureException:
-            if not md5_exists:
-                # get_min_max function added the md5 key to the dates_json if not already present, so we must purge it
-                del dates_json["storage"][md5_hash]
-    save_dates_json(dates_json)
+            item = orm.get_row(orm.Storage, md5=md5_hash)
+            if item is None:
+                item = create_new_row(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
+        except orm.AzureORMError as e:
+            logging.error(f"Error trying to obtain row object from '{orm.Storage.__tablename__}' using md5='{md5}': {e}")
+            sys.exit(1)
+
+        min_datetime = parse(item.min_processed_date, fuzzy=True)
+        max_datetime = parse(item.max_processed_date, fuzzy=True)
+        desired_datetime = offset_to_datetime(offset) if offset else max_datetime
+        get_blobs(container_name=container, blob_service=block_blob_service, md5_hash=md5_hash,
+                  min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
     logging.info("Storage: End")
 
 
@@ -754,10 +749,8 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
                             msg = f'{msg} {line}'
                         logging.info("Storage: Sending event by socket.")
                         send_message(msg)
-            update_dates_json(new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                              service_name="storage",
-                              md5_hash=md5_hash)
+            update_row_object(table=orm.Storage, md5_hash=md5_hash, new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), query=container_name)
 
         # Continue until no marker is returned
         if blobs.next_marker:
@@ -793,11 +786,23 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
     }
     auth_url = f'{url_logging}/{domain}/oauth2/v2.0/token'
     try:
-        token_response = post(auth_url, data=body)
-        return token_response.json()['access_token']
-    except (ValueError, KeyError) as e:
-        logging.error(f"Error: Couldn't get the token for authentication: '{e}'.")
-        sys.exit(1)
+        token_response = post(auth_url, data=body).json()
+        return token_response['access_token']
+    except (ValueError, KeyError):
+        if token_response['error'] == 'unauthorized_client':
+            err_msg = "The application id provided is not valid."
+        elif token_response['error'] == 'invalid_client':
+            err_msg = "The application key provided is not valid."
+        elif token_response['error'] == 'invalid_request' and 90002 in token_response['error_codes']:
+            err_msg = f"The '{domain}' tenant domain was not found."
+        else:
+            err_msg = "Couldn't get the token for authentication."
+        logging.error(f"Error: {err_msg}")
+
+    except RequestException as e:
+        logging.error(f"Error: An error occurred while trying to obtain the authentication token: {e}")
+
+    sys.exit(1)
 
 
 def send_message(message: str):
@@ -857,7 +862,9 @@ def offset_to_datetime(date: str):
 if __name__ == "__main__":
     args = get_script_arguments()
     set_logger()
-    dates_json = load_dates_json()
+
+    if not orm.check_database_integrity():
+        sys.exit(1)
 
     if args.log_analytics:
         start_log_analytics()

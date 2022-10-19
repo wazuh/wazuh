@@ -12,9 +12,6 @@
 #ifndef _PACKAGE_LINUX_PARSER_HELPER_H
 #define _PACKAGE_LINUX_PARSER_HELPER_H
 
-#include <fstream>
-#include "sharedDefs.h"
-#include "cmdHelper.h"
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
@@ -26,53 +23,6 @@
 // Parse helpers for standard Linux packaging systems (rpm, dpkg, ...)
 namespace PackageLinuxHelper
 {
-    static nlohmann::json parseRpm(const std::string& packageInfo)
-    {
-        nlohmann::json ret;
-        const auto fields { Utils::split(packageInfo, '\t') };
-        constexpr auto DEFAULT_VALUE { "(none)" };
-
-        if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
-        {
-            std::string name             { fields.at(RPMFields::RPM_FIELDS_NAME) };
-
-            if (name.compare("gpg-pubkey") != 0 && !name.empty())
-            {
-                std::string size         { fields.at(RPMFields::RPM_FIELDS_PACKAGE_SIZE) };
-                std::string install_time { fields.at(RPMFields::RPM_FIELDS_INSTALLTIME) };
-                std::string groups       { fields.at(RPMFields::RPM_FIELDS_GROUPS) };
-                std::string version      { fields.at(RPMFields::RPM_FIELDS_VERSION) };
-                std::string architecture { fields.at(RPMFields::RPM_FIELDS_ARCHITECTURE) };
-                std::string vendor       { fields.at(RPMFields::RPM_FIELDS_VENDOR) };
-                std::string description  { fields.at(RPMFields::RPM_FIELDS_SUMMARY) };
-
-                std::string release      { fields.at(RPMFields::RPM_FIELDS_RELEASE) };
-                std::string epoch        { fields.at(RPMFields::RPM_FIELDS_EPOCH) };
-
-                if (!epoch.empty() && epoch.compare(DEFAULT_VALUE) != 0)
-                {
-                    version = epoch + ":" + version;
-                }
-
-                if (!release.empty() && release.compare(DEFAULT_VALUE) != 0)
-                {
-                    version += "-" + release;
-                }
-
-                ret["name"]         = name;
-                ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoi(size);
-                ret["install_time"] = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? "" : install_time;
-                ret["groups"]       = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? "" : groups;
-                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? "" : version;
-                ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? "" : architecture;
-                ret["format"]       = "rpm";
-                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? "" : vendor;
-                ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? "" : description;
-            }
-        }
-
-        return ret;
-    }
 
     static nlohmann::json parseDpkg(const std::vector<std::string>& entries)
     {
@@ -184,5 +134,7 @@ namespace PackageLinuxHelper
     }
 
 };
+
+#pragma GCC diagnostic pop
 
 #endif // _PACKAGE_LINUX_PARSER_HELPER_H

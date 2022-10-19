@@ -28,6 +28,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6);
  * a Unix Domain socket.
  */
 int OS_BindUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
+int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
 int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
 int OS_getsocketsize(int ossock);
 
@@ -65,8 +66,8 @@ int OS_SendUnix(int socket, const char *msg, int size) __attribute__((nonnull));
 
 int OS_SendUDPbySize(int socket, int size, const char *msg) __attribute__((nonnull));
 
-/* OS_GetHost
- * Calls gethostbyname
+/*
+ * OS_GetHost retrieves the IP of a host
  */
 char *OS_GetHost(const char *host, unsigned int attempts);
 
@@ -162,7 +163,7 @@ int wnet_select(int sock, int timeout);
 /**
  * @brief Resolve a given hostname, getting the associated ip
  * @param hostname Hostname to be resolved, if successfull, it will be modified with the format: 'hostname/x.x.x.x'
- * @param attempts Number of attempts of the call to the function gethostbyname
+ * @param attempts Number of attempts of the call to the function OS_GetHost
  * */
 void resolve_hostname(char **hostname, int attempts);
 
@@ -172,5 +173,48 @@ void resolve_hostname(char **hostname, int attempts);
  * @return String with the ip addres
  * */
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
+
+/**
+ * @brief Connect to an UNIX socket setting the sending and response timeout
+ * @param socket_path Location of the UNIX socket to connect
+ * @param response_timeout Timeout to wait for a response
+ * @return Socket FD on success
+ * @return -1 on socket error
+ * */
+int external_socket_connect(char *socket_path, int response_timeout);
+
+/**
+ * @brief Get the numeric form of an IPv4 address.
+ * @param address IPv4 address in string form.
+ * @param addr Buffer to store the numeric form of the IPv4.
+ * @return 0 on success, -1 otherwise.
+ * */
+int get_ipv4_numeric(const char *address, struct in_addr *addr);
+
+/**
+ * @brief Get the numeric form of an IPv6 address.
+ * @param address IPv6 address in string form.
+ * @param addr6 Buffer to store the numeric form of the IPv6.
+ * @return 0 on success, -1 otherwise.
+ * */
+int get_ipv6_numeric(const char *address, struct in6_addr *addr6);
+
+/**
+ * @brief Get the string form of an IPv4 address.
+ * @param addr IPv4 address in numeric form.
+ * @param address Buffer to store the string form of the IPv4.
+ * @param address_size Size of the buffer.
+ * @return 0 on success, -1 otherwise.
+ * */
+int get_ipv4_string(struct in_addr addr, char *address, size_t address_size);
+
+/**
+ * @brief Get the string form of an IPv6 address.
+ * @param addr6 IPv6 address in numeric form.
+ * @param address Buffer to store the string form of the IPv6.
+ * @param address_size Size of the buffer.
+ * @return 0 on success, -1 otherwise.
+ * */
+int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size);
 
 #endif /* OS_NET_H */
