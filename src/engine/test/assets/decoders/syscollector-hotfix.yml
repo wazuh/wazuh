@@ -11,12 +11,12 @@ normalize:
   - check:
       - _json.hotfix: +exists
     map:
-      _query: +s_concat/agent /$agent.id/ hotfix save /$_json.ID/|/$_json.timestamp/|/$_json.hotfix
-      _query_response: +wdb_update/$_query
+      - _query: +s_concat/agent /$agent.id/ hotfix save /$_json.ID/|/$_json.timestamp/|/$_json.hotfix
+      - _query_response: +wdb_update/$_query
 
   - check:
       - _json.hotfix: +not_exists
       - _json.type: +s_eq/hotfix_end
     map:
-      _query: +s_concat/agent /$agent.id/ hotfix del /$_json.ID
-      _query_response: +wdb_update/$_query
+      - _query: +s_concat/agent /$agent.id/ hotfix del /$_json.ID
+      - _query_response: +wdb_update/$_query

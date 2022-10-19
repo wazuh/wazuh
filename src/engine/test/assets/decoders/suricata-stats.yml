@@ -10,4 +10,4 @@ check:
 
 normalize:
   - map:
-      event.kind: metric
+      - event.kind: metric

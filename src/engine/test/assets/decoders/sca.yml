@@ -11,4 +11,4 @@ normalize:
   - check:
       - _json.type: +exists
     map:
-      decode_result: +sca_decoder/$_json/$agent.id
+      - decode_result: +sca_decoder/$_json/$agent.id

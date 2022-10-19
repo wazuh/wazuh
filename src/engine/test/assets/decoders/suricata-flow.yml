@@ -11,4 +11,4 @@ check:
 
 normalize:
   - map:
-      event.type: +s_append/connection
+      - event.type: +s_append/connection

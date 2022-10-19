@@ -17,27 +17,27 @@ parse:
 normalize:
   - map:
       # Base mapping, delete duplicated fields
-      winlog: $_winlog.Event
-      _winlog: +delete_field
-      _json: +delete_field
-      winlog.event_data: +rename_field/$winlog.EventData
+      - winlog: $_winlog.Event
+      - _winlog: +delete_field
+      - _json: +delete_field
+      - winlog.event_data: +rename_field/$winlog.EventData
 
       # Normalize System fields
-      timestamp: $winlog.System.TimeCreated.@SystemTime
-      winlog.channel: $winlog.System.Channel.#text
-      winlog.computer_name: $winlog.System.Computer.#text
-      winlog.event_id: $winlog.System.EventID.#text
-      winlog.opcode: $winlog.System.Opcode.#text # Needs processing, number -> text
-      winlog.provider_guid: $winlog.System.Provider.@Guid
-      winlog.provider_name: $winlog.System.Provider.@Name
-      winlog.record_id: $winlog.System.EventRecordID.#text
-      winlog.task: $winlog.System.Task.#text # Needs processing, number -> text
-      winlog.version: $winlog.System.Version.#text
-      winlog.keywords: $winlog.System.Keywords.#text # Needs processing, hexa -> text
-      winlog.process.pid: $winlog.System.Execution.@ProcessID
-      winlog.process.thread.id: $winlog.System.Execution.@ThreadID
-      winlog.level: $winlog.System.Level.#text
+      - timestamp: $winlog.System.TimeCreated.@SystemTime
+      - winlog.channel: $winlog.System.Channel.#text
+      - winlog.computer_name: $winlog.System.Computer.#text
+      - winlog.event_id: $winlog.System.EventID.#text
+      - winlog.opcode: $winlog.System.Opcode.#text # Needs processing, number -> text
+      - winlog.provider_guid: $winlog.System.Provider.@Guid
+      - winlog.provider_name: $winlog.System.Provider.@Name
+      - winlog.record_id: $winlog.System.EventRecordID.#text
+      - winlog.task: $winlog.System.Task.#text # Needs processing, number -> text
+      - winlog.version: $winlog.System.Version.#text
+      - winlog.keywords: $winlog.System.Keywords.#text # Needs processing, hexa -> text
+      - winlog.process.pid: $winlog.System.Execution.@ProcessID
+      - winlog.process.thread.id: $winlog.System.Execution.@ThreadID
+      - winlog.level: $winlog.System.Level.#text
 
       # Delete Reduntant and unused fields
-      winlog.System: +delete_field
-      winlog.@xmlns: +delete_field
+      - winlog.System: +delete_field
+      - winlog.@xmlns: +delete_field

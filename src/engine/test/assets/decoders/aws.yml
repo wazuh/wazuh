@@ -13,5 +13,5 @@ check:
 
 normalize:
   - map:
-      wazuh.integration: $_json.integration
-      wazuh.modules.aws.source: $_json.aws.source
+      - wazuh.integration: $_json.integration
+      - wazuh.modules.aws.source: $_json.aws.source

@@ -12,9 +12,9 @@ normalize:
   - check:
       - _json.http.status: +i_lt/400
     map:
-      event.outcome: success
+      - event.outcome: success
 
   - check:
       - _json.http.status: +i_ge/400
     map:
-      event.outcome: failure
+      - event.outcome: failure

@@ -21,18 +21,18 @@ parse:
 
 normalize:
   - map:
-      url.domain: $destination.domain
-      event.kind: event
-      event.category: +s_append/web
-      event.type: +s_append/access
-      related.ip: +s_append/$source.ip/$destination.ip
-      related.user: +s_append/$user.name
+      - url.domain: $destination.domain
+      - event.kind: event
+      - event.category: +s_append/web
+      - event.type: +s_append/access
+      - related.ip: +s_append/$source.ip/$destination.ip
+      - related.user: +s_append/$user.name
 
   - check:
       - http.response.status_code: +i_lt/400
     map:
-      event.outcome: success
+      - event.outcome: success
   - check:
       - http.response.status_code: +i_ge/400
     map:
-      event.outcome: failure
+      - event.outcome: failure
