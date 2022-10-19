@@ -652,7 +652,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 //*               Existance filters               *
 //*************************************************
 
-// field: +exists
+// field: +ef_exists
 base::Expression opBuilderHelperExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -682,7 +682,7 @@ base::Expression opBuilderHelperExists(const std::any& definition)
         });
 }
 
-// field: +not_exists
+// field: +ef_not_exists
 base::Expression opBuilderHelperNotExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -802,7 +802,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
 //*                Type filters                   *
 //*************************************************
 
-// field: +is_number
+// field: +t_is_num
 base::Expression opBuilderHelperIsNumber(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -846,7 +846,7 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
         });
 }
 
-// field: +is_not_number
+// field: +t_is_not_num
 base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -890,7 +890,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
         });
 }
 
-// field: +is_string
+// field: +t_is_string
 base::Expression opBuilderHelperIsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -934,7 +934,7 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
         });
 }
 
-// field: +is_not_string
+// field: +t_is_not_string
 base::Expression opBuilderHelperIsNotString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -978,7 +978,7 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
         });
 }
 
-// field: +is_bool
+// field: +t_is_bool
 base::Expression opBuilderHelperIsBool(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1022,7 +1022,7 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
         });
 }
 
-// field: +is_not_bool
+// field: +t_is_not_bool
 base::Expression opBuilderHelperIsNotBool(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1066,7 +1066,7 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
         });
 }
 
-// field: +is_array
+// field: +t_is_array
 base::Expression opBuilderHelperIsArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1110,7 +1110,7 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
         });
 }
 
-// field: +is_not_array
+// field: +t_is_not_array
 base::Expression opBuilderHelperIsNotArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1154,7 +1154,7 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
         });
 }
 
-// field: +is_object
+// field: +t_is_object
 base::Expression opBuilderHelperIsObject(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1198,7 +1198,7 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
         });
 }
 
-// field: +is_not_object
+// field: +t_is_not_object
 base::Expression opBuilderHelperIsNotObject(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1242,7 +1242,7 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
         });
 }
 
-// field: +is_null
+// field: +t_is_null
 base::Expression opBuilderHelperIsNull(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1286,7 +1286,7 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
         });
 }
 
-// field: +is_not_null
+// field: +t_is_not_null
 base::Expression opBuilderHelperIsNotNull(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1330,7 +1330,7 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
         });
 }
 
-// field: +is_true
+// field: +t_is_true
 base::Expression opBuilderHelperIsTrue(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1374,7 +1374,7 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
         });
 }
 
-// field: +is_false
+// field: +t_is_false
 base::Expression opBuilderHelperIsFalse(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);

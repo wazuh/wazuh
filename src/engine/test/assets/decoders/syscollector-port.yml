@@ -5,4 +5,4 @@ parents:
 
 check:
   - _json.type: +s_starts/port
-  - _json.ID: +exists
+  - _json.ID: +ef_exists

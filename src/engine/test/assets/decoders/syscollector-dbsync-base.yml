@@ -5,8 +5,8 @@ parents:
 
 check:
   - _json.type: +s_starts/dbsync_
-  - _json.operation: +is_string
-  - _json.data: +is_object
+  - _json.operation: +t_is_string
+  - _json.data: +t_is_object
 
 normalize:
   - map:

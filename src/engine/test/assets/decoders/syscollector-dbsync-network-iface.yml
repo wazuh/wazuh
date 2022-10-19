@@ -9,7 +9,7 @@ check:
 
 normalize:
   - check:
-      - _json.data.scan_time: +not_exists
+      - _json.data.scan_time: +ef_not_exists
     map:
       - _json.data.scan_time: "NULL"
 
@@ -23,7 +23,7 @@ normalize:
     map:
       - _json.data.name: "NULL"
   - check:
-      - _json.data.name: +not_exists
+      - _json.data.name: +ef_not_exists
     map:
       - _json.data.name: "NULL"
 
@@ -37,7 +37,7 @@ normalize:
     map:
       - _json.data.adapter: "NULL"
   - check:
-      - _json.data.adapter: +not_exists
+      - _json.data.adapter: +ef_not_exists
     map:
       - _json.data.adapter: "NULL"
 
@@ -51,7 +51,7 @@ normalize:
     map:
       - _json.data.type: "NULL"
   - check:
-      - _json.data.type: +not_exists
+      - _json.data.type: +ef_not_exists
     map:
       - _json.data.type: "NULL"
 
@@ -65,67 +65,67 @@ normalize:
     map:
       - _json.data.state: "NULL"
   - check:
-      - _json.data.state: +not_exists
+      - _json.data.state: +ef_not_exists
     map:
       - _json.data.state: "NULL"
 
   - check:
-      - _json.data.mtu: +not_exists
+      - _json.data.mtu: +ef_not_exists
     map:
       - _json.data.mtu: "NULL"
 
   - check:
-      - _json.data.mac: +not_exists
+      - _json.data.mac: +ef_not_exists
     map:
       - _json.data.mac: "NULL"
 
   - check:
-      - _json.data.tx_packets: +not_exists
+      - _json.data.tx_packets: +ef_not_exists
     map:
       - _json.data.tx_packets: "NULL"
 
   - check:
-      - _json.data.rx_packets: +not_exists
+      - _json.data.rx_packets: +ef_not_exists
     map:
       - _json.data.rx_packets: "NULL"
 
   - check:
-      - _json.data.tx_bytes: +not_exists
+      - _json.data.tx_bytes: +ef_not_exists
     map:
       - _json.data.tx_bytes: "NULL"
 
   - check:
-      - _json.data.rx_bytes: +not_exists
+      - _json.data.rx_bytes: +ef_not_exists
     map:
       - _json.data.rx_bytes: "NULL"
 
   - check:
-      - _json.data.tx_errors: +not_exists
+      - _json.data.tx_errors: +ef_not_exists
     map:
       - _json.data.tx_errors: "NULL"
 
   - check:
-      - _json.data.rx_errors: +not_exists
+      - _json.data.rx_errors: +ef_not_exists
     map:
       - _json.data.rx_errors: "NULL"
 
   - check:
-      - _json.data.tx_dropped: +not_exists
+      - _json.data.tx_dropped: +ef_not_exists
     map:
       - _json.data.tx_dropped: "NULL"
 
   - check:
-      - _json.data.rx_dropped: +not_exists
+      - _json.data.rx_dropped: +ef_not_exists
     map:
       - _json.data.rx_dropped: "NULL"
 
   - check:
-      - _json.data.checksum: +not_exists
+      - _json.data.checksum: +ef_not_exists
     map:
       - _json.data.checksum: "NULL"
 
   - check:
-      - _json.data.item_id: +not_exists
+      - _json.data.item_id: +ef_not_exists
     map:
       - _json.data.item_id: "NULL"
 
@@ -157,9 +157,9 @@ normalize:
       - wazuh.syscollector.netinfo.iface.rx_errors: $_array_of_field/11
       - wazuh.syscollector.netinfo.iface.tx_dropped: $_array_of_field/12
       - wazuh.syscollector.netinfo.iface.rx_dropped: $_array_of_field/13
-      - _query: +delete_field
-      - _query_response: +delete_field
-      - _query_response_values: +delete_field
-      - _array_of_field: +delete_field
-      - _escaped_pipe_char: +delete_field
-      - _json.data: +delete_field
+      - _query: +ef_delete
+      - _query_response: +ef_delete
+      - _query_response_values: +ef_delete
+      - _array_of_field: +ef_delete
+      - _escaped_pipe_char: +ef_delete
+      - _json.data: +ef_delete

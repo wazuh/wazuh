@@ -1,11 +1,11 @@
 name: output_test
 check:
-  - decoded.queue: +exists
-  - decoded.location: +exists
-  - decoded.message: +exists
-  - alerted.queue: +exists
-  - alerted.location: +exists
-  - alerted.message: +exists
+  - decoded.queue: +ef_exists
+  - decoded.location: +ef_exists
+  - decoded.message: +ef_exists
+  - alerted.queue: +ef_exists
+  - alerted.location: +ef_exists
+  - alerted.message: +ef_exists
 
 outputs:
   - file:

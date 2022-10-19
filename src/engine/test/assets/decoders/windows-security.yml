@@ -61,10 +61,10 @@ normalize:
   - check:
       - event.code: +s_eq/4688
     map:
-      - process.pid: +s_hex_to_number/$winlog.event_data.NewProcessId
+      - process.pid: +s_hex_to_num/$winlog.event_data.NewProcessId
       - process.executable: $winlog.event_data.NewProcessName
       - process.name: +r_ext/$process.executable/^.+\\(.+)$
-      - process.parent.pid: +s_hex_to_number/$winlog.event_data.ProcessId
+      - process.parent.pid: +s_hex_to_num/$winlog.event_data.ProcessId
       - process.parent.executable: $winlog.event_data.ParentProcessName
       - process.parent.name: +r_ext/$process.parent.executable/^.+\\(.+)$
       - process.args: "+s_to_array/$winlog.event_data.CommandLine/ "
@@ -86,4 +86,4 @@ normalize:
 
   # Delete tmp fields
   - map:
-      - _tmp: +delete_field
+      - _tmp: +ef_delete

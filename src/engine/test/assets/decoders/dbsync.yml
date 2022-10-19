@@ -13,7 +13,7 @@ normalize:
       - _query: +s_concat/agent /$agent.id/ /$_json.component/ /$_json.type/ /$_json.data
       - _query_response: +wdb_query/$_query
   - check:
-      - _query_response: +exists
+      - _query_response: +ef_exists
     map:
       - _ar_query: +s_concat/(msg_to_agent) [] N!S /$agent.id/ /$_json.component/ dbsync /$_query_response/ /$_json.data
       - _ar_result: +ar_send/$_ar_query
