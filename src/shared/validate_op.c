@@ -428,15 +428,13 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
             if (w_expression_compile(exp, ip_address_regex[i], 0) &&
                  w_expression_match(exp, ip_address, NULL, regex_match)) {
 
-                ret = 1;
-
                 /* number of regex captures */
                 int sub_strings_num = 0;
-                for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++, sub_strings_num++);
-
-                if(sub_strings_num == 2) {
-                    ret = 2;
+                if (regex_match->sub_strings) {
+                    for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++, sub_strings_num++);
                 }
+
+                ret = sub_strings_num == 2 ? 2 : 1;
 
                 if (final_ip) {
                     /* Regex 0 (i = 0) match IPv4, superior regex match IPv6 */
@@ -581,7 +579,7 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
          w_expression_match(exp, ip_address, NULL, regex_match)) {
 
         /* number of regex captures */
-        if (regex_match->d_size.prts_str_alloc_size/sizeof(char*)) {
+        if (regex_match->sub_strings && regex_match->sub_strings[0]) {
             strncpy(ip_address, regex_match->sub_strings[0], size);
             ret = 1;
         }
@@ -589,13 +587,14 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
 
     if (regex_match) {
         if (regex_match->sub_strings) {
-            os_free(regex_match->sub_strings[0]);
+            for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
+                os_free(regex_match->sub_strings[a]);
+            }
             os_free(regex_match->sub_strings);
         }
         os_free(regex_match);
     }
     w_free_expression_t(&exp);
-
     return ret;
 }
 

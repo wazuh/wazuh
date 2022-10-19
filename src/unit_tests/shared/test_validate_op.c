@@ -1244,6 +1244,67 @@ void OS_GetIPv4FromIPv6_success(void **state) {
     assert_int_equal(ret, 1);
 }
 
+void OS_GetIPv4FromIPv6_netmask_success(void **state) {
+
+    char address[IPSIZE + 1] = {0};
+    strncpy(address, "::ffff:10.2.2.3/255.255.255.255", IPSIZE);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, "10.2.2.3/255.255.255.255");
+
+    int ret = OS_GetIPv4FromIPv6(address, IPSIZE);
+
+    assert_string_equal("10.2.2.3/255.255.255.255", address);
+    assert_int_equal(ret, 1);
+}
+
+void OS_GetIPv4FromIPv6_compile_fail(void **state) {
+
+    char address[IPSIZE + 1] = {0};
+    strncpy(address, "10.2.2.4", IPSIZE);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, false);
+
+    int ret = OS_GetIPv4FromIPv6(address, IPSIZE);
+
+    assert_string_equal("10.2.2.4", address);
+    assert_int_equal(ret, 0);
+}
+
+void OS_GetIPv4FromIPv6_match_fail(void **state) {
+
+    char address[IPSIZE + 1] = {0};
+    strncpy(address, "10.2.2.5/64", IPSIZE);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, false);
+
+    int ret = OS_GetIPv4FromIPv6(address, IPSIZE);
+
+    assert_string_equal("10.2.2.5/64", address);
+    assert_int_equal(ret, 0);
+}
+
+void OS_GetIPv4FromIPv6_empty_group(void **state) {
+
+    char address[IPSIZE + 1] = {0};
+    strncpy(address, "::ffff:10.2.2.3/255.255.255.255", IPSIZE);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, true);
+    will_return(__wrap_w_expression_match, -1);
+    will_return(__wrap_w_expression_match, NULL);
+
+    int ret = OS_GetIPv4FromIPv6(address, IPSIZE);
+
+    assert_string_equal("::ffff:10.2.2.3/255.255.255.255", address);
+    assert_int_equal(ret, 0);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1301,6 +1362,10 @@ int main(void) {
         cmocka_unit_test(OS_CIDRtoStr_valid_ipv4_CIDR_0),
         // Test OS_GetIPv4FromIPv6
         cmocka_unit_test(OS_GetIPv4FromIPv6_success),
+        cmocka_unit_test(OS_GetIPv4FromIPv6_netmask_success),
+        cmocka_unit_test(OS_GetIPv4FromIPv6_compile_fail),
+        cmocka_unit_test(OS_GetIPv4FromIPv6_match_fail),
+        cmocka_unit_test(OS_GetIPv4FromIPv6_empty_group),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
