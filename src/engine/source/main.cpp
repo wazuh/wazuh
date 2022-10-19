@@ -25,8 +25,17 @@ constexpr auto SUBCOMMAND_RUN = "run";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
-constexpr auto SUBCOMMAND_CATALOG = "catalog";
 constexpr auto SUBCOMMAND_ENVIRONMENT = "env";
+
+// Catalog subcommand
+constexpr auto SUBCOMMAND_CATALOG = "catalog";
+constexpr auto SUBCOMMAND_CATALOG_LIST = "list";
+constexpr auto SUBCOMMAND_CATALOG_GET = "get";
+constexpr auto SUBCOMMAND_CATALOG_UPDATE = "update";
+constexpr auto SUBCOMMAND_CATALOG_CREATE = "create";
+constexpr auto SUBCOMMAND_CATALOG_DELETE = "delete";
+constexpr auto SUBCOMMAND_CATALOG_VALIDATE = "validate";
+constexpr auto SUBCOMMAND_CATALOG_LOAD = "load";
 
 // Graph file names
 constexpr auto ENV_DEF_DIR = ".";
@@ -53,11 +62,11 @@ int log_level;
 std::string kvdb_name;
 std::string kvdb_input_file;
 std::string kvdb_input_type;
-std::string catalogAction;
 std::string catalogName;
 bool catalogJsonFormat;
 bool catalogYmlFormat;
 std::string catalogContent;
+std::string catalogPath;
 std::string environmentAction;
 std::string environmentTarget;
 
@@ -235,46 +244,97 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* catalog = app->add_subcommand(args::SUBCOMMAND_CATALOG,
-                                            "Run the Wazuh Catalog integrated client.");
+    CLI::App* catalog =
+        app->add_subcommand(args::SUBCOMMAND_CATALOG,
+                            "Run the Wazuh Catalog integrated client.");
+    catalog->require_subcommand();
 
     // Endpoint
     catalog->add_option("-e, --engine", args::apiEndpoint, "engine api address")
-        ->default_val("$WAZUH/socket")
-        ->required();
-
-    // Method
-    catalog->add_option("action", args::catalogAction, "Catalog action")
-        ->required()
-        ->check(CLI::IsMember({"list", "get", "update", "create", "delete", "validate"}))
-        ->description(
-            "list <item-type>[/<item-id>]: List all items of the collection.\n"
-            "get <item-type>/<item-id>/<version>: Get an item.\n"
-            "update <item-type>/<item-id>/<version>: Update an item.\n"
-            "create <item-type>/<item-id>/<version>: Create an item.\n"
-            "delete <item-type>[/<item-id>/<version>]: Delete a collection or item.\n"
-            "validate <item-type>/<item-id>/<version>: Validate an item.");
-
-    // Name
-    catalog
-        ->add_option("name",
-                     args::catalogName,
-                     "Target name of the request, can be a collection, i.e.: "
-                     "<item-type>[/<item-id>] or a specific item, i.e.: "
-                     "<item-type>/<item-id>/<version>")
-        ->required();
+        ->default_val("$WAZUH/socket");
 
     // format
+    catalog->add_flag(
+        "-j, --json", args::catalogJsonFormat, "Use Input/Output json format");
     catalog
-        ->add_flag(
-            "-j, --json", args::catalogJsonFormat, "Use Input/Output json format");
-    catalog
-        ->add_flag("-y, --yaml", args::catalogYmlFormat, "Use Input/Output yaml format")
+        ->add_flag("-y, --yaml", args::catalogYmlFormat, "[Used by default] Use Input/Output yaml format")
         ->excludes(catalog->get_option("--json"));
 
-    // content
-    catalog->add_option("content", args::catalogContent, "Content of the item.")
+    // Shared obpitons among subcommands
+    auto name = "name";
+    std::string nameDesc = "Name identifying the ";
+    auto item = "item";
+    std::string itemDesc = "Content of the item, can be passed as argument or redirected "
+                           "from a file using | operator or the < operator";
+
+    // Catalog subcommands
+    auto list_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_LIST,
+        "list item-type[/item-id]: List all items of the collection.");
+    list_subcommand
+        ->add_option(
+            name, args::catalogName, nameDesc + "collection to list: item-type[/item-id]")
+        ->required();
+
+    auto get_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_GET, "get item-type/item-id/version: Get an item.");
+    get_subcommand
+        ->add_option(
+            name, args::catalogName, nameDesc + "item to get: item-type/item-id/version")
+        ->required();
+
+    auto update_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_UPDATE,
+        "update item-type/item-id/version << item_file: Update an item.");
+    update_subcommand
+        ->add_option(name,
+                     args::catalogName,
+                     nameDesc + "item to update: item-type/item-id/version")
+        ->required();
+    update_subcommand->add_option(item, args::catalogContent, itemDesc)->default_val("");
+
+    auto create_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_CREATE,
+        "create item-type << item_file: Create and add item to collection.");
+    create_subcommand
+        ->add_option(
+            name, args::catalogName, nameDesc + "collection to add item: item-type")
+        ->required();
+    create_subcommand->add_option(item, args::catalogContent, itemDesc)->default_val("");
+
+    auto delete_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_DELETE,
+        "delete item-type[/item-id[/version]]: Delete an item or collection.");
+    delete_subcommand
+        ->add_option(name,
+                     args::catalogName,
+                     nameDesc
+                         + "item or collection to delete: item-type[/item-id[/version]]")
+        ->required();
+
+    auto validate_subcommand =
+        catalog->add_subcommand(args::SUBCOMMAND_CATALOG_VALIDATE,
+                                "validate item-type/item-id/version << item_file: Validate an item.");
+    validate_subcommand
+        ->add_option(name,
+                     args::catalogName,
+                     nameDesc + "item to validate: item-type/item-id/version")
+        ->required();
+    validate_subcommand->add_option(item, args::catalogContent, itemDesc)
         ->default_val("");
+
+    auto load_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_LOAD,
+        "load item-type path: Tries to create and add all items found in the path to the collection.");
+    load_subcommand
+        ->add_option(
+            name, args::catalogName, nameDesc + "collection to add items: item-type")
+        ->required();
+    load_subcommand
+        ->add_option(
+            "path", args::catalogPath, "Path to the directory containing the item files.")
+        ->required()
+        ->check(CLI::ExistingDirectory);
 }
 
 void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
@@ -292,12 +352,12 @@ void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
     environment->add_option("action", args::environmentAction, "Environment action")
         ->required()
         ->check(CLI::IsMember({"get", "set"}))
-        ->description(
-            "get: Get the active environment.\n"
-            "set /env/<environment>/<version>: Run an environment. ");
+        ->description("get: Get the active environment.\n"
+                      "set /env/<environment>/<version>: Run an environment. ");
 
     // environment Info
-    environment->add_option("environment", args::environmentTarget, "Environment Involved.")
+    environment
+        ->add_option("environment", args::environmentTarget, "Environment Involved.")
         ->default_val("")
         ->take_last();
 }
@@ -407,25 +467,59 @@ int main(int argc, char* argv[])
             args::catalogContent = ss.str();
         }
         std::string formatString;
-        if (args::catalogYmlFormat)
-        {
-            formatString = "yaml";
-        }
-        else
+        if (args::catalogJsonFormat)
         {
             formatString = "json";
         }
+        else
+        {
+            formatString = "yaml";
+        }
+
+        // Set the action based on the subcommand parsed
+        auto catalogSubcommand = app->get_subcommand(args::SUBCOMMAND_CATALOG);
+        std::string action;
+
+        if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_CREATE)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_CREATE;
+        }
+        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_DELETE)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_DELETE;
+        }
+        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_UPDATE)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_UPDATE;
+        }
+        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_GET)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_GET;
+        }
+        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_LIST)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_LIST;
+        }
+        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_LOAD)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_LOAD;
+        }
+        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_VALIDATE)->parsed())
+        {
+            action = args::SUBCOMMAND_CATALOG_VALIDATE;
+        }
+
         cmd::catalog(args::apiEndpoint,
-                     args::catalogAction,
+                     action,
                      args::catalogName,
                      formatString,
-                     args::catalogContent);
+                     args::catalogContent,
+                     args::catalogPath);
     }
     else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
     {
-        cmd::environment(args::apiEndpoint,
-                         args::environmentAction,
-                         args::environmentTarget);
+        cmd::environment(
+            args::apiEndpoint, args::environmentAction, args::environmentTarget);
     }
     else
     {
