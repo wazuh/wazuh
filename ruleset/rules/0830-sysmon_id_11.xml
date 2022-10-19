@@ -6,7 +6,7 @@
   Sysmon Event ID 11 rules 92200 - 92299
 -->
 
-<group name="sysmon_eid11_detections,">
+<group name="sysmon,sysmon_eid11_detections,windows,">
 
   <rule id="92200" level="6">
     <if_group>sysmon_event_11</if_group>
