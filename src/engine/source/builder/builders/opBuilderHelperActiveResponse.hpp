@@ -23,6 +23,13 @@ namespace ar
 constexpr const char* AR_QUEUE_PATH {"/var/ossec/queue/alerts/ar"};
 
 constexpr const char* AGENT_ID_PATH {"/agent/id"};
+
+// TODO: unify these parameters with the api ones
+constexpr const char* MODULE_NAME {"wazuh-engine"};
+
+constexpr const char* ORIGIN_NAME {"node01"};
+
+constexpr const char* VERSION_SUPPORTED{"1"};
 }
 
 /**

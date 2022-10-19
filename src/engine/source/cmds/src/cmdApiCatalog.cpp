@@ -155,7 +155,7 @@ void catalog(const std::string& socketPath,
     params.setString(name.fullName(), "/name");
     params.setString(content, "/content");
 
-    request = api::WazuhRequest::create(command, params);
+    request = api::WazuhRequest::create(command, "api", params);
     if (!request.isValid())
     {
         std::cerr << "Request malformed: " << request.toStr() << std::endl;
