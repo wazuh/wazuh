@@ -33,7 +33,7 @@ void setEnv(const std::string& socketPath, const std::string& target)
     data.setString(parts[2], "/name");
     data.setString(parts[3], "/version");
 
-    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, data);
+    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
     // Send the request
     json::Json response {};
@@ -68,7 +68,7 @@ void getEnv(const std::string& socketPath, const std::string& target)
     data.setObject();
     data.setString("get", "/action");
 
-    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, data);
+    auto req = api::WazuhRequest::create(API_ENVIRONMENT_COMMAND, "api", data);
 
     // Send the request
     json::Json response {};
