@@ -78,7 +78,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
-                    && (Read_Global(chld_node, d1, d2) < 0)) {
+                    && (Read_Global(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
@@ -168,7 +168,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
-            } 
+            }
 #ifndef CLIENT
             else if ((node[i]->attributes[0] && !strcmp(node[i]->attributes[0], "name")) &&
                      (node[i]->values[0] && !strcmp(node[i]->values[0], key_polling))) {
