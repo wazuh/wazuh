@@ -5,7 +5,9 @@
 import os
 import subprocess
 import sys
-from unittest.mock import ANY, MagicMock, mock_open, patch
+from types import MappingProxyType
+from unittest.mock import mock_open, ANY
+from unittest.mock import patch, MagicMock
 
 import pytest
 from defusedxml.ElementTree import fromstring
@@ -39,7 +41,8 @@ def mock_wazuh_path():
     ({'new': [None]}, None, 'new', [1]),
     ({}, None, 'new', 1),
     ({}, None, 'new', False),
-    ({'old': [None]}, 'ruleset', 'include', [1])
+    ({'old': [None]}, 'ruleset', 'include', [1]),
+    ({'old': [None]}, 'vulnerability-detector', 'provider', [1])
 ])
 def test_insert(json_dst, section_name, option, value):
     """Checks insert function."""
@@ -71,21 +74,31 @@ def test_insert_section(json_dst, section_name, section_data):
 
 def test_read_option():
     """Checks insert_section function."""
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
-        data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'directories'
-        assert configuration._read_option('syscheck', data)[0] == 'directories'
-        assert configuration._read_option('labels', data)[0] == 'directories'
+    # with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
+    #     data = fromstring(f.read())
+    #     assert configuration._read_option('open-scap', data)[0] == 'directories'
+    #     assert configuration._read_option('syscheck', data)[0] == 'directories'
+    #     assert configuration._read_option('labels', data)[0] == 'directories'
+    #
+    # with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
+    #     data = fromstring(f.read())
+    #     assert configuration._read_option('labels', data)[0] == 'label'
+    #     assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
+    #
+    # with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
+    #     data = fromstring(f.read())
+    #     assert configuration._read_option('open-scap', data)[0] == 'synchronization'
+    #     assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detector.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('labels', data)[0] == 'label'
-        assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
-
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
-        data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'synchronization'
-        assert configuration._read_option('syscheck', data)[0] == 'synchronization'
+        EXPECTED_VALUES = MappingProxyType(
+            {'enabled': 'no', 'interval': '5m',
+             'provider': {'enabled': 'no', 'name': 'canonical', 'os': ['trusty', 'xenial', 'bionic', 'focal', 'jammy'],
+                          'update_interval': '1h'}})
+        for section in data:
+            assert configuration._read_option('vulnerability-detector', section) == (section.tag,
+                                                                                     EXPECTED_VALUES[section.tag])
 
 
 def test_agentconf2json():
