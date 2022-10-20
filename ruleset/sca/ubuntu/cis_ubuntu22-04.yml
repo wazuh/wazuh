@@ -1245,7 +1245,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W xserver-xorg* -> r:\sinstalled'
+      - 'not c:dpkg-query -s xserver-xorg* -> r:\sinstalled'
 
   # 2.2.2 Ensure Avahi Server is not installed (Automated)
   - id: 28551
@@ -1266,7 +1266,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W avahi-daemon -> r:\sinstalled'
+      - 'not c:dpkg-query -s avahi-daemon -> r:\sinstalled'
 
   # 2.2.3 Ensure CUPS is not installed (Automated)
   - id: 28552
@@ -1290,7 +1290,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W cups -> r:\sinstalled'
+      - 'not c:dpkg-query -s cups -> r:\sinstalled'
       -
   # 2.2.4 Ensure DHCP Server is not installed (Automated)
   - id: 28553
@@ -1313,7 +1313,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W isc-dhcp-server -> r:\sinstalled'
+      - 'not c:dpkg-query -s isc-dhcp-server -> r:\sinstalled'
 
   # 2.2.5 Ensure LDAP server is not installed (Automated)
   - id: 28554
@@ -1336,7 +1336,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W slapd -> r:\sinstalled'
+      - 'not c:dpkg-query -s slapd -> r:\sinstalled'
 
   # 2.2.6 Ensure NFS is not installed (Automated)
   - id: 28555
@@ -1357,7 +1357,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W nfs-kernel-server -> r:\sinstalled'
+      - 'not c:dpkg-query -s nfs-kernel-server -> r:\sinstalled'
 
   # 2.2.7 Ensure DNS Server is not installed (Automated)
   - id: 28556
@@ -1378,7 +1378,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W bind9 -> r:\sinstalled'
+      - 'not c:dpkg-query -s bind9 -> r:\sinstalled'
 
   # 2.2.8 Ensure FTP Server is not installed (Automated)
   - id: 28557
@@ -1399,7 +1399,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W vsftpd -> r:\sinstalled'
+      - 'not c:dpkg-query -s vsftpd -> r:\sinstalled'
 
   # 2.2.9 Ensure HTTP server is not installed (Automated)
   - id: 28558
@@ -1420,7 +1420,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W apache2 -> r:\sinstalled'
+      - 'not c:dpkg-query -s apache2 -> r:\sinstalled'
 
   # 2.2.10 Ensure IMAP and POP3 server are not installed (Automated)
   - id: 28559
@@ -1441,8 +1441,8 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W dovecot-imapd -> r:\sinstalled'
-      - 'not c:dpkg-query -W dovecot-pop3d -> r:\sinstalled'
+      - 'not c:dpkg-query -s dovecot-imapd -> r:\sinstalled'
+      - 'not c:dpkg-query -s dovecot-pop3d -> r:\sinstalled'
 
   # 2.2.11 Ensure Samba is not installed (Automated)
   - id: 28560
@@ -1463,7 +1463,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W samba -> r:\sinstalled'
+      - 'not c:dpkg-query -s samba -> r:\sinstalled'
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed (Automated)
   - id: 28561
@@ -1484,7 +1484,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W squid -> r:\sinstalled'
+      - 'not c:dpkg-query -s squid -> r:\sinstalled'
 
   # 2.2.13 Ensure SNMP Server is not installed (Automated)
   - id: 28562
@@ -1505,7 +1505,7 @@ checks:
       - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W snmp -> r:\sinstalled'
+      - 'not c:dpkg-query -s snmp -> r:\sinstalled'
 
   # 2.2.14 Ensure NIS Server is not installed (Automated)
   - id: 28563
@@ -1526,7 +1526,7 @@ checks:
       - soc_2: ["CC6.3"," CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W nis -> r:\sinstalled'
+      - 'not c:dpkg-query -s nis -> r:\sinstalled'
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 28564
@@ -1593,7 +1593,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W nis -> r:\sinstalled'
+      - 'not c:dpkg-query -s nis -> r:\sinstalled'
 
   # 2.3.2 Ensure rsh client is not installed (Automated)
   - id: 28567
@@ -1615,7 +1615,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W rsh-client -> r:\sinstalled'
+      - 'not c:dpkg-query -s rsh-client -> r:\sinstalled'
 
   # 2.3.3 Ensure talk client is not installed (Automated)
   - id: 28568
@@ -1637,7 +1637,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W talk -> r:\sinstalled'
+      - 'not c:dpkg-query -s talk -> r:\sinstalled'
 
   # 2.3.4 Ensure telnet client is not installed (Automated)
   - id: 28569
@@ -1659,7 +1659,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W telnet -> r:\sinstalled'
+      - 'not c:dpkg-query -s telnet -> r:\sinstalled'
 
   # 2.3.5 Ensure LDAP client is not installed (Automated)
   - id: 28570
@@ -1681,7 +1681,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W ldap-utils -> r:\sinstalled'
+      - 'not c:dpkg-query -s ldap-utils -> r:\sinstalled'
 
   # 2.3.6 Ensure RPC is not installed (Automated)
   - id: 28571
@@ -1702,7 +1702,7 @@ checks:
       - soc_2: ["CC6.3","CC6.6"]
     condition: all
     rules:
-      - 'not c:dpkg-query -W rpcbind -> r:\sinstalled'
+      - 'not c:dpkg-query -s rpcbind -> r:\sinstalled'
 
   # 2.4 Ensure nonessential services are removed or masked (Manual) - Not implemented
 
@@ -1712,600 +1712,292 @@ checks:
 
   # 3.1 Disable unused network protocols and devices
   # 3.1.1 Ensure system is checked to determine if IPv6 is enabled (Manual) - Not implemented
-
-  - id: 28572
-    title: "Ensure wireless interfaces are disabled"
-    description: "Wireless networking is used when wired networks are unavailable. Debian contains a wireless tool kit to allow system administrators to configure and use wireless networks."
-    rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-    impact: "Many if not all laptop workstations and some desktop workstations will connect via wireless requiring these interfaces be enabled."
-    remediation: "Run the following script to disable any wireless interfaces: #!/bin/bash if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi"
-    references: ""
-    compliance:
-      - cis: ["3.1.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28573
-    title: "Ensure packet redirect sending is disabled"
-    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
-    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.conf.all.send_redirects=0 net.ipv4.conf.default.send_redirects=0" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.conf.all.send_redirects = 1 net.ipv4.conf.default.send_redirects = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28574
-    title: "Ensure IP forwarding is disabled"
-    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
-    rationale: "Setting: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 Ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.ip_forward=0 net.ipv6.conf.all.forwarding=0" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } IPV6F_CHK() { l_ipv6s="" grubfile=$(find /boot -type f \( -name 'grubenv' -o -name 'grub.conf' o -name 'grub.cfg' \) -exec grep -Pl -- '^\h*(kernelopts=|linux|kernel)' {} \;) if [ -s "$grubfile" ]; then ! grep -P -- "^\h*(kernelopts=|linux|kernel)" "$grubfile" | grep -vq -- ipv6.disable=1 && l_ipv6s="disabled" fi if grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ sysctl net.ipv6.conf.all.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" && \ sysctl net.ipv6.conf.default.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$"; then l_ipv6s="disabled" fi if [ -n "$l_ipv6s" ]; then echo -e "\ - IPv6 is disabled on the system, \"$l_kpname\" is not applicable" else KPF fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" if grep -q '^net.ipv6.' <<< "$l_kpe"; then l_kpfile="/etc/sysctl.d/60-netipv6_sysctl.conf" IPV6F_CHK else l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF fi done } Default Value: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.2.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28575
-    title: "Ensure source routed packets are not accepted"
-    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
-    rationale: "Setting: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 Disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.conf.all.accept_source_route=0 net.ipv4.conf.default.accept_source_route=0 net.ipv6.conf.all.accept_source_route=0 net.ipv6.conf.default.accept_source_route=0" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } IPV6F_CHK() { l_ipv6s="" grubfile=$(find /boot -type f \( -name 'grubenv' -o -name 'grub.conf' o -name 'grub.cfg' \) -exec grep -Pl -- '^\h*(kernelopts=|linux|kernel)' {} \;) if [ -s "$grubfile" ]; then ! grep -P -- "^\h*(kernelopts=|linux|kernel)" "$grubfile" | grep -vq -- ipv6.disable=1 && l_ipv6s="disabled" fi if grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ sysctl net.ipv6.conf.all.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" && \ sysctl net.ipv6.conf.default.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$"; then l_ipv6s="disabled" fi if [ -n "$l_ipv6s" ]; then echo -e "\ - IPv6 is disabled on the system, \"$l_kpname\" is not applicable" else KPF fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" if grep -q '^net.ipv6.' <<< "$l_kpe"; then l_kpfile="/etc/sysctl.d/60-netipv6_sysctl.conf" IPV6F_CHK else l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF fi done } Default Value: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28576
-    title: "Ensure ICMP redirects are not accepted"
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables."
-    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured. By setting: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 The system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.conf.all.accept_redirects=0 net.ipv4.conf.default.accept_redirects=0 net.ipv6.conf.all.accept_redirects=0 net.ipv6.conf.default.accept_redirects=0" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } IPV6F_CHK() { l_ipv6s="" grubfile=$(find /boot -type f \( -name 'grubenv' -o -name 'grub.conf' o -name 'grub.cfg' \) -exec grep -Pl -- '^\h*(kernelopts=|linux|kernel)' {} \;) if [ -s "$grubfile" ]; then ! grep -P -- "^\h*(kernelopts=|linux|kernel)" "$grubfile" | grep -vq -- ipv6.disable=1 && l_ipv6s="disabled" fi if grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ sysctl net.ipv6.conf.all.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" && \ sysctl net.ipv6.conf.default.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$"; then l_ipv6s="disabled" fi if [ -n "$l_ipv6s" ]; then echo -e "\ - IPv6 is disabled on the system, \"$l_kpname\" is not applicable" else KPF fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" if grep -q '^net.ipv6.' <<< "$l_kpe"; then l_kpfile="/etc/sysctl.d/60-netipv6_sysctl.conf" IPV6F_CHK else l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF fi done } Default Value: net.ipv4.conf.all.accept_redirects = 1 net.ipv4.conf.default.accept_redirects = 1 net.ipv6.conf.all.accept_redirects = 1 net.ipv6.conf.default.accept_redirects = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28577
-    title: "Ensure secure ICMP redirects are not accepted"
-    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
-    rationale: "It is still possible for even known gateways to be compromised. Setting: net.ipv4.conf.default.secure_redirects = 0 net.ipv4.conf.all.secure_redirects = 0 protects the system from routing table updates by possibly compromised known gateways."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv4.conf.default.secure_redirects = 0 net.ipv4.conf.all.secure_redirects = 0 #!/usr/bin/env bash kernel_parameter_fix() { l_output="" l_output2="" l_parlist="net.ipv4.conf.default.secure_redirects=0 net.ipv4.conf.all.secure_redirects=0" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.conf.all.secure_redirects = 1 net.ipv4.conf.default.secure_redirects = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28578
-    title: "Ensure suspicious packets are logged"
-    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
-    rationale: "Enabling this feature and logging these packets by setting: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.conf.all.log_martians=1 net.ipv4.conf.default.log_martians=1" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.conf.all.log_martians = 0 net.ipv4.conf.default.log_martians = 0 Additional Information: NIST SP 800-53 Rev. 5: AU-3 AU-3(1) On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28579
-    title: "Ensure broadcast ICMP requests are ignored"
-    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts = 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
-    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-    impact: ""
-    remediation: "Run the following script to set net.ipv4.icmp_echo_ignore_broadcasts = 1: #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.icmp_echo_ignore_broadcasts=1" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.conf.default.log_martians = 0 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28580
-    title: "Ensure bogus ICMP responses are ignored"
-    description: "Setting icmp_ignore_bogus_error_responses = 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
-    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-    impact: ""
-    remediation: "Run the following script to set icmp_ignore_bogus_error_responses = 1: #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="icmp_ignore_bogus_error_responses=1" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.icmp_ignore_bogus_error_responses = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28581
-    title: "Ensure Reverse Path Filtering is enabled"
-    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
-    rationale: "Setting: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system."
-    impact: "If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-    remediation: "Run the following script to set: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.conf.all.rp_filter=1 net.ipv4.conf.default.rp_filter=1" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.conf.all.rp_filter = 2 net.ipv4.conf.default.rp_filter = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28582
-    title: "Ensure TCP SYN Cookies is enabled"
-    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
-    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. Setting net.ipv4.tcp_syncookies = 1 enables SYN cookies, allowing the system to keep accepting valid connections, even if under a denial of service attack."
-    impact: ""
-    remediation: "Run the following script to set net.ipv4.tcp_syncookies = 1: #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv4.tcp_syncookies=1" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" KPF done } Default Value: net.ipv4.tcp_syncookies = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.8"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28583
-    title: "Ensure IPv6 router advertisements are not accepted"
-    description: "This setting disables the system's ability to accept IPv6 router advertisements."
-    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes. Setting: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 disables the system's ability to accept IPv6 router advertisements."
-    impact: ""
-    remediation: "Run the following script to set: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 #!/usr/bin/env bash { l_output="" l_output2="" l_parlist="net.ipv6.conf.all.accept_ra=0 net.ipv6.conf.default.accept_ra=0" l_searchloc="/run/sysctl.d/*.conf /etc/sysctl.d/*.conf /usr/local/lib/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/sysctl.conf $([ -f /etc/default/ufw ] && awk -F= '/^\s*IPT_SYSCTL=/ {print $2}' /etc/default/ufw)" KPF() { # comment out incorrect parameter(s) in kernel parameter file(s) l_fafile="$(grep -s -- "^\s*$l_kpname" $l_searchloc | grep -Pv -"\h*=\h*$l_kpvalue\b\h*" | awk -F: '{print $1}')" for l_bkpf in $l_fafile; do echo -e "\ - Commenting out \"$l_kpname\" in \"$l_bkpf\"" sed -ri "/$l_kpname/s/^/# /" "$l_bkpf" done # Set correct parameter in a kernel parameter file if ! grep -Pslq -- "^\h*$l_kpname\h*=\h*$l_kpvalue\b\h*(#.*)?$" $l_searchloc; then echo -e "\ - Setting \"$l_kpname\" to \"$l_kpvalue\" in \"$l_kpfile\"" echo "$l_kpname = $l_kpvalue" >> "$l_kpfile" fi # Set correct parameter in active kernel parameters l_krp="$(sysctl "$l_kpname" | awk -F= '{print $2}' | xargs)" if [ "$l_krp" != "$l_kpvalue" ]; then echo -e "\ - Updating \"$l_kpname\" to \"$l_kpvalue\" in the active kernel parameters" sysctl -w "$l_kpname=$l_kpvalue" sysctl -w "$(awk -F'.' '{print $1"."$2".route.flush=1"}' <<< "$l_kpname")" fi } IPV6F_CHK() { l_ipv6s="" grubfile=$(find /boot -type f \( -name 'grubenv' -o -name 'grub.conf' o -name 'grub.cfg' \) -exec grep -Pl -- '^\h*(kernelopts=|linux|kernel)' {} \;) if [ -s "$grubfile" ]; then ! grep -P -- "^\h*(kernelopts=|linux|kernel)" "$grubfile" | grep -vq -- ipv6.disable=1 && l_ipv6s="disabled" fi if grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$" $l_searchloc && \ sysctl net.ipv6.conf.all.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.all\.disable_ipv6\h*=\h*1\h*(#.*)?$" && \ sysctl net.ipv6.conf.default.disable_ipv6 | grep -Pqs -"^\h*net\.ipv6\.conf\.default\.disable_ipv6\h*=\h*1\h*(#.*)?$"; then l_ipv6s="disabled" fi if [ -n "$l_ipv6s" ]; then echo -e "\ - IPv6 is disabled on the system, \"$l_kpname\" is not applicable" else KPF fi } for l_kpe in $l_parlist; do l_kpname="$(awk -F= '{print $1}' <<< "$l_kpe")" l_kpvalue="$(awk -F= '{print $2}' <<< "$l_kpe")" if grep -q '^net.ipv6.' <<< "$l_kpe"; then l_kpfile="/etc/sysctl.d/60-netipv6_sysctl.conf" IPV6F_CHK else l_kpfile="/etc/sysctl.d/60-netipv4_sysctl.conf" KPF fi done } Default Value: net.ipv6.conf.all.accept_ra = 1 net.ipv6.conf.default.accept_ra = 1 Additional Information: NIST SP 800-53 Rev. 5: CM-1 CM-2 CM-6 CM-7 IA-5 On systems with Uncomplicated Firewall, additional settings may be configured in /etc/ufw/sysctl.conf The settings in /etc/ufw/sysctl.conf will override settings in /etc/sysctl.conf This behavior can be changed by updating the IPT_SYSCTL parameter in /etc/default/ufw"
-    references: ""
-    compliance:
-      - cis: ["3.3.9"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28584
-    title: "Ensure DCCP is disabled"
-    description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
-    rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
-    impact: ""
-    remediation: "Run the following script to disabled dccp. #!/usr/bin/env bash { l_mname="dccp" # set module name if ! modprobe -n -v "$l_mname" | grep -P -- '^\h*install \/bin\/(true|false)'; then echo -e " - setting module: \"$l_mname\" to be not loadable" echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf fi if lsmod | grep "$l_mname" > /dev/null 2>&1; then echo -e " - unloading module \"$l_mname\"" modprobe -r "$l_mname" fi if ! grep -Pq -- "^\h*blacklist\h+$l_mname\b" /etc/modprobe.d/*; then echo -e " - deny listing \"$l_mname\"" echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf fi }"
-    references: ""
-    compliance:
-      - cis: ["3.4.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28585
-    title: "Ensure SCTP is disabled"
-    description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    impact: ""
-    remediation: "Run the following script to disable sctp: #!/usr/bin/env bash { l_mname="sctp" # set module name if ! modprobe -n -v "$l_mname" | grep -P -- '^\h*install \/bin\/(true|false)'; then echo -e " - setting module: \"$l_mname\" to be not loadable" echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf fi if lsmod | grep "$l_mname" > /dev/null 2>&1; then echo -e " - unloading module \"$l_mname\"" modprobe -r "$l_mname" fi if ! grep -Pq -- "^\h*blacklist\h+$l_mname\b" /etc/modprobe.d/*; then echo -e " - deny listing \"$l_mname\"" echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf fi }"
-    references: ""
-    compliance:
-      - cis: ["3.4.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28586
-    title: "Ensure RDS is disabled"
-    description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    impact: ""
-    remediation: "Run the following script to disable rds: #!/usr/bin/env bash { l_mname="rds" # set module name if ! modprobe -n -v "$l_mname" | grep -P -- '^\h*install \/bin\/(true|false)'; then echo -e " - setting module: \"$l_mname\" to be not loadable" echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf fi if lsmod | grep "$l_mname" > /dev/null 2>&1; then echo -e " - unloading module \"$l_mname\"" modprobe -r "$l_mname" fi if ! grep -Pq -- "^\h*blacklist\h+$l_mname\b" /etc/modprobe.d/*; then echo -e " - deny listing \"$l_mname\"" echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf fi }"
-    references: ""
-    compliance:
-      - cis: ["3.4.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28587
-    title: "Ensure TIPC is disabled"
-    description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
-    rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    impact: ""
-    remediation: "Run the following script to disable tipc: #!/usr/bin/env bash { l_mname="tipc" # set module name if ! modprobe -n -v "$l_mname" | grep -P -- '^\h*install \/bin\/(true|false)'; then echo -e " - setting module: \"$l_mname\" to be not loadable" echo -e "install $l_mname /bin/false" >> /etc/modprobe.d/"$l_mname".conf fi if lsmod | grep "$l_mname" > /dev/null 2>&1; then echo -e " - unloading module \"$l_mname\"" modprobe -r "$l_mname" fi if ! grep -Pq -- "^\h*blacklist\h+$l_mname\b" /etc/modprobe.d/*; then echo -e " - deny listing \"$l_mname\"" echo -e "blacklist $l_mname" >> /etc/modprobe.d/"$l_mname".conf fi }"
-    references: ""
-    compliance:
-      - cis: ["3.4.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+  # 3.1.2 Ensure wireless interfaces are disabled (Automated) - Not implemented
+  # 3.2 Network Parameters (Host Only)
+  # 3.2.1 Ensure packet redirect sending is disabled (Automated) - Not implemented
+  # 3.2.2 Ensure IP forwarding is disabled (Automated) - Not implemented
+  # 3.3 Network Parameters (Host and Router)
+  # 3.3.1 Ensure source routed packets are not accepted (Automated) - Not implemented
+  # 3.3.2 Ensure ICMP redirects are not accepted (Automated) - Not implemented
+  # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated) - Not implemented
+  # 3.3.4 Ensure suspicious packets are logged (Automated) - Not implemented
+  # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated) - Not implemented
+  # 3.3.6 Ensure bogus ICMP responses are ignored (Automated) - Not implemented
+  # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated) - Not implemented
+  # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated) - Not implemented
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated) - Not implemented
+  # 3.4 Uncommon Network Protocols
+  # 3.4.1 Ensure DCCP is disabled (Automated) - Not implemented
+  # 3.4.2 Ensure SCTP is disabled (Automated) - Not implemented
+  # 3.4.3 Ensure RDS is disabled (Automated) - Not implemented
+  # 3.4.4 Ensure TIPC is disabled (Automated) - Not implemented
+  # 3.5 Firewall Configuration
+  # 3.5.1 Configure UncomplicatedFirewall
+  # 3.5.1.1 Ensure ufw is installed (Automated)
   - id: 28588
-    title: "Ensure ufw is installed"
+    title: "Ensure ufw is installed."
     description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall"
     rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package"
-    impact: ""
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw"
-    references: ""
     compliance:
       - cis: ["3.5.1.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:dpkg-query -s ufw -> r:\sinstalled'
+
+  # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated)
   - id: 28589
-    title: "Ensure ufw service is enabled"
+    title: "Ensure iptables-persistent is not installed with ufw."
+    description: "The iptables-persistent is a boot-time loader for netfilter rules, iptables plugin."
+    rationale: "Running both ufw and the services included in the iptables-persistent package may lead to conflict"
+    remediation: "Run the following command to remove the iptables-persistent package: # apt purge iptables-persistent"
+    compliance:
+      - cis: ["3.5.1.2"]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
+    condition: all
+    rules:
+      - 'c:dpkg-query -s iptables-persistent -> r:is not installed'
+
+  # 3.5.1.3 Ensure ufw service is enabled (Automated)
+  - id: 28589
+    title: "Ensure ufw service is enabled."
     description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22 The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable"
     rationale: "The ufw service must be enabled and running in order for ufw to protect the system"
     impact: "Changing firewall settings while connected over network can result in being locked out of the system."
     remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable"
-    references: "1. http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html"
+    references:
+      - http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html
     compliance:
       - cis: ["3.5.1.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled ufw.service -> r:^enabled'
+      - 'c:systemctl is-active ufw -> r:^active'
+      - 'c:ufw status -> r:Status:\s+active'
+
+  # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
   - id: 28590
-    title: "Ensure ufw loopback traffic is configured"
+    title: "Ensure ufw loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    impact: ""
     remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo # ufw allow out on lo # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1"
-    references: ""
     compliance:
       - cis: ["3.5.1.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28591
-    title: "Ensure ufw outbound connections are configured (Manual)"
-    description: "Configure the firewall rules for new outbound connections. Note: Changing firewall settings while connected over network can result in being locked out of the system. Unlike iptables, when a new outbound rule is added, ufw automatically takes care of associated established connections, so no rules for the latter kind are required."
-    rationale: "If rules are not in place for new outbound connections all packets will be dropped by the default policy preventing network usage."
-    impact: ""
-    remediation: "Configure ufw in accordance with site policy. The following commands will implement a policy to allow all outbound connections on all interfaces: # ufw allow out on all"
-    references: ""
-    compliance:
-      - cis: ["3.5.1.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28592
-    title: "Ensure ufw firewall rules exist for all open ports"
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic. Note: Changing firewall settings while connected over network can result in being locked out of the system The remediation command opens up the port to traffic from all sources. Consult ufw documentation and set any restrictions in compliance with site policy"
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
-    impact: ""
-    remediation: "For each port identified in the audit which does not have a firewall rule, add rule for accepting or denying inbound connections: Example: # ufw allow in <port>/<tcp or udp protocol>"
-    references: ""
-    compliance:
-      - cis: ["3.5.1.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'c:ufw status verbose -> r:Anywhere on lo\s+ALLOW IN\s+Anywhere'
+      - 'c:ufw status verbose -> r:Anywhere\s+DENY IN\s+127.0.0.0/8'
+      - 'c:ufw status verbose -> r:Anywhere (v6) on lo\s+ALLOW IN\s+Anywhere (v6)'
+      - 'c:ufw status verbose -> r:Anywhere (v6)\s+DENY IN\s+::1'
+      - 'c:ufw status verbose -> r:Anywhere\s+ALLOW OUT\s+Anywhere on lo'
+      - 'c:ufw status verbose -> r:Anywhere (v6)\s+ALLOW OUT\s+Anywhere (v6) on lo'
+
+  # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not implemented
+  # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Automated) - Not implemented
+  # 3.5.1.7 Ensure ufw default deny firewall policy (Automated)
   - id: 28593
-    title: "Ensure ufw default deny firewall policy"
+    title: "Ensure ufw default deny firewall policy."
     description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked"
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git ufw allow in http ufw allow out http <- required for apt to connect to repository ufw allow in https ufw allow out https ufw allow out 53 ufw logging on"
     remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed"
-    references: ""
     compliance:
       - cis: ["3.5.1.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0005"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:ufw status verbose -> r:Default: && r:(deny|reject|disabled)\s+\(incoming\) && r:(deny|reject|disabled)\s+\(outgoing\) && r:(deny|reject|disabled)\s+\(routed\)'
+
+  # 3.5.2 Configure nftables
+  # 3.5.2.1 Ensure nftables is installed (Automated)
   - id: 28594
-    title: "Ensure nftables is installed"
+    title: "Ensure nftables is installed."
     description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: nftables is available in Linux kernel 3.13 and newer Only one firewall utility should be installed and configured Changing firewall settings while connected over the network can result in being locked out of the system"
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
-    impact: ""
     remediation: "Run the following command to install nftables: # apt install nftables"
-    references: ""
     compliance:
       - cis: ["3.5.2.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28595
-    title: "Ensure ufw is uninstalled or disabled with nftables"
-    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
-    rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
-    impact: ""
-    remediation: "Run one of the following commands to either remove ufw or disable ufw Run the following command to remove ufw: # apt purge ufw Run the following command to disable ufw: # ufw disable"
-    references: ""
-    compliance:
-      - cis: ["3.5.2.2"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28596
-    title: "Ensure iptables are flushed with nftables (Manual)"
-    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables"
-    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded"
-    impact: ""
-    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F"
-    references: ""
-    compliance:
-      - cis: ["3.5.2.3"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'c:dpkg-query -s nftables -> r:install ok installed'
+
+  # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated) - Not implemented
+  # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not implemented
+  # 3.5.2.4 Ensure a nftables table exists (Automated)
   - id: 28597
-    title: "Ensure a nftables table exists"
+    title: "Ensure a nftables table exists."
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
     impact: "Adding rules to a running nftables can cause loss of connectivity to the system"
     remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter"
-    references: ""
     compliance:
       - cis: ["3.5.2.4"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:nft list tables -> r:table'
+
+  # 3.5.2.5 Ensure nftables base chains exist (Automated)
   - id: 28598
-    title: "Ensure nftables base chains exist"
+    title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop"
     remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; } Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }"
-    references: ""
     compliance:
       - cis: ["3.5.2.5"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28599
-    title: "Ensure nftables loopback traffic is configured"
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network"
-    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    impact: ""
-    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop"
-    references: ""
-    compliance:
-      - cis: ["3.5.2.6"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
-  - id: 28600
-    title: "Ensure nftables outbound and established connections are configured (Manual)"
-    description: "Configure the firewall rules for new outbound, and established connections"
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
-    impact: ""
-    remediation: "Configure nftables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # nft add rule inet filter input ip protocol tcp ct state established accept # nft add rule inet filter input ip protocol udp ct state established accept # nft add rule inet filter input ip protocol icmp ct state established accept # nft add rule inet filter output ip protocol tcp ct state new,related,established accept # nft add rule inet filter output ip protocol udp ct state new,related,established accept # nft add rule inet filter output ip protocol icmp ct state new,related,established accept"
-    references: ""
-    compliance:
-      - cis: ["3.5.2.7"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+input\s+priority 0;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+forward\s+priority 0;'
+      - 'c:nft list ruleset -> r:type\s+filter\s+hook\s+output\s+priority 0;'
+
+  # 3.5.2.6 Ensure nftables loopback traffic is configured (Automated) - Not implemented
+  # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not implemented
+  # 3.5.2.8 Ensure nftables default deny firewall policy (Automated)
   - id: 28601
-    title: "Ensure nftables default deny firewall policy"
+    title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
     rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop"
     remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; } Default Value: accept"
-    references: "1. Manual Page nft"
+    references:
+      - Manual Page nft
     compliance:
       - cis: ["3.5.2.8"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
+      - 'c:nft list ruleset -> r:hook input && r:policy drop'
+      - 'c:nft list ruleset -> r:hook forward && r:policy drop'
+      - 'c:nft list ruleset -> r:hook output && r:policy drop'
+
+  # 3.5.2.9 Ensure nftables service is enabled (Automated)
   - id: 28602
-    title: "Ensure nftables service is enabled"
-    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service"
-    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service"
-    impact: ""
-    remediation: "Run the following command to enable the nftables service: # systemctl enable nftables"
-    references: ""
+    title: "Ensure nftables service is enabled."
+    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
+    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service."
+    remediation: "Run the following command to enable the nftables service: # systemctl enable nftables."
     compliance:
       - cis: ["3.5.2.9"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
-    
-  - id: 28603
-    title: "Ensure nftables rules are permanent"
-    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
-    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot"
-    impact: ""
-    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot Example: # vi /etc/nftables.conf Add the line: include "/etc/nftables.rules""
-    references: ""
-    compliance:
-      - cis: ["3.5.2.10"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
-    condition: all
-    rules:
-      - ''    
-    
+      - 'c:systemctl is-enabled nftables -> r:enabled'
+
+  # 3.5.2.10 Ensure nftables rules are permanent (Automated) - Not implemented
+  # 3.5.3 Configure iptables
+  # 3.5.3.1 Configure iptables software
+  # 3.5.3.1.1 Ensure iptables packages are installed (Automated)
   - id: 28604
-    title: "Ensure iptables packages are installed"
+    title: "Ensure iptables packages are installed."
     description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
     rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
-    impact: ""
     remediation: "Run the following command to install iptables and iptables-persistent # apt install iptables iptables-persistent"
-    references: ""
     compliance:
       - cis: ["3.5.3.1.1"]
-      - cis_csc_v7: [""]
-      - cis_csc_v8: [""]
-      - mitre_techniques: [""]
-      - mitre_tactics: [""]
-      - mitre_mitigations: [""]
+      - cis_csc_v7: ["9.4"]
+      - cis_csc_v8: ["4.4","4.5"]
+      - mitre_techniques: ["T1562","T1562.004"]
+      - mitre_tactics: ["TA0011"]
+      - mitre_mitigations: ["M1031","M1037"]
+      - cmmc_v2.0: [ "AC.L1-3.1.20","CM.L2-3.4.7","SC.L1-3.13.1","SC.L2-3.13.6" ]
+      - pci_dss_3.2.1: [ "1.4","1.1.4" ]
+      - pci_dss_4.0: [ "1.2.1" ]
+      - nist_853: [ "SC-7(5)" ]
+      - soc_2: [ "CC6.6" ]
     condition: all
     rules:
-      - ''    
+      - 'c:apt list iptables -> r:\[installed'
+      - 'c:apt list iptables-persistent -> r:\[installed'
     
   - id: 28605
     title: "Ensure nftables is not installed with iptables"
