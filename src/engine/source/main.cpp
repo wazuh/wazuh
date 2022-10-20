@@ -26,7 +26,6 @@ constexpr auto SUBCOMMAND_RUN = "start";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
-constexpr auto SUBCOMMAND_ENVIRONMENT = "env";
 
 // Catalog subcommand
 constexpr auto SUBCOMMAND_CATALOG = "catalog";
@@ -37,6 +36,12 @@ constexpr auto SUBCOMMAND_CATALOG_CREATE = "create";
 constexpr auto SUBCOMMAND_CATALOG_DELETE = "delete";
 constexpr auto SUBCOMMAND_CATALOG_VALIDATE = "validate";
 constexpr auto SUBCOMMAND_CATALOG_LOAD = "load";
+
+// Environment subommand
+constexpr auto SUBCOMMAND_ENVIRONMENT = "env";
+constexpr auto SUBCOMMAND_ENVIRONMENT_GET = "get";
+constexpr auto SUBCOMMAND_ENVIRONMENT_SET = "set";
+constexpr auto SUBCOMMAND_ENVIRONMENT_DELETE = "delete";
 
 // Graph file names
 constexpr auto ENV_DEF_DIR = ".";
@@ -69,7 +74,6 @@ bool catalogJsonFormat;
 bool catalogYmlFormat;
 std::string catalogContent;
 std::string catalogPath;
-std::string environmentAction;
 std::string environmentTarget;
 
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
@@ -338,25 +342,32 @@ void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
 {
     CLI::App* environment = app->add_subcommand(
         args::SUBCOMMAND_ENVIRONMENT, "Operates the running environments");
+    environment->require_subcommand();
 
     // Endpoint
     environment
         ->add_option("-e, --engine", args::apiEndpoint, "engine api address")
-        //->default_val("$WAZUH/socket");
         ->default_val("/var/ossec/queue/sockets/analysis");
 
-    // Method
-    environment->add_option("action", args::environmentAction, "Environment action")
-        ->required()
-        ->check(CLI::IsMember({"get", "set"}))
-        ->description("get: Get the active environment.\n"
-                      "set /env/<environment>/<version>: Run an environment. ");
 
-    // environment Info
-    environment
-        ->add_option("environment", args::environmentTarget, "Environment Involved.")
-        ->default_val("")
-        ->take_last();
+    // Subcommands
+    // Action: get
+    auto get_subcommand = environment->add_subcommand(
+        args::SUBCOMMAND_ENVIRONMENT_GET, "get: Get active environments.");
+
+    // Action: set
+    auto set_subcommand = environment->add_subcommand(
+        args::SUBCOMMAND_ENVIRONMENT_SET, "set [environment]: Set active environments.");
+    set_subcommand->add_option("environment", args::environmentTarget, "Environment name")
+        ->required();
+
+    // Action: delete
+    auto delete_subcommand =
+        environment->add_subcommand(args::SUBCOMMAND_ENVIRONMENT_DELETE,
+                                    "delete [environment]: Delete an environment.");
+    delete_subcommand
+        ->add_option("environment", args::environmentTarget, "Environment name")
+        ->required();
 }
 
 std::shared_ptr<CLI::App> configureCliApp()
@@ -530,8 +541,25 @@ int main(int argc, char* argv[])
         }
         else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
         {
+            // Set the action based on the subcommand parsed
+            auto environmentSubcommand =
+                app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT);
+            std::string action;
+            if(environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_GET)->parsed())
+            {
+                action = args::SUBCOMMAND_ENVIRONMENT_GET;
+            }
+            else if(environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_DELETE)->parsed())
+            {
+                action = args::SUBCOMMAND_ENVIRONMENT_DELETE;
+            }
+            else if(environmentSubcommand->get_subcommand(args::SUBCOMMAND_ENVIRONMENT_SET)->parsed())
+            {
+                action = args::SUBCOMMAND_ENVIRONMENT_SET;
+            }
+
             cmd::environment(
-                args::apiEndpoint, args::environmentAction, args::environmentTarget);
+                args::apiEndpoint, action, args::environmentTarget);
         }
         else
         {

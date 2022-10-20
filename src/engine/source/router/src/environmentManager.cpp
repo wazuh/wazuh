@@ -1,10 +1,34 @@
 #include <router/environmentManager.hpp>
 
+#include <logging/logging.hpp>
+#include <name.hpp>
+
 namespace router
 {
 
 std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string& name)
 {
+    // Validate the runtime environment name
+    base::Name envName;
+    try
+    {
+        envName = base::Name {name};
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format(
+            "Invalid environment expected [environment/env-id/version]: {}", e.what())};
+    }
+
+    if (envName.parts().size() != 3)
+    {
+        return base::Error {fmt::format("Invalid environment name  {}", name)};
+    }
+    if (envName.parts()[0] != "environment")
+    {
+        return base::Error {fmt::format("Invalid environment name  {}", name)};
+    }
+
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     if (m_environments.find(name) != m_environments.end())
     {
@@ -21,15 +45,19 @@ std::optional<base::Error> EnvironmentManager::addEnvironment(const std::string&
     return std::nullopt;
 }
 
-void EnvironmentManager::delEnvironment(const std::string& name)
+std::optional<base::Error> EnvironmentManager::delEnvironment(const std::string& name)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_environments.find(name);
-    if (it != m_environments.end())
+    if (it == m_environments.end())
     {
-        it->second->stop();
-        m_environments.erase(it);
+        return base::Error {"Environment does not exist"};
     }
+
+    it->second->stop();
+    m_environments.erase(it);
+
+    return std::nullopt;
 }
 
 void EnvironmentManager::delAllEnvironments()
@@ -92,6 +120,10 @@ api::CommandFn EnvironmentManager::apiCallback()
         else if (action.value() == "get")
         {
             response = apiGetEnvironment(params);
+        }
+        else if (action.value() == "delete")
+        {
+            response = apiDelEnvironment(params);
         }
         else
         {
@@ -156,6 +188,30 @@ api::WazuhResponse EnvironmentManager::apiGetEnvironment(const json::Json& param
         envs.appendString(e);
     }
     response.data(std::move(envs));
+
+    return response;
+}
+
+api::WazuhResponse EnvironmentManager::apiDelEnvironment(const json::Json& params)
+{
+    api::WazuhResponse response {};
+    auto name = params.getString("/name");
+    if (!name)
+    {
+        response.message(
+            "The \"/name\" parameter is missing, it is required and must be a string");
+        return response;
+    }
+
+    auto err = delEnvironment(name.value());
+    if (err)
+    {
+        response.message(err.value().message);
+    }
+    else
+    {
+        response.message("Environment deleted");
+    }
 
     return response;
 }
