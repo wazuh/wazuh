@@ -17,14 +17,14 @@ CPMAddPackage(
 # Sources - Includes
 ####################################################################################################
 add_library(hlp STATIC
-    src/hlp.cpp
-    src/hlpDetails.hpp
-    src/hlpDetails.cpp
-    src/logQLParser.cpp
-    src/logQLParser.hpp
-    src/specificParsers.hpp
-    src/specificParsers.cpp
     src/date/date.h
+    src/hlp.cpp
+    src/hlpDetails.cpp
+    src/hlpDetails.hpp
+    src/logParser.cpp
+    src/logParser.hpp
+    src/specificParsers.cpp
+    src/specificParsers.hpp
 )
 
 target_link_libraries(hlp

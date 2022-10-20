@@ -41,7 +41,7 @@ add_library(builders OBJECT
   builders/opBuilderHelperMap.cpp
   builders/opBuilderHelperNetInfoAddress.cpp
   builders/opBuilderKVDB.cpp
-  builders/opBuilderLogqlParser.cpp
+  builders/opBuilderLogParser.cpp
   builders/opBuilderSCAdecoder.cpp
   builders/opBuilderWdb.cpp
   builders/operationBuilder.cpp
