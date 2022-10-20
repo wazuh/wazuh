@@ -541,15 +541,8 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
             i++;
         }
 
-        if (regex_match) {
-            if (regex_match->sub_strings) {
-                for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
-                    os_free(regex_match->sub_strings[a]);
-                }
-                os_free(regex_match->sub_strings);
-            }
-            os_free(regex_match);
-        }
+        OSRegex_free_regex_matching(regex_match);
+        os_free(regex_match)
         w_free_expression_t(&exp);
     }
     else {
@@ -585,15 +578,8 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
         }
     }
 
-    if (regex_match) {
-        if (regex_match->sub_strings) {
-            for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
-                os_free(regex_match->sub_strings[a]);
-            }
-            os_free(regex_match->sub_strings);
-        }
-        os_free(regex_match);
-    }
+    OSRegex_free_regex_matching(regex_match);
+    os_free(regex_match)
     w_free_expression_t(&exp);
     return ret;
 }
