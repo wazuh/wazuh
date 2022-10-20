@@ -129,6 +129,13 @@ std::string Environment::getGraphivzStr()
             pos = ret.find("-");
         }
 
+        pos = ret.find("/");
+        while (pos != std::string::npos)
+        {
+            ret.erase(pos, 1);
+            pos = ret.find("/");
+        }
+
         return ret;
     };
 

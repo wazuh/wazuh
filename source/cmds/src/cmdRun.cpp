@@ -61,21 +61,16 @@ void run(const std::string& kvdbPath,
     }
     // Init logging
     logging::LoggingConfig logConfig;
-    auto badLogLevel = false;
     switch (logLevel)
     {
         case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
         case 1: logConfig.logLevel = logging::LogLevel::Info; break;
         case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
         case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default: badLogLevel = true; logging::LogLevel::Error;
+        default: logging::LogLevel::Error;
     }
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
-    if (badLogLevel)
-    {
-        WAZUH_LOG_WARN("Invalid log level [{}]: Log level setted to [Error]", logLevel);
-    }
     WAZUH_LOG_INFO("Logging initialized");
 
     // Init modules
@@ -96,10 +91,12 @@ void run(const std::string& kvdbPath,
 
         KVDBManager::init(kvdbPath);
         WAZUH_LOG_INFO("KVDB initialized");
-        g_exitHanlder.add([]() {
-            WAZUH_LOG_INFO("KVDB terminated");
-            KVDBManager::get().clear();
-        });
+        g_exitHanlder.add(
+            []()
+            {
+                WAZUH_LOG_INFO("KVDB terminated");
+                KVDBManager::get().clear();
+            });
 
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Store initialized");
@@ -126,8 +123,7 @@ void run(const std::string& kvdbPath,
         auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {
-            WAZUH_LOG_ERROR("[HLP] Error retreiving {} "
-                            "from store: {}",
+            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the HLP module, error: {}",
                             hlpConfigFileName.fullName(),
                             std::get<base::Error>(hlpParsers).message);
 
