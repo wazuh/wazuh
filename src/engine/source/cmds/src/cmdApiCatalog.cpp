@@ -166,7 +166,6 @@ void singleRequest(const std::string& socketPath,
         auto responseStr = apiclnt::connection(socketPath, requestStr);
 
         // Assert response is valid
-        responseStr = responseStr.data() + sizeof(int);
         json::Json responseJson {responseStr.c_str()};
         auto errorCode = responseJson.getInt("/error");
         if (!errorCode)

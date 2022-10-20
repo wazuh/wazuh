@@ -48,6 +48,14 @@ private:
      */
     api::WazuhResponse apiGetEnvironment(const json::Json& params);
 
+    /**
+     * @brief API callback for environment deletion
+     *
+     * @param params Parameters for environment deletion ("/name")
+     * @return api::WazuhResponse with the result of the operation
+     */
+    api::WazuhResponse apiDelEnvironment(const json::Json& params);
+
 public:
     /**
      * @brief Construct a new Environment Manager object
@@ -78,8 +86,9 @@ public:
      * @brief Delete an environment
      *
      * @param name Name of the environment
+     * @return Error message if any
      */
-    void delEnvironment(const std::string& name);
+    std::optional<base::Error> delEnvironment(const std::string& name);
 
     /**
      * @brief Delete all environments
