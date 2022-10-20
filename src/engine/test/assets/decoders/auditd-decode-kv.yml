@@ -316,13 +316,13 @@ normalize:
       - auditd.log.old-chardev: +s_trim/both/"
       - _hex.old-chardev_is_str: true
   - check:
-      - _hex.old-chardev_is_str: +not_exists
+      - _hex.old-chardev_is_str: +ef_not_exists
       - auditd.log.old-chardev: +s_starts/'
     map:
       - auditd.log.old-chardev: +s_trim/both/'
       - _hex.old-chardev_is_str: true
   - check:
-      - _hex.old-chardev_is_str: +not_exists
+      - _hex.old-chardev_is_str: +ef_not_exists
     map:
       - auditd.log.old-chardev: +s_from_hexa/$auditd.log.old-chardev
 
@@ -332,13 +332,13 @@ normalize:
       - auditd.log.new-chardev: +s_trim/both/"
       - _hex.new-chardev_is_str: true
   - check:
-      - _hex.new-chardev_is_str: +not_exists
+      - _hex.new-chardev_is_str: +ef_not_exists
       - auditd.log.new-chardev: +s_starts/'
     map:
       - auditd.log.new-chardev: +s_trim/both/'
       - _hex.new-chardev_is_str: true
   - check:
-      - _hex.new-chardev_is_str: +not_exists
+      - _hex.new-chardev_is_str: +ef_not_exists
     map:
       - auditd.log.new-chardev: +s_from_hexa/$auditd.log.new-chardev
 
@@ -348,13 +348,13 @@ normalize:
       - auditd.log.old-disk: +s_trim/both/"
       - _hex.old-disk_is_str: true
   - check:
-      - _hex.old-disk_is_str: +not_exists
+      - _hex.old-disk_is_str: +ef_not_exists
       - auditd.log.old-disk: +s_starts/'
     map:
       - auditd.log.old-disk: +s_trim/both/'
       - _hex.old-disk_is_str: true
   - check:
-      - _hex.old-disk_is_str: +not_exists
+      - _hex.old-disk_is_str: +ef_not_exists
     map:
       - auditd.log.old-disk: +s_from_hexa/$auditd.log.old-disk
 
@@ -364,13 +364,13 @@ normalize:
       - auditd.log.new-disk: +s_trim/both/"
       - _hex.new-disk_is_str: true
   - check:
-      - _hex.new-disk_is_str: +not_exists
+      - _hex.new-disk_is_str: +ef_not_exists
       - auditd.log.new-disk: +s_starts/'
     map:
       - auditd.log.new-disk: +s_trim/both/'
       - _hex.new-disk_is_str: true
   - check:
-      - _hex.new-disk_is_str: +not_exists
+      - _hex.new-disk_is_str: +ef_not_exists
     map:
       - auditd.log.new-disk: +s_from_hexa/$auditd.log.new-disk
 
@@ -380,13 +380,13 @@ normalize:
       - auditd.log.old-fs: +s_trim/both/"
       - _hex.old-fs_is_str: true
   - check:
-      - _hex.old-fs_is_str: +not_exists
+      - _hex.old-fs_is_str: +ef_not_exists
       - auditd.log.old-fs: +s_starts/'
     map:
       - auditd.log.old-fs: +s_trim/both/'
       - _hex.old-fs_is_str: true
   - check:
-      - _hex.old-fs_is_str: +not_exists
+      - _hex.old-fs_is_str: +ef_not_exists
     map:
       - auditd.log.old-fs: +s_from_hexa/$auditd.log.old-fs
 
@@ -396,13 +396,13 @@ normalize:
       - auditd.log.new-fs: +s_trim/both/"
       - _hex.new-fs_is_str: true
   - check:
-      - _hex.new-fs_is_str: +not_exists
+      - _hex.new-fs_is_str: +ef_not_exists
       - auditd.log.new-fs: +s_starts/'
     map:
       - auditd.log.new-fs: +s_trim/both/'
       - _hex.new-fs_is_str: true
   - check:
-      - _hex.new-fs_is_str: +not_exists
+      - _hex.new-fs_is_str: +ef_not_exists
     map:
       - auditd.log.new-fs: +s_from_hexa/$auditd.log.new-fs
 
@@ -412,13 +412,13 @@ normalize:
       - auditd.log.old-net: +s_trim/both/"
       - _hex.old-net_is_str: true
   - check:
-      - _hex.old-net_is_str: +not_exists
+      - _hex.old-net_is_str: +ef_not_exists
       - auditd.log.old-net: +s_starts/'
     map:
       - auditd.log.old-net: +s_trim/both/'
       - _hex.old-net_is_str: true
   - check:
-      - _hex.old-net_is_str: +not_exists
+      - _hex.old-net_is_str: +ef_not_exists
     map:
       - auditd.log.old-net: +s_from_hexa/$auditd.log.old-net
 
@@ -428,13 +428,13 @@ normalize:
       - auditd.log.new-net: +s_trim/both/"
       - _hex.new-net_is_str: true
   - check:
-      - _hex.new-net_is_str: +not_exists
+      - _hex.new-net_is_str: +ef_not_exists
       - auditd.log.new-net: +s_starts/'
     map:
       - auditd.log.new-net: +s_trim/both/'
       - _hex.new-net_is_str: true
   - check:
-      - _hex.new-net_is_str: +not_exists
+      - _hex.new-net_is_str: +ef_not_exists
     map:
       - auditd.log.new-net: +s_from_hexa/$auditd.log.new-net
 
@@ -444,13 +444,13 @@ normalize:
       - auditd.log.device: +s_trim/both/"
       - _hex.device_is_str: true
   - check:
-      - _hex.device_is_str: +not_exists
+      - _hex.device_is_str: +ef_not_exists
       - auditd.log.device: +s_starts/'
     map:
       - auditd.log.device: +s_trim/both/'
       - _hex.device_is_str: true
   - check:
-      - _hex.device_is_str: +not_exists
+      - _hex.device_is_str: +ef_not_exists
     map:
       - auditd.log.device: +s_from_hexa/$auditd.log.device
 
@@ -460,13 +460,13 @@ normalize:
       - auditd.log.cgroup: +s_trim/both/"
       - _hex.cgroup_is_str: true
   - check:
-      - _hex.cgroup_is_str: +not_exists
+      - _hex.cgroup_is_str: +ef_not_exists
       - auditd.log.cgroup: +s_starts/'
     map:
       - auditd.log.cgroup: +s_trim/both/'
       - _hex.cgroup_is_str: true
   - check:
-      - _hex.cgroup_is_str: +not_exists
+      - _hex.cgroup_is_str: +ef_not_exists
     map:
       - auditd.log.cgroup: +s_from_hexa/$auditd.log.cgroup
 
@@ -476,13 +476,13 @@ normalize:
       - auditd.log.apparmor: +s_trim/both/"
       - _hex.apparmor_is_str: true
   - check:
-      - _hex.apparmor_is_str: +not_exists
+      - _hex.apparmor_is_str: +ef_not_exists
       - auditd.log.apparmor: +s_starts/'
     map:
       - auditd.log.apparmor: +s_trim/both/'
       - _hex.apparmor_is_str: true
   - check:
-      - _hex.apparmor_is_str: +not_exists
+      - _hex.apparmor_is_str: +ef_not_exists
     map:
       - auditd.log.apparmor: +s_from_hexa/$auditd.log.apparmor
 
@@ -492,13 +492,13 @@ normalize:
       - auditd.log.operation: +s_trim/both/"
       - _hex.operation_is_str: true
   - check:
-      - _hex.operation_is_str: +not_exists
+      - _hex.operation_is_str: +ef_not_exists
       - auditd.log.operation: +s_starts/'
     map:
       - auditd.log.operation: +s_trim/both/'
       - _hex.operation_is_str: true
   - check:
-      - _hex.operation_is_str: +not_exists
+      - _hex.operation_is_str: +ef_not_exists
     map:
       - auditd.log.operation: +s_from_hexa/$auditd.log.operation
 
@@ -508,13 +508,13 @@ normalize:
       - auditd.log.denied_mask: +s_trim/both/"
       - _hex.denied_mask_is_str: true
   - check:
-      - _hex.denied_mask_is_str: +not_exists
+      - _hex.denied_mask_is_str: +ef_not_exists
       - auditd.log.denied_mask: +s_starts/'
     map:
       - auditd.log.denied_mask: +s_trim/both/'
       - _hex.denied_mask_is_str: true
   - check:
-      - _hex.denied_mask_is_str: +not_exists
+      - _hex.denied_mask_is_str: +ef_not_exists
     map:
       - auditd.log.denied_mask: +s_from_hexa/$auditd.log.denied_mask
 
@@ -524,13 +524,13 @@ normalize:
       - auditd.log.info: +s_trim/both/"
       - _hex.info_is_str: true
   - check:
-      - _hex.info_is_str: +not_exists
+      - _hex.info_is_str: +ef_not_exists
       - auditd.log.info: +s_starts/'
     map:
       - auditd.log.info: +s_trim/both/'
       - _hex.info_is_str: true
   - check:
-      - _hex.info_is_str: +not_exists
+      - _hex.info_is_str: +ef_not_exists
     map:
       - auditd.log.info: +s_from_hexa/$auditd.log.info
 
@@ -540,13 +540,13 @@ normalize:
       - auditd.log.profile: +s_trim/both/"
       - _hex.profile_is_str: true
   - check:
-      - _hex.profile_is_str: +not_exists
+      - _hex.profile_is_str: +ef_not_exists
       - auditd.log.profile: +s_starts/'
     map:
       - auditd.log.profile: +s_trim/both/'
       - _hex.profile_is_str: true
   - check:
-      - _hex.profile_is_str: +not_exists
+      - _hex.profile_is_str: +ef_not_exists
     map:
       - auditd.log.profile: +s_from_hexa/$auditd.log.profile
 
@@ -556,13 +556,13 @@ normalize:
       - auditd.log.requested_mask: +s_trim/both/"
       - _hex.requested_mask_is_str: true
   - check:
-      - _hex.requested_mask_is_str: +not_exists
+      - _hex.requested_mask_is_str: +ef_not_exists
       - auditd.log.requested_mask: +s_starts/'
     map:
       - auditd.log.requested_mask: +s_trim/both/'
       - _hex.requested_mask_is_str: true
   - check:
-      - _hex.requested_mask_is_str: +not_exists
+      - _hex.requested_mask_is_str: +ef_not_exists
     map:
       - auditd.log.requested_mask: +s_from_hexa/$auditd.log.requested_mask
 
@@ -572,13 +572,13 @@ normalize:
       - auditd.log.old-rng: +s_trim/both/"
       - _hex.old-rng_is_str: true
   - check:
-      - _hex.old-rng_is_str: +not_exists
+      - _hex.old-rng_is_str: +ef_not_exists
       - auditd.log.old-rng: +s_starts/'
     map:
       - auditd.log.old-rng: +s_trim/both/'
       - _hex.old-rng_is_str: true
   - check:
-      - _hex.old-rng_is_str: +not_exists
+      - _hex.old-rng_is_str: +ef_not_exists
     map:
       - auditd.log.old-rng: +s_from_hexa/$auditd.log.old-rng
 
@@ -588,13 +588,13 @@ normalize:
       - auditd.log.new-rng: +s_trim/both/"
       - _hex.new-rng_is_str: true
   - check:
-      - _hex.new-rng_is_str: +not_exists
+      - _hex.new-rng_is_str: +ef_not_exists
       - auditd.log.new-rng: +s_starts/'
     map:
       - auditd.log.new-rng: +s_trim/both/'
       - _hex.new-rng_is_str: true
   - check:
-      - _hex.new-rng_is_str: +not_exists
+      - _hex.new-rng_is_str: +ef_not_exists
     map:
       - auditd.log.new-rng: +s_from_hexa/$auditd.log.new-rng
 
@@ -604,13 +604,13 @@ normalize:
       - auditd.log.ocomm: +s_trim/both/"
       - _hex.ocomm_is_str: true
   - check:
-      - _hex.ocomm_is_str: +not_exists
+      - _hex.ocomm_is_str: +ef_not_exists
       - auditd.log.ocomm: +s_starts/'
     map:
       - auditd.log.ocomm: +s_trim/both/'
       - _hex.ocomm_is_str: true
   - check:
-      - _hex.ocomm_is_str: +not_exists
+      - _hex.ocomm_is_str: +ef_not_exists
     map:
       - auditd.log.ocomm: +s_from_hexa/$auditd.log.ocomm
 
@@ -620,13 +620,13 @@ normalize:
       - auditd.log.grp: +s_trim/both/"
       - _hex.grp_is_str: true
   - check:
-      - _hex.grp_is_str: +not_exists
+      - _hex.grp_is_str: +ef_not_exists
       - auditd.log.grp: +s_starts/'
     map:
       - auditd.log.grp: +s_trim/both/'
       - _hex.grp_is_str: true
   - check:
-      - _hex.grp_is_str: +not_exists
+      - _hex.grp_is_str: +ef_not_exists
     map:
       - auditd.log.grp: +s_from_hexa/$auditd.log.grp
 
@@ -636,13 +636,13 @@ normalize:
       - auditd.log.new_group: +s_trim/both/"
       - _hex.new_group_is_str: true
   - check:
-      - _hex.new_group_is_str: +not_exists
+      - _hex.new_group_is_str: +ef_not_exists
       - auditd.log.new_group: +s_starts/'
     map:
       - auditd.log.new_group: +s_trim/both/'
       - _hex.new_group_is_str: true
   - check:
-      - _hex.new_group_is_str: +not_exists
+      - _hex.new_group_is_str: +ef_not_exists
     map:
       - auditd.log.new_group: +s_from_hexa/$auditd.log.new_group
 
@@ -652,13 +652,13 @@ normalize:
       - auditd.log.invalid_context: +s_trim/both/"
       - _hex.invalid_context_is_str: true
   - check:
-      - _hex.invalid_context_is_str: +not_exists
+      - _hex.invalid_context_is_str: +ef_not_exists
       - auditd.log.invalid_context: +s_starts/'
     map:
       - auditd.log.invalid_context: +s_trim/both/'
       - _hex.invalid_context_is_str: true
   - check:
-      - _hex.invalid_context_is_str: +not_exists
+      - _hex.invalid_context_is_str: +ef_not_exists
     map:
       - auditd.log.invalid_context: +s_from_hexa/$auditd.log.invalid_context
 
@@ -668,13 +668,13 @@ normalize:
       - auditd.log.sw: +s_trim/both/"
       - _hex.sw_is_str: true
   - check:
-      - _hex.sw_is_str: +not_exists
+      - _hex.sw_is_str: +ef_not_exists
       - auditd.log.sw: +s_starts/'
     map:
       - auditd.log.sw: +s_trim/both/'
       - _hex.sw_is_str: true
   - check:
-      - _hex.sw_is_str: +not_exists
+      - _hex.sw_is_str: +ef_not_exists
     map:
       - auditd.log.sw: +s_from_hexa/$auditd.log.sw
 
@@ -684,13 +684,13 @@ normalize:
       - auditd.log.root_dir: +s_trim/both/"
       - _hex.root_dir_is_str: true
   - check:
-      - _hex.root_dir_is_str: +not_exists
+      - _hex.root_dir_is_str: +ef_not_exists
       - auditd.log.root_dir: +s_starts/'
     map:
       - auditd.log.root_dir: +s_trim/both/'
       - _hex.root_dir_is_str: true
   - check:
-      - _hex.root_dir_is_str: +not_exists
+      - _hex.root_dir_is_str: +ef_not_exists
     map:
       - auditd.log.root_dir: +s_from_hexa/$auditd.log.root_dir
 
@@ -700,13 +700,13 @@ normalize:
       - auditd.log.proctitle: +s_trim/both/"
       - _hex.proctitle_is_str: true
   - check:
-      - _hex.proctitle_is_str: +not_exists
+      - _hex.proctitle_is_str: +ef_not_exists
       - auditd.log.proctitle: +s_starts/'
     map:
       - auditd.log.proctitle: +s_trim/both/'
       - _hex.proctitle_is_str: true
   - check:
-      - _hex.proctitle_is_str: +not_exists
+      - _hex.proctitle_is_str: +ef_not_exists
     map:
       - auditd.log.proctitle: +s_from_hexa/$auditd.log.proctitle
 
