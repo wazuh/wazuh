@@ -6,31 +6,31 @@
 
 using namespace hlp;
 
-TEST(parseLogQL, literal_matching)
+TEST(logParse, literal_matching)
 {
-    std::string logQl_expression =
+    std::string logparExpression =
         R"(123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:;?@[\]^_`{|}~>=)";
     const char* event =
         R"(123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:;?@[\]^_`{|}~>=)";
 
-    auto parseOp = getParserOp(logQl_expression);
+    auto parseOp = getParserOp(logparExpression);
     ParseResult result;
 
     ASSERT_TRUE(parseOp(event, result));
 }
 
-TEST(parseLogQL, literal_matching_escaped_cases)
+TEST(logParse, literal_matching_escaped_cases)
 {
-    std::string logQl_expression = R"( - \\a\b\f\n\r\t\v\'\"\?\0 - )";
+    std::string logparExpression = R"( - \\a\b\f\n\r\t\v\'\"\?\0 - )";
     const char* event = R"( - \\a\b\f\n\r\t\v\'\"\?\0 - )";
 
-    auto parseOp = getParserOp(logQl_expression);
+    auto parseOp = getParserOp(logparExpression);
     ParseResult result;
 
     ASSERT_TRUE(parseOp(event, result));
 }
 
-TEST(parseLogQL, literal_not_matching)
+TEST(logParse, literal_not_matching)
 {
     std::string expression = R"(\\\A\\B - 12369 )";
     const char* event1 = R"(\\\/A\\B - 12369 )";
@@ -49,32 +49,32 @@ TEST(parseLogQL, literal_not_matching)
     ASSERT_FALSE(parseOp(event5, result));
 }
 
-TEST(parseLogQL, literal_not_matching_longer_logQlExpre)
+TEST(logParse, literal_not_matching_longer_logparExpre)
 {
-    std::string logQl_expression = R"( ABC - ABC)";
+    std::string logparExpression = R"( ABC - ABC)";
     const char* event = R"( ABC - )";
 
-    auto parseOp = getParserOp(logQl_expression);
+    auto parseOp = getParserOp(logparExpression);
     ParseResult result;
 
     ASSERT_FALSE(parseOp(event, result));
 }
 
-// The logQL expression matches altough the event is longer
-TEST(parseLogQL, literal_matching_longer_event)
+// The logpar expression matches altough the event is longer
+TEST(logParse, literal_matching_longer_event)
 {
-    std::string logQl_expression = R"( ABC -)";
+    std::string logparExpression = R"( ABC -)";
     const char* event = R"( ABC - ABC)";
 
-    auto parseOp = getParserOp(logQl_expression);
+    auto parseOp = getParserOp(logparExpression);
     ParseResult result;
 
     ASSERT_TRUE(parseOp(event, result));
 }
 
-TEST(parseLogQL, logQL_expression)
+TEST(logParse, logparExpression)
 {
-    const char* logQl_expression =
+    const char* logparExpression =
         "<source.address> - <_json/json> - [<event.created/RFC1123>] "
         "\"<http.request.method> <host> "
         "HTTP/<http.version>\" <http.response.status_code> "
@@ -90,7 +90,7 @@ TEST(parseLogQL, logQL_expression)
         "Gecko/20120716 Firefox/15.0a2\""
         "127.0.0.1 - - [02 Jan 06 15:04 -0700] \"-\" 408 152 ";
 
-    auto parseOp = getParserOp(logQl_expression);
+    auto parseOp = getParserOp(logparExpression);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -107,28 +107,28 @@ TEST(parseLogQL, logQL_expression)
               std::any_cast<std::string>(result["file.created"]));
 }
 
-TEST(parseLogQL, invalid_logql_expression)
+TEST(logParse, invalid_logparExpression)
 {
     GTEST_SKIP();
-    const char* logQl = "<source.ip><invalid>";
-    ASSERT_THROW(getParserOp(logQl), std::runtime_error);
+    const char* logpar = "<source.ip><invalid>";
+    ASSERT_THROW(getParserOp(logpar), std::runtime_error);
 
-    const char* logQl2 = "invalid capture <source.ip><invalid> between strings";
-    ASSERT_THROW(getParserOp(logQl2), std::runtime_error);
+    const char* logpar2 = "invalid capture <source.ip><invalid> between strings";
+    ASSERT_THROW(getParserOp(logpar2), std::runtime_error);
 
-    const char* logQl3 = "invalid capture <source.ip between strings";
-    ASSERT_THROW(getParserOp(logQl3), std::runtime_error);
+    const char* logpar3 = "invalid capture <source.ip between strings";
+    ASSERT_THROW(getParserOp(logpar3), std::runtime_error);
 }
 
-TEST(parseLogQL, optional_Field_Not_Found)
+TEST(logParse, optional_Field_Not_Found)
 {
     GTEST_SKIP();
-    static const char* logQl = "this won't match an IP address "
-                               "-<_ts/timestamp/UnixDate>- <?url> <_field/json>";
+    static const char* logpar = "this won't match an IP address "
+                                "-<_ts/timestamp/UnixDate>- <?url> <_field/json>";
     static const char* event = "this won't match an IP address -Mon Jan 2 "
                                "15:04:05 MST 2006-  {\"String\":\"SomeValue\"}";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -144,16 +144,16 @@ TEST(parseLogQL, optional_Field_Not_Found)
               std::any_cast<JsonString>(result["_field"]).jsonString);
 }
 
-TEST(parseLogQL, optional_Or)
+TEST(logParse, optional_Or)
 {
     // TODO: this should be fixed and tested in other aspects
-    static const char* logQl = "<_url/url>?<_field/json>";
+    static const char* logpar = "<_url/url>?<_field/json>";
     static const char* eventjson = "{\"String\":\"SomeValue\"}";
     static const char* eventURL = "https://user:password@wazuh.com:8080/path"
                                   "?query=%22a%20query%20with%20a%20space%22#fragment";
     static const char* eventNone = "Mon Jan 2 15:04:05 MST 2006";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult resultJSON;
     bool ret = parseOp(eventjson, resultJSON);
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -171,12 +171,12 @@ TEST(parseLogQL, optional_Or)
     ASSERT_TRUE(resultEmpty.empty());
 }
 
-TEST(parseLogQL, options_parsing)
+TEST(logParse, options_parsing)
 {
-    const char* logQl = "<_> <_temp> <_temp1/type> <_temp2/type/type2>";
+    const char* logpar = "<_> <_temp> <_temp1/type> <_temp2/type/type2>";
     const char* event = "one temp temp1 temp2";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 

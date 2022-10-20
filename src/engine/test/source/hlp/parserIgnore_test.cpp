@@ -16,10 +16,10 @@ TEST(parseIgnore, build)
 
 TEST(parseIgnore, success_repeat_spaces)
 {
-    const char* logQl = "<_custom/ignore/ >wazuh";
+    const char* logpar = "<_custom/ignore/ >wazuh";
     const char* event = "              wazuh";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -32,10 +32,10 @@ TEST(parseIgnore, success_repeat_spaces)
 
 TEST(parseIgnore, only_underscore)
 {
-    const char* logQl = "<_/ignore/nothing>wazuh";
+    const char* logpar = "<_/ignore/nothing>wazuh";
     const char* event = "123456wazuh";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -46,10 +46,10 @@ TEST(parseIgnore, only_underscore)
 
 TEST(parseIgnore, double_ignore)
 {
-    const char* logQl = "<_/ignore/wazuh >hi!";
+    const char* logpar = "<_/ignore/wazuh >hi!";
     const char* event = "wazuh wazuh wazuh wazuh wazuh wazuh hi!";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -62,10 +62,10 @@ TEST(parseIgnore, double_ignore)
 
 TEST(parseIgnore, nothing_to_ignore)
 {
-    const char* logQl = "<_/ignore/wazuh>hi!";
+    const char* logpar = "<_/ignore/wazuh>hi!";
     const char* event = "hi!";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -77,10 +77,10 @@ TEST(parseIgnore, nothing_to_ignore)
 
 TEST(parseIgnore, ignore_end_token)
 {
-    const char* logQl = ".<_/ignore/word>";
+    const char* logpar = ".<_/ignore/word>";
     const char* event = ".326";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -91,10 +91,10 @@ TEST(parseIgnore, ignore_end_token)
 
 TEST(parseIgnore, ignore_end_string)
 {
-    const char* logQl = ".<_/ignore/326>hi";
+    const char* logpar = ".<_/ignore/326>hi";
     const char* event = ".326hi";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -106,10 +106,10 @@ TEST(parseIgnore, ignore_end_string)
 
 TEST(parseIgnore, ignore_not_ignore)
 {
-    const char* logQl = "<timestamp/SYSLOG>.<_/ignore/number>326";
+    const char* logpar = "<timestamp/SYSLOG>.<_/ignore/number>326";
     const char* event = "Feb 14 09:40:10.326";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -121,10 +121,10 @@ TEST(parseIgnore, ignore_not_ignore)
 
 TEST(parseIgnore, without_args)
 {
-    const char* logQl = "<_/ignore>.<_empty/ignore>";
+    const char* logpar = "<_/ignore>.<_empty/ignore>";
     const char* event = "Feb 14 09:40:10.326";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -138,10 +138,10 @@ TEST(parseIgnore, without_args)
 
 TEST(parseIgnore, without_args_follow_eos)
 {
-    const char* logQl = "<_/ignore>";
+    const char* logpar = "<_/ignore>";
     const char* event = "Feb 14 09:40:10.326";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -154,10 +154,10 @@ TEST(parseIgnore, without_args_follow_eos)
 
 TEST(parseIgnore, without_args_fail)
 {
-    const char* logQl = "<_/ignore>w";
+    const char* logpar = "<_/ignore>w";
     const char* event = "nop";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;
@@ -168,10 +168,10 @@ TEST(parseIgnore, without_args_fail)
 
 TEST(parseIgnore, ignore_until_next_token)
 {
-    const char* logQl = "<_/ignore>w";
+    const char* logpar = "<_/ignore>w";
     const char* event = "nopw";
 
-    ParserFn parseOp = getParserOp(logQl);
+    ParserFn parseOp = getParserOp(logpar);
     ASSERT_TRUE(static_cast<bool>(parseOp));
 
     ParseResult result;

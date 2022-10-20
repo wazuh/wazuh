@@ -8,22 +8,22 @@ using namespace hlp;
 
 TEST(parseJson, parameters_failure_cases)
 {
-    const char* logQl1 = "<_json/json/param1/param2>";
-    const char* logQl2 = "<_json/json/wrongType>";
+    const char* logpar1 = "<_json/json/param1/param2>";
+    const char* logpar2 = "<_json/json/wrongType>";
 
     const char* event = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
 
-    ASSERT_THROW(getParserOp(logQl1), std::runtime_error);
-    ASSERT_THROW(getParserOp(logQl2), std::runtime_error);
+    ASSERT_THROW(getParserOp(logpar1), std::runtime_error);
+    ASSERT_THROW(getParserOp(logpar2), std::runtime_error);
 }
 
 TEST(parseJson, object_success)
 {
-    const char* logQl = "<_json/json/object>";
+    const char* logpar = "<_json/json/object>";
 
     const char* event = "{\"key1\":\"value1\",\"key2\":\"value2\"}";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -35,7 +35,7 @@ TEST(parseJson, object_success)
 
 TEST(parseJson, object_failure_cases)
 {
-    const char* logQl = "<_json/json/object>";
+    const char* logpar = "<_json/json/object>";
 
     const char* eventNotClosed = "{\"key1\":\"value1\",\"key2\":\"value2\"";
     const char* eventNumber = "1234";
@@ -44,7 +44,7 @@ TEST(parseJson, object_failure_cases)
     const char* eventBool = "true";
     const char* eventNull = "null";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
 
     ASSERT_FALSE(parseOp(eventNotClosed, result));
@@ -57,11 +57,11 @@ TEST(parseJson, object_failure_cases)
 
 TEST(parseJson, success_parsing_object_by_default)
 {
-    const char* logQl = "<_field1/json> - <_field2/json>";
+    const char* logpar = "<_field1/json> - <_field2/json>";
     const char* event = "{\"String\":\"This is a string\"} - "
                         "{\"String\":\"This is another string\"}";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -74,14 +74,14 @@ TEST(parseJson, success_parsing_object_by_default)
 
 TEST(parseJson, several_results_different_types)
 {
-    const char* logQlObject = " <_json1/json> ";
-    const char* logQlAny = " <_json2/json/any> ";
-    const char* logQlString = " <_json3/json/string> ";
+    const char* logparObject = " <_json1/json> ";
+    const char* logparAny = " <_json2/json/any> ";
+    const char* logparString = " <_json3/json/string> ";
     const char* event = " {\"String\":\"This is a string\"} ";
 
-    auto parseOpObj = getParserOp(logQlObject);
-    auto parseOpString = getParserOp(logQlString);
-    auto parseOpAny = getParserOp(logQlAny);
+    auto parseOpObj = getParserOp(logparObject);
+    auto parseOpString = getParserOp(logparString);
+    auto parseOpAny = getParserOp(logparAny);
 
     ParseResult result;
     bool retObj = parseOpObj(event, result);
@@ -103,14 +103,14 @@ TEST(parseJson, several_results_different_types)
 
 TEST(parseJson, success_matching_string_and_any)
 {
-    const char* logQlObject = "<_json1/json>";
-    const char* logQlAny = "<_json2/json/any>";
-    const char* logQlString = "<_json3/json/string>";
+    const char* logparObject = "<_json1/json>";
+    const char* logparAny = "<_json2/json/any>";
+    const char* logparString = "<_json3/json/string>";
     const char* event = "\"String\"{\"This is a string\"}";
 
-    auto parseOpObj = getParserOp(logQlObject);
-    auto parseOpString = getParserOp(logQlString);
-    auto parseOpAny = getParserOp(logQlAny);
+    auto parseOpObj = getParserOp(logparObject);
+    auto parseOpString = getParserOp(logparString);
+    auto parseOpAny = getParserOp(logparAny);
 
     ParseResult result;
     bool retObj = parseOpObj(event, result);
@@ -132,11 +132,11 @@ TEST(parseJson, success_matching_string_and_any)
 
 TEST(parseJson, success_array_in_object)
 {
-    const char* logQl = "<_json/json>";
+    const char* logpar = "<_json/json>";
     const char* event = "{\"String\": [ {\"SecondString\":\"This is a "
                         "string\"}, {\"ThirdString\":\"This is a string\"} ] }";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -148,10 +148,10 @@ TEST(parseJson, success_array_in_object)
 
 TEST(parseJson, failed_not_string)
 {
-    const char* logQl = "<_json/json>";
+    const char* logpar = "<_json/json>";
     const char* event = "{somestring}, {\"String\":\"This is another string\"}";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -161,10 +161,10 @@ TEST(parseJson, failed_not_string)
 
 TEST(parseJson, success_array)
 {
-    const char* logQl = "<_json/json/array>";
+    const char* logpar = "<_json/json/array>";
     const char* event = "[ {\"A\":\"1\"}, {\"B\":\"2\"}, {\"C\":\"3\"} ]";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -175,10 +175,10 @@ TEST(parseJson, success_array)
 
 TEST(parseJson, success_any)
 {
-    const char* logQl = " <_json/json/any> ";
+    const char* logpar = " <_json/json/any> ";
     const char* event = " {\"C\":\"3\"} ";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -189,10 +189,10 @@ TEST(parseJson, success_any)
 
 TEST(parseJson, success_string)
 {
-    const char* logQl = " <_json/json/string> ";
+    const char* logpar = " <_json/json/string> ";
     const char* event = " \"string\" ";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -203,10 +203,10 @@ TEST(parseJson, success_string)
 
 TEST(parseJson, success_bool)
 {
-    const char* logQl = " <_json/json/bool> ";
+    const char* logpar = " <_json/json/bool> ";
     const char* event = " true ";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -216,10 +216,10 @@ TEST(parseJson, success_bool)
 
 TEST(parseJson, success_number)
 {
-    const char* logQl = " <_json/json/number> ";
+    const char* logpar = " <_json/json/number> ";
     const char* event = " 123 ";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
@@ -229,10 +229,10 @@ TEST(parseJson, success_number)
 
 TEST(parseJson, success_null)
 {
-    const char* logQl = " <_json/json/null> ";
+    const char* logpar = " <_json/json/null> ";
     const char* event = " null ";
 
-    auto parseOp = getParserOp(logQl);
+    auto parseOp = getParserOp(logpar);
     ParseResult result;
     bool ret = parseOp(event, result);
 
