@@ -96,12 +96,10 @@ void run(const std::string& kvdbPath,
 
         KVDBManager::init(kvdbPath);
         WAZUH_LOG_INFO("KVDB initialized");
-        g_exitHanlder.add(
-            []()
-            {
-                WAZUH_LOG_INFO("KVDB terminated");
-                KVDBManager::get().clear();
-            });
+        g_exitHanlder.add([]() {
+            WAZUH_LOG_INFO("KVDB terminated");
+            KVDBManager::get().clear();
+        });
 
         store = std::make_shared<store::FileDriver>(fileStorage);
         WAZUH_LOG_INFO("Store initialized");
@@ -124,7 +122,7 @@ void run(const std::string& kvdbPath,
 
         // server = std::make_shared<engineserver::EngineServer>(
         //     std::vector<std::string> {"api:"+apiEndpoint});
-        base::Name hlpConfigFileName({"schema", "wazuh-logql-types", "0"});
+        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
         auto hlpParsers = store->get(hlpConfigFileName);
         if (std::holds_alternative<base::Error>(hlpParsers))
         {

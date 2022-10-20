@@ -85,11 +85,11 @@ add_executable(stageBuilderParse_test
 )
 gtest_discover_tests(stageBuilderParse_test)
 
-# Operation Logql Parser Builder test
-add_executable(opBuilderLogqlParser_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderLogqlParser_test.cpp
+# Operation Logpar Parser Builder test
+add_executable(opBuilderLogParser_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderLogParser_test.cpp
 )
-gtest_discover_tests(opBuilderLogqlParser_test)
+gtest_discover_tests(opBuilderLogParser_test)
 
 # File Output test
 add_executable(fileOutput_test

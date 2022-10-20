@@ -1,4 +1,4 @@
-#include "opBuilderLogqlParser.hpp"
+#include "opBuilderLogParser.hpp"
 
 #include <any>
 #include <stdexcept>
@@ -87,7 +87,7 @@ static bool any2Json(std::any const& anyVal, std::string const& path, base::Even
     return true;
 }
 
-base::Expression opBuilderLogqlParser(const std::any& definition)
+base::Expression opBuilderLogParser(const std::any& definition)
 {
     // Assert definition is as expected
     json::Json jsonDefinition;
@@ -99,38 +99,38 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
     catch (const std::exception& e)
     {
         throw std::runtime_error(
-            "[builder::opBuilderLogqlParser(json)] Received unexpected argument type");
+            "[builder::opBuilderLogParser(json)] Received unexpected argument type");
     }
     if (!jsonDefinition.isArray())
     {
         throw std::runtime_error(
-            fmt::format("[builder::opBuilderLogqlParser(json)] Invalid json definition "
+            fmt::format("[builder::opBuilderLogParser(json)] Invalid json definition "
                         "type: expected [array] but got [{}]",
                         jsonDefinition.typeName()));
     }
     if (jsonDefinition.size() < 1)
     {
         throw std::runtime_error(
-            "[builder::opBuilderLogqlParser(json)] Invalid json definition: expected "
+            "[builder::opBuilderLogParser(json)] Invalid json definition: expected "
             "at least one element");
     }
 
-    auto logqlArr = jsonDefinition.getArray().value();
+    auto logparArr = jsonDefinition.getArray().value();
 
     std::vector<base::Expression> parsersExpressions;
-    for (const json::Json& item : logqlArr)
+    for (const json::Json& item : logparArr)
     {
         if (!item.isObject())
         {
             throw std::runtime_error(
-                fmt::format("[builder::opBuilderLogqlParser(json)] Invalid item json "
+                fmt::format("[builder::opBuilderLogParser(json)] Invalid item json "
                             "type: expected [object] but got [{}]",
                             item.typeName()));
         }
         if (item.size() != 1)
         {
             throw std::runtime_error(
-                fmt::format("[builder::opBuilderLogqlParser(json)] Invalid item json "
+                fmt::format("[builder::opBuilderLogParser(json)] Invalid item json "
                             "size: expected exactly one element but got {}",
                             item.size()));
         }
@@ -146,8 +146,9 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
         }
         catch (std::runtime_error& e)
         {
-            const char* msg = "Stage [parse] builder encountered exception parsing logQl "
-                              "expr";
+            const char* msg =
+                "Stage [parse] builder encountered exception parsing logpar "
+                "expr";
             std::throw_with_nested(std::runtime_error(msg));
         }
 
@@ -168,9 +169,7 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
         try
         {
             parseExpression = base::Term<base::EngineOp>::create(
-                "parse.logpar",
-                [=, parserOp = std::move(parseOp)](base::Event event)
-                {
+                "parse.logpar", [=, parserOp = std::move(parseOp)](base::Event event) {
                     if (!event->exists(field))
                     {
                         return base::result::makeFailure(std::move(event), errorTrace1);
@@ -200,7 +199,7 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
         catch (const std::exception& e)
         {
             throw std::runtime_error(fmt::format(
-                "[builder::opBuilderLogqlParser(json)] Exception creating [{}: {}]: {}",
+                "[builder::opBuilderLogParser(json)] Exception creating [{}: {}]: {}",
                 field,
                 logpar,
                 e.what()));

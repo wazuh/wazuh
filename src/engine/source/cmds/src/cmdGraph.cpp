@@ -36,11 +36,11 @@ void graph(const std::string& kvdbPath,
 
     auto store = std::make_shared<store::FileDriver>(fileStorage);
 
-    auto hlpParsers = store->get({"schema.wazuh-logql-types.v0"});
+    auto hlpParsers = store->get({"schema.wazuh-logpar-types.v0"});
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
         WAZUH_LOG_ERROR(
-            "[Environment] Error retreiving schema.wazuh-logql-types.v0 from store: {}",
+            "[Environment] Error retreiving schema.wazuh-logpar-types.v0 from store: {}",
             std::get<base::Error>(hlpParsers).message);
 
         return;

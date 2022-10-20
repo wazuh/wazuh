@@ -96,7 +96,7 @@ TEST_F(AssetTest, BuildDecoder)
             {"decoder": 1}
         ],
         "parse": {
-            "logql": [
+            "logpar": [
                 {"field": "<other.field> "}
             ]
         },
