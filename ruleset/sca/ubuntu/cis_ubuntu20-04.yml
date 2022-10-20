@@ -5121,7 +5121,7 @@ checks:
       - nist_sp_800-53: ["CM-11"]
     condition: none
     rules:
-      - 'c:dpkg -l xserver-xorg-core* -> r:^\wi\s*xserver-xorg'
+      - 'c:dpkg -l xserver-xorg* -> r:^\wi\s*xserver-xorg'
 
   # 2.1.3 Ensure Avahi Server is not installed (Automated)
   - id: 19056
@@ -5308,6 +5308,7 @@ checks:
       - nist_sp_800-53: ["SI-4"]
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
+    rules:
       - "c:dpkg -s samba -> r:package 'samba' is not installed"
 
   # 2.1.13 Ensure HTTP Proxy Server is not installed (Automated)
