@@ -12,9 +12,11 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
 #include "register.hpp"
+#include "stackExecutor.hpp"
 
 namespace
 {
+cmd::StackExecutor g_exitHanlder {};
 constexpr auto ENV_GRAPH = "env_graph.dot";
 constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 } // namespace
@@ -31,18 +33,21 @@ void graph(const std::string& kvdbPath,
     logging::LoggingConfig logConfig;
     logConfig.logLevel = logging::LogLevel::Debug;
     logging::loggingInit(logConfig);
+    g_exitHanlder.add([]() { logging::loggingTerm(); });
 
     KVDBManager::init(kvdbPath);
+    g_exitHanlder.add([]() { KVDBManager::get().clear(); });
 
     auto store = std::make_shared<store::FileDriver>(fileStorage);
-
-    auto hlpParsers = store->get({"schema.wazuh-logpar-types.v0"});
+    base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
+    auto hlpParsers = store->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR(
-            "[Environment] Error retreiving schema.wazuh-logpar-types.v0 from store: {}",
-            std::get<base::Error>(hlpParsers).message);
-
+        WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the HLP "
+                        "module, error: {}",
+                        hlpConfigFileName.fullName(),
+                        std::get<base::Error>(hlpParsers).message);
+        g_exitHanlder.execute();
         return;
     }
     // TODO because builders don't have access to the catalog we are configuring
@@ -57,6 +62,7 @@ void graph(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while registering builders: [{}]",
                         utils::getExceptionStack(e));
+        g_exitHanlder.execute();
         return;
     }
 
@@ -70,6 +76,7 @@ void graph(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while building environment: [{}]",
                         utils::getExceptionStack(e));
+        g_exitHanlder.execute();
         return;
     }
 
@@ -82,6 +89,7 @@ void graph(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while building environment Expression: [{}]",
                         utils::getExceptionStack(e));
+        g_exitHanlder.execute();
         return;
     }
 
@@ -105,5 +113,7 @@ void graph(const std::string& kvdbPath,
     std::cout << "Environment expression graph saved on " << envExprGraph.string()
               << std::endl;
     graphFile.close();
+
+    g_exitHanlder.execute();
 }
 } // namespace cmd

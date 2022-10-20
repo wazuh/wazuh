@@ -101,8 +101,7 @@ std::optional<base::Error> FileDriver::add(const base::Name& name,
                                          name.fullName(),
                                          duplicateError.value().message)};
     }
-
-    if (std::filesystem::exists(path))
+    else if (std::filesystem::exists(path))
     {
         error = base::Error {
             fmt::format("[FileDriver::add] File [{}] already exists", path.string())};

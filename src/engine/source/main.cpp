@@ -1,7 +1,9 @@
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <unordered_set>
 #include <vector>
 
@@ -13,7 +15,6 @@
 #include <cmds/cmdKvdb.hpp>
 #include <cmds/cmdRun.hpp>
 #include <cmds/cmdTest.hpp>
-#include <logging/logging.hpp>
 
 #include "base/utils/stringUtils.hpp"
 
@@ -21,7 +22,7 @@
 namespace args
 {
 // Subcommand names
-constexpr auto SUBCOMMAND_RUN = "run";
+constexpr auto SUBCOMMAND_RUN = "start";
 constexpr auto SUBCOMMAND_LOGTEST = "test";
 constexpr auto SUBCOMMAND_GRAPH = "graph";
 constexpr auto SUBCOMMAND_KVDB = "kvdb";
@@ -46,6 +47,7 @@ constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 constexpr auto TRACE_ALL = "ALL";
 
 // Arguments
+bool engineVersion;
 std::string eventEndpoint;
 std::string apiEndpoint;
 std::string file_storage;
@@ -73,23 +75,15 @@ std::string environmentTarget;
 void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 {
     CLI::App* run =
-        app->add_subcommand(args::SUBCOMMAND_RUN, "Run the Wazuh engine module.");
+        app->add_subcommand(args::SUBCOMMAND_RUN, "Starts an engine instance");
 
     // Endpoints
-    run->add_option("-e, --event_endpoint",
-                    args::eventEndpoint,
-                    "Endpoint configuration string. Specifies the endpoint where the "
-                    "engine module will be listening for incoming connections. "
-                    "PROTOCOL_STRING = <unix_socket_path>")
-        ->option_text("PATH_STRING REQUIRED")
-        ->required();
-    run->add_option("-a, --api_endpoint",
-                    args::apiEndpoint,
-                    "Endpoint configuration string. Specifies the endpoint where the "
-                    "engine module will be listening for api calls. "
-                    "PROTOCOL_STRING = <unix_socket_path>")
-        ->option_text("PATH_STRING REQUIRED")
-        ->required();
+    run->add_option(
+           "-e, --event_endpoint", args::eventEndpoint, "Event server socket address.")
+        ->default_val("${WAZUH_PATH}/queue/ossec/queue");
+
+    run->add_option("-a, --api_endpoint", args::apiEndpoint, "API server socket address.")
+        ->default_val("${WAZUH_PATH}/queue/ossec/analysis");
 
     // Threads
     run->add_option("-t, --threads",
@@ -117,19 +111,20 @@ void configureSubcommandRun(std::shared_ptr<CLI::App> app)
 
     // Environment
     run->add_option("--environment", args::environment, "Environment name.")
-        ->default_val("environment.wazuh.alpha");
+        ->default_val("environment/wazuh/0");
 
     // Log level
     run->add_option("-l, --log_level",
                     args::log_level,
-                    "Log level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
-        ->default_val(3);
+                    "Log level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
+        ->default_val(3)
+        ->check(CLI::Range(0, 3));
 }
 
 void configureSubcommandLogtest(std::shared_ptr<CLI::App> app)
 {
     CLI::App* logtest = app->add_subcommand(args::SUBCOMMAND_LOGTEST,
-                                            "Run the Wazuh engine module in test mode.");
+                                            "Utility to test the ruleset");
     // KVDB path
     logtest->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
         ->default_val("/var/ossec/queue/db/kvdb/")
@@ -189,7 +184,7 @@ void configureSubcommandGraph(std::shared_ptr<CLI::App> app)
 {
     CLI::App* graph = app->add_subcommand(
         args::SUBCOMMAND_GRAPH,
-        "Validate and generate environment graph and expression graph.");
+        "Generates a dot description of an environment");
 
     // KVDB path
     graph->add_option("-k, --kvdb_path", args::kvdb_path, "Path to KVDB folder.")
@@ -217,7 +212,7 @@ void configureSubcommandGraph(std::shared_ptr<CLI::App> app)
 
 void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* kvdb = app->add_subcommand(args::SUBCOMMAND_KVDB, "KVDB operations.");
+    CLI::App* kvdb = app->add_subcommand(args::SUBCOMMAND_KVDB, "Operates the key-value databases");
 
     // KVDB path
     kvdb->add_option("-p, --path", args::kvdb_path, "Path to KVDB folder.")
@@ -244,9 +239,8 @@ void configureSubcommandKvdb(std::shared_ptr<CLI::App> app)
 
 void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
 {
-    CLI::App* catalog =
-        app->add_subcommand(args::SUBCOMMAND_CATALOG,
-                            "Run the Wazuh Catalog integrated client.");
+    CLI::App* catalog = app->add_subcommand(args::SUBCOMMAND_CATALOG,
+                                            "Operates the engine catalog");
     catalog->require_subcommand();
 
     // Endpoint
@@ -257,7 +251,9 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
     catalog->add_flag(
         "-j, --json", args::catalogJsonFormat, "Use Input/Output json format");
     catalog
-        ->add_flag("-y, --yaml", args::catalogYmlFormat, "[Used by default] Use Input/Output yaml format")
+        ->add_flag("-y, --yaml",
+                   args::catalogYmlFormat,
+                   "[Used by default] Use Input/Output yaml format")
         ->excludes(catalog->get_option("--json"));
 
     // Shared obpitons among subcommands
@@ -312,9 +308,9 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
                          + "item or collection to delete: item-type[/item-id[/version]]")
         ->required();
 
-    auto validate_subcommand =
-        catalog->add_subcommand(args::SUBCOMMAND_CATALOG_VALIDATE,
-                                "validate item-type/item-id/version << item_file: Validate an item.");
+    auto validate_subcommand = catalog->add_subcommand(
+        args::SUBCOMMAND_CATALOG_VALIDATE,
+        "validate item-type/item-id/version << item_file: Validate an item.");
     validate_subcommand
         ->add_option(name,
                      args::catalogName,
@@ -323,9 +319,10 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
     validate_subcommand->add_option(item, args::catalogContent, itemDesc)
         ->default_val("");
 
-    auto load_subcommand = catalog->add_subcommand(
-        args::SUBCOMMAND_CATALOG_LOAD,
-        "load item-type path: Tries to create and add all items found in the path to the collection.");
+    auto load_subcommand =
+        catalog->add_subcommand(args::SUBCOMMAND_CATALOG_LOAD,
+                                "load item-type path: Tries to create and add all items "
+                                "found in the path to the collection.");
     load_subcommand
         ->add_option(
             name, args::catalogName, nameDesc + "collection to add items: item-type")
@@ -340,7 +337,7 @@ void configureSubCommandCatalog(std::shared_ptr<CLI::App> app)
 void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
 {
     CLI::App* environment = app->add_subcommand(
-        args::SUBCOMMAND_ENVIRONMENT, "Run the Wazuh Environment integrated client.");
+        args::SUBCOMMAND_ENVIRONMENT, "Operates the running environments");
 
     // Endpoint
     environment
@@ -365,8 +362,11 @@ void configureSubCommandEnvironment(std::shared_ptr<CLI::App> app)
 std::shared_ptr<CLI::App> configureCliApp()
 {
     auto app = std::make_shared<CLI::App>(
-        "Wazuh engine module. Check Subcommands for more information.");
-    app->require_subcommand();
+        "The Wazuh engine analyzes all the events received from the agents installed in "
+        "remote endpoints and all the integrations. This integrated console application "
+        "allows the management of all the engine components.\n");
+
+    app->add_flag("-v, --version", args::engineVersion, "Prints version information and exits");
 
     // Add subcommands
     configureSubcommandRun(app);
@@ -405,127 +405,149 @@ int kbhit()
 
 int main(int argc, char* argv[])
 {
-    // Configure argument parsers
-    auto app = args::configureCliApp();
-    CLI11_PARSE(*app, argc, argv);
-
-    // Launch parsed subcommand
-    if (app->get_subcommand(args::SUBCOMMAND_RUN)->parsed())
+    // Global try catch
+    try
     {
-        cmd::run(args::kvdb_path,
-                 args::eventEndpoint,
-                 args::apiEndpoint,
-                 args::queue_size,
-                 args::threads,
-                 args::file_storage,
-                 args::environment,
-                 args::log_level);
-    }
-    else if (app->get_subcommand(args::SUBCOMMAND_LOGTEST)->parsed())
-    {
-        std::vector<std::string> assetTrace;
-        bool TraceAll = false;
+        // Configure argument parsers
+        auto app = args::configureCliApp();
+        CLI11_PARSE(*app, argc, argv);
 
-        if (args::TRACE_ALL == args::asset_trace)
+        // Launch parsed subcommand
+        if (app->get_subcommand(args::SUBCOMMAND_RUN)->parsed())
         {
-            TraceAll = true;
+            cmd::run(args::kvdb_path,
+                     args::eventEndpoint,
+                     args::apiEndpoint,
+                     args::queue_size,
+                     args::threads,
+                     args::file_storage,
+                     args::environment,
+                     args::log_level);
+        }
+        else if (app->get_subcommand(args::SUBCOMMAND_LOGTEST)->parsed())
+        {
+            std::vector<std::string> assetTrace;
+            bool TraceAll = false;
+
+            if (args::TRACE_ALL == args::asset_trace)
+            {
+                TraceAll = true;
+            }
+            else
+            {
+                assetTrace = utils::string::split(args::asset_trace, ',');
+            }
+
+            cmd::test(args::kvdb_path,
+                      args::file_storage,
+                      args::environment,
+                      args::log_level,
+                      args::debug_level,
+                      TraceAll,
+                      assetTrace,
+                      args::protocol_queue,
+                      args::protocol_location);
+        }
+        else if (app->get_subcommand(args::SUBCOMMAND_GRAPH)->parsed())
+        {
+            cmd::graph(args::kvdb_path,
+                       args::file_storage,
+                       args::environment,
+                       args::graph_out_dir);
+        }
+        else if (app->get_subcommand(args::SUBCOMMAND_KVDB)->parsed())
+        {
+            cmd::kvdb(args::kvdb_path,
+                      args::kvdb_name,
+                      args::kvdb_input_file,
+                      cmd::stringToInputType(args::kvdb_input_type));
+        }
+        else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
+        {
+            // if The content is empty check if it was redirected to stdin
+            if (args::catalogContent.empty() && kbhit() != 0)
+            {
+                std::stringstream ss;
+                ss << std::cin.rdbuf();
+                args::catalogContent = ss.str();
+            }
+            std::string formatString;
+            if (args::catalogJsonFormat)
+            {
+                formatString = "json";
+            }
+            else
+            {
+                formatString = "yaml";
+            }
+
+            // Set the action based on the subcommand parsed
+            auto catalogSubcommand = app->get_subcommand(args::SUBCOMMAND_CATALOG);
+            std::string action;
+
+            if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_CREATE)
+                    ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_CREATE;
+            }
+            else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_DELETE)
+                         ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_DELETE;
+            }
+            else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_UPDATE)
+                         ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_UPDATE;
+            }
+            else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_GET)
+                         ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_GET;
+            }
+            else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_LIST)
+                         ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_LIST;
+            }
+            else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_LOAD)
+                         ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_LOAD;
+            }
+            else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_VALIDATE)
+                         ->parsed())
+            {
+                action = args::SUBCOMMAND_CATALOG_VALIDATE;
+            }
+
+            cmd::catalog(args::apiEndpoint,
+                         action,
+                         args::catalogName,
+                         formatString,
+                         args::catalogContent,
+                         args::catalogPath);
+        }
+        else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
+        {
+            cmd::environment(
+                args::apiEndpoint, args::environmentAction, args::environmentTarget);
         }
         else
         {
-            assetTrace = utils::string::split(args::asset_trace, ',');
+            if (args::engineVersion)
+            {
+                std::cout << "Wazuh Engine v0" << std::endl;
+            }
+            else
+            {
+                std::cout << app->help();
+            }
         }
-
-        cmd::test(args::kvdb_path,
-                  args::file_storage,
-                  args::environment,
-                  args::log_level,
-                  args::debug_level,
-                  TraceAll,
-                  assetTrace,
-                  args::protocol_queue,
-                  args::protocol_location);
     }
-    else if (app->get_subcommand(args::SUBCOMMAND_GRAPH)->parsed())
+    catch (const std::exception& e)
     {
-        cmd::graph(
-            args::kvdb_path, args::file_storage, args::environment, args::graph_out_dir);
-    }
-    else if (app->get_subcommand(args::SUBCOMMAND_KVDB)->parsed())
-    {
-        cmd::kvdb(args::kvdb_path,
-                  args::kvdb_name,
-                  args::kvdb_input_file,
-                  cmd::stringToInputType(args::kvdb_input_type));
-    }
-    else if (app->get_subcommand(args::SUBCOMMAND_CATALOG)->parsed())
-    {
-        // if The content is empty check if it was redirected to stdin
-        if (args::catalogContent.empty() && kbhit() != 0)
-        {
-            std::stringstream ss;
-            ss << std::cin.rdbuf();
-            args::catalogContent = ss.str();
-        }
-        std::string formatString;
-        if (args::catalogJsonFormat)
-        {
-            formatString = "json";
-        }
-        else
-        {
-            formatString = "yaml";
-        }
-
-        // Set the action based on the subcommand parsed
-        auto catalogSubcommand = app->get_subcommand(args::SUBCOMMAND_CATALOG);
-        std::string action;
-
-        if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_CREATE)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_CREATE;
-        }
-        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_DELETE)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_DELETE;
-        }
-        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_UPDATE)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_UPDATE;
-        }
-        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_GET)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_GET;
-        }
-        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_LIST)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_LIST;
-        }
-        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_LOAD)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_LOAD;
-        }
-        else if (catalogSubcommand->get_subcommand(args::SUBCOMMAND_CATALOG_VALIDATE)->parsed())
-        {
-            action = args::SUBCOMMAND_CATALOG_VALIDATE;
-        }
-
-        cmd::catalog(args::apiEndpoint,
-                     action,
-                     args::catalogName,
-                     formatString,
-                     args::catalogContent,
-                     args::catalogPath);
-    }
-    else if (app->get_subcommand(args::SUBCOMMAND_ENVIRONMENT)->parsed())
-    {
-        cmd::environment(
-            args::apiEndpoint, args::environmentAction, args::environmentTarget);
-    }
-    else
-    {
-        // This code should never reach as parse is configured to required a subcommand
-        WAZUH_LOG_ERROR("No subcommand specified when launching engine, use -h for "
-                        "detailed information.");
+        std::cerr << "Fatal Error: " << e.what() << std::endl;
     }
 
     return 0;
