@@ -1,7 +1,6 @@
 #ifndef _CATALOG_JSON_ASSETS_H
 #define _CATALOG_JSON_ASSETS_H
 
-
 /** @brief malformed schemas */
 constexpr auto schema_malformed = R"(
 {
@@ -47,7 +46,7 @@ check:
   - wazuh.event.format: text
 
 parse:
-  logql:
+  logpar:
     # BSD Syslog RFC 3164
     - event.original: "<$header> <process.name>[<process.pid>]: <message>"
 
@@ -76,7 +75,7 @@ check:
   - wazuh.event.format: text
 
 parse:
-  logql:
+  logpar:
     # BSD Syslog RFC 3164
     - event.original: "<$header> <process.name>[<process.pid>]: <message>"
 
@@ -128,7 +127,7 @@ constexpr auto json_schema_decoder = R"(
     },
     "define": {
       "type": "object",
-      "description": "Define variables (var_name: var_value) to be used on stages of this decoder, currently only logql definitions supported"
+      "description": "Define variables (var_name: var_value) to be used on stages of this decoder, currently only logpar definitions supported"
     },
     "metadata": {
       "additionalProperties": false,
@@ -186,9 +185,9 @@ constexpr auto json_schema_decoder = R"(
       "description": "Extract from log line once condition evaluates successfully. After a capture operation succeeds it goes to enrichment block.",
       "type": "object",
       "properties": {
-        "logql": {
+        "logpar": {
           "type": "array",
-          "description": "Uses logql syntax expressions",
+          "description": "Uses logpar syntax expressions",
           "items": {
             "$ref": "only_ecs_field.json#"
           }

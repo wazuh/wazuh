@@ -1,5 +1,5 @@
-#ifndef _OP_BUILDER_LOGQL_PARSER_H
-#define _OP_BUILDER_LOGQL_PARSER_H
+#ifndef _OP_BUILDER_LOG_PARSER_H
+#define _OP_BUILDER_LOG_PARSER_H
 
 #include <any>
 
@@ -15,8 +15,8 @@ namespace builder::internals::builders
  * @param definition Definition of the stage
  * @return base::Expression
  */
-base::Expression opBuilderLogqlParser(const std::any& definition);
+base::Expression opBuilderLogParser(const std::any& definition);
 
 } // namespace builder::internals::builders
 
-#endif // _OP_BUILDER_LOGQL_PARSER_H
+#endif // _OP_BUILDER_LOG_PARSER_H

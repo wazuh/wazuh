@@ -1,4 +1,4 @@
-#include "logQLParser.hpp"
+#include "logParser.hpp"
 
 #include <stdexcept>
 #include <stdio.h>
@@ -171,7 +171,7 @@ static bool parseCapture(Tokenizer& tk, ExpressionList& expresions)
     return true;
 }
 
-ExpressionList parseLogQlExpr(const char* expr)
+ExpressionList parseLogExpr(const char* expr)
 {
     // <source.ip>
     WAZUH_TRACE_FUNCTION;
@@ -189,7 +189,7 @@ ExpressionList parseLogQlExpr(const char* expr)
 
                 if (!parseCapture(tokenizer, expresions))
                 {
-                    auto msg = fmt::format("[HLP]Invalid LogQL expression at [{}]. "
+                    auto msg = fmt::format("[HLP]Invalid Logpar expression at [{}]. "
                                            "Unable to parse capture expression.",
                                            std::string(prev));
                     throw std::runtime_error(msg);
@@ -212,7 +212,7 @@ ExpressionList parseLogQlExpr(const char* expr)
             default:
             {
                 const auto msg =
-                    std::string {"[HLP] Invalid LogQl expression. Unknown token found: "}
+                    std::string {"[HLP] Invalid Logpar expression. Unknown token found: "}
                     + "'" + token.text + "'";
                 throw std::runtime_error(msg);
             }

@@ -39,7 +39,7 @@
     },
     "define": {
       "type": "object",
-      "description": "Define variables (var_name: var_value) to be used on stages of this decoder, currently only logql definitions supported"
+      "description": "Define variables (var_name: var_value) to be used on stages of this decoder, currently only logpar definitions supported"
     },
     "metadata": {
       "additionalProperties": false,
@@ -97,9 +97,9 @@
       "description": "Extract from log line once condition evaluates successfully. After a capture operation succeeds it goes to enrichment block.",
       "type": "object",
       "properties": {
-        "logql": {
+        "logpar": {
           "type": "array",
-          "description": "Uses logql syntax expressions",
+          "description": "Uses logpar syntax expressions",
           "items": {
             "$ref": "only_ecs_field.json#"
           }

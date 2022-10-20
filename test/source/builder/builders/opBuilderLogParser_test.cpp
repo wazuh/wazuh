@@ -1,70 +1,70 @@
 #include <gtest/gtest.h>
 
 #include "baseTypes.hpp"
-#include "builder/builders/opBuilderLogqlParser.hpp"
+#include "builder/builders/opBuilderLogParser.hpp"
 
 using namespace builder::internals::builders;
 using namespace json;
 using namespace base;
 
-TEST(OperationBuilderLogqlParserTest, Builds)
+TEST(OperationBuilderLogParserTest, Builds)
 {
     Json doc = Json {R"([
         {"field": "<field>"}
     ])"};
-    ASSERT_NO_THROW(opBuilderLogqlParser(doc));
+    ASSERT_NO_THROW(opBuilderLogParser(doc));
 }
 
-TEST(OperationBuilderLogqlParserTest, NotJson)
+TEST(OperationBuilderLogParserTest, NotJson)
 {
-    ASSERT_THROW(opBuilderLogqlParser(true), std::runtime_error);
+    ASSERT_THROW(opBuilderLogParser(true), std::runtime_error);
 }
 
-TEST(OperationBuilderLogqlParserTest, NotArray)
+TEST(OperationBuilderLogParserTest, NotArray)
 {
     Json doc = Json {R"(
         {"field": "<field>"}
     )"};
-    ASSERT_THROW(opBuilderLogqlParser(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
 
-TEST(OperationBuilderLogqlParserTest, EmptyArray)
+TEST(OperationBuilderLogParserTest, EmptyArray)
 {
     Json doc = Json {R"([])"};
-    ASSERT_THROW(opBuilderLogqlParser(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
 
-TEST(OperationBuilderLogqlParserTest, ItemNotObject)
+TEST(OperationBuilderLogParserTest, ItemNotObject)
 {
     Json doc = Json {R"([
         "field"
     ])"};
-    ASSERT_THROW(opBuilderLogqlParser(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
 
-TEST(OperationBuilderLogqlParserTest, ItemWrongObjectSize)
+TEST(OperationBuilderLogParserTest, ItemWrongObjectSize)
 {
     Json doc = Json {R"([
         {"field": "<field>", "other":1}
     ])"};
-    ASSERT_THROW(opBuilderLogqlParser(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
 
-TEST(OperationBuilderLogqlParserTest, WrongLogqlString)
+TEST(OperationBuilderLogParserTest, WrongLogparString)
 {
     Json doc = Json {R"([
         {"field": "<field"}
     ])"};
-    ASSERT_THROW(opBuilderLogqlParser(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderLogParser(doc), std::runtime_error);
 }
 
-TEST(OperationBuilderLogqlParserTest, BuildsCorrectExpression)
+TEST(OperationBuilderLogParserTest, BuildsCorrectExpression)
 {
     Json doc = Json {R"([
         {"field": "<field>"}
     ])"};
 
-    auto expression = opBuilderLogqlParser(doc);
+    auto expression = opBuilderLogParser(doc);
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isOr());
     ASSERT_EQ(expression->getPtr<Operation>()->getOperands().size(), 1);

@@ -7,7 +7,7 @@
 #include "builders/opBuilderHelperMap.hpp"
 #include "builders/opBuilderHelperNetInfoAddress.hpp"
 #include "builders/opBuilderKVDB.hpp"
-#include "builders/opBuilderLogqlParser.hpp"
+#include "builders/opBuilderLogParser.hpp"
 #include "builders/opBuilderSCAdecoder.hpp"
 #include "builders/opBuilderWdb.hpp"
 #include "builders/operationBuilder.hpp"
@@ -33,7 +33,7 @@ static void registerBuilders()
 
     // Parsers
     Registry::registerBuilder(builders::stageBuilderParse, "stage.parse");
-    Registry::registerBuilder(builders::opBuilderLogqlParser, "parser.logql");
+    Registry::registerBuilder(builders::opBuilderLogParser, "parser.logpar");
 
     // Outputs
     Registry::registerBuilder(builders::stageBuilderOutputs, "stage.outputs");
