@@ -5663,7 +5663,7 @@ checks:
       - "c:dpkg -s ldap-utils -> r:package 'ldap-utils' is not installed"
 
   # 2.2.6 Ensure RPC is not installed (Automated)
-  - id: 19074
+  - id: 19076
     title: "Ensure RPC is not installed."
     description: "Remote Procedure Call (RPC) is a method for creating low level client server applications across different system architectures. It requires an RPC compliant client listening on a network port. The supporting package is rpcbind."
     rationale: "If RPC is not required, it is recommended that this services be removed to reduce the remote attack surface."
@@ -5681,33 +5681,28 @@ checks:
       - "c:dpkg -s rpcbind -> r:package 'rpcbind' is not installed"
 
   # 2.3 Ensure nonessential services are removed or masked (Manual) - Not implemented
-  ########### WIP
 
-  ############################################################
   # 3 Network Configuration
-  ############################################################
+  # 3.1 Disable unused network protocols and devices
 
-  ## 3.1 Disable unused network protocols and devices
-
-  - id: 19075
+  # 3.1.1 Disable IPv6 (Manual)
+  - id: 19077
     title: "Disable IPv6."
     description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
     rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
-    remediation: 'Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Run the following command to update the grub2 configuration: # update-grub'
+    impact: "If IPv6 is disabled through sysctl config, SSH X11forwarding may no longer function as expected. We recommend that SSH X11fowarding be disabled, but if required, the following will allow for SSH X11forwarding with IPv6 disabled through sysctl config: Add the following line the /etc/ssh/sshd_config file: AddressFamily inet Run the following command to re-start the openSSH server: # systemctl restart sshd"
+    remediation: 'Use one of the two following methods to disable IPv6 on the system: To disable IPv6 through the GRUB2 config: Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Run the following command to update the grub2 configuration: # update-grub OR To disable IPv6 through sysctl settings: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.disable_ipv6=1 # sysctl -w net.ipv6.conf.default.disable_ipv6=1 # sysctl -w net.ipv6.route.flush=1'
     compliance:
       - cis: ["3.1.1"]
       - cis_csc_v7: ["9.4"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.6", "CC5.2"]
-    condition: none
+      - cmmc_v2.0: ["CM.3.068"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
+    condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:ipv6.disable=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:ipv6.disable=1'
 
-  - id: 19076
+  - id: 19078
     title: "Ensure wireless interfaces are disabled."
     description: "Wireless networking is used when wired networks are unavailable. Ubuntu contains a wireless tool kit to allow system administrators to configure and use wireless networks."
     rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
@@ -6019,6 +6014,8 @@ checks:
     rules:
       - "not c:modprobe -n -v tipc -> r:install /bin/true"
       - "c:lsmod -> r:tipc"
+
+  ########### WIP
 
   #################################################################
   # 3.5 Firewall configuration
