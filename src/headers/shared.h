@@ -99,6 +99,11 @@
 #ifdef __cplusplus
 #include <atomic>
 #define _Atomic(T) std::atomic<T>
+#else
+#ifdef hpux
+// TODO: remove this line after upgrading GCC on HP-UX
+#define _Atomic(T) T
+#endif
 #endif
 
 #include <time.h>
