@@ -19,11 +19,6 @@
 #define FIREWALL_DATA_INITIALIZE {false, false, FIREWALL_DOMAIN}
 #define FIREWALL_PROFILES_MAX (3)   /*!< Maximun number of profiles*/
 
-typedef struct {
-    char *log_msg;
-    cJSON *input_json;
-    char **argv;
-} data_common_t;
 
 /**
  * @brief enumeration of the available profiles
@@ -44,7 +39,13 @@ typedef struct{
     firewallProfile_t profile;
 } firewallData_t;
 
-static int getAllProfilesStatus(data_common_t *data_common);
+/**
+ * @brief Get the all firewall profiles status
+ *
+ * @param argv
+ * @return int
+ */
+static int getAllProfilesStatus(const char *argv);
 
 /**
  * @brief this function get name and if is there profile
@@ -65,7 +66,6 @@ int main (int argc, char **argv) {
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
-    data_common_t data_common = { log_msg, input_json, argv };
     action = setup_and_check_message(argv, &input_json);
     if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
@@ -116,7 +116,7 @@ int main (int argc, char **argv) {
 
     wfd_t *wfd = NULL;
     if ((action == ADD_COMMAND)) {
-        if(getAllProfilesStatus(&data_common) == OS_INVALID) {
+        if(getAllProfilesStatus(argv[0]) == OS_INVALID) {
             return OS_INVALID;
         }
     }
@@ -141,7 +141,7 @@ int main (int argc, char **argv) {
         char *exec_args_policy[9]  = { NETSH, "ipsec", "static", "add", "policy", "name=\"wazuh_policy\"", "assign=yes", description, NULL };
         char *exec_args_rule[10]   = { NETSH, "ipsec", "static", "add", "rule", "name=wazuh_rule", "policy=wazuh_policy", "filterlist=wazuh_filter", "filteraction=wazuh_action", NULL };
 
-        if (action == ADD_COMMAND){
+        if (action == ADD_COMMAND) {
             wfd = wpopenv(NETSH, exec_args_filter , W_BIND_STDERR);
             if (!wfd) {
                 memset(log_msg, '\0', OS_MAXSTR);
@@ -197,51 +197,43 @@ int main (int argc, char **argv) {
 }
 
 
-/**
- * @brief Get the all firewall profiles status
- * 
- * @param data_common 
- * @return int 
- */
-static int getAllProfilesStatus(data_common_t *data_common){
-    
-    if (data_common == NULL)
-        return OS_INVALID;
-    
+static int getAllProfilesStatus(const char *argv){
+
+
     char pathFirewallProfilesReg[256] = {0};
-    char *exec_args_show_profile[6] = { REG, "query", pathFirewallProfilesReg, "/v", "EnableFirewall", NULL};
-    char *firewallProfilesReg[FIREWALL_PROFILES_MAX] = {"DomainProfile", "StandardProfile", "PublicProfile"};
+    char *exec_args_show_profile[6] = { REG, "query", pathFirewallProfilesReg, "/v", "EnableFirewall", NULL };
+    char *firewallProfilesReg[FIREWALL_PROFILES_MAX] = { "DomainProfile", "StandardProfile", "PublicProfile" };
     bool globalfirewallStatus = true;
     char aux_buf[OS_MAXSTR] = {0};
     char output_buf[OS_MAXSTR];
-    const char *firewallProfileStr[FIREWALL_PROFILES_MAX + 1] = {"FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC", "FIREWALL_DEFAULT" };
+    const char *firewallProfileStr[FIREWALL_PROFILES_MAX + 1] = { "FIREWALL_DOMAIN", "FIREWALL_PRIVATE", "FIREWALL_PUBLIC", "FIREWALL_DEFAULT" };
     firewallData_t firewallData = FIREWALL_DATA_INITIALIZE;
     wfd_t *wfd = NULL;
+    char log_msg[OS_MAXSTR];
 
-    memset(data_common->log_msg, '\0', OS_MAXSTR);
-    strcpy(data_common->log_msg, "{\"message\":\"Active response may not have an effect\",\"firewall\":{");
+    memset(log_msg, '\0', OS_MAXSTR);
+    strcpy(log_msg, "{\"message\":\"Active response may not have an effect\",\"firewall\":{");
     int retVal = OS_SUCCESS;
-        
-    for ( int i = 0; i < FIREWALL_PROFILES_MAX; i++) {
+
+    for (int i = 0; i < FIREWALL_PROFILES_MAX; i++) {
         memset(pathFirewallProfilesReg, 0, sizeof(pathFirewallProfilesReg));
         strcpy(pathFirewallProfilesReg, PATH_FIREWALL_PROFILES_REG_DEFAULT);
         strcat(pathFirewallProfilesReg, firewallProfilesReg[i]);
-        if (exec_args_show_profile[2] != NULL) {
-            wfd = wpopenv(REG, exec_args_show_profile, W_BIND_STDOUT);
-        }
+
+        wfd = wpopenv(REG, exec_args_show_profile, W_BIND_STDOUT);
+
         if (!wfd) {
-            memset(data_common->log_msg, '\0', OS_MAXSTR);
-            snprintf(data_common->log_msg, OS_MAXSTR -1, "Error executing '%s' : %s", NETSH, strerror(errno));
-            write_debug_file(data_common->argv[0], data_common->log_msg);
-            cJSON_Delete(data_common->input_json);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s' : %s", NETSH, strerror(errno));
+            write_debug_file(argv, log_msg);
             return OS_INVALID;
         }
         else {
             while (fgets(output_buf, OS_MAXSTR -1, wfd->file_out)) {
                 memset(aux_buf, '\0', OS_MAXSTR);
                 if (firewallData.isThereProfile == false){
-                    getFirewallProfile(output_buf, &firewallData); 
-                }else {
+                    getFirewallProfile(output_buf, &firewallData);
+                } else {
                     getStatusFirewallProfile(output_buf, &firewallData);
                     char msg_buf[OS_MAXSTR] = {0};
                     if (i == FIREWALL_PROFILES_MAX - 1){
@@ -255,7 +247,7 @@ static int getAllProfilesStatus(data_common_t *data_common){
                         firewallProfileStr[firewallData.profile], i + 1,
                         firewallData.isEnabled == true ? "active" : "inactive"
                     );
-                    strcat(data_common->log_msg, aux_buf);
+                    strcat(log_msg, aux_buf);
                     firewallData.isThereProfile = false;
                 }
             }
@@ -265,14 +257,14 @@ static int getAllProfilesStatus(data_common_t *data_common){
     if (false == globalfirewallStatus){
         memset(aux_buf, '\0', OS_MAXSTR);
         snprintf(aux_buf, OS_MAXSTR -1, "},\"status\":\"%s\",\"script\":\"%s\"}", globalfirewallStatus == true ? "active":"inactive", "netsh");
-        strcat(data_common->log_msg, aux_buf);
-        write_debug_file(data_common->argv[0], data_common->log_msg);
+        strcat(log_msg, aux_buf);
+        write_debug_file(argv, log_msg);
     }
     return retVal;
 }
 
 void getFirewallProfile(const char * output_buf, firewallData_t *firewallData){
-    if( output_buf != NULL){
+    if (output_buf != NULL){
         const char* ptr = NULL;
         if ((ptr = strstr(output_buf, "FirewallPolicy")) != NULL) {
            char after[OS_MAXSTR];

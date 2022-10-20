@@ -443,15 +443,16 @@ char* splitStrFromCharDelimiter(const char * output_buf, const char delimiter, c
     if (output_buf != NULL) {
         pos = strchr(output_buf, delimiter);
         retVal = pos;
-        if (strBefore != NULL){
-            strncpy(strBefore, output_buf, pos - output_buf);
+        if (pos != NULL){
+            if (strBefore != NULL){
+                strncpy(strBefore, output_buf, pos - output_buf);
+            }
+            if (strAfter != NULL){
+                strncpy(strAfter, pos + 1, strlen(pos));
+            }
         }
-        if (strAfter != NULL){
-            strncpy(strAfter, pos + 1, strlen(pos));
-        }
-
     }
-    return  retVal;
+    return retVal;
 }
 
 int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2) {
