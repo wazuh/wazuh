@@ -7,18 +7,21 @@
 #include <hlp/hlp.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
+#include <name.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
 
-#include "base/utils/getExceptionStack.hpp"
 #include "base/parseEvent.hpp"
+#include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
-#include "server/wazuhStreamProtocol.hpp"
 #include "register.hpp"
+#include "server/wazuhStreamProtocol.hpp"
+#include "stackExecutor.hpp"
 
 namespace
 {
 std::atomic<bool> gs_doRun = true;
+cmd::StackExecutor g_exitHanlder {};
 
 void destroy()
 {
@@ -54,24 +57,26 @@ void test(const std::string& kvdbPath,
         case 1: logConfig.logLevel = logging::LogLevel::Info; break;
         case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
         case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default:
-            WAZUH_LOG_WARN("Invalid log level [{}]: Log level setted to [Error]",
-                           logLevel);
-            logging::LogLevel::Error;
+        default: logging::LogLevel::Error;
     }
     logging::loggingInit(logConfig);
+    g_exitHanlder.add([]() { logging::loggingTerm(); });
 
     KVDBManager::init(kvdbPath);
     KVDBManager& kvdbManager = KVDBManager::get();
 
     auto fileStore = std::make_shared<store::FileDriver>(fileStorage);
 
-    auto hlpParsers = fileStore->get({"schema/wazuh-logpar-types/0"});
+    base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
+    auto hlpParsers = fileStore->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR("Error while getting hlp parsers: [{}]",
+        WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the HLP "
+                        "module, error: {}",
+                        hlpConfigFileName.fullName(),
                         std::get<base::Error>(hlpParsers).message);
-        destroy();
+
+        g_exitHanlder.execute();
         return;
     }
     // TODO because builders don't have access to the catalog we are configuring
@@ -86,7 +91,7 @@ void test(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while registering builders: [{}]",
                         utils::getExceptionStack(e));
-        destroy();
+        g_exitHanlder.execute();
         return;
     }
 
@@ -97,9 +102,9 @@ void test(const std::string& kvdbPath,
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Exception while creating environment name: [{}]",
+        WAZUH_LOG_ERROR("Exception while creating environment: [{}]",
                         utils::getExceptionStack(e));
-        destroy();
+        g_exitHanlder.execute();
         return;
     }
     auto envDefinition = fileStore->get({environment});
@@ -107,7 +112,7 @@ void test(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Error while getting environment definition: [{}]",
                         std::get<base::Error>(envDefinition).message);
-        destroy();
+        g_exitHanlder.execute();
         return;
     }
     json::Json envTmp {std::get<json::Json>(envDefinition)};
@@ -146,12 +151,13 @@ void test(const std::string& kvdbPath,
     {
         WAZUH_LOG_ERROR("Exception while building environment: [{}]",
                         utils::getExceptionStack(e));
-        destroy();
+        g_exitHanlder.execute();
         return;
     }
 
     // Create rxbackend
     auto controller = rxbk::buildRxPipeline(env);
+    g_exitHanlder.add([&controller]() { controller.complete(); });
 
     // output
     std::stringstream output;
@@ -311,7 +317,6 @@ void test(const std::string& kvdbPath,
         }
     }
 
-    controller.complete();
-    destroy();
+    g_exitHanlder.execute();
 }
 } // namespace cmd
