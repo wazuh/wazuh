@@ -431,7 +431,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                 /* number of regex captures */
                 int sub_strings_num = 0;
                 if (regex_match->sub_strings) {
-                    for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++, sub_strings_num++);
+                    for (sub_strings_num = 0; regex_match->sub_strings[sub_strings_num] != NULL; sub_strings_num++);
                 }
 
                 ret = sub_strings_num == 2 ? 2 : 1;
